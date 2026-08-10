@@ -1,0 +1,32 @@
+[project]
+name = "constitutional-debate"
+version = "0.1.0"
+description = "A whitebox, contestable public decision process built on LLM debate"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+constitutional-debate = "constitutional_debate.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/constitutional_debate"]
+# default.toml is mirrored into the package so an installed wheel still has
+# defaults; configs/default.toml at the repo root is the copy users edit.
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

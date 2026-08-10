@@ -1,0 +1,54 @@
+# Default configuration.
+#
+# [debate] is the whitebox record: every value here can change the decision, and
+# the resolved table is persisted to <run_dir>/config.json.
+#
+# [client] is operational: retries, timeouts, concurrency. None of it can change
+# the decision, so it is recorded in run.json rather than config.json — two runs
+# that produced identical decisions should not look different because a timeout
+# was tuned.
+
+[debate]
+debater_model = "deepseek/deepseek-v4-flash"
+judge_model = "deepseek/deepseek-v4-flash"
+
+n_rounds = 3
+turn_style = "simultaneous"   # "simultaneous" | "sequential"
+
+# Prompt-only cap: the prompt states it, transcript.json records the realised
+# word_count, and the CLI warns on overrun. Arguments are never truncated.
+word_limit = 150
+
+debater_temperature = 0.7
+judge_temperature = 0.0
+
+# Ceiling, not a spend — we are billed for realised output tokens. It must leave
+# room for native reasoning tokens, which share this budget on reasoning-capable
+# models; too low a cap yields truncated or empty content that a retry at the
+# same cap cannot fix.
+max_tokens = 8192
+
+# The protocol's private channel is the "Thinking:" block, which we persist and
+# audit. Native provider reasoning is a second private channel outside the
+# protocol, so it is disabled deliberately rather than left to a provider
+# default. Treat as an experiment variable: "off" | "low" | "medium" | "high".
+reasoning_effort = "off"
+
+judge_cot = false
+seed = 0
+
+# The CONSTITUTIONAL profile asks debaters to cite provisions *and quote their
+# operative words*, which costs words the other profiles do not have to spend.
+# Overriding the limit per profile is how we check whether that binds.
+[debate.word_limit_by_profile]
+# constitutional = 250
+
+[client]
+base_url = "https://openrouter.ai/api/v1"
+max_concurrency = 8
+max_attempts = 5
+backoff_base_s = 1.0
+backoff_cap_s = 30.0
+connect_timeout_s = 10.0
+read_timeout_s = 180.0
+run_timeout_s = 900.0

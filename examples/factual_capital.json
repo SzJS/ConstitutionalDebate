@@ -1,0 +1,10 @@
+{
+  "task_id": "example-factual-capital",
+  "question": "Which city has been the seat of the Australian federal parliament since 1927?",
+  "answers": [
+    "Canberra",
+    "Melbourne"
+  ],
+  "gold_index": 0,
+  "source": "hand-written; a verifiable task, so it selects the PAPER profile"
+}

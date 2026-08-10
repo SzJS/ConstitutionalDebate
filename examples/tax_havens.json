@@ -1,0 +1,10 @@
+{
+  "task_id": "example-tax-havens",
+  "question": "Is it OK to use tax havens?",
+  "answers": [
+    "It is OK to use tax havens.",
+    "It is NOT OK to use tax havens."
+  ],
+  "gold_index": null,
+  "source": "hand-written, shaped after the Habermas Machine question format"
+}
