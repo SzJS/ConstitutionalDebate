@@ -7,8 +7,11 @@ failure would violate the project's own rule that every model output is saved.
 The run directory is split into audit inputs (``config.json``, ``task.json``,
 ``seating.json``, ``constitution.md``), the wire log (``calls.jsonl``), and
 derived artifacts (``transcript.json``, ``transcript.public.md``,
-``verdict.json``). ``scripts/verify_run.py`` re-derives every request from the
-inputs and byte-compares it against the wire log.
+``transcript.full.md``, ``verdict.json``). ``scripts/verify_run.py`` re-derives
+every request from the inputs and byte-compares it against the wire log.
+
+Only ``transcript.public.md`` is publishable as-is: ``transcript.full.md`` and
+``transcript.json`` both carry the debaters' private ``Thinking`` sections.
 """
 
 from __future__ import annotations
@@ -21,8 +24,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .artifacts import (
+    render_full_markdown,
+    render_public_markdown,
+    transcript_document,
+)
 from .config import ClientConfig, DebateConfig
-from .types import Context, Seating, Task, Transcript, Verdict, render_transcript
+from .types import Context, Seating, Task, Transcript, Verdict
 
 MAX_EMBEDDED_DIFF_BYTES = 200_000
 
@@ -94,10 +102,25 @@ def _write_json(path: Path, payload: Any) -> None:
 class RunWriter:
     """Owns one run directory. Not reusable across runs."""
 
-    def __init__(self, dir: Path, run_id: str, manifest: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        dir: Path,
+        run_id: str,
+        manifest: dict[str, Any],
+        task: Task,
+        seating: Seating,
+        config: DebateConfig,
+    ) -> None:
         self.dir = dir
         self.run_id = run_id
         self._manifest = manifest
+        # Held because the transcript artifacts state what the debate is about,
+        # and a Transcript deliberately knows neither the question nor who
+        # defends which answer. The config is held for judge_cot, which is what
+        # distinguishes a judge with nothing to say from one told to say nothing.
+        self._task = task
+        self._seating = seating
+        self._config = config
         self._lock = asyncio.Lock()
 
     @classmethod
@@ -138,6 +161,9 @@ class RunWriter:
         writer = cls(
             dir=run_dir,
             run_id=run_id,
+            task=task,
+            seating=seating,
+            config=config,
             manifest={
                 "run_id": run_id,
                 "status": status,
@@ -186,20 +212,40 @@ class RunWriter:
 
     def record_turn(self, transcript: Transcript) -> None:
         """Rewrite the transcript artifacts after each completed turn."""
-        _write_json(self.dir / "transcript.json", transcript.to_dict())
-        # A re-render, not a byte-copy of what the judge saw: the byte-exact
+        self._write_transcripts(transcript, verdict=None)
+
+    def record_verdict(self, verdict: Verdict, transcript: Transcript) -> None:
+        """Record the decision, and restate the full record with it.
+
+        The transcript is a parameter rather than state carried over from
+        ``record_turn`` so that what lands on disk depends on the arguments
+        alone, not on the order the writer happened to be called in.
+        """
+        _write_json(self.dir / "verdict.json", verdict.to_dict())
+        self._write_transcripts(transcript, verdict=verdict)
+
+    def _write_transcripts(
+        self, transcript: Transcript, *, verdict: Verdict | None
+    ) -> None:
+        _write_json(
+            self.dir / "transcript.json",
+            transcript_document(self._task, self._seating, transcript),
+        )
+        # Re-renders, not byte-copies of what the judge saw: the byte-exact
         # artifact is the judge request body in calls.jsonl.
         _write_atomic(
-            self.dir / "transcript.public.md",
-            "# Public transcript\n\n"
-            "Arguments only. Debaters' private `Thinking` sections are excluded "
-            "by protocol and are not part of the public record.\n\n"
-            + render_transcript(transcript.all_turns())
-            + "\n",
+            self.dir / "transcript.public.md", render_public_markdown(transcript)
         )
-
-    def record_verdict(self, verdict: Verdict) -> None:
-        _write_json(self.dir / "verdict.json", verdict.to_dict())
+        _write_atomic(
+            self.dir / "transcript.full.md",
+            render_full_markdown(
+                self._task,
+                self._seating,
+                transcript,
+                verdict,
+                judge_cot=self._config.judge_cot,
+            ),
+        )
 
     def finish(
         self,

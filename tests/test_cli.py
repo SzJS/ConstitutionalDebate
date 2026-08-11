@@ -105,6 +105,24 @@ def test_cli_overrides_beat_the_config_file(tmp_path, monkeypatch):
     assert config["n_rounds"] == 1
 
 
+@pytest.mark.parametrize(
+    "flag,expected",
+    [(None, True), ("--judge-cot", True), ("--no-judge-cot", False)],
+)
+def test_judge_cot_defaults_on_and_can_be_switched_off(
+    tmp_path, monkeypatch, flag, expected
+):
+    """--no-judge-cot is how the paper's predict judge is restored."""
+    monkeypatch.delenv(API_KEY_ENV, raising=False)
+    args = ["--task", "examples/tax_havens.json", "--dry-run"]
+    run(tmp_path, *args, *([flag] if flag else []))
+
+    run_dir = only_run_dir(tmp_path)
+    assert json.loads((run_dir / "config.json").read_text())["judge_cot"] is expected
+    prompts = (run_dir / "prompts.dryrun.md").read_text()
+    assert ("Do not explain your reasoning" in prompts) is not expected
+
+
 def test_a_verifiable_task_selects_the_paper_profile(tmp_path, monkeypatch):
     monkeypatch.delenv(API_KEY_ENV, raising=False)
     run(tmp_path, "--task", "examples/factual_capital.json", "--dry-run")

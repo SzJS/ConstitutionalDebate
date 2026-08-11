@@ -460,6 +460,16 @@ _LEADING_THINKING_RE = re.compile(
 # the instruction.
 _ANSWER_RE = re.compile(r"(?i)answer\s*[:：]\s*<?\s*\**\s*([12])\s*\**\s*(?!\s*\|)")
 
+# The markdown wrapper "**Answer:** 2" or "### Answer: 2" leaves its opening
+# half dangling on the end of the reasoning. It is only stripped when it starts
+# after whitespace, so a judge whose last word is "C#" keeps its "#" — this text
+# is published as the grounds for the decision, and quietly editing it would be
+# the wrong kind of tidy.
+# The repeated group is what handles a combined wrapper ("#### **Answer:** 2"),
+# whose two halves are separated by a space a single character class cannot
+# cross.
+_WRAPPER_TAIL_RE = re.compile(r"(?:(?<=\s)|\A)(?:[*#>]+[ \t]*)+\Z")
+
 
 def parse_debater_output(text: str) -> tuple[str, str, str]:
     """Split a debater response into ``(thinking, argument, parse_mode)``.
@@ -533,18 +543,44 @@ def parse_debater_output(text: str) -> tuple[str, str, str]:
     return thinking, argument, mode
 
 
-def parse_judge_output(text: str) -> tuple[int, str]:
-    """Extract the judge's choice as ``(choice, parse_mode)``.
+def parse_judge_output(text: str) -> tuple[int, str, str]:
+    """Extract the judge's decision as ``(choice, reasoning, parse_mode)``.
 
     Tolerant of markdown wrappers around the required format, and takes the last
     match. A naked digit with no ``Answer`` token is rejected rather than
     guessed: an unparseable verdict is data, whereas a guessed one would mean the
     record no longer determines the decision.
+
+    ``reasoning`` is everything preceding the decisive match. Two consequences
+    worth stating, since this is what a published decision cites as its grounds:
+    an earlier ``Answer:`` line lands *inside* it (last match wins), and text
+    written *after* the decision — "Answer: 2. Here is why..." — is not captured
+    at all. ``Verdict.raw`` remains the complete record either way, and the
+    markdown artifact renders that rather than this.
     """
-    matches = _ANSWER_RE.findall(text)
+    matches = list(_ANSWER_RE.finditer(text))
     if not matches:
         raise MalformedOutputError(
             "no 'Answer: <1|2>' found in judge response; refusing to infer a "
             "verdict from a bare digit"
         )
-    return int(matches[-1]), "strict"
+    decisive = matches[-1]
+    # Deterministic, because the audit re-parses and compares this exactly.
+    reasoning = _WRAPPER_TAIL_RE.sub("", text[: decisive.start()]).strip()
+    return int(decisive.group(1)), reasoning, "strict"
+
+
+def response_states_grounds(text: str) -> bool:
+    """Whether a judge response says anything at all beyond its decision.
+
+    A narrower question than ``reasoning``, and the two must not be confused.
+    ``reasoning`` is what the parser can *attribute* as grounds — the text
+    before the decisive match — so it is empty for a judge that answers first
+    and explains after. A document that renders the whole response and then
+    announces "no grounds are recorded" on the strength of an empty
+    ``reasoning`` would contradict the paragraph directly above it.
+
+    Lives here rather than beside the renderer because it is a fact about the
+    judge's output format, which this module owns.
+    """
+    return bool(_ANSWER_RE.sub(" ", text).strip(" \t\r\n*#>.:"))

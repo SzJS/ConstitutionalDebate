@@ -13,7 +13,11 @@ establishes:
 * the judge saw only public Arguments, never a debater's private Thinking;
 * whichever answer is gold left no trace in any prompt;
 * the constitution, if any, reached both debaters and the judge;
-* the recorded verdict resolves through the recorded seating.
+* the recorded verdict, and the reasoning published alongside it, both come from
+  the judge's recorded response;
+* the recorded verdict resolves through the recorded seating;
+* the derived artifacts — the transcript's question/answers/positions header and
+  the two markdown renderings — say nothing the record does not support.
 
 What it cannot establish: that the *generations* would recur. Sampling is not
 reproducible, and OpenRouter's seed is best-effort and ignored by some
@@ -27,8 +31,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import fields
 from pathlib import Path
 
+from constitutional_debate.artifacts import (
+    NOT_PUBLIC_BANNER,
+    TRANSCRIPT_DOC_KEYS,
+    defang_markdown,
+    render_full_markdown,
+    render_public_markdown,
+    transcript_document,
+)
 from constitutional_debate.client import NORMAL_FINISH_REASONS
 from constitutional_debate.config import DebateConfig
 from constitutional_debate.prompts import (
@@ -50,7 +63,13 @@ from constitutional_debate.types import (
     Task,
     Transcript,
     Turn,
+    Verdict,
 )
+
+# verdict.json is read as a plain dict — the audit's job is to check what is on
+# disk, not to trust a constructor with it. A Verdict is rebuilt only to
+# re-render the markdown, dropping keys this version does not know about.
+_VERDICT_FIELDS = {f.name for f in fields(Verdict)}
 
 
 def _read_json(path: Path):
@@ -124,6 +143,22 @@ def _check_request(
         )
 
 
+def _rederive(failures: list[str], what: str, build):
+    """Rebuild a derived artifact, reporting a crash as a finding.
+
+    These builders index ``task.answers`` and ``seating.choice_order`` with
+    integers read off disk, so a doctored record can make them raise — a
+    ``choice_order`` of ``[1, 1]``, an ``answer_index`` of 7. That is a fact
+    about the record, and saying so beats aborting the audit with a traceback
+    at the one moment it has something to report.
+    """
+    try:
+        return build()
+    except Exception as error:  # noqa: BLE001 - any failure here is a finding
+        failures.append(f"{what} cannot be re-derived from the record: {error!r}")
+        return None
+
+
 def code_has_drifted(manifest: dict) -> bool:
     """Whether the working tree differs from the one that produced this run.
 
@@ -175,8 +210,9 @@ def load_run(run_dir: Path):
         else None
     )
 
+    document = _read_json(run_dir / "transcript.json")
     transcript = Transcript()
-    for turn in _read_json(run_dir / "transcript.json")["turns"]:
+    for turn in document["turns"]:
         transcript.add(
             Turn(
                 round=turn["round"],
@@ -200,7 +236,9 @@ def load_run(run_dir: Path):
         if line.strip()
     ]
     verdict = _read_json(run_dir / "verdict.json")
-    return manifest, task, config, seating, context, transcript, calls, verdict
+    return (
+        manifest, task, config, seating, context, document, transcript, calls, verdict
+    )
 
 
 MIN_DISTINCTIVE_THINKING = 40
@@ -218,9 +256,9 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         if not condition:
             failures.append(message)
 
-    manifest, task, config, seating, context, transcript, calls, verdict = load_run(
-        run_dir
-    )
+    (
+        manifest, task, config, seating, context, document, transcript, calls, verdict
+    ) = load_run(run_dir)
     profile = PROFILES[manifest["profile"]]
 
     # Checked first: everything below joins on these keys, and a KeyError here
@@ -346,7 +384,7 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         )
         if content is not None:
             try:
-                choice, parse_mode = parse_judge_output(content)
+                choice, reasoning, parse_mode = parse_judge_output(content)
             except MalformedOutputError as error:
                 failures.append(f"judge: recorded response no longer parses ({error})")
             else:
@@ -359,6 +397,19 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
                     parse_mode == verdict["parse_mode"].removesuffix("_after_repair"),
                     "verdict parse_mode does not match a re-parse",
                 )
+                # The published grounds for the decision, so they must come from
+                # the judge rather than from whoever last edited verdict.json.
+                if "reasoning" in verdict:
+                    check(
+                        verdict["reasoning"] == reasoning,
+                        "recorded judge reasoning is not what the judge's "
+                        "recorded response parses to",
+                    )
+                else:
+                    notes.append(
+                        "verdict.json predates the reasoning field; the judge's "
+                        "stated grounds are unchecked"
+                    )
 
     # --- private reasoning must never have left the debater ------------------ #
     # A backstop. The primary guarantee is the response re-parse above: this
@@ -447,6 +498,95 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
             "recorded correctness disagrees with gold_index",
         )
 
+    # --- the derived artifacts must not say anything the record does not ------ #
+    # transcript.json's header and the two markdown files restate data whose
+    # home is task.json, seating.json and verdict.json. Restated data is data
+    # that can disagree, and these are the artifacts a reader actually reads.
+    if not TRANSCRIPT_DOC_KEYS <= set(document):
+        notes.append(
+            "transcript.json predates the question/answers/positions header; "
+            "only its turns were checked"
+        )
+        expected_document = None
+    else:
+        expected_document = _rederive(
+            failures,
+            "transcript.json's header",
+            lambda: transcript_document(task, seating, transcript),
+        )
+    if expected_document is not None:
+        for key in ("question", "answers", "positions"):
+            check(
+                document[key] == expected_document[key],
+                f"transcript.json's {key} disagrees with task.json/seating.json",
+            )
+        check(
+            set(document) == TRANSCRIPT_DOC_KEYS,
+            f"transcript.json carries unexpected top-level keys: "
+            f"{sorted(set(document) - TRANSCRIPT_DOC_KEYS)}",
+        )
+        # For any field the loader reads, this is circular and proves nothing —
+        # tampered arguments are caught by the response re-parse. What it does
+        # catch is the field set itself: a "gold_index" smuggled into a turn
+        # that a reader would believe, or a protocol field quietly dropped.
+        check(
+            document["turns"] == expected_document["turns"],
+            "transcript.json's turns do not carry exactly the fields the "
+            "protocol defines",
+        )
+
+    public_md = (run_dir / "transcript.public.md").read_text(encoding="utf-8")
+    # The containment scan above covers calls.jsonl only, so a renderer that
+    # leaked Thinking into the *published* artifact would pass an otherwise
+    # clean audit. Nothing else checks this file's central promise. Both the raw
+    # and the rendered form are scanned: a leak *through* the renderer arrives
+    # defanged, and would slip past a search for the raw text.
+    for turn in transcript.all_turns():
+        if len(turn.thinking.strip()) < MIN_DISTINCTIVE_THINKING:
+            continue
+        check(
+            turn.thinking not in public_md
+            and defang_markdown(turn.thinking.strip()) not in public_md,
+            f"transcript.public.md carries round {turn.round} {turn.speaker}'s "
+            f"private Thinking",
+        )
+
+    # Notes, not failures: the markdown is derived and non-authoritative — no
+    # prompt depends on it — so pinning presentation would make every heading
+    # tweak retroactively condemn every earlier run.
+    if public_md != render_public_markdown(transcript):
+        notes.append(
+            "transcript.public.md differs from the document re-rendered from the "
+            "record (presentation only; the arguments themselves are checked above)"
+        )
+
+    full_path = run_dir / "transcript.full.md"
+    if not full_path.is_file():
+        notes.append("this run predates transcript.full.md")
+    else:
+        full_md = full_path.read_text(encoding="utf-8")
+        check(
+            NOT_PUBLIC_BANNER in full_md,
+            "transcript.full.md does not carry the banner marking it unpublishable; "
+            "it contains private Thinking and must say so",
+        )
+        rendered = _rederive(
+            failures,
+            "transcript.full.md",
+            lambda: render_full_markdown(
+                task,
+                seating,
+                transcript,
+                Verdict(**{k: v for k, v in verdict.items() if k in _VERDICT_FIELDS}),
+                judge_cot=config.judge_cot,
+            ),
+        )
+        if rendered is not None and full_md != rendered:
+            notes.append(
+                "transcript.full.md differs from the document re-rendered from "
+                "the record (presentation only; the record itself is checked above)"
+            )
+
     # --- structural sanity ---------------------------------------------------- #
     check(
         len(transcript.turns) == 2 * config.n_rounds,
@@ -508,9 +648,12 @@ def main(argv: list[str] | None = None) -> int:
         "+ prior turns"
     )
     print("  every transcript entry re-parses from the recorded response")
-    print("  no private Thinking reached an opponent or the judge")
-    print("  the verdict re-parses from the judge's response and resolves through")
-    print("  the recorded seating")
+    print("  no private Thinking reached an opponent, the judge, or the public")
+    print("  transcript")
+    print("  the verdict and the judge's stated reasoning both re-parse from the")
+    print("  judge's response, and the verdict resolves through the recorded seating")
+    print("  the transcript's question, answers and positions match task.json and")
+    print("  seating.json")
     return 0
 
 

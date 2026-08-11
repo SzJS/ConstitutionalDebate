@@ -79,6 +79,10 @@ def test_defaults_load_from_toml():
     assert debate.word_limit == 150
     assert debate.max_tokens >= 4096, "must leave room for native reasoning tokens"
     assert debate.reasoning_effort == "off"
+    assert debate.judge_cot is True, (
+        "a public decision must state its grounds; this deviates from the "
+        "paper's default deliberately"
+    )
     assert client.max_attempts >= 1
 
 

@@ -69,8 +69,17 @@ def build_parser() -> argparse.ArgumentParser:
     overrides.add_argument("--max-tokens", type=int, dest="max_tokens")
     overrides.add_argument("--reasoning-effort", dest="reasoning_effort")
     overrides.add_argument("--seed", type=int)
+    # default=None is load-bearing: load_config skips None overrides and applies
+    # False, so the config file decides unless a flag is passed. "Tidying" this
+    # to default=False would silently pin judge_cot off on every run and make
+    # the config value dead.
     overrides.add_argument(
-        "--judge-cot", action="store_true", default=None, dest="judge_cot"
+        "--judge-cot",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        dest="judge_cot",
+        help="have the judge explain its decision before answering "
+        "(default: from the config file)",
     )
     return parser
 

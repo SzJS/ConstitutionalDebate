@@ -296,7 +296,7 @@ async def _judge(
     messages = build_judge_messages(
         task, context, seating, config, transcript, profile=profile
     )
-    (choice, parse_mode), completion, repairs = await _complete_with_repair(
+    (choice, reasoning, parse_mode), completion, repairs = await _complete_with_repair(
         client,
         model=config.judge_model,
         messages=messages,
@@ -320,7 +320,8 @@ async def _judge(
             None if task.gold_index is None else answer_index == task.gold_index
         ),
         repair_attempts=repairs,
+        reasoning=reasoning,
     )
     if writer is not None:
-        writer.record_verdict(verdict)
+        writer.record_verdict(verdict, transcript)
     return verdict

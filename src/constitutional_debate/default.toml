@@ -25,7 +25,9 @@ judge_temperature = 0.0
 # Ceiling, not a spend — we are billed for realised output tokens. It must leave
 # room for native reasoning tokens, which share this budget on reasoning-capable
 # models; too low a cap yields truncated or empty content that a retry at the
-# same cap cannot fix.
+# same cap cannot fix. judge_cot below roughly triples realised judge output
+# tokens; that is comfortable here, but CoT plus a reasoning_effort bump is the
+# combination that would start hitting this cap, and truncation is fatal.
 max_tokens = 8192
 
 # The protocol's private channel is the "Thinking:" block, which we persist and
@@ -34,7 +36,13 @@ max_tokens = 8192
 # default. Treat as an experiment variable: "off" | "low" | "medium" | "high".
 reasoning_effort = "off"
 
-judge_cot = false
+# A documented deviation from the paper's default: protocols.md records judge
+# chain-of-thought as one of Kenton et al.'s null-or-harmful ablations. It is on
+# here for a reason that is not accuracy — a public decision that states no
+# grounds is not a decision anyone can contest, and the verbalised reasoning is
+# what verdict.json and transcript.full.md publish. Pass --no-judge-cot for the
+# paper-faithful predict judge.
+judge_cot = true
 seed = 0
 
 # The CONSTITUTIONAL profile asks debaters to cite provisions *and quote their

@@ -302,6 +302,13 @@ class Verdict:
     # Recorded so the audit knows whether the judge's request should match the
     # re-derived prompt exactly or carry a repair suffix.
     repair_attempts: int = 0
+    # The judge's stated grounds, parsed out of ``raw``: everything preceding
+    # the decisive "Answer:" line.  Distinct from ``Completion.reasoning``,
+    # which is the provider's *native* reasoning channel — a second private
+    # channel outside the protocol that ``reasoning_effort = "off"`` suppresses.
+    # Empty when the judge decided before explaining; ``raw`` is always the
+    # complete record, and the markdown artifact renders that instead.
+    reasoning: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

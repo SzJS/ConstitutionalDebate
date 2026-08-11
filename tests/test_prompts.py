@@ -15,6 +15,7 @@ from constitutional_debate.prompts import (
     build_repair_messages,
     parse_debater_output,
     parse_judge_output,
+    response_states_grounds,
     select_profile,
 )
 from constitutional_debate.types import (
@@ -487,9 +488,10 @@ def test_a_restated_second_block_uses_the_final_argument():
     ],
 )
 def test_judge_format_tolerance(text, expected):
-    choice, mode = parse_judge_output(text)
+    choice, reasoning, mode = parse_judge_output(text)
     assert choice == expected
     assert mode == "strict"
+    assert reasoning == "", "a bare answer line states no grounds"
 
 
 def test_judge_last_match_wins():
@@ -498,7 +500,78 @@ def test_judge_last_match_wins():
         "I must reply formatted as Answer: <1|2>. Considering both cases, "
         "Alice's argument on fairness was weaker.\n\nAnswer: 2"
     )
-    assert parse_judge_output(text)[0] == 2
+    choice, reasoning, _ = parse_judge_output(text)
+    assert choice == 2
+    assert reasoning.startswith("I must reply")
+    assert reasoning.endswith("was weaker."), (
+        "an echoed template lands inside the reasoning; only the decisive "
+        "match ends it"
+    )
+
+
+def test_judge_reasoning_is_captured_without_its_wrapper():
+    choice, reasoning, _ = parse_judge_output(
+        "Bob quoted §2 accurately and Alice did not.\n\n**Answer:** 2"
+    )
+    assert choice == 2
+    assert reasoning == "Bob quoted §2 accurately and Alice did not."
+
+
+def test_judge_reasoning_drops_a_combined_wrapper():
+    """A wrapper's two halves are separated by a space; both must go."""
+    assert (
+        parse_judge_output("Bob quoted §2.\n\n#### **Answer:** 1")[1]
+        == "Bob quoted §2."
+    )
+    assert parse_judge_output("Bob quoted §2.\n\n> Answer: 1")[1] == "Bob quoted §2."
+
+
+def test_judge_reasoning_keeps_a_hash_that_is_part_of_the_prose():
+    """Only a dangling wrapper is stripped, never a character the judge wrote."""
+    assert (
+        parse_judge_output("Bob's analogy was to C#.\n\nAnswer: 1")[1]
+        == "Bob's analogy was to C#."
+    )
+
+
+def test_judge_reasoning_survives_the_strip_seam():
+    """The audit compares a re-parse of the *unstripped* recorded body.
+
+    ``Completion`` stores stripped content while the audit re-parses the raw
+    response body, so the two only agree because the parser strips too. Without
+    this, a judge reply with trailing whitespace would fail its own audit.
+    """
+    assert (
+        parse_judge_output("  Bob quoted §2.\n\nAnswer: 1  \n")[1]
+        == parse_judge_output("Bob quoted §2.\n\nAnswer: 1")[1]
+    )
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Answer: 1", False),
+        ("**Answer:** 2", False),
+        ("### Answer: 1", False),
+        ("Answer: 2.", False),
+        ("Bob quoted §2.\n\nAnswer: 1", True),
+        ("Answer: 1\n\nBecause Bob quoted §2.", True),
+    ],
+)
+def test_response_states_grounds_looks_past_the_answer_line(text, expected):
+    """The renderer shows the whole response, so this asks about the whole of it."""
+    assert response_states_grounds(text) is expected
+
+
+def test_judge_reasoning_after_the_decision_is_not_captured():
+    """Documented limitation: `raw` stays the complete record, not `reasoning`.
+
+    A judge that decides before explaining leaves nothing before the decisive
+    match, which is why the markdown artifact renders ``Verdict.raw``.
+    """
+    choice, reasoning, _ = parse_judge_output("Answer: 2\n\nBecause Bob cited §2.")
+    assert choice == 2
+    assert reasoning == ""
 
 
 def test_naked_digit_is_rejected_not_guessed():

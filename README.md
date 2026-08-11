@@ -32,7 +32,7 @@ uv run python scripts/verify_run.py outputs/runs/<run_id>
 
 Useful flags: `--turn-style sequential`, `--constitution constitutions/minimal.md`,
 `--profile paper|opinion|constitutional`, `--word-limit N`, `--judge-model ...`,
-`--judge-cot`, `--rounds N`, `--seed N`.
+`--no-judge-cot` (the judge explains itself by default), `--rounds N`, `--seed N`.
 
 ## The protocol
 
@@ -81,10 +81,15 @@ re-derive every request that was sent and byte-compare it against the wire log.
 `scripts/verify_run.py` does exactly that, and checks that:
 
 - no prompt differs from the one re-derived from the record;
-- no debater's private `Thinking` reached the opponent or the judge;
+- no debater's private `Thinking` reached the opponent, the judge, or the published
+  `transcript.public.md`;
 - whichever answer is gold left no trace in any prompt;
 - the constitution, if any, reached both debaters and the judge;
-- the verdict resolves through the recorded seating.
+- the verdict resolves through the recorded seating;
+- the reasoning published alongside the verdict is what the judge's recorded response
+  parses to, not what someone later wrote there;
+- the question, answers and positions restated in `transcript.json` agree with
+  `task.json` and `seating.json`.
 
 Note that **prior turns are an input**. Round-2 and round-3 prompts embed earlier
 generations, so "a pure function of task and config" would be false and an auditor
@@ -110,14 +115,22 @@ outputs/runs/<run_id>/
   config.json  task.json  seating.json  constitution.md    <- the audit inputs
   calls.jsonl            one line per HTTP attempt: full request and response
                          bodies, provider, resolved model, finish_reason, usage
-  transcript.json        audit artifact — includes private Thinking
+  transcript.json        audit artifact — the question, the answers, who defends
+                         which, and every turn including private Thinking
   transcript.public.md   public record — arguments only
-  verdict.json           raw text, choice, resolved answer index, correctness
+  transcript.full.md     the whole record in one readable document: question,
+                         positions, arguments, private Thinking, and the decision
+                         with the judge's own words. NOT publishable — it carries
+                         the Thinking sections
+  verdict.json           raw text, choice, resolved answer index, the judge's
+                         stated reasoning, correctness
   run.log
 ```
 
-`transcript.public.md` is a re-render, not a byte-copy of what the judge saw; the
-byte-exact artifact is the judge request body in `calls.jsonl`.
+The markdown files are re-renders, not byte-copies of what the judge saw; the
+byte-exact artifact is the judge request body in `calls.jsonl`. Their escaping
+differs too — the judge-facing render defends a tagged plaintext document, these
+defend markdown structure.
 
 ## Known limitations
 
@@ -141,7 +154,15 @@ byte-exact artifact is the judge request body in `calls.jsonl`.
   outside the block. Continuation lines are indented and `</transcript>` is
   escaped, which keeps authored text visibly subordinate to the structure, but
   this is mitigation rather than a guarantee — the judge is still reading a
-  document that one participant partly wrote.
+  document that one participant partly wrote. The markdown artifacts face the
+  same problem against different structure and get their own defanging: line-
+  leading headings, code fences, thematic breaks and raw HTML are escaped, so a
+  debater cannot forge a round, a speaker, or a decision in the readable record.
+- **The judge explains itself by default**, which deviates from the paper. Kenton
+  et al. found judge chain-of-thought null-to-harmful for *accuracy* (see
+  `protocols.md`); it is on here for a different reason — a decision that states
+  no grounds cannot be contested, and contestability is the claim under test.
+  `--no-judge-cot` restores the paper's predict judge.
 - **The word limit is not a neutral knob.** In our runs, debaters used 80–90% of
   whatever budget they were given, and the same question under the same seating
   returned *different verdicts* at 150 and 250 words. The constitutional profile
