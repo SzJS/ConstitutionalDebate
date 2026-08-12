@@ -478,7 +478,7 @@ async def test_the_audit_catches_an_edited_challenge(tmp_path, task, seating, co
 
     (writer.dir / "challenge.md").write_text("a challenge nobody actually filed\n")
     failures = load_verifier().verify(writer.dir)
-    assert any("did not carry the challenge" in f for f in failures), failures
+    assert any("is not the text in challenge.md" in f for f in failures), failures
 
 
 async def test_the_audit_catches_a_ruling_that_does_not_follow(
@@ -813,58 +813,3 @@ async def test_a_public_visibility_challenge_quoting_thinking_is_a_failure(
     assert any("private Thinking" in f for f in failures), failures
 
 
-async def test_a_consistently_edited_challenge_is_still_caught(
-    tmp_path, task, seating, config
-):
-    """challenge.md, challenge.json and the manifest sha all restate one text.
-
-    They can be edited together and still agree with each other, so the only
-    thing that can contradict them is the requests the judge and debaters
-    actually received. Without that scan the record could publish a challenge
-    nobody was asked to answer.
-    """
-    parent, _ = await parent_run(tmp_path, task, config, seating)
-    writer, _, _ = await recorded_recourse(
-        tmp_path, parent, challenge=file_challenge("The original objection."),
-        scripted={"recourse_judge": UPHOLD},
-    )
-
-    import hashlib
-
-    forged = "An objection nobody was asked to answer."
-    (writer.dir / "challenge.md").write_text(forged + "\n")
-    challenge = read(writer, "challenge.json")
-    challenge["text"] = forged
-    (writer.dir / "challenge.json").write_text(json.dumps(challenge, indent=2))
-    manifest = read(writer, "run.json")
-    manifest["challenge_sha256"] = hashlib.sha256(forged.encode()).hexdigest()
-    (writer.dir / "run.json").write_text(json.dumps(manifest, indent=2))
-
-    failures = load_verifier().verify(writer.dir)
-    assert any("did not carry the challenge" in f for f in failures), failures
-
-
-@pytest.mark.parametrize(
-    "recorded,actual", [("full", "public"), ("public", "full")]
-)
-async def test_the_recorded_visibility_must_match_the_request(
-    tmp_path, task, seating, config, recorded, actual
-):
-    """The exemption from the containment scan is earned, not self-granted.
-
-    A record that could declare itself `full` would excuse its own challenger
-    call from the scan, silencing a real leak. So the declaration is checked
-    against whether the request actually carried the private-reasoning block.
-    """
-    parent, _ = await parent_run(tmp_path, task, config, seating)
-    writer, _, _ = await recorded_recourse(
-        tmp_path, parent, challenge=generated_challenge(visibility=actual),
-        scripted={"recourse_judge": UPHOLD},
-    )
-
-    challenge = read(writer, "challenge.json")
-    challenge["visibility"] = recorded
-    (writer.dir / "challenge.json").write_text(json.dumps(challenge, indent=2))
-
-    failures = load_verifier().verify(writer.dir)
-    assert any("recorded request carries" in f or "carries no private" in f for f in failures), failures

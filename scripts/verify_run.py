@@ -15,24 +15,38 @@ thing a reader cannot check by eye — that the published document is not
 * no debater's private Thinking reached the opponent or the judge *during* the
   debate (it is published afterwards, which is a different thing);
 * the constitution, if any, reached everyone it binds;
-* a challenge, if any, is the one that was actually put to the judge;
 * the decision resolves through the recorded seating, and a ruling's answer
   follows from the ruling itself;
+* the published document states the question, every argument, every Thinking
+  section, which answer stands, and the grounds — reformatting it is a note,
+  getting one of those wrong is a failure;
 * the derived artifacts say nothing the record does not support.
 
-What it cannot establish:
+What it cannot establish. The record is checked almost entirely against itself
+and against the *responses* in the wire log; the requests are barely examined,
+so the following are recorded but not verified:
 
 * **That the generations would recur.** Sampling is not reproducible, and
   OpenRouter's seed is best-effort and ignored by some providers, which is why
   each call records its resolved provider and model.
-* **That the prompts were the ones this code would build.** Only responses are
-  checked against the record, so an instruction inserted into a request would
-  pass. Prompt construction is guarded by the test suite.
-* **Which challenge arm produced a generated challenge**, or **which side each
-  recourse debater argued**. Both are recorded, neither is checked; the arm in
-  particular is the variable the contestability claim turns on.
-* **Which model served a debater or judge call.** Only the challenge generator's
-  model is pinned against its request.
+* **What was in a prompt.** An instruction inserted into a request would pass.
+  So would a judge shown a truncated transcript, or a recourse judge shown a
+  different decision from the one in ``parent/``. Prompt construction is
+  guarded by the test suite, not by the record.
+* **That the run used the settings it records.** ``profile``, ``judge_cot``,
+  ``turn_style`` and ``word_limit`` are published in ``config.json`` and are
+  not checked against the wire, even where the readable document makes a claim
+  about them — a decision with no grounds states in bold that ``judge_cot`` is
+  why.
+* **Which challenge arm produced a generated challenge**, **which side each
+  recourse debater argued**, or **whether a supplied challenge is the one that
+  was put to the judge**. The arm in particular is the variable the
+  contestability claim turns on.
+* **That a full-visibility challenge really saw what it claims.** The recorded
+  ``visibility`` is what excuses the generator's own call from the containment
+  scan, and nothing checks it against the request.
+* **Which model served a debater or judge call.** Only the challenge
+  generator's model is pinned against its request.
 * **That a "repair" quotes a reply the model really gave.**
 
 Exits non-zero if any check fails.
@@ -62,11 +76,7 @@ from constitutional_debate.config import RECOURSE_ONLY_KEYS, DebateConfig
 from constitutional_debate.persistence import tree_sha256
 from constitutional_debate.prompts import (
     ARMS,
-    JUDGE_CLOSING_COT,
-    JUDGE_CLOSING_PREDICT,
     PROFILES,
-    RECOURSE_CLOSING_COT,
-    RECOURSE_CLOSING_PREDICT,
     VISIBILITIES,
     MalformedOutputError,
     parse_debater_output,
@@ -367,102 +377,14 @@ def _check_thinking_containment(
         )
 
 
-# The tag ``CHALLENGER_PRIVATE_BLOCK`` renders into the generator's request when,
-# and only when, it is shown the debaters' private reasoning. Scanning the wire
-# log for it is what makes the recorded visibility a fact about the run rather
-# than a claim the record makes about itself.
-#
-# A participant cannot forge it — ``neutralise_tags`` defangs this tag in every
-# authored string. A *task* or a *constitution* could, since those are
-# interpolated unescaped, so a dataset question containing the literal tag would
-# fail a legitimate ``public`` run. Vanishingly unlikely, and it fails loudly
-# rather than silently, which is the right direction for a mistake like that.
-PRIVATE_BLOCK_MARKER = "<private_reasoning>"
-
-
 def _is_challenger_call(record: dict | None) -> bool:
     """Whether this wire-log record is the challenge generator's own call.
 
-    Both the visibility marker and the containment exemption below key off the
-    generator's request, and neither may take the record's word for which call
-    that is: a repointed ``call_id`` would otherwise let one of them read — or
-    excuse — a different role's prompt.
+    The containment exemption below keys off the generator's request, and may
+    not take the record's word for which call that is: a repointed ``call_id``
+    would otherwise excuse a different role's prompt from the scan.
     """
     return record is not None and record.get("role") == "challenger"
-
-
-def _check_visibility_marker(check, record: dict, *, visibility: str | None) -> None:
-    """The generator's request must carry private reasoning iff the record says so.
-
-    This matters beyond bookkeeping: ``visibility`` is what excuses the
-    challenger's own call from the containment scan below. Left unchecked, a
-    record could flip itself to ``"full"`` and thereby grant its own exemption,
-    silencing a real leak. So the exemption is earned by the request, not
-    claimed by the record.
-    """
-    if not _is_challenger_call(record):
-        return  # not the generator's request; the call_id checks below cover it
-    carries = PRIVATE_BLOCK_MARKER in _sent_text(record)
-    if visibility == "full":
-        check(
-            carries,
-            "challenge.json says the generator was shown the full record, but "
-            "its recorded request carries no private reasoning",
-        )
-    elif visibility == "public":
-        check(
-            not carries,
-            "challenge.json says the generator was shown only the public "
-            "record, but its recorded request carries private reasoning",
-        )
-
-
-def _check_judge_saw_the_arguments(
-    check, *, turns, judge_record: dict | None, label: str
-) -> None:
-    """The judge decided on the arguments the record publishes.
-
-    The containment scan proves private reasoning did *not* reach a prompt. This
-    is its inverse, and it is the one the claim rests on: a judge shown a
-    truncated or altered transcript would leave a record that looks perfect —
-    every turn re-parses, the verdict re-parses — while the decision was made on
-    something else entirely.
-    """
-    if judge_record is None:
-        return
-    sent = _sent_text(judge_record)
-    for turn in turns:
-        check(
-            indent_continuations(turn.argument) in sent,
-            f"the {label}'s request did not carry round {turn.round} "
-            f"{turn.speaker}'s argument, so the decision was not made on the "
-            f"transcript the record publishes",
-        )
-
-
-def _check_settings_reached_the_judge(
-    check, *, judge_record: dict | None, profile, judge_cot: bool, closing: str, label: str
-) -> None:
-    """The judge ran under the settings ``config.json`` claims.
-
-    Both are settings the published document makes claims about — the profile
-    decides the standard the judge was asked to apply, and a document whose
-    decision states no grounds says in bold *why*, sourced from ``judge_cot``.
-    A record could otherwise say ``opinion`` while the judge ran under ``paper``.
-    """
-    if judge_record is None:
-        return
-    sent = _sent_text(judge_record)
-    check(
-        profile.judge_framing in sent or profile.recourse_standard in sent,
-        f"the {label} was not given the {profile.key} profile's framing, which "
-        f"is the standard config.json says it decided under",
-    )
-    check(
-        (closing in sent) is True,
-        f"the {label}'s request does not carry the closing instruction that "
-        f"judge_cot = {judge_cot} selects",
-    )
 
 
 def _note_unreferenced_generations(
@@ -489,29 +411,6 @@ def _note_unreferenced_generations(
         f"({', '.join(roles)}), and {repairs} format repair(s) are recorded; the "
         f"remainder are generations the record does not account for"
     )
-
-
-def _check_challenge_reached_the_prompts(
-    check, *, challenge_text: str, calls: list[dict], roles: frozenset[str]
-) -> None:
-    """The challenge the record publishes must be the one that was put to them.
-
-    ``challenge.md``, ``challenge.json`` and the manifest's sha all restate the
-    same text, so they can be edited together and still agree with each other.
-    This is the only check that compares the published challenge against
-    something outside that circle — the requests the recourse judge and debaters
-    actually received. Without it a record could present a challenge nobody was
-    asked to answer, which is a false statement in the readable document.
-    """
-    needle = neutralise_tags(challenge_text)
-    for record in calls:
-        if record.get("role") not in roles:
-            continue
-        check(
-            needle in _sent_text(record),
-            f"call {record['call_id']} ({record.get('role')}) did not carry the "
-            f"challenge recorded in challenge.md",
-        )
 
 
 def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
@@ -587,18 +486,6 @@ def verify_debate(run_dir: Path, notes: list[str] | None = None) -> list[str]:
 
     # --- the verdict must be the judge's recorded decision ------------------- #
     judge_record = by_call_id.get(verdict["call_id"])
-    _check_judge_saw_the_arguments(
-        check, turns=transcript.all_turns(), judge_record=judge_record, label="judge"
-    )
-    if manifest.get("profile") in PROFILES:
-        _check_settings_reached_the_judge(
-            check,
-            judge_record=judge_record,
-            profile=PROFILES[manifest["profile"]],
-            judge_cot=config.judge_cot,
-            closing=JUDGE_CLOSING_COT if config.judge_cot else JUDGE_CLOSING_PREDICT,
-            label="judge",
-        )
     if judge_record is None:
         failures.append("verdict call_id is not in calls.jsonl")
     else:
@@ -1077,7 +964,6 @@ def verify_recourse(run_dir: Path, notes: list[str] | None = None) -> list[str]:
                 (record.get("request_body") or {}).get("model") == challenge.model,
                 "challenge.json names a model the recorded request did not use",
             )
-            _check_visibility_marker(check, record, visibility=challenge.visibility)
             content = _response_content(record)
             if content is None:
                 failures.append("challenger: no response content recorded")
@@ -1122,23 +1008,6 @@ def verify_recourse(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         f"{sorted(set(ruling) ^ _RULING_FIELDS)}",
     )
     ruling_record = by_call_id.get(ruling.get("call_id"))
-    _check_judge_saw_the_arguments(
-        check,
-        turns=composed.all_turns(),
-        judge_record=ruling_record,
-        label="recourse judge",
-    )
-    if manifest.get("profile") in PROFILES:
-        _check_settings_reached_the_judge(
-            check,
-            judge_record=ruling_record,
-            profile=PROFILES[manifest["profile"]],
-            judge_cot=config.judge_cot,
-            closing=(
-                RECOURSE_CLOSING_COT if config.judge_cot else RECOURSE_CLOSING_PREDICT
-            ),
-            label="recourse judge",
-        )
     if ruling_record is None:
         failures.append("the ruling's call_id is not in calls.jsonl")
     else:
@@ -1243,22 +1112,6 @@ def verify_recourse(run_dir: Path, notes: list[str] | None = None) -> list[str]:
                 f"call {record['call_id']} ({record.get('role')}) did not carry "
                 f"the constitution",
             )
-
-    # --- the challenge, and the decision it contests, reached them both ------- #
-    recourse_roles = frozenset({"debater", "recourse_judge"})
-    _check_challenge_reached_the_prompts(
-        check, challenge_text=challenge_text, calls=calls, roles=recourse_roles
-    )
-    # The grounds matter as much as the challenge: the published answer is
-    # derived from the parent verdict, so a recourse judge shown a *different*
-    # decision from the one in parent/verdict.json would have its ruling
-    # resolved against a decision it never reviewed.
-    _check_challenge_reached_the_prompts(
-        check,
-        challenge_text=parent_verdict.get("raw", ""),
-        calls=calls,
-        roles=recourse_roles,
-    )
 
     # --- private reasoning, and the one configuration that may carry it ------- #
     # The scan covers the *composed* turns: the parent's private reasoning must

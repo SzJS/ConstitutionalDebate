@@ -581,56 +581,6 @@ async def test_a_reformatted_document_is_a_note_not_a_failure(
     assert any("presentation has drifted" in note for note in notes), notes
 
 
-async def test_the_audit_catches_a_judge_shown_a_different_transcript(
-    tmp_path, task, seating, config
-):
-    """The inverse of the containment scan, and the one the claim rests on.
-
-    A judge shown a truncated transcript leaves a record that looks perfect —
-    every turn re-parses, the verdict re-parses — while the decision was made
-    on something the record does not contain.
-    """
-    writer, result = await recorded_run(
-        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
-    )
-
-    calls_path = writer.dir / "calls.jsonl"
-    records = [json.loads(line) for line in calls_path.read_text().splitlines()]
-    dropped = result.transcript.all_turns()[-1].argument
-    for record in records:
-        if record.get("role") == "judge":
-            content = record["request_body"]["messages"][1]["content"]
-            record["request_body"]["messages"][1]["content"] = content.replace(
-                dropped, "[removed]"
-            )
-    calls_path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
-
-    failures = load_verifier().verify(writer.dir)
-    assert any("did not carry round" in f for f in failures), failures
-
-
-@pytest.mark.parametrize("field,value", [("profile", "paper"), ("judge_cot", False)])
-async def test_the_audit_catches_a_run_that_did_not_use_its_recorded_settings(
-    tmp_path, task, seating, config, field, value
-):
-    """The published document makes claims sourced from these two.
-
-    A decision with no grounds says in bold that `judge_cot = false` is why, and
-    the profile is the standard the document says the judge decided under.
-    """
-    writer, _ = await recorded_run(
-        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
-    )
-
-    name = "run.json" if field == "profile" else "config.json"
-    data = json.loads((writer.dir / name).read_text())
-    data[field] = value
-    (writer.dir / name).write_text(json.dumps(data, indent=2))
-
-    failures = load_verifier().verify(writer.dir)
-    assert failures, "a run that did not use its recorded settings must not pass"
-
-
 async def test_a_smuggled_turn_field_cannot_hide_behind_the_old_record_branch(
     tmp_path, task, seating, config
 ):

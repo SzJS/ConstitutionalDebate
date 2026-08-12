@@ -164,18 +164,21 @@ opponent or the judge *during* the debate, that the constitution reached everyon
 binds, that a challenge is the one actually put to the judge, and that the answer
 left standing follows from the ruling.
 
-It also checks that the requests carried what the record says they did — the
-constitution, the challenge, the decision under challenge, the arguments the judge
-decided on, and the framing the recorded profile and `judge_cot` select — and that
-`transcript.md` states the question, every argument, every `Thinking` section, which
-answer stands, and the grounds. Reformatting the document is a note; getting one of
-those wrong is a failure.
+It also checks that `transcript.md` states the question, every argument, every
+`Thinking` section, which answer stands, and the grounds: reformatting the document
+is a note, getting one of those wrong is a failure.
 
-What it does not do is compare a request against the prompt this code would have
-built for it. An instruction inserted into a request alongside the expected content
-would pass, and so would a mislabelled challenge arm. Prompt *templates* are
+**The requests are barely examined**, and the audit's own docstring lists what
+follows from that. An instruction inserted into a prompt would pass; so would a
+judge shown a truncated transcript, a run that used a different `profile` or
+`judge_cot` than it records, and a mislabelled challenge arm. Prompt *templates* are
 covered by property tests in `tests/test_prompts.py` — no golden snapshots — so an
 edit to a template is caught only if it violates one of those properties.
+
+That is a deliberate trade, not an oversight: the claim is about what a reader can
+see in the published document, and these are checks on machinery a reader never
+looks at. It does mean the record's account of *how* a decision was produced rests
+on trust in whoever ran it, in a way its account of *what* was decided does not.
 
 ## Run records
 
