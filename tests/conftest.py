@@ -100,12 +100,10 @@ class FakeClient:
             else:
                 # Thinking is deliberately long, distinctive and *multi-line*:
                 # real ones are all three — the prompts ask for a numbered plan —
-                # and the audit skips containment scanning on sections too short
-                # to be distinguishable from prompt boilerplate. The line break
-                # matters: anything interpolating a turn into a prompt indents
-                # continuation lines, so a single-line fixture would let the
-                # containment scan pass while searching for a string that no
-                # leak could ever produce.
+                # and the leak tests would be weak against a single-line
+                # fixture: anything interpolating a turn into a prompt indents
+                # continuation lines, so a leak would not contain the raw
+                # needle anywhere.
                 content = (
                     f"Thinking: private plan for {meta['speaker']} in round "
                     f"{meta['round']} — the judge must not see this reasoning.\n"
@@ -126,7 +124,7 @@ class FakeClient:
             )
             if self.sink is not None:
                 # Mirrors the shape OpenRouterClient records, so tests that read
-                # calls.jsonl are reading the same artifact the audit reads.
+                # calls.jsonl are reading the real artifact's shape.
                 await self.sink(
                     {
                         "call_id": completion.call_id,

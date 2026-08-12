@@ -47,9 +47,9 @@ PRIVATE_THINKING_NOTE = (
 )
 
 TRANSCRIPT_DOC_KEYS = frozenset({"question", "answers", "positions", "turns"})
-# A separate constant, not an extension of the one above: the audit pins the
-# debate document's key set exactly, and widening it would let a recourse-only
-# key appear unnoticed in an ordinary run's transcript.json.
+# A separate constant, not an extension of the one above: widening the debate
+# document's key set would let a recourse-only key appear unnoticed in an
+# ordinary run's transcript.json.
 RECOURSE_TRANSCRIPT_DOC_KEYS = TRANSCRIPT_DOC_KEYS | {"parent_run_id", "parent_rounds"}
 
 # Block structure is line-leading, so one line-anchored rule covers all of it.

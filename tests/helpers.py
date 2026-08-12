@@ -7,8 +7,6 @@ order" inside a parametrised test.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from constitutional_debate.config import DebateConfig, load_config
 from constitutional_debate.debate import run_debate, run_recourse
 from constitutional_debate.persistence import RunWriter, load_run_record
@@ -80,17 +78,6 @@ def full_transcript(n_rounds: int = 3) -> Transcript:
         for speaker in ORDER:
             transcript.add(make_turn(round_number, speaker))
     return transcript
-
-
-def load_verifier():
-    """Import scripts/verify_run.py, which is a script rather than a module."""
-    import importlib.util
-
-    path = Path(__file__).resolve().parents[1] / "scripts" / "verify_run.py"
-    spec = importlib.util.spec_from_file_location("verify_run", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # type: ignore[union-attr]
-    return module
 
 
 def make_writer(tmp_path, task, config, seating, context=None) -> RunWriter:

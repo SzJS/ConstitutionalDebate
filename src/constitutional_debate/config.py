@@ -24,8 +24,8 @@ ProfileKey = Literal["paper", "opinion", "constitutional"]
 # debate run records them because config.json records every field, but it had no
 # opinion about them, so a recourse must not inherit them — it would pick up a
 # stale default and silently run a different protocol. For the same reason a
-# recourse legitimately differs from its parent here, and the audit exempts them
-# from its "ran under different settings" note. One list, so the two agree.
+# recourse legitimately differs from its parent on these. One list, so the
+# inheritance rule and the exemption cannot disagree.
 RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
     {"recourse_rounds", "challenger_model", "challenge_word_limit"}
 )
@@ -72,8 +72,7 @@ class DebateConfig:
     word_limit_by_profile: dict[str, int] = field(default_factory=dict)
     # --- recourse ---------------------------------------------------------- #
     # Defaulted, not required, so ``DebateConfig(**config.json)`` still loads a
-    # run recorded before recourse existed — which is what lets the audit keep
-    # verifying every earlier record.
+    # run recorded before recourse existed.
     #
     # 0 rounds is the judge-only protocol: the recourse judge rules on the
     # challenge alone. The protocol is *named* in run.json rather than left to
@@ -143,8 +142,7 @@ class DebateConfig:
         """The named protocol this round count selects.
 
         A reader of the record should never have to infer which of the two
-        mechanisms ran from an integer, so the name is written into run.json —
-        and the audit checks the name against the count.
+        mechanisms ran from an integer, so the name is written into run.json.
         """
         return "judge_only" if self.recourse_rounds == 0 else "debate"
 

@@ -2,7 +2,7 @@
 
 A prototype **public decision process** built on LLM debate, for decisions that
 affect many people. The claim under test is that such a process can be
-**whitebox** — the public record determines the decision — and **contestable** —
+**transparent** — the public record determines the decision — and **contestable** —
 valid challenges change the decision, specious ones do not.
 
 It implements two things: the **debate protocol** — a reimplementation of Kenton et
@@ -10,8 +10,8 @@ al. 2024, *On scalable oversight with weak LLMs judging strong LLMs*
 ([arXiv:2407.04622](https://arxiv.org/abs/2407.04622)), extended to unverifiable
 questions and to an optional constitution — and a **recourse mechanism**, by which a
 recorded decision can be challenged and either upheld or overturned. Prompt-only:
-prompts, an async orchestration layer, and a record you can audit. No finetuning,
-no RL.
+prompts, an async orchestration layer, and a record anyone can read. No
+finetuning, no RL.
 
 ## Quickstart
 
@@ -28,13 +28,12 @@ uv run python scripts/get_tasks.py --source habermas --limit 5
 uv run constitutional-debate --task data/tasks/habermas/habermas-S173963710.json \
   2>&1 | tee outputs/run.log
 
-# audit the result
-uv run python scripts/verify_run.py outputs/runs/<run_id>
+# read the decision
+cat outputs/runs/<run_id>/transcript.md
 
-# contest the decision, and audit that too
+# contest it
 uv run constitutional-recourse --run outputs/runs/<run_id> --generate grounded \
   2>&1 | tee outputs/recourse.log
-uv run python scripts/verify_run.py outputs/runs/<recourse_id>
 ```
 
 Useful flags: `--turn-style sequential`, `--constitution constitutions/minimal.md`,
@@ -117,11 +116,12 @@ identifying no actual error), `neutral` (no steer). The claim under test is the 
 in overturn rate between the first two. The arm reaches the generator's prompt and
 nothing else — a judge shown the label would be grading the label.
 
-**One audit covers the whole affair.** The challenged run is copied into
-`<recourse>/parent/` before the first call, so `verify_run.py` over a recourse
-directory checks the original debate *and* the contest of it.
+**The record is self-contained.** The challenged run is copied into
+`<recourse>/parent/` before the first call, so a recourse directory holds the
+decision it contests as well as the contest of it, and cannot be left dangling by
+anything that happens to the original afterwards.
 
-## What the whitebox claim actually is
+## What the transparency claim actually is
 
 **A reader of the published record can see what determined the decision.** That is
 the whole of it. `transcript.md` states the question, both answers, who argued for
@@ -154,32 +154,6 @@ resolved `provider` and `response_model` to keep that confound visible. Re-runni
 this question would produce a different debate. What a reader gets is not the
 ability to reproduce the decision but the ability to *read* it.
 
-### What the audit does, and does not, add
-
-`scripts/verify_run.py` checks the one thing a reader cannot check by eye: that the
-published document is not **misreporting** the run it describes. It verifies that
-every argument and decision is what the recorded response actually says, that the
-published grounds are the judge's own, that no debater's `Thinking` reached the
-opponent or the judge *during* the debate, that the constitution reached everyone it
-binds, that a challenge is the one actually put to the judge, and that the answer
-left standing follows from the ruling.
-
-It also checks that `transcript.md` states the question, every argument, every
-`Thinking` section, which answer stands, and the grounds: reformatting the document
-is a note, getting one of those wrong is a failure.
-
-**The requests are barely examined**, and the audit's own docstring lists what
-follows from that. An instruction inserted into a prompt would pass; so would a
-judge shown a truncated transcript, a run that used a different `profile` or
-`judge_cot` than it records, and a mislabelled challenge arm. Prompt *templates* are
-covered by property tests in `tests/test_prompts.py` — no golden snapshots — so an
-edit to a template is caught only if it violates one of those properties.
-
-That is a deliberate trade, not an oversight: the claim is about what a reader can
-see in the published document, and these are checks on machinery a reader never
-looks at. It does mean the record's account of *how* a decision was produced rests
-on trust in whoever ran it, in a way its account of *what* was decided does not.
-
 ## Run records
 
 ```
@@ -201,8 +175,7 @@ A recourse directory is the same shape, plus:
 
 ```
 outputs/runs/<run_id>-recourse/
-  challenge.md           the challenge verbatim; the audit checks the requests
-                         actually carried it
+  challenge.md           the challenge verbatim
   challenge.json         its provenance: supplied or generated, under which arm,
                          shown how much of the record, and the generator's Thinking
   ruling.json            UPHOLD/OVERTURN, the derived answer index, the grounds
@@ -287,8 +260,8 @@ judge with reasoning it never saw.
   recourse judge something the judge who decided the question never had. This is
   not a secrecy problem — the record publishes the `Thinking` either way — but the
   ruling is then answering a different question from the decision. The record marks
-  it and the audit emits a `DISCLOSURE`. `public` is the default, and it means "the
-  record as the deciding judge saw it".
+  it, and the readable document says so where the challenge is quoted. `public` is
+  the default, and it means "the record as the deciding judge saw it".
 - **The recourse debaters still may not concede.** `Do not concede your assigned
   answer under any circumstances` now applies to a recourse round, so the winning
   side produces a fluent rebuttal even of a correct challenge. That is the
@@ -343,20 +316,9 @@ uv run pytest 2>&1 | tee outputs/pytest.log
 
 The suite is offline — no test makes a network call. The load-bearing ones:
 `FakeClient` counts in-flight calls to prove that simultaneous rounds really are
-concurrent (`max_in_flight == 2`) and sequential ones really are not (`== 1`);
-the audit tests confirm that a tampered transcript, a leaked `Thinking` section,
-and an inverted verdict are each caught. For recourse, the equivalents are an
-edited `challenge.md`, a ruling whose answer index does not follow from it, a
-consistently inverted ruling, a doctored `parent/`, and a challenge claiming a
-provenance it does not have.
-
-Every recorded run should still verify after any change, which is the gate worth
-running before committing:
-
-```bash
-for d in outputs/runs/*/; do uv run python scripts/verify_run.py "$d"; done \
-  2>&1 | tee outputs/verify_all.log
-```
+concurrent (`max_in_flight == 2`) and sequential ones really are not (`== 1`); the
+leak invariants prove no debater's `Thinking` reaches an opponent or a judge; and
+the recourse tests prove the ruling resolves the way the protocol says it should.
 
 `tests/test_prompts.py` is all property assertions — no golden snapshots — so an
 accidental edit to a prompt template is caught only if it violates one of those

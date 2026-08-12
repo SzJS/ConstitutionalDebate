@@ -505,7 +505,7 @@ def test_judge_reasoning_keeps_a_hash_that_is_part_of_the_prose():
 def test_judge_reasoning_survives_the_strip_seam():
     """The audit compares a re-parse of the *unstripped* recorded body.
 
-    ``Completion`` stores stripped content while the audit re-parses the raw
+    ``Completion`` stores stripped content while a re-parse sees the raw
     response body, so the two only agree because the parser strips too. Without
     this, a judge reply with trailing whitespace would fail its own audit.
     """

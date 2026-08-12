@@ -240,9 +240,9 @@ class Transcript:
         """Split into the turns up to ``round`` and the turns after it.
 
         The one definition of "which of these turns are the recourse's own".
-        The orchestrator, the writer, the renderers and the audit all need that
-        split, and four hand-rolled ``round > parent_rounds`` comprehensions
-        would be four chances to write ``>=``.
+        The orchestrator, the writer and both renderers all need that split, and
+        four hand-rolled ``round > parent_rounds`` comprehensions would be four
+        chances to write ``>=``.
         """
         turns = self.all_turns()
         return (
@@ -262,9 +262,9 @@ def compose_transcript(parent: Transcript, recourse: Transcript) -> Transcript:
     ``visible_to`` hands a recourse debater exactly the parent debate and
     nothing from its own round.
 
-    Raises when a recourse turn does not sit strictly after every parent turn.
-    That is a doctored record rather than a bug, so the audit wraps this call
-    and reports it as a finding instead of aborting with a traceback.
+    Raises when a recourse turn does not sit strictly after every parent turn,
+    which would mean the round numbering had lost track of where the original
+    debate ended.
     """
     boundary = max((t.round for t in parent.all_turns()), default=0)
     for turn in recourse.all_turns():
@@ -484,7 +484,8 @@ class Ruling:
     upheld, flipped if it is overturned. That asymmetry is the whole point of
     recourse — the decision stands unless the challenge moves it — so the record
     states both halves, the ruling the judge gave and the index that follows
-    from it, and the audit checks the implication rather than trusting it.
+    from it, so a reader can check the implication rather than taking it on
+    trust.
     """
 
     ruling: str  # "UPHOLD" | "OVERTURN"
@@ -515,8 +516,8 @@ def resolve_ruling(ruling: str, parent_answer_index: int) -> int:
     """The answer a ruling leaves standing.
 
     One line, but it is *the* decision rule of the recourse protocol, so it has
-    a name: both the orchestrator and the audit call it rather than each writing
-    out the arithmetic and one of them getting it backwards.
+    a name rather than being written out inline, where it would be one
+    ``1 -`` away from silently inverting every contested decision.
     """
     if ruling not in ("UPHOLD", "OVERTURN"):
         raise ValueError(f"ruling must be UPHOLD or OVERTURN, got {ruling!r}")

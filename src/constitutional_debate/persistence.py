@@ -162,11 +162,8 @@ class RunRecord:
 def load_run_record(run_dir: Path) -> RunRecord:
     """Load a completed run so its decision can be challenged.
 
-    Deliberately *not* shared with ``scripts/verify_run.py``, which reads the
-    same files as plain dicts. A loader used by both the thing that writes a
-    record and the thing that checks it would hide its own bugs: a field this
-    one silently defaulted would be silently defaulted on the way back in too.
-    The duplication is the point.
+    Strict on purpose: a missing verdict or an incomplete run raises here rather
+    than producing a recourse that quotes a decision nobody made.
     """
     manifest = _read_json(run_dir / "run.json")
     if manifest.get("status") != "completed":
@@ -354,7 +351,8 @@ class RunWriter:
         The task, seating, config and constitution are copied out of the parent
         too, so a recourse directory is shaped like a run directory and every
         builder can read it without a special case. They are restated data and
-        can therefore disagree; the audit checks them against ``parent/``.
+        can therefore disagree with ``parent/``, which is the cost of having a
+        recourse directory shaped like a run directory.
         """
         if parent.manifest.get("status") != "completed":
             raise ValueError(
@@ -446,7 +444,7 @@ class RunWriter:
         The lock matters: during simultaneous rounds two coroutines append here,
         and records carry full request and response bodies — well past any size
         at which a single write is atomic. Interleaved writes would corrupt the
-        one artifact the audit reads.
+        log every published argument is traceable to.
         """
         line = json.dumps(record, ensure_ascii=False) + "\n"
         path = self.dir / "calls.jsonl"
@@ -483,8 +481,7 @@ class RunWriter:
         """Record what is being contested, before any recourse round runs.
 
         ``challenge.md`` is the document verbatim: it is what the published
-        record shows a reader was put to the judge, and the audit checks that
-        the requests actually carried it. Its provenance — supplied or
+        record shows a reader was put to the judge. Its provenance — supplied or
         generated, under which arm, shown how much of the record — goes in
         ``challenge.json`` and the manifest, never into the file the prompts
         quote.

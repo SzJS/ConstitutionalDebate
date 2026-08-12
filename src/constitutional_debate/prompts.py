@@ -8,7 +8,7 @@ to an original.
 
 Three profiles share one template set and differ only by enumerated string
 slots.  Keeping them as slots rather than separate prompt files is what makes
-"add a constitution" an auditable one-line diff rather than a fork.
+"add a constitution" a one-line diff a reviewer can read, rather than a fork.
 
 The parsers live here, beside the output format they parse, because the two must
 co-vary; separating them guarantees they drift.
@@ -563,9 +563,9 @@ class RecourseFrame:
     ) -> "RecourseFrame":
         """Build the frame from what is on disk.
 
-        The single definition of "the frame follows from the record": both
-        ``debate.run_recourse`` and ``scripts/verify_run.py`` go through here, so
-        the audit cannot drift from the thing it audits.
+        The single definition of "the frame follows from the record". Both
+        ``debate.run_recourse`` and the CLI's dry run go through here, so what a
+        dry run shows you is what a real run would send.
 
         The grounds are the parent verdict's ``raw``, not its ``reasoning``.
         ``reasoning`` is empty for a judge that answers before explaining (see
@@ -1107,7 +1107,7 @@ def parse_judge_output(text: str) -> tuple[int, str, str]:
             "verdict from a bare digit"
         )
     decisive = matches[-1]
-    # Deterministic, because the audit re-parses and compares this exactly.
+    # Deterministic: this text is published as the grounds for the decision.
     reasoning = _WRAPPER_TAIL_RE.sub("", text[: decisive.start()]).strip()
     return int(decisive.group(1)), reasoning, "strict"
 
