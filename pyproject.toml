@@ -1,7 +1,7 @@
 [project]
 name = "constitutional-debate"
 version = "0.1.0"
-description = "A whitebox, contestable public decision process built on LLM debate"
+description = "A transparent, contestable public decision process built on LLM debate"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 constitutional-debate = "constitutional_debate.cli:main"
+constitutional-recourse = "constitutional_debate.recourse_cli:main"
 
 [build-system]
 requires = ["hatchling"]

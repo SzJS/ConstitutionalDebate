@@ -1,27 +1,39 @@
 #!/usr/bin/env python
-"""Mechanically verify that a recorded run's prompts follow from its record.
+"""Check that a recorded run says only what the record supports.
 
     uv run python scripts/verify_run.py outputs/runs/<run_id>
 
-This is what the whitebox claim actually amounts to. Prompt construction is a
-pure function of ``(task, config, seating, constitution, prior turns)`` — all
-five of which are in the run directory — so a third party can re-derive every
-request that was sent and byte-compare it against the wire log. What that
-establishes:
+Transparency is a property of the published record, not of this script: what
+makes the process whitebox is that a reader can see the question, the arguments,
+the decision and the grounds it was given. This checks the weaker, mechanical
+thing a reader cannot check by eye — that the published document is not
+*misreporting* the run it describes. What it establishes:
 
-* nothing was injected between rounds that is not in the record;
-* the judge saw only public Arguments, never a debater's private Thinking;
-* whichever answer is gold left no trace in any prompt;
-* the constitution, if any, reached both debaters and the judge;
-* the recorded verdict, and the reasoning published alongside it, both come from
-  the judge's recorded response;
-* the recorded verdict resolves through the recorded seating;
-* the derived artifacts — the transcript's question/answers/positions header and
-  the two markdown renderings — say nothing the record does not support.
+* every argument and every decision in the record is what the recorded response
+  actually says — nothing was rewritten after the fact;
+* the reasoning published alongside a decision is the judge's own;
+* no debater's private Thinking reached the opponent or the judge *during* the
+  debate (it is published afterwards, which is a different thing);
+* the constitution, if any, reached everyone it binds;
+* a challenge, if any, is the one that was actually put to the judge;
+* the decision resolves through the recorded seating, and a ruling's answer
+  follows from the ruling itself;
+* the derived artifacts say nothing the record does not support.
 
-What it cannot establish: that the *generations* would recur. Sampling is not
-reproducible, and OpenRouter's seed is best-effort and ignored by some
-providers, which is why each call records its resolved provider and model.
+What it cannot establish:
+
+* **That the generations would recur.** Sampling is not reproducible, and
+  OpenRouter's seed is best-effort and ignored by some providers, which is why
+  each call records its resolved provider and model.
+* **That the prompts were the ones this code would build.** Only responses are
+  checked against the record, so an instruction inserted into a request would
+  pass. Prompt construction is guarded by the test suite.
+* **Which challenge arm produced a generated challenge**, or **which side each
+  recourse debater argued**. Both are recorded, neither is checked; the arm in
+  particular is the variable the contestability claim turns on.
+* **Which model served a debater or judge call.** Only the challenge generator's
+  model is pinned against its request.
+* **That a "repair" quotes a reply the model really gave.**
 
 Exits non-zero if any check fails.
 """
@@ -33,43 +45,58 @@ import json
 import sys
 from dataclasses import fields
 from pathlib import Path
+from typing import NamedTuple
 
 from constitutional_debate.artifacts import (
-    NOT_PUBLIC_BANNER,
-    TRANSCRIPT_DOC_KEYS,
+    PRIVATE_THINKING_NOTE,
     defang_markdown,
-    render_full_markdown,
-    render_public_markdown,
+    RECOURSE_TRANSCRIPT_DOC_KEYS,
+    TRANSCRIPT_DOC_KEYS,
+    recourse_transcript_document,
+    render_decision_record,
+    render_recourse_record,
     transcript_document,
 )
 from constitutional_debate.client import NORMAL_FINISH_REASONS
-from constitutional_debate.config import DebateConfig
+from constitutional_debate.config import RECOURSE_ONLY_KEYS, DebateConfig
+from constitutional_debate.persistence import tree_sha256
 from constitutional_debate.prompts import (
-    DEBATER_REPAIR,
-    JUDGE_REPAIR,
+    ARMS,
+    JUDGE_CLOSING_COT,
+    JUDGE_CLOSING_PREDICT,
     PROFILES,
+    RECOURSE_CLOSING_COT,
+    RECOURSE_CLOSING_PREDICT,
+    VISIBILITIES,
     MalformedOutputError,
-    build_debater_messages,
-    build_judge_messages,
     parse_debater_output,
     parse_judge_output,
+    parse_ruling_output,
 )
 
 from constitutional_debate.types import (
     ORDER,
+    Challenge,
     Context,
+    Ruling,
     Seating,
     Speaker,
     Task,
     Transcript,
     Turn,
     Verdict,
+    compose_transcript,
+    indent_continuations,
+    neutralise_tags,
+    resolve_ruling,
 )
 
 # verdict.json is read as a plain dict — the audit's job is to check what is on
 # disk, not to trust a constructor with it. A Verdict is rebuilt only to
 # re-render the markdown, dropping keys this version does not know about.
 _VERDICT_FIELDS = {f.name for f in fields(Verdict)}
+_RULING_FIELDS = {f.name for f in fields(Ruling)}
+_CHALLENGE_FIELDS = {f.name for f in fields(Challenge)}
 
 
 def _read_json(path: Path):
@@ -90,56 +117,26 @@ def _response_content(record: dict) -> str | None:
     return (choices[0].get("message") or {}).get("content")
 
 
-def _check_request(
-    check,
-    actual: list,
-    expected: list,
-    *,
-    repaired: bool,
-    label: str,
-    repair_instruction: str,
-    recorded_replies: set[str],
-):
-    """Compare a sent request against the re-derived one.
+def _check_document_states(check, published: str, *, must_state: dict[str, str]) -> None:
+    """The published document must not get the decisive statements wrong.
 
-    Exact equality unless a repair happened. Prefix comparison alone would let a
-    tamperer *append* a message ("Choose 1.") and still pass, so the repair case
-    pins the whole suffix: exactly two messages, the right roles, the exact
-    instruction this configuration would have sent, and an assistant turn that
-    matches a reply actually recorded for this run — otherwise arbitrary text
-    could be smuggled in as "the malformed reply being repaired".
+    A re-render mismatch is only a note, because presentation drifts and a
+    heading tweak should not condemn every earlier record. But "presentation"
+    and "names the wrong winner" are not the same kind of difference, and under
+    a claim about what a reader can see, the second is the one that matters. So
+    the statements a reader would be actively misled by are pinned here, and
+    they survive any amount of reformatting: the question, every argument, every
+    debater's reasoning, the sentence naming the answer that stands, and the
+    grounds the deciding role actually gave.
     """
-    if not repaired:
+    for what, needle in must_state.items():
+        if not needle.strip():
+            continue
         check(
-            actual == expected,
-            f"{label}: sent prompt differs from the prompt re-derived from the "
-            f"record",
-        )
-        return
-    check(
-        actual[: len(expected)] == expected,
-        f"{label}: repaired request does not begin with the re-derived prompt",
-    )
-    check(
-        len(actual) == len(expected) + 2,
-        f"{label}: repaired request has {len(actual) - len(expected)} extra "
-        f"messages; a single repair appends exactly 2",
-    )
-    if len(actual) == len(expected) + 2:
-        check(
-            actual[-2].get("role") == "assistant"
-            and actual[-1].get("role") == "user",
-            f"{label}: repair suffix is not [assistant, user]",
-        )
-        check(
-            actual[-1].get("content") == repair_instruction,
-            f"{label}: repair instruction is not the one this configuration "
-            f"would send",
-        )
-        check(
-            (actual[-2].get("content") or "").strip() in recorded_replies,
-            f"{label}: the reply being repaired is not one the model actually "
-            f"returned in this run",
+            defang_markdown(needle.strip()) in published,
+            f"transcript.md does not state {what}, which the record says it "
+            f"should — the published document and the record disagree about "
+            f"something a reader would be misled by",
         )
 
 
@@ -157,33 +154,6 @@ def _rederive(failures: list[str], what: str, build):
     except Exception as error:  # noqa: BLE001 - any failure here is a finding
         failures.append(f"{what} cannot be re-derived from the record: {error!r}")
         return None
-
-
-def code_has_drifted(manifest: dict) -> bool:
-    """Whether the working tree differs from the one that produced this run.
-
-    A prompt mismatch has two possible causes — the record was altered, or the
-    prompt-building code changed since the run — and they mean opposite things.
-    Only the first is a problem with the record. Reporting them identically
-    would make a routine template edit look like tampering, so the run's git
-    state is compared against the current one and the report says which it is.
-    """
-    from subprocess import run as _run
-
-    def git(*args: str) -> str:
-        try:
-            result = _run(
-                ["git", *args], capture_output=True, text=True, timeout=10, check=False
-            )
-        except (OSError, ValueError):
-            return ""
-        return result.stdout if result.returncode == 0 else ""
-
-    if manifest.get("git_sha") and git("rev-parse", "HEAD").strip() != manifest[
-        "git_sha"
-    ]:
-        return True
-    return git("diff", "HEAD") != (manifest.get("git_diff") or "")
 
 
 def load_run(run_dir: Path):
@@ -244,11 +214,328 @@ def load_run(run_dir: Path):
 MIN_DISTINCTIVE_THINKING = 40
 
 
+def _check_turn_responses(
+    check,
+    failures: list[str],
+    *,
+    turns,
+    by_call_id: dict,
+) -> None:
+    """Check each turn against the response that produced it.
+
+    Shared by both audits. This is what ties the published argument to something
+    outside the transcript file: an edited ``transcript.json`` would still be
+    internally consistent, so the recorded response is the only thing that can
+    contradict it — including a transcript that moved private reasoning into the
+    public argument.
+    """
+    for turn in turns:
+        record = by_call_id.get(turn.call_id)
+        if record is None:
+            failures.append(
+                f"round {turn.round} {turn.speaker}: call_id {turn.call_id} "
+                f"is not in calls.jsonl — the transcript cannot be joined to the "
+                f"wire log"
+            )
+            continue
+
+        content = _response_content(record)
+        if content is None:
+            failures.append(
+                f"round {turn.round} {turn.speaker}: no response content recorded"
+            )
+            continue
+        try:
+            thinking, argument, parse_mode = parse_debater_output(content)
+        except MalformedOutputError as error:
+            failures.append(
+                f"round {turn.round} {turn.speaker}: recorded response no "
+                f"longer parses ({error})"
+            )
+            continue
+        check(
+            argument == turn.argument,
+            f"round {turn.round} {turn.speaker}: recorded argument is not "
+            f"what the recorded response parses to",
+        )
+        check(
+            thinking == turn.thinking,
+            f"round {turn.round} {turn.speaker}: recorded thinking is not "
+            f"what the recorded response parses to",
+        )
+        check(
+            parse_mode == turn.parse_mode,
+            f"round {turn.round} {turn.speaker}: parse_mode "
+            f"{turn.parse_mode!r} does not match a re-parse ({parse_mode!r})",
+        )
+        check(
+            turn.raw.strip() == content.strip(),
+            f"round {turn.round} {turn.speaker}: recorded raw text differs "
+            f"from the recorded response",
+        )
+
+
+class _Secret(NamedTuple):
+    """One piece of private reasoning, and where it legitimately lives.
+
+    A NamedTuple rather than a dataclass because this module is loaded by path
+    (``spec_from_file_location``) as well as run as a script, and ``dataclass``
+    resolves string annotations through ``sys.modules``, which a by-path load
+    does not populate.
+    """
+
+    label: str  # e.g. "round 2 Alice" — what a finding should name
+    text: str
+    call_id: str  # the call that produced it; a repair may echo it back
+
+
+def _secrets_from(turns) -> list[_Secret]:
+    return [
+        _Secret(label=f"round {t.round} {t.speaker}", text=t.thinking, call_id=t.call_id)
+        for t in turns
+    ]
+
+
+def _distinctive(secrets: list[_Secret]) -> list[_Secret]:
+    # Very short thinking sections ("-", "1.") occur on flash-tier models and
+    # would match boilerplate in every system prompt.
+    return [s for s in secrets if len(s.text.strip()) >= MIN_DISTINCTIVE_THINKING]
+
+
+def _forms(text: str) -> tuple[str, ...]:
+    """The forms private text could take once it has reached a prompt.
+
+    Searching for the raw string alone is close to vacuous: everything that
+    interpolates a turn into a prompt goes through ``indent_continuations``,
+    which indents every continuation line by four spaces. Real thinking is
+    multi-line — the prompts ask for a numbered plan — so a leak *through* the
+    renderer would not contain the raw needle anywhere.
+    """
+    forms = (
+        text,
+        neutralise_tags(text),  # a standalone prompt block
+        indent_continuations(text),  # a turn inside the transcript
+    )
+    # Order-preserving dedupe rather than a set: these are used as a sequence of
+    # replacements, and set iteration order varies with PYTHONHASHSEED. An audit
+    # whose behaviour depends on the hash seed is one nobody can reason about.
+    return tuple(dict.fromkeys(forms))
+
+
+def _check_thinking_containment(
+    check,
+    notes: list[str],
+    *,
+    secrets: list[_Secret],
+    calls: list[dict],
+    exempt_call_ids: frozenset[str] = frozenset(),
+    strip_from_sent: tuple[str, ...] = (),
+) -> None:
+    """No private reasoning may appear in a request that is not its own.
+
+    A backstop. The primary guarantee is the response re-parse: this scan can
+    only find text the parser already classified as private, so it is blind by
+    construction to a parser that misclassifies.
+
+    ``exempt_call_ids`` covers a request that is *configured* to carry private
+    reasoning — the full-visibility challenge generator, and only that.
+    ``strip_from_sent`` removes the challenge text before scanning, so a
+    challenge that quotes private reasoning is reported once, where it happened,
+    rather than as a leak into every prompt that then quoted the challenge.
+    """
+    distinctive = [(s, _forms(s.text)) for s in _distinctive(secrets)]
+    for record in calls:
+        if record["call_id"] in exempt_call_ids:
+            continue
+        sent = _sent_text(record)
+        for text in strip_from_sent:
+            sent = sent.replace(text, " ")
+        for secret, forms in distinctive:
+            if secret.call_id == record["call_id"]:
+                continue  # a repair legitimately echoes that turn's own reply
+            check(
+                all(form not in sent for form in forms),
+                f"call {record['call_id']} ({record.get('role')}) carries "
+                f"{secret.label}'s private Thinking",
+            )
+
+    unscanned = len(secrets) - len(_distinctive(secrets))
+    if unscanned:
+        notes.append(
+            f"{unscanned} private section(s) were too short to scan for "
+            f"containment; covered by the response re-parse only"
+        )
+
+
+# The tag ``CHALLENGER_PRIVATE_BLOCK`` renders into the generator's request when,
+# and only when, it is shown the debaters' private reasoning. Scanning the wire
+# log for it is what makes the recorded visibility a fact about the run rather
+# than a claim the record makes about itself.
+#
+# A participant cannot forge it — ``neutralise_tags`` defangs this tag in every
+# authored string. A *task* or a *constitution* could, since those are
+# interpolated unescaped, so a dataset question containing the literal tag would
+# fail a legitimate ``public`` run. Vanishingly unlikely, and it fails loudly
+# rather than silently, which is the right direction for a mistake like that.
+PRIVATE_BLOCK_MARKER = "<private_reasoning>"
+
+
+def _is_challenger_call(record: dict | None) -> bool:
+    """Whether this wire-log record is the challenge generator's own call.
+
+    Both the visibility marker and the containment exemption below key off the
+    generator's request, and neither may take the record's word for which call
+    that is: a repointed ``call_id`` would otherwise let one of them read — or
+    excuse — a different role's prompt.
+    """
+    return record is not None and record.get("role") == "challenger"
+
+
+def _check_visibility_marker(check, record: dict, *, visibility: str | None) -> None:
+    """The generator's request must carry private reasoning iff the record says so.
+
+    This matters beyond bookkeeping: ``visibility`` is what excuses the
+    challenger's own call from the containment scan below. Left unchecked, a
+    record could flip itself to ``"full"`` and thereby grant its own exemption,
+    silencing a real leak. So the exemption is earned by the request, not
+    claimed by the record.
+    """
+    if not _is_challenger_call(record):
+        return  # not the generator's request; the call_id checks below cover it
+    carries = PRIVATE_BLOCK_MARKER in _sent_text(record)
+    if visibility == "full":
+        check(
+            carries,
+            "challenge.json says the generator was shown the full record, but "
+            "its recorded request carries no private reasoning",
+        )
+    elif visibility == "public":
+        check(
+            not carries,
+            "challenge.json says the generator was shown only the public "
+            "record, but its recorded request carries private reasoning",
+        )
+
+
+def _check_judge_saw_the_arguments(
+    check, *, turns, judge_record: dict | None, label: str
+) -> None:
+    """The judge decided on the arguments the record publishes.
+
+    The containment scan proves private reasoning did *not* reach a prompt. This
+    is its inverse, and it is the one the claim rests on: a judge shown a
+    truncated or altered transcript would leave a record that looks perfect —
+    every turn re-parses, the verdict re-parses — while the decision was made on
+    something else entirely.
+    """
+    if judge_record is None:
+        return
+    sent = _sent_text(judge_record)
+    for turn in turns:
+        check(
+            indent_continuations(turn.argument) in sent,
+            f"the {label}'s request did not carry round {turn.round} "
+            f"{turn.speaker}'s argument, so the decision was not made on the "
+            f"transcript the record publishes",
+        )
+
+
+def _check_settings_reached_the_judge(
+    check, *, judge_record: dict | None, profile, judge_cot: bool, closing: str, label: str
+) -> None:
+    """The judge ran under the settings ``config.json`` claims.
+
+    Both are settings the published document makes claims about — the profile
+    decides the standard the judge was asked to apply, and a document whose
+    decision states no grounds says in bold *why*, sourced from ``judge_cot``.
+    A record could otherwise say ``opinion`` while the judge ran under ``paper``.
+    """
+    if judge_record is None:
+        return
+    sent = _sent_text(judge_record)
+    check(
+        profile.judge_framing in sent or profile.recourse_standard in sent,
+        f"the {label} was not given the {profile.key} profile's framing, which "
+        f"is the standard config.json says it decided under",
+    )
+    check(
+        (closing in sent) is True,
+        f"the {label}'s request does not carry the closing instruction that "
+        f"judge_cot = {judge_cot} selects",
+    )
+
+
+def _note_unreferenced_generations(
+    notes: list[str], *, successful: list[dict], referenced: set[str], repairs: int
+) -> None:
+    """Say how many paid generations the record does not account for.
+
+    A run that generated three challenges and published the one it liked best
+    would leave the other two here, and nothing else would mention them. That is
+    the sharpest attack on the contestability arm, so it must at least be
+    visible.
+
+    A note rather than a failure, because there are legitimate causes: each
+    format repair discards the malformed reply that preceded it, and a blank
+    response is retried. The count is stated so a reader can judge, rather than
+    guessed at.
+    """
+    unaccounted = [c for c in successful if c["call_id"] not in referenced]
+    if len(unaccounted) <= repairs:
+        return
+    roles = sorted({str(c.get("role")) for c in unaccounted})
+    notes.append(
+        f"{len(unaccounted)} successful call(s) are not referenced by the record "
+        f"({', '.join(roles)}), and {repairs} format repair(s) are recorded; the "
+        f"remainder are generations the record does not account for"
+    )
+
+
+def _check_challenge_reached_the_prompts(
+    check, *, challenge_text: str, calls: list[dict], roles: frozenset[str]
+) -> None:
+    """The challenge the record publishes must be the one that was put to them.
+
+    ``challenge.md``, ``challenge.json`` and the manifest's sha all restate the
+    same text, so they can be edited together and still agree with each other.
+    This is the only check that compares the published challenge against
+    something outside that circle — the requests the recourse judge and debaters
+    actually received. Without it a record could present a challenge nobody was
+    asked to answer, which is a false statement in the readable document.
+    """
+    needle = neutralise_tags(challenge_text)
+    for record in calls:
+        if record.get("role") not in roles:
+            continue
+        check(
+            needle in _sent_text(record),
+            f"call {record['call_id']} ({record.get('role')}) did not carry the "
+            f"challenge recorded in challenge.md",
+        )
+
+
 def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
-    """Return a list of failures; empty means the record checks out.
+    """Audit a recorded run of either kind.
 
     ``notes`` collects non-fatal observations about audit coverage.
     """
+    manifest = _read_json(run_dir / "run.json")
+    if manifest.get("kind") == "recourse":
+        return verify_recourse(run_dir, notes)
+    return verify_debate(run_dir, notes)
+
+
+# transcript.md is deliberately absent: records written before it existed are
+# still auditable, and its absence is reported as a note below rather than as a
+# missing artifact.
+DEBATE_ARTIFACTS = (
+    "run.json", "config.json", "task.json", "seating.json", "calls.jsonl",
+    "transcript.json", "verdict.json",
+)
+
+
+def verify_debate(run_dir: Path, notes: list[str] | None = None) -> list[str]:
+    """Return a list of failures; empty means the record checks out."""
     failures: list[str] = []
     notes = notes if notes is not None else []
 
@@ -256,10 +543,24 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         if not condition:
             failures.append(message)
 
+    # Deleting an artifact is the cheapest tampering there is, and it must
+    # report rather than raise — including when this run is the ``parent/`` of a
+    # recourse, where a missing verdict.json is precisely what a tamperer would
+    # remove to break the decision the recourse quotes.
+    absent = [name for name in DEBATE_ARTIFACTS if not (run_dir / name).is_file()]
+    if absent:
+        failures.append(f"the run record is missing {absent}")
+        return failures
+
     (
         manifest, task, config, seating, context, document, transcript, calls, verdict
     ) = load_run(run_dir)
-    profile = PROFILES[manifest["profile"]]
+    # A published field, so it is pinned to the enumeration even though nothing
+    # below looks a profile up any more.
+    check(
+        manifest.get("profile") in PROFILES,
+        f"run.json names an unknown profile {manifest.get('profile')!r}",
+    )
 
     # Checked first: everything below joins on these keys, and a KeyError here
     # would abort with a traceback instead of a clean failure report.
@@ -273,100 +574,34 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         for c in calls
         if c.get("status") == 200 and not (c.get("response_body") or {}).get("error")
     ]
-    # Every reply the model actually produced in this run. A repair may only
-    # quote back one of these.
-    recorded_replies = {
-        (_response_content(c) or "").strip() for c in calls if _response_content(c)
-    }
     check(
         len(successful) >= 2 * config.n_rounds + 1,
         f"expected at least {2 * config.n_rounds + 1} successful calls, "
         f"found {len(successful)}",
     )
 
-    # --- every debater turn's prompt must re-derive exactly ----------------- #
-    for turn in transcript.all_turns():
-        record = by_call_id.get(turn.call_id)
-        if record is None:
-            failures.append(
-                f"round {turn.round} {turn.speaker}: call_id {turn.call_id} "
-                f"is not in calls.jsonl — the transcript cannot be joined to the "
-                f"wire log"
-            )
-            continue
+    # --- every turn must be the response that produced it -------------------- #
+    _check_turn_responses(
+        check, failures, turns=transcript.all_turns(), by_call_id=by_call_id
+    )
 
-        expected = build_debater_messages(
-            task, context, seating, config, transcript,
-            speaker=turn.speaker, round=turn.round, profile=profile,
-        )
-        _check_request(
-            check,
-            record["request_body"]["messages"],
-            expected,
-            repaired=bool(turn.repair_attempts),
-            label=f"round {turn.round} {turn.speaker}",
-            repair_instruction=DEBATER_REPAIR.format(
-                word_limit=config.word_limit_for(profile.key)
-            ),
-            recorded_replies=recorded_replies,
-        )
-
-        # Re-parse the recorded response. Without this the whole response half
-        # of the wire log is unaudited, and an edited transcript.json that still
-        # re-derives its own prompts would pass — including one that moved
-        # private reasoning into the public argument.
-        content = _response_content(record)
-        if content is None:
-            failures.append(
-                f"round {turn.round} {turn.speaker}: no response content recorded"
-            )
-        else:
-            try:
-                thinking, argument, parse_mode = parse_debater_output(content)
-            except MalformedOutputError as error:
-                failures.append(
-                    f"round {turn.round} {turn.speaker}: recorded response no "
-                    f"longer parses ({error})"
-                )
-            else:
-                check(
-                    argument == turn.argument,
-                    f"round {turn.round} {turn.speaker}: recorded argument is not "
-                    f"what the recorded response parses to",
-                )
-                check(
-                    thinking == turn.thinking,
-                    f"round {turn.round} {turn.speaker}: recorded thinking is not "
-                    f"what the recorded response parses to",
-                )
-                check(
-                    parse_mode == turn.parse_mode,
-                    f"round {turn.round} {turn.speaker}: parse_mode "
-                    f"{turn.parse_mode!r} does not match a re-parse "
-                    f"({parse_mode!r})",
-                )
-                check(
-                    turn.raw.strip() == content.strip(),
-                    f"round {turn.round} {turn.speaker}: recorded raw text differs "
-                    f"from the recorded response",
-                )
-
-    # --- the judge's prompt and verdict must both re-derive ------------------ #
+    # --- the verdict must be the judge's recorded decision ------------------- #
     judge_record = by_call_id.get(verdict["call_id"])
+    _check_judge_saw_the_arguments(
+        check, turns=transcript.all_turns(), judge_record=judge_record, label="judge"
+    )
+    if manifest.get("profile") in PROFILES:
+        _check_settings_reached_the_judge(
+            check,
+            judge_record=judge_record,
+            profile=PROFILES[manifest["profile"]],
+            judge_cot=config.judge_cot,
+            closing=JUDGE_CLOSING_COT if config.judge_cot else JUDGE_CLOSING_PREDICT,
+            label="judge",
+        )
     if judge_record is None:
         failures.append("verdict call_id is not in calls.jsonl")
     else:
-        _check_request(
-            check,
-            judge_record["request_body"]["messages"],
-            build_judge_messages(
-                task, context, seating, config, transcript, profile=profile
-            ),
-            repaired=bool(verdict.get("repair_attempts")),
-            label="judge",
-            repair_instruction=JUDGE_REPAIR,
-            recorded_replies=recorded_replies,
-        )
         check(
             bool(verdict.get("repair_attempts"))
             == verdict["parse_mode"].endswith("_after_repair"),
@@ -412,66 +647,9 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
                     )
 
     # --- private reasoning must never have left the debater ------------------ #
-    # A backstop. The primary guarantee is the response re-parse above: this
-    # containment scan can only find text the parser already classified as
-    # private, so it is blind by construction to a parser that misclassifies.
-    for record in calls:
-        sent = _sent_text(record)
-        for turn in transcript.all_turns():
-            # Very short thinking sections ("-", "1.") occur on flash-tier
-            # models and would match boilerplate in every system prompt.
-            if len(turn.thinking.strip()) < MIN_DISTINCTIVE_THINKING:
-                continue
-            if turn.call_id == record["call_id"]:
-                continue  # a repair legitimately echoes that turn's own reply
-            check(
-                turn.thinking not in sent,
-                f"call {record['call_id']} ({record.get('role')}) carries "
-                f"round {turn.round} {turn.speaker}'s private Thinking",
-            )
-
-    unscanned = [
-        t
-        for t in transcript.all_turns()
-        if len(t.thinking.strip()) < MIN_DISTINCTIVE_THINKING
-    ]
-    if unscanned:
-        notes.append(
-            f"{len(unscanned)} turn(s) had thinking too short to scan for "
-            f"containment; covered by the response re-parse only"
-        )
-
-    # --- gold left no trace, in any prompt ----------------------------------- #
-    if task.gold_index is not None:
-        flipped = Task(
-            task_id=task.task_id,
-            question=task.question,
-            answers=task.answers,
-            gold_index=1 - task.gold_index,
-            source=task.source,
-        )
-        for round_number in range(1, config.n_rounds + 1):
-            for speaker in ORDER:
-                kwargs = dict(speaker=speaker, round=round_number, profile=profile)
-                check(
-                    build_debater_messages(
-                        flipped, context, seating, config, transcript, **kwargs
-                    )
-                    == build_debater_messages(
-                        task, context, seating, config, transcript, **kwargs
-                    ),
-                    f"which answer is gold changes round {round_number} "
-                    f"{speaker}'s prompt",
-                )
-        check(
-            build_judge_messages(
-                flipped, context, seating, config, transcript, profile=profile
-            )
-            == build_judge_messages(
-                task, context, seating, config, transcript, profile=profile
-            ),
-            "which answer is gold changes the judge prompt",
-        )
+    _check_thinking_containment(
+        check, notes, secrets=_secrets_from(transcript.all_turns()), calls=calls
+    )
 
     # --- the constitution reached everyone ----------------------------------- #
     if context is not None:
@@ -502,7 +680,11 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
     # transcript.json's header and the two markdown files restate data whose
     # home is task.json, seating.json and verdict.json. Restated data is data
     # that can disagree, and these are the artifacts a reader actually reads.
-    if not TRANSCRIPT_DOC_KEYS <= set(document):
+    if set(document) == {"turns"}:
+        # The genuine old shape, exactly. Any *other* partial key set is an
+        # edited document, not an old one — and letting it take this branch
+        # would disable the field-set pin below, which is the check that catches
+        # a "gold_index" smuggled into a turn.
         notes.append(
             "transcript.json predates the question/answers/positions header; "
             "only its turns were checked"
@@ -515,9 +697,11 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
             lambda: transcript_document(task, seating, transcript),
         )
     if expected_document is not None:
+        # ``.get`` rather than indexing: a document missing one of these keys is
+        # an edited one, and it must report that rather than raise.
         for key in ("question", "answers", "positions"):
             check(
-                document[key] == expected_document[key],
+                document.get(key) == expected_document[key],
                 f"transcript.json's {key} disagrees with task.json/seating.json",
             )
         check(
@@ -530,50 +714,57 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
         # catch is the field set itself: a "gold_index" smuggled into a turn
         # that a reader would believe, or a protocol field quietly dropped.
         check(
-            document["turns"] == expected_document["turns"],
+            document.get("turns") == expected_document["turns"],
             "transcript.json's turns do not carry exactly the fields the "
             "protocol defines",
         )
 
-    public_md = (run_dir / "transcript.public.md").read_text(encoding="utf-8")
-    # The containment scan above covers calls.jsonl only, so a renderer that
-    # leaked Thinking into the *published* artifact would pass an otherwise
-    # clean audit. Nothing else checks this file's central promise. Both the raw
-    # and the rendered form are scanned: a leak *through* the renderer arrives
-    # defanged, and would slip past a search for the raw text.
-    for turn in transcript.all_turns():
-        if len(turn.thinking.strip()) < MIN_DISTINCTIVE_THINKING:
-            continue
-        check(
-            turn.thinking not in public_md
-            and defang_markdown(turn.thinking.strip()) not in public_md,
-            f"transcript.public.md carries round {turn.round} {turn.speaker}'s "
-            f"private Thinking",
-        )
-
-    # Notes, not failures: the markdown is derived and non-authoritative — no
-    # prompt depends on it — so pinning presentation would make every heading
-    # tweak retroactively condemn every earlier run.
-    if public_md != render_public_markdown(transcript):
+    # --- the published document ----------------------------------------------- #
+    document_path = run_dir / "transcript.md"
+    if not document_path.is_file():
+        # Said out loud rather than skipped: a record whose readable document is
+        # not audited should say so, or a reader has no way to tell the two
+        # cases apart.
         notes.append(
-            "transcript.public.md differs from the document re-rendered from the "
-            "record (presentation only; the arguments themselves are checked above)"
+            "this record predates transcript.md; its readable document is not "
+            "audited"
         )
-
-    full_path = run_dir / "transcript.full.md"
-    if not full_path.is_file():
-        notes.append("this run predates transcript.full.md")
     else:
-        full_md = full_path.read_text(encoding="utf-8")
+        published = document_path.read_text(encoding="utf-8")
         check(
-            NOT_PUBLIC_BANNER in full_md,
-            "transcript.full.md does not carry the banner marking it unpublishable; "
-            "it contains private Thinking and must say so",
+            PRIVATE_THINKING_NOTE in published,
+            "transcript.md does not carry the note explaining that the Thinking "
+            "sections were private during the debate",
+        )
+        _check_document_states(
+            check,
+            published,
+            must_state={
+                "the question": task.question,
+                # Not the answer text: both answers appear in the document's own
+                # Answers and Positions sections, so a needle of "the winning
+                # answer" is satisfied by any document at all. What has to be
+                # there is the sentence that says which one won.
+                "which answer the judge chose": (
+                    f"That is `answers[{verdict['answer_index']}]`"
+                    if verdict.get("answer_index") in (0, 1)
+                    else ""
+                ),
+                "the judge's response": verdict.get("raw", ""),
+                **{
+                    f"round {t.round} {t.speaker}'s argument": t.argument
+                    for t in transcript.all_turns()
+                },
+                **{
+                    f"round {t.round} {t.speaker}'s Thinking": t.thinking
+                    for t in transcript.all_turns()
+                },
+            },
         )
         rendered = _rederive(
             failures,
-            "transcript.full.md",
-            lambda: render_full_markdown(
+            "transcript.md",
+            lambda: render_decision_record(
                 task,
                 seating,
                 transcript,
@@ -581,10 +772,11 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
                 judge_cot=config.judge_cot,
             ),
         )
-        if rendered is not None and full_md != rendered:
+        if rendered is not None and published != rendered:
             notes.append(
-                "transcript.full.md differs from the document re-rendered from "
-                "the record (presentation only; the record itself is checked above)"
+                "transcript.md differs from the document re-rendered from the "
+                "record; the statements it must not get wrong are checked above, "
+                "but its presentation has drifted from this version of the renderer"
             )
 
     # --- structural sanity ---------------------------------------------------- #
@@ -600,6 +792,663 @@ def verify(run_dir: Path, notes: list[str] | None = None) -> list[str]:
     check(
         not truncated,
         f"{len(truncated)} turn(s) stopped on a non-normal finish_reason",
+    )
+    _note_unreferenced_generations(
+        notes,
+        successful=successful,
+        referenced={t.call_id for t in transcript.all_turns()} | {verdict["call_id"]},
+        repairs=sum(t.repair_attempts for t in transcript.all_turns())
+        + int(verdict.get("repair_attempts") or 0),
+    )
+    return failures
+
+
+def _load_turns(document: dict) -> Transcript:
+    transcript = Transcript()
+    for turn in document["turns"]:
+        transcript.add(
+            Turn(
+                round=turn["round"],
+                speaker=Speaker(turn["speaker"]),
+                answer_index=turn["answer_index"],
+                thinking=turn["thinking"],
+                argument=turn["argument"],
+                word_count=turn["word_count"],
+                parse_mode=turn["parse_mode"],
+                repair_attempts=turn["repair_attempts"],
+                finish_reason=turn.get("finish_reason"),
+                has_native_reasoning=turn.get("has_native_reasoning", False),
+                call_id=turn["call_id"],
+                raw=turn.get("raw", ""),
+            )
+        )
+    return transcript
+
+
+def verify_recourse(run_dir: Path, notes: list[str] | None = None) -> list[str]:
+    """Audit a recorded recourse, and the run it contests, together.
+
+    The record is self-contained by construction: the challenged run was copied
+    into ``parent/`` before the first call, so this walks into it and audits it
+    as a run in its own right, then checks everything the contest added on top.
+    """
+    failures: list[str] = []
+    notes = notes if notes is not None else []
+
+    def check(condition: bool, message: str) -> None:
+        if not condition:
+            failures.append(message)
+
+    manifest = _read_json(run_dir / "run.json")
+
+    # --- the parent must be present, and must itself check out --------------- #
+    parent_dir = run_dir / "parent"
+    if not (parent_dir / "run.json").is_file():
+        failures.append(
+            "parent/ is missing or is not a run directory; the recourse quotes a "
+            "decision that this record cannot show"
+        )
+        return failures
+
+    parent_notes: list[str] = []
+    failures += [f"parent: {f}" for f in verify(parent_dir, parent_notes)]
+    notes += [f"parent: {n}" for n in parent_notes]
+
+    parent_manifest = _read_json(parent_dir / "run.json")
+    check(
+        parent_manifest.get("status") == "completed",
+        f"the challenged run has status {parent_manifest.get('status')!r}; only a "
+        f"completed decision can be contested",
+    )
+    check(
+        parent_manifest.get("run_id") == manifest.get("parent_run_id"),
+        "parent/run.json is not the run this record names as its parent",
+    )
+    recorded_tree_hash = manifest.get("parent_sha256")
+    if recorded_tree_hash is None:
+        notes.append("no parent_sha256 was recorded; the copy is unpinned")
+    else:
+        check(
+            recorded_tree_hash == tree_sha256(parent_dir),
+            "parent/ does not match the parent_sha256 recorded when it was "
+            "copied, so it has been modified since",
+        )
+
+    # --- the recourse's own inputs ------------------------------------------- #
+    # Checked up front for the same reason the debate audit checks its join keys
+    # first: everything below reads these, and a missing file is a finding about
+    # the record, not a reason to abort with a traceback. Deleting ruling.json
+    # is the cheapest way to make an outcome unreadable, so it must report.
+    missing = [
+        name
+        for name in (
+            "task.json", "config.json", "seating.json", "challenge.md",
+            "challenge.json", "calls.jsonl", "transcript.json", "ruling.json",
+        )
+        if not (run_dir / name).is_file()
+    ]
+    if missing:
+        failures.append(f"the recourse record is missing {missing}")
+        return failures
+
+    task = Task.from_dict(_read_json(run_dir / "task.json"))
+    config = DebateConfig(**_read_json(run_dir / "config.json"))
+    seating_data = _read_json(run_dir / "seating.json")
+    seating = Seating(
+        alice_answer=seating_data["alice_answer"],
+        bob_answer=seating_data["bob_answer"],
+        choice_order=tuple(seating_data["choice_order"]),
+        seed_material=seating_data["seed_material"],
+    )
+    constitution_path = run_dir / "constitution.md"
+    context = (
+        Context(
+            kind="constitution",
+            text=constitution_path.read_text(encoding="utf-8").strip(),
+            source=manifest.get("constitution_source"),
+        )
+        if constitution_path.is_file()
+        else None
+    )
+    check(
+        manifest.get("profile") in PROFILES,
+        f"run.json names an unknown profile {manifest.get('profile')!r}",
+    )
+
+    # The identity of the question is inherited, not re-drawn. A recourse that
+    # quietly reseated the debaters or reworded the question would be contesting
+    # a different decision from the one it copied in.
+    for name in ("task.json", "seating.json"):
+        check(
+            _read_json(run_dir / name) == _read_json(parent_dir / name),
+            f"{name} differs from the parent's; a recourse inherits the question "
+            f"and the seating unchanged",
+        )
+    parent_constitution = parent_dir / "constitution.md"
+    check(
+        parent_constitution.is_file() == constitution_path.is_file()
+        and (
+            not constitution_path.is_file()
+            or parent_constitution.read_text(encoding="utf-8")
+            == constitution_path.read_text(encoding="utf-8")
+        ),
+        "the constitution differs from the parent's",
+    )
+    check(
+        manifest.get("profile") == parent_manifest.get("profile"),
+        "the profile differs from the parent's; a recourse is judged under the "
+        "standard the decision was made under",
+    )
+
+    parent_config = DebateConfig(**_read_json(parent_dir / "config.json"))
+    check(
+        config.n_rounds == parent_config.n_rounds,
+        f"n_rounds is {config.n_rounds} against the parent's "
+        f"{parent_config.n_rounds}; the boundary between the debate and the "
+        f"contest of it would be ambiguous",
+    )
+    differing = sorted(
+        key
+        for key, value in config.to_dict().items()
+        if key not in RECOURSE_ONLY_KEYS
+        and value != parent_config.to_dict().get(key)
+    )
+    if differing:
+        notes.append(
+            f"the recourse ran under different settings from the decision it "
+            f"contests: {differing}"
+        )
+
+    # --- the challenge -------------------------------------------------------- #
+    challenge_text = (run_dir / "challenge.md").read_text(encoding="utf-8").strip()
+    challenge_data = _read_json(run_dir / "challenge.json")
+    challenge = Challenge.from_dict(challenge_data)
+    # Both loaders drop unknown keys, so without this an invented field a reader
+    # would believe survives unremarked in either file. Same argument as the
+    # transcript document's key-set pin below.
+    check(
+        set(challenge_data) == _CHALLENGE_FIELDS,
+        f"challenge.json's keys are not the ones a challenge defines: "
+        f"{sorted(set(challenge_data) ^ _CHALLENGE_FIELDS)}",
+    )
+    check(
+        challenge.text == challenge_text,
+        "challenge.json's text is not the text in challenge.md",
+    )
+    check(
+        manifest.get("challenge_sha256") == challenge.sha256(),
+        "run.json's challenge_sha256 does not hash the recorded challenge",
+    )
+    check(
+        challenge.origin in ("file", "generated"),
+        f"unknown challenge origin {challenge.origin!r}",
+    )
+    # The manifest restates the challenge's provenance, and the summary this
+    # script prints under an OK banner is written from it. Unchecked, an edited
+    # run.json would have the audit itself report a specious challenge as a
+    # grounded one — which is the arm the whole contestability claim turns on.
+    for key, recorded in (
+        ("challenge_origin", challenge.origin),
+        ("challenge_source", challenge.source),
+        ("challenge_arm", challenge.arm),
+        ("challenge_visibility", challenge.visibility),
+    ):
+        check(
+            manifest.get(key) == recorded,
+            f"run.json's {key} disagrees with challenge.json",
+        )
+    check(
+        manifest.get("parent_rounds") == parent_config.n_rounds,
+        "run.json's parent_rounds is not the parent's n_rounds",
+    )
+    check(
+        manifest.get("parent_chain")
+        == [*parent_manifest.get("parent_chain", []), parent_manifest.get("run_id")],
+        "run.json's parent_chain is not the chain parent/run.json implies",
+    )
+
+    # --- the record's own turns ----------------------------------------------- #
+    document = _read_json(run_dir / "transcript.json")
+    own = _load_turns(document)
+    parent_transcript = _load_turns(_read_json(parent_dir / "transcript.json"))
+    composed = _rederive(
+        failures,
+        "the composed transcript",
+        lambda: compose_transcript(parent_transcript, own),
+    )
+    if composed is None:
+        return failures
+
+    calls = [
+        json.loads(line)
+        for line in (run_dir / "calls.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    malformed = [c for c in calls if not {"call_id", "role", "attempt"} <= set(c)]
+    check(not malformed, f"{len(malformed)} calls.jsonl record(s) lack join keys")
+    calls = [c for c in calls if "call_id" in c]
+    by_call_id = {c["call_id"]: c for c in calls}
+    successful = [
+        c
+        for c in calls
+        if c.get("status") == 200 and not (c.get("response_body") or {}).get("error")
+    ]
+    generated = challenge.origin == "generated"
+    expected_calls = 2 * config.recourse_rounds + 1 + (1 if generated else 0)
+    check(
+        len(successful) >= expected_calls,
+        f"expected at least {expected_calls} successful calls, "
+        f"found {len(successful)}",
+    )
+
+    # --- the protocol is named, not inferred ---------------------------------- #
+    check(
+        manifest.get("recourse_protocol") == config.recourse_protocol,
+        f"run.json names the {manifest.get('recourse_protocol')!r} protocol but "
+        f"recourse_rounds = {config.recourse_rounds} is the "
+        f"{config.recourse_protocol!r} protocol",
+    )
+
+    parent_verdict = _read_json(parent_dir / "verdict.json")
+
+    # --- a generated challenge must be the generator's recorded output -------- #
+    challenger_calls = [c for c in calls if c.get("role") == "challenger"]
+    if not generated:
+        check(
+            not challenger_calls,
+            "this challenge is recorded as supplied, but the run made "
+            f"{len(challenger_calls)} challenge-generation call(s)",
+        )
+    else:
+        check(
+            challenge.arm in ARMS,
+            f"unknown challenge arm {challenge.arm!r}; expected one of {ARMS}",
+        )
+        check(
+            challenge.visibility in VISIBILITIES,
+            f"unknown challenge visibility {challenge.visibility!r}; expected one "
+            f"of {VISIBILITIES}",
+        )
+        record = by_call_id.get(challenge.call_id)
+        if record is None:
+            failures.append("the challenge's call_id is not in calls.jsonl")
+        else:
+            check(
+                (record.get("request_body") or {}).get("model") == challenge.model,
+                "challenge.json names a model the recorded request did not use",
+            )
+            _check_visibility_marker(check, record, visibility=challenge.visibility)
+            content = _response_content(record)
+            if content is None:
+                failures.append("challenger: no response content recorded")
+            else:
+                try:
+                    thinking, text, parse_mode = parse_debater_output(content)
+                except MalformedOutputError as error:
+                    failures.append(
+                        f"challenger: recorded response no longer parses ({error})"
+                    )
+                else:
+                    check(
+                        text == challenge.text,
+                        "the recorded challenge is not what the generator's "
+                        "recorded response parses to",
+                    )
+                    check(
+                        thinking == challenge.thinking,
+                        "the generator's recorded thinking is not what its "
+                        "recorded response parses to",
+                    )
+                    check(
+                        parse_mode == challenge.parse_mode,
+                        "the challenge's parse_mode does not match a re-parse",
+                    )
+                    check(
+                        challenge.raw.strip() == content.strip(),
+                        "the generator's recorded raw text differs from its "
+                        "recorded response",
+                    )
+
+    # --- every recourse turn must be the response that produced it ------------ #
+    _check_turn_responses(
+        check, failures, turns=own.all_turns(), by_call_id=by_call_id
+    )
+
+    # --- the ruling ----------------------------------------------------------- #
+    ruling = _read_json(run_dir / "ruling.json")
+    check(
+        set(ruling) == _RULING_FIELDS,
+        f"ruling.json's keys are not the ones a ruling defines: "
+        f"{sorted(set(ruling) ^ _RULING_FIELDS)}",
+    )
+    ruling_record = by_call_id.get(ruling.get("call_id"))
+    _check_judge_saw_the_arguments(
+        check,
+        turns=composed.all_turns(),
+        judge_record=ruling_record,
+        label="recourse judge",
+    )
+    if manifest.get("profile") in PROFILES:
+        _check_settings_reached_the_judge(
+            check,
+            judge_record=ruling_record,
+            profile=PROFILES[manifest["profile"]],
+            judge_cot=config.judge_cot,
+            closing=(
+                RECOURSE_CLOSING_COT if config.judge_cot else RECOURSE_CLOSING_PREDICT
+            ),
+            label="recourse judge",
+        )
+    if ruling_record is None:
+        failures.append("the ruling's call_id is not in calls.jsonl")
+    else:
+        check(
+            bool(ruling.get("repair_attempts"))
+            == str(ruling.get("parse_mode") or "").endswith("_after_repair"),
+            "ruling repair_attempts disagrees with its parse_mode suffix",
+        )
+        content = _response_content(ruling_record)
+        check(
+            content is not None
+            and content.strip() == str(ruling.get("raw") or "").strip(),
+            "the ruling's raw text differs from the recourse judge's recorded "
+            "response",
+        )
+        if content is not None:
+            try:
+                word, reasoning, parse_mode = parse_ruling_output(content)
+            except MalformedOutputError as error:
+                failures.append(
+                    f"recourse judge: recorded response no longer parses ({error})"
+                )
+            else:
+                check(
+                    word == ruling.get("ruling"),
+                    f"the recorded ruling {ruling.get('ruling')!r} is not what "
+                    f"the recourse judge's recorded response parses to ({word!r})",
+                )
+                check(
+                    parse_mode
+                    == str(ruling.get("parse_mode") or "").removesuffix(
+                        "_after_repair"
+                    ),
+                    "the ruling's parse_mode does not match a re-parse",
+                )
+                check(
+                    ruling.get("reasoning") == reasoning,
+                    "the recorded ruling reasoning is not what the recourse "
+                    "judge's recorded response parses to",
+                )
+
+    # --- the decisive check: which answer the ruling leaves standing ---------- #
+    # A self-consistently inverted ruling (both the word and the index flipped)
+    # is caught above by the response re-parse; this catches an index that does
+    # not follow from the word.
+    if ruling.get("ruling") in ("UPHOLD", "OVERTURN"):
+        check(
+            ruling.get("answer_index")
+            == resolve_ruling(ruling["ruling"], parent_verdict["answer_index"]),
+            f"the recorded answer_index {ruling.get('answer_index')} does not "
+            f"follow from a {ruling['ruling']} of a decision for "
+            f"{parent_verdict['answer_index']}",
+        )
+        check(
+            ruling.get("upheld") == (ruling["ruling"] == "UPHOLD"),
+            "the ruling's upheld flag disagrees with the ruling itself",
+        )
+    else:
+        failures.append(
+            f"the recorded ruling {ruling.get('ruling')!r} is neither UPHOLD nor "
+            f"OVERTURN"
+        )
+    check(
+        ruling.get("parent_answer_index") == parent_verdict["answer_index"]
+        and ruling.get("parent_choice") == parent_verdict["choice"],
+        "the ruling restates a different original decision from the one in "
+        "parent/verdict.json",
+    )
+    # _rederive, because choice_for_answer raises on an answer_index the seating
+    # does not contain — and a doctored index is exactly when the audit has
+    # something to say and must not be crashing.
+    expected_choice = _rederive(
+        failures,
+        "the ruling's choice",
+        lambda: seating.choice_for_answer(ruling.get("answer_index")),
+    )
+    if expected_choice is not None:
+        check(
+            ruling.get("choice") == expected_choice,
+            f"ruling choice {ruling.get('choice')} does not resolve to answer "
+            f"{ruling.get('answer_index')} under the recorded seating",
+        )
+    check(
+        ruling.get("protocol") == config.recourse_protocol,
+        "the ruling names a different protocol from the one the config selects",
+    )
+    if task.gold_index is not None:
+        check(
+            ruling.get("correct") == (ruling.get("answer_index") == task.gold_index),
+            "the recorded correctness disagrees with gold_index",
+        )
+
+    # --- the constitution reached everyone ------------------------------------ #
+    if context is not None:
+        check(
+            manifest.get("constitution_sha256") == context.sha256(),
+            "constitution.md does not match the sha256 recorded in run.json",
+        )
+        for record in calls:
+            check(
+                context.text.strip() in _sent_text(record),
+                f"call {record['call_id']} ({record.get('role')}) did not carry "
+                f"the constitution",
+            )
+
+    # --- the challenge, and the decision it contests, reached them both ------- #
+    recourse_roles = frozenset({"debater", "recourse_judge"})
+    _check_challenge_reached_the_prompts(
+        check, challenge_text=challenge_text, calls=calls, roles=recourse_roles
+    )
+    # The grounds matter as much as the challenge: the published answer is
+    # derived from the parent verdict, so a recourse judge shown a *different*
+    # decision from the one in parent/verdict.json would have its ruling
+    # resolved against a decision it never reviewed.
+    _check_challenge_reached_the_prompts(
+        check,
+        challenge_text=parent_verdict.get("raw", ""),
+        calls=calls,
+        roles=recourse_roles,
+    )
+
+    # --- private reasoning, and the one configuration that may carry it ------- #
+    # The scan covers the *composed* turns: the parent's private reasoning must
+    # not reach a recourse prompt either, and the generator's own must not reach
+    # anything at all.
+    secrets = _secrets_from(composed.all_turns())
+    if challenge.thinking:
+        secrets.append(
+            _Secret(
+                label="the challenge generator",
+                text=challenge.thinking,
+                call_id=challenge.call_id or "",
+            )
+        )
+    full_visibility = challenge.shown_private_reasoning
+    # The exemption is granted to a request that is a challenger call, not
+    # merely to whatever call_id challenge.json happens to name: a repointed
+    # call_id would otherwise exempt the recourse judge's request from the scan.
+    exempt = frozenset()
+    if full_visibility and _is_challenger_call(by_call_id.get(challenge.call_id)):
+        exempt = frozenset({challenge.call_id})
+    _check_thinking_containment(
+        check,
+        notes,
+        secrets=secrets,
+        calls=calls,
+        exempt_call_ids=exempt,
+        # Otherwise a challenge that quotes private reasoning would be reported
+        # as a leak into every prompt that then quoted the challenge, instead of
+        # once, where it happened. Both forms: prompts carry the neutralised
+        # text, the public artifact the defanged one.
+        strip_from_sent=_forms(challenge.text) if full_visibility else (),
+    )
+    if full_visibility:
+        notes.append(
+            "DISCLOSURE: the challenge generator was shown the debaters' "
+            "private reasoning (challenge_visibility = full), so its own "
+            "request is exempt from the containment scan."
+        )
+        # Every form, not the raw string: the generator reads the reasoning
+        # through ``render_private_reasoning``, so a verbatim quote arrives
+        # *indented*. Matching raw here would silence the one disclosure that
+        # says this run is not whitebox, in exactly the case it exists for —
+        # while the containment scan above stays deliberately quiet, because
+        # the challenge text was stripped out of every request before scanning.
+        quoted = [
+            t
+            for t in composed.all_turns()
+            if len(t.thinking.strip()) >= MIN_DISTINCTIVE_THINKING
+            and any(form in challenge.text for form in _forms(t.thinking))
+        ]
+        for turn in quoted:
+            notes.append(
+                f"DISCLOSURE: the challenge quotes round {turn.round} "
+                f"{turn.speaker}'s private Thinking. With challenge_visibility "
+                f"= full this is permitted by configuration, and it means the "
+                f"recourse judge ruled on material the judge who decided the "
+                f"question never had. The two decisions are not comparable."
+            )
+
+    # --- the derived artifacts must not say anything the record does not ------ #
+    expected_document = _rederive(
+        failures,
+        "transcript.json's header",
+        lambda: recourse_transcript_document(
+            task, seating, own,
+            parent_run_id=manifest["parent_run_id"],
+            parent_rounds=parent_config.n_rounds,
+        ),
+    )
+    if expected_document is not None:
+        check(
+            set(document) == RECOURSE_TRANSCRIPT_DOC_KEYS,
+            f"transcript.json's top-level keys are not the ones a recourse "
+            f"defines: {sorted(set(document) ^ RECOURSE_TRANSCRIPT_DOC_KEYS)}",
+        )
+        for key in ("question", "answers", "positions", "parent_run_id", "parent_rounds"):
+            check(
+                document.get(key) == expected_document[key],
+                f"transcript.json's {key} disagrees with the record",
+            )
+        check(
+            document.get("turns") == expected_document["turns"],
+            "transcript.json's turns do not carry exactly the fields the "
+            "protocol defines",
+        )
+
+    ruling_object = _rederive(
+        failures,
+        "the recorded ruling",
+        lambda: Ruling(**{k: v for k, v in ruling.items() if k in _RULING_FIELDS}),
+    )
+    document_path = run_dir / "transcript.md"
+    published = (
+        document_path.read_text(encoding="utf-8") if document_path.is_file() else None
+    )
+    if published is None:
+        notes.append(
+            "this record predates transcript.md; its readable document is not "
+            "audited"
+        )
+    else:
+        check(
+            PRIVATE_THINKING_NOTE in published,
+            "transcript.md does not carry the note explaining that the Thinking "
+            "sections were private during the debate",
+        )
+        _check_document_states(
+            check,
+            published,
+            must_state={
+                "the question": task.question,
+                # The sentence, not the answer text — see the debate branch.
+                "which answer stands after the ruling": (
+                    f"The answer that now stands is `answers[{ruling['answer_index']}]`"
+                    if ruling.get("answer_index") in (0, 1)
+                    else ""
+                ),
+                "the challenge": challenge_text,
+                "the original decision's grounds": parent_verdict.get("raw", ""),
+                "the recourse judge's response": ruling.get("raw", ""),
+                **{
+                    f"round {t.round} {t.speaker}'s argument": t.argument
+                    for t in composed.all_turns()
+                },
+                **{
+                    f"round {t.round} {t.speaker}'s Thinking": t.thinking
+                    for t in composed.all_turns()
+                },
+            },
+        )
+    if ruling_object is not None and published is not None:
+        rendered = _rederive(
+            failures,
+            "transcript.md",
+            lambda: render_recourse_record(
+                task, seating, composed,
+                parent_rounds=parent_config.n_rounds,
+                parent_verdict=Verdict(
+                    **{k: v for k, v in parent_verdict.items() if k in _VERDICT_FIELDS}
+                ),
+                challenge=challenge,
+                ruling=ruling_object,
+                judge_cot=config.judge_cot,
+                parent_judge_cot=parent_config.judge_cot,
+            ),
+        )
+        if rendered is not None and published != rendered:
+            notes.append(
+                "transcript.md differs from the document re-rendered from the "
+                "record; the statements it must not get wrong are checked above, "
+                "but its presentation has drifted from this version of the renderer"
+            )
+
+    # --- structural sanity ---------------------------------------------------- #
+    check(
+        len(own.turns) == 2 * config.recourse_rounds,
+        f"expected {2 * config.recourse_rounds} recourse turns, found "
+        f"{len(own.turns)}",
+    )
+    first, last = parent_config.n_rounds + 1, parent_config.n_rounds + config.recourse_rounds
+    stray = [t for t in own.all_turns() if not first <= t.round <= last]
+    check(
+        not stray,
+        f"{len(stray)} recourse turn(s) fall outside rounds {first}–{last}",
+    )
+    for round_number in range(first, last + 1):
+        speakers = sorted(str(t.speaker) for t in own.all_turns() if t.round == round_number)
+        check(
+            speakers == [str(s) for s in ORDER],
+            f"recourse round {round_number} has speakers {speakers}, expected one "
+            f"turn each from {[str(s) for s in ORDER]}",
+        )
+    truncated = [
+        t
+        for t in own.all_turns()
+        if t.finish_reason is not None and t.finish_reason not in NORMAL_FINISH_REASONS
+    ]
+    check(
+        not truncated,
+        f"{len(truncated)} recourse turn(s) stopped on a non-normal finish_reason",
+    )
+    _note_unreferenced_generations(
+        notes,
+        successful=successful,
+        referenced={t.call_id for t in own.all_turns()}
+        | {ruling.get("call_id"), challenge.call_id},
+        repairs=sum(t.repair_attempts for t in own.all_turns())
+        + int(ruling.get("repair_attempts") or 0)
+        + challenge.repair_attempts,
     )
     return failures
 
@@ -624,37 +1473,68 @@ def main(argv: list[str] | None = None) -> int:
 
     notes: list[str] = []
     failures = verify(args.run_dir, notes)
-    for note in notes:
+    # Disclosures are separated out because they are not observations about
+    # audit coverage: they say that this run departed from a guarantee the
+    # project claims, by configuration, and a reader must not have to spot that
+    # among the housekeeping.
+    disclosures = [n for n in notes if "DISCLOSURE" in n]
+    for note in (n for n in notes if "DISCLOSURE" not in n):
         print(f"  note: {note}")
+    if disclosures:
+        print("\nDISCLOSURES — this run departed from the ordinary protocol:")
+        for disclosure in disclosures:
+            print(f"  - {disclosure.split('DISCLOSURE: ', 1)[-1]}")
+        print()
     if failures:
         print(f"FAIL {args.run_dir} — {len(failures)} problem(s):")
         for failure in failures:
             print(f"  - {failure}")
-        if code_has_drifted(manifest) and any(
-            "re-derived" in failure for failure in failures
-        ):
-            print(
-                "\nNOTE: the working tree differs from the one that produced this "
-                "run, so prompt mismatches may reflect a change to the "
-                "prompt-building code rather than an altered record. Check out "
-                f"{manifest.get('git_sha')} (plus run.json's git_diff) and re-run "
-                "this audit to tell the two apart."
-            )
         return 1
 
     print(f"OK {args.run_dir}")
-    print(
-        "  every prompt re-derives from task + config + seating + constitution "
-        "+ prior turns"
-    )
-    print("  every transcript entry re-parses from the recorded response")
-    print("  no private Thinking reached an opponent, the judge, or the public")
-    print("  transcript")
-    print("  the verdict and the judge's stated reasoning both re-parse from the")
-    print("  judge's response, and the verdict resolves through the recorded seating")
-    print("  the transcript's question, answers and positions match task.json and")
+    print("  every argument and decision in the record is what the recorded")
+    print("  response actually says, and the published grounds are the judge's own")
+    print("  no debater's private Thinking reached the opponent or the judge")
+    print("  during the debate")
+    print("  the decision resolves through the recorded seating, and the")
+    print("  transcript's question, answers and positions match task.json and")
     print("  seating.json")
+    print()
+    print("  This says the record is not misreporting itself. Whether the process")
+    print("  is transparent is a question about the published document, which is")
+    print("  for a reader to judge.")
+    if manifest.get("kind") == "recourse":
+        _print_recourse_summary(args.run_dir, manifest)
     return 0
+
+
+def _print_recourse_summary(run_dir: Path, manifest: dict) -> None:
+    """What this recourse did, in the terms a reader of the claim cares about."""
+    ruling = _read_json(run_dir / "ruling.json")
+    parent_verdict = _read_json(run_dir / "parent" / "verdict.json")
+    origin = manifest.get("challenge_origin")
+    described = (
+        f"generated, {manifest.get('challenge_arm')} arm, shown the "
+        f"{manifest.get('challenge_visibility')} record"
+        if origin == "generated"
+        else f"supplied from {manifest.get('challenge_source')}"
+    )
+    print()
+    print(f"  recourse: {manifest.get('recourse_protocol')} protocol")
+    # Reported from the record, not verified — nothing checks the arm against
+    # the run, so this line must not read as a finding.
+    print(f"  challenge, as recorded: {described}")
+    print(
+        f"  ruling: {ruling['ruling']} — the decision for "
+        f"answers[{parent_verdict['answer_index']}] "
+        + (
+            f"was overturned in favour of answers[{ruling['answer_index']}]"
+            if ruling["answer_index"] != parent_verdict["answer_index"]
+            else "stands"
+        )
+    )
+    print(f"  the challenged run verifies too: {' -> '.join(manifest['parent_chain'])}")
+    print("  the ruling re-parses, and the answer that stands follows from it")
 
 
 if __name__ == "__main__":

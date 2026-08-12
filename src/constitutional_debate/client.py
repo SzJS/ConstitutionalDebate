@@ -1,7 +1,8 @@
 """Async OpenRouter chat client.
 
-Written against raw ``httpx`` rather than a vendor SDK because the audit needs
-the byte-exact wire request, and an SDK hides it.
+Written against raw ``httpx`` rather than a vendor SDK because the record keeps
+the full request and response bodies, and an SDK hides them. Those bodies are
+what let the audit show that a published argument is the model's own words.
 
 The retry classification is the load-bearing part. In particular OpenRouter
 reports upstream provider failures as **HTTP 200 with an ``error`` key in the

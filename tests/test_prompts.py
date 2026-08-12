@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from constitutional_debate.config import DebateConfig, load_config
+from constitutional_debate.config import DebateConfig
 from constitutional_debate.prompts import (
     CONSTITUTIONAL,
     OPINION,
@@ -21,61 +21,28 @@ from constitutional_debate.prompts import (
 from constitutional_debate.types import (
     ORDER,
     Context,
-    Seating,
     Speaker,
     Task,
     Transcript,
-    Turn,
 )
 
-CONSTITUTION_TEXT = (
-    "§1.1 A decision must be justified by reasons available to those it binds.\n"
-    "§2.3 Weigh burdens on those least able to avoid them more heavily."
+from helpers import (  # noqa: E402 - tests/ is on sys.path under pytest
+    CONSTITUTION_TEXT,
+    config,
+    full_transcript,
+    make_seating,
+    make_task,
+    make_turn,
 )
 
-def make_task(gold_index: int | None = None) -> Task:
-    return Task(
-        task_id="t1",
-        question="Is it OK to use tax havens?",
-        answers=("It is OK to use tax havens.", "It is NOT OK to use tax havens."),
-        gold_index=gold_index,
-    )
-
-
-def make_seating(choice_order: tuple[int, int] = (0, 1)) -> Seating:
-    return Seating(
-        alice_answer=0, bob_answer=1, choice_order=choice_order, seed_material="fixed"
-    )
-
-
-def config(**kwargs) -> DebateConfig:
-    debate, _ = load_config()
-    return DebateConfig(**{**debate.to_dict(), **kwargs})
-
-
-def make_turn(round: int, speaker: Speaker) -> Turn:
-    return Turn(
-        round=round,
-        speaker=speaker,
-        answer_index=0 if speaker is Speaker.ALICE else 1,
-        thinking=f"SECRET-THINKING-{speaker}-r{round}",
-        argument=f"{speaker} public argument r{round}",
-        word_count=4,
-        parse_mode="strict",
-        repair_attempts=0,
-        finish_reason="stop",
-        has_native_reasoning=False,
-        call_id=f"c{round}{speaker}",
-        raw="",
-    )
-
-
-def full_transcript(n_rounds: int = 3) -> Transcript:
-    transcript = Transcript()
-    for round_number in range(1, n_rounds + 1):
-        for speaker in ORDER:
-            transcript.add(make_turn(round_number, speaker))
-    return transcript
+__all__ = [
+    "CONSTITUTION_TEXT",
+    "config",
+    "full_transcript",
+    "make_seating",
+    "make_task",
+    "make_turn",
+]
 
 
 def all_rendered_prompts(
@@ -183,7 +150,8 @@ def test_which_answer_is_gold_changes_no_prompt():
 
     Both answer texts must of course appear — the debate is about them. What may
     never appear is any signal of *which* one is correct, so flipping gold_index
-    must leave every rendered prompt byte-identical.
+    must leave every rendered prompt identical. Nothing on the record side
+    checks this, so this test is the whole of the guarantee.
     """
     cfg = config()
     gold_first = all_rendered_prompts(make_task(gold_index=0), None, cfg)

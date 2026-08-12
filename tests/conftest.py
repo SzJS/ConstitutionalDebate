@@ -39,10 +39,15 @@ class FakeClient:
         self.in_flight = 0
         self.max_in_flight = 0
 
+    # Roles that have exactly one call per run, so a script can key on the role
+    # alone. Debaters need (round, speaker).
+    SINGLETON_ROLES = frozenset({"judge", "recourse_judge", "challenger"})
+
     @staticmethod
     def key(meta: dict[str, Any]) -> Any:
-        if meta.get("role") == "judge":
-            return "judge"
+        role = meta.get("role")
+        if role in FakeClient.SINGLETON_ROLES:
+            return role
         return (meta.get("round"), meta.get("speaker"))
 
     async def complete(
@@ -78,14 +83,35 @@ class FakeClient:
                 content = self.scripted[key]
             elif meta.get("role") == "judge":
                 content = "Answer: 1"
+            elif meta.get("role") == "recourse_judge":
+                content = (
+                    "The challenge restates the losing case rather than "
+                    "identifying an error in the decision's reasoning.\n\n"
+                    "Ruling: UPHOLD"
+                )
+            elif meta.get("role") == "challenger":
+                content = (
+                    "Thinking: private plan for the challenge — this scratchpad "
+                    "is not part of the challenge and must not reach the judge "
+                    "or either debater.\n\n"
+                    "Argument: The decision rests on a figure neither debater "
+                    "supported."
+                )
             else:
-                # Thinking is deliberately long and distinctive: real ones are,
+                # Thinking is deliberately long, distinctive and *multi-line*:
+                # real ones are all three — the prompts ask for a numbered plan —
                 # and the audit skips containment scanning on sections too short
-                # to be distinguishable from prompt boilerplate.
+                # to be distinguishable from prompt boilerplate. The line break
+                # matters: anything interpolating a turn into a prompt indents
+                # continuation lines, so a single-line fixture would let the
+                # containment scan pass while searching for a string that no
+                # leak could ever produce.
                 content = (
                     f"Thinking: private plan for {meta['speaker']} in round "
-                    f"{meta['round']} — the judge must not see this reasoning, "
-                    f"which sets out my strategy in detail before I argue.\n\n"
+                    f"{meta['round']} — the judge must not see this reasoning.\n"
+                    f"1. Open on the strongest point available to me.\n"
+                    f"2. Concede nothing, and set out my strategy in detail "
+                    f"before I argue.\n\n"
                     f"Argument: {meta['speaker']} argument round {meta['round']}"
                 )
 

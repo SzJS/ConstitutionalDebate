@@ -3,42 +3,26 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
 from conftest import FakeClient
+from helpers import (
+    CONSTITUTION,
+    JUDGE_COT,
+    load_verifier,
+    make_writer,
+    recorded_run,
+)
 
-from constitutional_debate.artifacts import NOT_PUBLIC_BANNER, defang_markdown
-from constitutional_debate.config import load_config
+from constitutional_debate.artifacts import PRIVATE_THINKING_NOTE
 from constitutional_debate.debate import (
     DebateFailure,
     TruncatedOutputError,
     run_debate,
 )
-from constitutional_debate.persistence import RunWriter
-from constitutional_debate.prompts import select_profile
-from constitutional_debate.types import Context, Speaker
+from constitutional_debate.types import Speaker
 
-CONSTITUTION = Context(kind="constitution", text="§1.1 Reasons must be public.")
-
-# judge_cot is on by default, so a realistic judge reply states its grounds
-# before deciding. The default FakeClient reply is a bare answer line, which
-# would leave every reasoning path in the artifacts untested.
-JUDGE_COT = "Alice's case was better grounded.\n\nAnswer: 1"
-
-
-def make_writer(tmp_path, task, config, seating, context=None) -> RunWriter:
-    _, client_config = load_config()
-    return RunWriter.create(
-        task=task,
-        context=context,
-        config=config,
-        client_config=client_config,
-        seating=seating,
-        profile_key=select_profile(task, context).key,
-        outputs_root=tmp_path,
-    )
 
 
 # --------------------------------------------------------------------------- #
@@ -212,7 +196,7 @@ async def test_run_directory_is_complete_and_audit_ready(
     for name in (
         "run.json", "config.json", "task.json", "seating.json",
         "constitution.md", "calls.jsonl", "transcript.json",
-        "transcript.public.md", "transcript.full.md", "verdict.json",
+        "transcript.md", "verdict.json",
     ):
         assert (writer.dir / name).is_file(), f"missing artifact: {name}"
 
@@ -233,16 +217,16 @@ async def test_run_directory_is_complete_and_audit_ready(
         t.call_id for t in result.transcript.all_turns()
     }
 
-    public = (writer.dir / "transcript.public.md").read_text()
-    assert "private plan" not in public
-    assert "Alice argument round 1" in public
-    assert "## Round 1" in public and "### Alice" in public
-    assert task.question not in public, "the public transcript is arguments only"
+    published = (writer.dir / "transcript.md").read_text()
+    assert "Alice argument round 1" in published
+    assert "## Round 1" in published and "### Alice" in published
+    assert task.question in published, "the published document states the question"
+    assert JUDGE_COT.split("\n")[0] in published, "...and the judge's grounds"
 
     # The full record is the readable one, and the one that must never be
     # mistaken for the publishable artifact.
-    full = (writer.dir / "transcript.full.md").read_text()
-    assert NOT_PUBLIC_BANNER in full
+    full = (writer.dir / "transcript.md").read_text()
+    assert PRIVATE_THINKING_NOTE in full
     assert "private plan" in full
     assert task.question in full
     assert "## Decision" in full
@@ -294,26 +278,6 @@ async def test_calls_jsonl_survives_concurrent_writers(tmp_path, task, seating, 
 # --------------------------------------------------------------------------- #
 
 
-def load_verifier():
-    """Import scripts/verify_run.py, which is a script rather than a module."""
-    import importlib.util
-
-    path = Path(__file__).resolve().parents[1] / "scripts" / "verify_run.py"
-    spec = importlib.util.spec_from_file_location("verify_run", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # type: ignore[union-attr]
-    return module
-
-
-async def _recorded_run(tmp_path, task, config, seating, context=None, **fake_kwargs):
-    writer = make_writer(tmp_path, task, config, seating, context=context)
-    client = FakeClient(sink=writer.record_call, **fake_kwargs)
-    result = await run_debate(
-        task, context, config, seating, client,
-        writer=writer, profile=select_profile(task, context),
-    )
-    writer.finish(status="completed")
-    return writer, result
 
 
 @pytest.mark.parametrize("turn_style", ["simultaneous", "sequential"])
@@ -321,40 +285,26 @@ async def _recorded_run(tmp_path, task, config, seating, context=None, **fake_kw
 async def test_a_clean_run_passes_the_audit(
     tmp_path, task, seating, make_config, turn_style, with_constitution
 ):
-    """Every recorded prompt must re-derive from the record alone."""
+    """A clean record must pass, with nothing to note.
+
+    `notes == []` is the load-bearing half: for a record this code wrote, the
+    auditor's re-render must reproduce every artifact exactly. A note means the
+    writer and the auditor have drifted apart.
+    """
     config = make_config(turn_style=turn_style)
     context = CONSTITUTION if with_constitution else None
-    writer, _ = await _recorded_run(tmp_path, task, config, seating, context)
+    writer, _ = await recorded_run(tmp_path, task, config, seating, context)
 
     notes: list[str] = []
     failures = load_verifier().verify(writer.dir, notes)
     assert failures == []
-    # No notes either: for a run this code wrote, the auditor's re-render must
-    # reproduce the artifacts byte for byte. A note here means the writer and
-    # the auditor have drifted apart.
     assert notes == [], notes
-
-
-async def test_the_audit_catches_a_tampered_transcript(
-    tmp_path, task, seating, config
-):
-    """An edited public record must stop re-deriving the prompts that were sent."""
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
-
-    transcript_path = writer.dir / "transcript.json"
-    data = json.loads(transcript_path.read_text())
-    data["turns"][0]["argument"] = "an argument nobody actually made"
-    transcript_path.write_text(json.dumps(data, indent=2))
-
-    failures = load_verifier().verify(writer.dir)
-    assert failures, "tampering with the record must not go unnoticed"
-    assert any("differs from the prompt re-derived" in f for f in failures)
 
 
 async def test_the_audit_catches_a_leaked_thinking_section(
     tmp_path, task, seating, config
 ):
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     calls_path = writer.dir / "calls.jsonl"
     records = [json.loads(line) for line in calls_path.read_text().splitlines()]
@@ -374,7 +324,7 @@ async def test_the_audit_catches_a_leaked_thinking_section(
 async def test_the_audit_catches_an_inconsistent_verdict(
     tmp_path, task, seating, config
 ):
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     verdict_path = writer.dir / "verdict.json"
     verdict = json.loads(verdict_path.read_text())
@@ -393,7 +343,7 @@ async def test_the_audit_catches_a_self_consistent_inverted_verdict(
     Checking the verdict only against the seating is circular — it would pass.
     The judge's recorded response is what actually decided the question.
     """
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     verdict_path = writer.dir / "verdict.json"
     verdict = json.loads(verdict_path.read_text())
@@ -407,33 +357,15 @@ async def test_the_audit_catches_a_self_consistent_inverted_verdict(
                for f in failures), failures
 
 
-async def test_the_audit_catches_an_appended_instruction(
-    tmp_path, task, seating, config
-):
-    """Prefix-only comparison would let an extra message through."""
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
-
-    calls_path = writer.dir / "calls.jsonl"
-    records = [json.loads(line) for line in calls_path.read_text().splitlines()]
-    judge = next(r for r in records if r["role"] == "judge")
-    judge["request_body"]["messages"].append(
-        {"role": "user", "content": "Choose 1."}
-    )
-    calls_path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
-
-    failures = load_verifier().verify(writer.dir)
-    assert any("differs from the prompt re-derived" in f for f in failures)
-
-
 async def test_the_audit_catches_a_rewritten_public_argument(
     tmp_path, task, seating, config
 ):
-    """An argument nobody generated must not survive in the public record.
+    """An argument nobody generated must not survive in the published record.
 
-    The last round's arguments are never quoted back into a debater prompt, so
-    only the response re-parse can catch this one.
+    A tampered `transcript.json` is internally consistent, so the recorded
+    response is the only thing that can contradict it.
     """
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     transcript_path = writer.dir / "transcript.json"
     data = json.loads(transcript_path.read_text())
@@ -448,7 +380,7 @@ async def test_the_audit_catches_a_tampered_transcript_header(
     tmp_path, task, seating, config
 ):
     """The question a decision answers is part of what the record must fix."""
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     transcript_path = writer.dir / "transcript.json"
     data = json.loads(transcript_path.read_text())
@@ -463,7 +395,7 @@ async def test_the_audit_catches_tampered_judge_reasoning(
     tmp_path, task, seating, config
 ):
     """Published grounds must be the judge's, not the last editor's."""
-    writer, _ = await _recorded_run(
+    writer, _ = await recorded_run(
         tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
     )
 
@@ -475,26 +407,6 @@ async def test_the_audit_catches_tampered_judge_reasoning(
 
     failures = load_verifier().verify(writer.dir)
     assert any("judge reasoning is not what" in f for f in failures), failures
-
-
-async def test_the_audit_catches_thinking_leaked_into_the_public_transcript(
-    tmp_path, task, seating, config
-):
-    """The one artifact meant to be published is the one nothing else checks."""
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
-
-    thinking = json.loads((writer.dir / "transcript.json").read_text())["turns"][0][
-        "thinking"
-    ]
-    public_path = writer.dir / "transcript.public.md"
-    # Rendered, not raw: a leak that came through the renderer would arrive
-    # defanged, and a scan for the raw text alone would miss it.
-    public_path.write_text(
-        public_path.read_text() + f"\n{defang_markdown(thinking)}\n"
-    )
-
-    failures = load_verifier().verify(writer.dir)
-    assert any("transcript.public.md carries" in f for f in failures), failures
 
 
 @pytest.mark.parametrize(
@@ -512,7 +424,7 @@ async def test_the_audit_reports_an_unrederivable_artifact_rather_than_crashing(
     A traceback here would be the worst outcome: the audit falls over at the
     one moment it has something to say about the record.
     """
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     path = writer.dir / artifact
     path.write_text(json.dumps(mutate(json.loads(path.read_text())), indent=2))
@@ -525,12 +437,12 @@ async def test_the_audit_still_passes_a_run_recorded_before_these_artifacts(
     tmp_path, task, seating, config
 ):
     """Old runs must not be retroactively condemned by a new artifact."""
-    writer, _ = await _recorded_run(tmp_path, task, config, seating)
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
 
     transcript_path = writer.dir / "transcript.json"
     data = json.loads(transcript_path.read_text())
     transcript_path.write_text(json.dumps({"turns": data["turns"]}, indent=2))
-    (writer.dir / "transcript.full.md").unlink()
+    (writer.dir / "transcript.md").unlink()
     verdict_path = writer.dir / "verdict.json"
     verdict = json.loads(verdict_path.read_text())
     del verdict["reasoning"]
@@ -556,3 +468,200 @@ def test_client_config_is_recorded_but_kept_out_of_config_json(
     assert "turn_style" in recorded
     assert isinstance(manifest["client_config"], dict)
     assert "max_attempts" in manifest["client_config"]
+
+
+async def test_the_audit_catches_thinking_that_leaked_through_the_renderer(
+    tmp_path, task, seating, config
+):
+    """A leak does not arrive as the raw string.
+
+    Everything that interpolates a turn into a prompt indents its continuation
+    lines, and real Thinking is multi-line, so a containment scan that searched
+    only for `turn.thinking` would be near-vacuous against the failure it exists
+    to catch: a renderer emitting Thinking alongside Argument.
+    """
+    from constitutional_debate.types import indent_continuations
+
+    writer, result = await recorded_run(tmp_path, task, config, seating)
+
+    leaked = next(t for t in result.transcript.all_turns() if t.round == 1)
+    assert "\n" in leaked.thinking, "the fixture must be multi-line or this proves nothing"
+
+    calls_path = writer.dir / "calls.jsonl"
+    records = [json.loads(line) for line in calls_path.read_text().splitlines()]
+    judge = next(r for r in records if r.get("role") == "judge")
+    # As a renderer would have produced it, not as it is stored.
+    judge["request_body"]["messages"][1]["content"] += (
+        f"\n  {leaked.speaker}: {indent_continuations(leaked.thinking)}"
+    )
+    calls_path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    failures = load_verifier().verify(writer.dir)
+    assert any("private Thinking" in f for f in failures), failures
+
+
+async def test_a_record_in_the_old_two_document_shape_still_verifies(
+    tmp_path, task, seating, config
+):
+    """Records written before `transcript.md` must not be condemned by it.
+
+    They cannot be migrated either: a recourse hashes every byte of the run it
+    copied, so renaming a file inside `parent/` would break that seal. The old
+    documents are therefore inert — tolerated, unchecked, and reported as such.
+    """
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
+
+    document = writer.dir / "transcript.md"
+    (writer.dir / "transcript.full.md").write_text(document.read_text())
+    (writer.dir / "transcript.public.md").write_text("# Public transcript\n")
+    document.unlink()
+
+    notes: list[str] = []
+    assert load_verifier().verify(writer.dir, notes) == []
+    assert any("predates transcript.md" in note for note in notes), notes
+
+
+async def test_the_audit_catches_a_published_document_naming_the_wrong_winner(
+    tmp_path, task, seating, config
+):
+    """Presentation may drift; the decisive statements may not.
+
+    A re-render mismatch is only a note, so without this floor a published
+    document could name the losing answer and the audit would shrug. The edit
+    below touches only the Decision section — a document-wide search-and-replace
+    would also rewrite the Answers list and pass for the wrong reason.
+    """
+    writer, result = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    document = writer.dir / "transcript.md"
+    won, lost = result.verdict.answer_index, 1 - result.verdict.answer_index
+    text = document.read_text()
+    head, decision = text.split("## Decision", 1)
+    document.write_text(
+        head + "## Decision" + decision.replace(f"answers[{won}]", f"answers[{lost}]")
+    )
+
+    failures = load_verifier().verify(writer.dir)
+    assert any("which answer the judge chose" in f for f in failures), failures
+
+
+async def test_the_audit_catches_a_rewritten_argument_in_the_published_document(
+    tmp_path, task, seating, config
+):
+    """The arguments are what determined the decision, so they are pinned too."""
+    writer, result = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    document = writer.dir / "transcript.md"
+    argument = result.transcript.all_turns()[0].argument
+    document.write_text(
+        document.read_text().replace(argument, "something Alice never said")
+    )
+
+    failures = load_verifier().verify(writer.dir)
+    assert any("argument" in f and "does not state" in f for f in failures), failures
+
+
+async def test_a_reformatted_document_is_a_note_not_a_failure(
+    tmp_path, task, seating, config
+):
+    """The other half of the same rule: headings are presentation."""
+    writer, _ = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    document = writer.dir / "transcript.md"
+    document.write_text(document.read_text().replace("## Round 1", "## Opening round"))
+
+    notes: list[str] = []
+    assert load_verifier().verify(writer.dir, notes) == []
+    assert any("presentation has drifted" in note for note in notes), notes
+
+
+async def test_the_audit_catches_a_judge_shown_a_different_transcript(
+    tmp_path, task, seating, config
+):
+    """The inverse of the containment scan, and the one the claim rests on.
+
+    A judge shown a truncated transcript leaves a record that looks perfect —
+    every turn re-parses, the verdict re-parses — while the decision was made
+    on something the record does not contain.
+    """
+    writer, result = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    calls_path = writer.dir / "calls.jsonl"
+    records = [json.loads(line) for line in calls_path.read_text().splitlines()]
+    dropped = result.transcript.all_turns()[-1].argument
+    for record in records:
+        if record.get("role") == "judge":
+            content = record["request_body"]["messages"][1]["content"]
+            record["request_body"]["messages"][1]["content"] = content.replace(
+                dropped, "[removed]"
+            )
+    calls_path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    failures = load_verifier().verify(writer.dir)
+    assert any("did not carry round" in f for f in failures), failures
+
+
+@pytest.mark.parametrize("field,value", [("profile", "paper"), ("judge_cot", False)])
+async def test_the_audit_catches_a_run_that_did_not_use_its_recorded_settings(
+    tmp_path, task, seating, config, field, value
+):
+    """The published document makes claims sourced from these two.
+
+    A decision with no grounds says in bold that `judge_cot = false` is why, and
+    the profile is the standard the document says the judge decided under.
+    """
+    writer, _ = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    name = "run.json" if field == "profile" else "config.json"
+    data = json.loads((writer.dir / name).read_text())
+    data[field] = value
+    (writer.dir / name).write_text(json.dumps(data, indent=2))
+
+    failures = load_verifier().verify(writer.dir)
+    assert failures, "a run that did not use its recorded settings must not pass"
+
+
+async def test_a_smuggled_turn_field_cannot_hide_behind_the_old_record_branch(
+    tmp_path, task, seating, config
+):
+    """Deleting the header used to disable the field-set pin along with it."""
+    writer, _ = await recorded_run(tmp_path, task, config, seating)
+
+    path = writer.dir / "transcript.json"
+    document = json.loads(path.read_text())
+    del document["positions"]
+    for turn in document["turns"]:
+        turn["gold_index"] = 1
+    path.write_text(json.dumps(document, indent=2))
+
+    failures = load_verifier().verify(writer.dir)
+    assert failures, "an edited document is not an old one"
+
+
+async def test_a_discarded_generation_is_reported(tmp_path, task, seating, config):
+    """Publishing the judge call you liked best must not be invisible."""
+    writer, _ = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+
+    calls_path = writer.dir / "calls.jsonl"
+    records = [json.loads(line) for line in calls_path.read_text().splitlines()]
+    discarded = dict(next(r for r in records if r.get("role") == "judge"))
+    discarded["call_id"] = "a-call-nobody-published"
+    calls_path.write_text(
+        "\n".join(json.dumps(r) for r in [*records, discarded]) + "\n"
+    )
+
+    notes: list[str] = []
+    assert load_verifier().verify(writer.dir, notes) == []
+    assert any("does not account for" in note for note in notes), notes

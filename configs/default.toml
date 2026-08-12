@@ -1,7 +1,8 @@
 # Default configuration.
 #
-# [debate] is the whitebox record: every value here can change the decision, and
-# the resolved table is persisted to <run_dir>/config.json.
+# [debate] is the published record of how the decision was set up: every value
+# here can change the outcome, and the resolved table is persisted to
+# <run_dir>/config.json so a reader can see the conditions it was made under.
 #
 # [client] is operational: retries, timeouts, concurrency. None of it can change
 # the decision, so it is recorded in run.json rather than config.json — two runs
@@ -30,20 +31,43 @@ judge_temperature = 0.0
 # combination that would start hitting this cap, and truncation is fatal.
 max_tokens = 8192
 
-# The protocol's private channel is the "Thinking:" block, which we persist and
-# audit. Native provider reasoning is a second private channel outside the
-# protocol, so it is disabled deliberately rather than left to a provider
-# default. Treat as an experiment variable: "off" | "low" | "medium" | "high".
+# The protocol's private channel is the "Thinking:" block: private during the
+# debate, published afterwards, and recorded either way. Native provider
+# reasoning is a second channel that would be private *permanently* — invisible
+# to the judge, the opponent and the reader alike — so it is disabled
+# deliberately rather than left to a provider default. Anything that can move a
+# decision has to end up somewhere a reader can see it.
+# Treat as an experiment variable: "off" | "low" | "medium" | "high".
 reasoning_effort = "off"
 
 # A documented deviation from the paper's default: protocols.md records judge
 # chain-of-thought as one of Kenton et al.'s null-or-harmful ablations. It is on
 # here for a reason that is not accuracy — a public decision that states no
-# grounds is not a decision anyone can contest, and the verbalised reasoning is
-# what verdict.json and transcript.full.md publish. Pass --no-judge-cot for the
-# paper-faithful predict judge.
+# grounds can be neither read nor contested, and both are the claim under test.
+# The verbalised reasoning is the substance of what transcript.md publishes.
+# Pass --no-judge-cot for the paper-faithful predict judge; it is a control arm,
+# not a configuration a real decision should use.
 judge_cot = true
 seed = 0
+
+# Recourse: how a finished decision is contested. A challenge is an argument that
+# the decision was mistaken; a recourse is a new run that either upholds or
+# overturns it. 0 is the judge-only protocol — the recourse judge rules on the
+# challenge alone. 1, the default, adds one simultaneous round in which the
+# debater whose answer lost argues for the challenge and the winner argues
+# against it, and only then does the judge rule. run.json names the protocol
+# outright rather than leaving a reader to infer it from this number.
+recourse_rounds = 1
+
+# The model that writes a generated challenge. Unset means the debater model: a
+# challenger is a debater by another name, and an asymmetry here would confound
+# the grounded/specious arms with a difference in capability.
+# challenger_model = "deepseek/deepseek-v4-flash"
+
+# Words allowed for a generated challenge. Unset means the profile's word_limit.
+# A challenge has to quote the record back, which 150 words does not leave much
+# room for.
+# challenge_word_limit = 300
 
 # The CONSTITUTIONAL profile asks debaters to cite provisions *and quote their
 # operative words*, which costs words the other profiles do not have to spend.

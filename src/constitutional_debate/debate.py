@@ -14,28 +14,37 @@ from typing import Any
 
 from .client import ChatClient, Completion
 from .config import DebateConfig
-from .persistence import RunWriter
+from .persistence import RunRecord, RunWriter
 from .prompts import (
+    PROFILES,
     MalformedOutputError,
+    RecourseFrame,
     TaskProfile,
+    build_challenger_messages,
     build_debater_messages,
     build_judge_messages,
     build_repair_messages,
     parse_debater_output,
     parse_judge_output,
+    parse_ruling_output,
     select_profile,
 )
 from .types import (
     ORDER,
+    Challenge,
     Context,
     DebateResult,
+    RecourseResult,
+    Ruling,
     Seating,
     Speaker,
     Task,
     Transcript,
     Turn,
     Verdict,
+    compose_transcript,
     count_words,
+    resolve_ruling,
 )
 
 log = logging.getLogger(__name__)
@@ -99,11 +108,13 @@ async def _run_round(
     round_number: int,
     profile: TaskProfile,
     writer: RunWriter | None,
+    recourse: RecourseFrame | None = None,
 ) -> None:
     async def turn_for(speaker: Speaker) -> Turn:
         return await _debater_turn(
             task, context, config, seating, client, transcript,
             speaker=speaker, round_number=round_number, profile=profile,
+            recourse=recourse,
         )
 
     if config.turn_style == "simultaneous":
@@ -234,10 +245,11 @@ async def _debater_turn(
     speaker: Speaker,
     round_number: int,
     profile: TaskProfile,
+    recourse: RecourseFrame | None = None,
 ) -> Turn:
     messages = build_debater_messages(
         task, context, seating, config, transcript,
-        speaker=speaker, round=round_number, profile=profile,
+        speaker=speaker, round=round_number, profile=profile, recourse=recourse,
     )
     word_limit = config.word_limit_for(profile.key)
     (thinking, argument, parse_mode), completion, repairs = await _complete_with_repair(
@@ -250,7 +262,7 @@ async def _debater_turn(
             "role": "debater",
             "speaker": str(speaker),
             "round": round_number,
-            "purpose": "turn",
+            "purpose": "turn" if recourse is None else "recourse_turn",
         },
         parse=parse_debater_output,
         role="debater",
@@ -325,3 +337,192 @@ async def _judge(
     if writer is not None:
         writer.record_verdict(verdict, transcript)
     return verdict
+
+
+# --------------------------------------------------------------------------- #
+# recourse
+# --------------------------------------------------------------------------- #
+
+
+async def run_recourse(
+    parent: RunRecord,
+    challenge: Challenge,
+    config: DebateConfig,
+    client: ChatClient,
+    *,
+    writer: RunWriter,
+    profile: TaskProfile | None = None,
+) -> RecourseResult:
+    """Contest one completed decision, to a ruling.
+
+    The two protocols are one code path. ``recourse_rounds = 0`` — the
+    judge-only protocol — simply runs the loop below zero times, so there is no
+    branch anywhere that could let the two drift apart in anything but the
+    number of exchanges.
+
+    ``challenge`` arrives either already carrying its text (supplied from a
+    file) or as a specification to generate one, in which case the first call of
+    the run writes it.
+    """
+    profile = profile or PROFILES[parent.profile_key]
+    # One transcript for the whole run, carrying the parent's turns and this
+    # run's. The writer is what knows which of them are its own to record.
+    transcript = compose_transcript(parent.transcript, Transcript())
+
+    if challenge.origin == "generated":
+        challenge = await _generate_challenge(
+            parent, config, client, transcript, challenge=challenge, profile=profile
+        )
+    # Recorded before any round runs, so a recourse that fails halfway still
+    # says on disk what was being contested.
+    writer.record_challenge(challenge, transcript)
+
+    frame = RecourseFrame.from_record(
+        challenge_text=challenge.text,
+        parent_answer_index=parent.verdict.answer_index,
+        parent_verdict_raw=parent.verdict.raw,
+        parent_rounds=parent.config.n_rounds,
+        n_recourse_rounds=config.recourse_rounds,
+    )
+
+    for offset in range(1, config.recourse_rounds + 1):
+        await _run_round(
+            parent.task, parent.context, config, parent.seating, client, transcript,
+            round_number=parent.config.n_rounds + offset,
+            profile=profile, writer=writer, recourse=frame,
+        )
+
+    ruling = await _recourse_judge(
+        parent, config, client, transcript, frame=frame, profile=profile, writer=writer
+    )
+    _, own = transcript.split_at(parent.config.n_rounds)
+    return RecourseResult(
+        run_id=writer.run_id,
+        parent_run_id=parent.run_id,
+        task=parent.task,
+        seating=parent.seating,
+        challenge=challenge,
+        transcript=own,
+        ruling=ruling,
+    )
+
+
+async def _generate_challenge(
+    parent: RunRecord,
+    config: DebateConfig,
+    client: ChatClient,
+    transcript: Transcript,
+    *,
+    challenge: Challenge,
+    profile: TaskProfile,
+) -> Challenge:
+    """Write a challenge to the parent's decision, and record how.
+
+    Reuses the debater's ``Thinking:`` / ``Argument:`` output format, so the
+    generator gets a private scratchpad, and the existing parser, repair path,
+    response re-parse and private-reasoning containment scan all apply to it
+    without a line of new machinery.
+    """
+    messages = build_challenger_messages(
+        parent.task, parent.context, parent.seating, config, transcript,
+        arm=challenge.arm,
+        visibility=challenge.visibility,
+        decision_answer_index=parent.verdict.answer_index,
+        decision_grounds=parent.verdict.raw,
+        profile=profile,
+    )
+    model = config.challenger_model_for()
+    word_limit = config.challenge_word_limit_for(profile.key)
+    (thinking, text, parse_mode), completion, repairs = await _complete_with_repair(
+        client,
+        model=model,
+        messages=messages,
+        temperature=config.debater_temperature,
+        config=config,
+        meta={
+            "role": "challenger",
+            "speaker": None,
+            "round": None,
+            "purpose": "challenge",
+        },
+        parse=parse_debater_output,
+        role="challenger",
+        word_limit=word_limit,
+    )
+    words = count_words(text)
+    if words > word_limit:
+        log.warning(
+            "the generated challenge ran to %d words against a %d-word limit",
+            words, word_limit,
+        )
+    log.info("generated a %s challenge (%d words)", challenge.arm, words)
+    return Challenge(
+        text=text,
+        origin="generated",
+        source=None,
+        arm=challenge.arm,
+        visibility=challenge.visibility,
+        model=model,
+        call_id=completion.call_id,
+        finish_reason=completion.finish_reason,
+        parse_mode=parse_mode,
+        repair_attempts=repairs,
+        thinking=thinking,
+        raw=completion.content,
+    )
+
+
+async def _recourse_judge(
+    parent: RunRecord,
+    config: DebateConfig,
+    client: ChatClient,
+    transcript: Transcript,
+    *,
+    frame: RecourseFrame,
+    profile: TaskProfile,
+    writer: RunWriter | None,
+) -> Ruling:
+    messages = build_judge_messages(
+        parent.task, parent.context, parent.seating, config, transcript,
+        profile=profile, recourse=frame,
+    )
+    (word, reasoning, parse_mode), completion, repairs = await _complete_with_repair(
+        client,
+        model=config.judge_model,
+        messages=messages,
+        temperature=config.judge_temperature,
+        config=config,
+        meta={
+            "role": "recourse_judge",
+            "speaker": None,
+            "round": None,
+            "purpose": "rule",
+        },
+        parse=parse_ruling_output,
+        role="recourse_judge",
+        word_limit=config.word_limit_for(profile.key),
+    )
+
+    # Derived, never parsed: the judge rules on the challenge, and which answer
+    # that leaves standing follows from the ruling and the original decision.
+    answer_index = resolve_ruling(word, parent.verdict.answer_index)
+    gold = parent.task.gold_index
+    ruling = Ruling(
+        ruling=word,
+        upheld=word == "UPHOLD",
+        protocol=frame.protocol,
+        parent_answer_index=parent.verdict.answer_index,
+        parent_choice=parent.verdict.choice,
+        answer_index=answer_index,
+        choice=parent.seating.choice_for_answer(answer_index),
+        parse_mode=parse_mode if repairs == 0 else f"{parse_mode}_after_repair",
+        raw=completion.content,
+        call_id=completion.call_id,
+        finish_reason=completion.finish_reason,
+        correct=None if gold is None else answer_index == gold,
+        repair_attempts=repairs,
+        reasoning=reasoning,
+    )
+    if writer is not None:
+        writer.record_ruling(ruling, transcript)
+    return ruling

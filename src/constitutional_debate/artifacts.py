@@ -1,13 +1,17 @@
-"""Human-readable renderings of a recorded run.
+"""The readable record of a decision.
+
+``transcript.md`` is what this module exists to produce, and it is the artifact
+the project's claim rests on: the question, the arguments, the debaters'
+reasoning, the decision, and the grounds the judge gave for it, in one document
+a person can read. Everything else in the run directory is machinery.
 
 Two invariants a reader of this module needs:
 
 1. Nothing here may reach a prompt.  ``types.render_transcript`` is the
-   *model-facing* render — it is interpolated into every debater and judge
-   request, so ``scripts/verify_run.py`` re-derives it byte for byte and any
-   change to it invalidates every recorded run.  These renderers are derived
-   artifacts: no prompt depends on them, which is exactly what lets them be
-   formatted for a human.
+   *model-facing* render, interpolated into every debater and judge request.
+   Keeping the two apart is what stops a change to a published document altering
+   what a participant was shown — a presentation edit must never be able to
+   reach into the debate it describes.
 
 2. ``types.indent_continuations`` is deliberately *not* reused here.  Its two
    effects are both wrong for markdown: four-space indentation means "code
@@ -22,16 +26,31 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .prompts import response_states_grounds
-from .types import ORDER, Seating, Task, Transcript, Turn, Verdict
+from .prompts import RULING_RE, response_states_grounds
+from .types import (
+    ORDER,
+    Challenge,
+    Ruling,
+    Seating,
+    Task,
+    Transcript,
+    Turn,
+    Verdict,
+)
 
-NOT_PUBLIC_BANNER = (
-    "> **This is not the public record.** It contains each debater's private "
-    "`Thinking` section, which the judge and the opposing debater never saw. "
-    "`transcript.public.md` is the public artifact."
+PRIVATE_THINKING_NOTE = (
+    "> **The `Thinking` sections below were private during the debate.** Neither "
+    "the judge nor the opposing debater ever saw them, and that is what makes "
+    "the arguments the debate. They are published here afterwards because a "
+    "record of a public decision should let a reader see everything that went "
+    "into it, including what a debater worked out and chose not to say."
 )
 
 TRANSCRIPT_DOC_KEYS = frozenset({"question", "answers", "positions", "turns"})
+# A separate constant, not an extension of the one above: the audit pins the
+# debate document's key set exactly, and widening it would let a recourse-only
+# key appear unnoticed in an ordinary run's transcript.json.
+RECOURSE_TRANSCRIPT_DOC_KEYS = TRANSCRIPT_DOC_KEYS | {"parent_run_id", "parent_rounds"}
 
 # Block structure is line-leading, so one line-anchored rule covers all of it.
 # Worst first: an unclosed ``` fence swallows the remainder of the document —
@@ -84,8 +103,13 @@ def defang_markdown(text: str) -> str:
 
 
 def judge_choice_for_answer(seating: Seating, answer_index: int) -> int:
-    """The judge's choice number (1 or 2) that showed this answer."""
-    return seating.choice_order.index(answer_index) + 1
+    """The judge's choice number (1 or 2) that showed this answer.
+
+    Kept as a module-level name because it reads better at the call sites below
+    than the method it now delegates to; ``Seating`` owns the mapping because
+    ``prompts`` needs it too and may not import this module.
+    """
+    return seating.choice_for_answer(answer_index)
 
 
 def positions(task: Task, seating: Seating) -> dict[str, dict[str, Any]]:
@@ -125,8 +149,14 @@ def transcript_document(
     }
 
 
-def _rounds(turns: list[Turn], *, thinking: bool) -> list[str]:
-    """Render turns as ``## Round N`` / ``### Speaker`` sections."""
+def _rounds(turns: list[Turn]) -> list[str]:
+    """Render turns as ``## Round N`` / ``### Speaker`` sections.
+
+    Both halves of every turn. The ``Thinking`` was private *during* the debate
+    and the ``Argument`` is what the judge decided on; the document says which
+    is which, because a reader who could not tell them apart would credit the
+    judge with reasoning it never saw.
+    """
     blocks: list[str] = []
     for round_number in sorted({t.round for t in turns}):
         blocks.append(f"## Round {round_number}")
@@ -134,33 +164,15 @@ def _rounds(turns: list[Turn], *, thinking: bool) -> list[str]:
             (t for t in turns if t.round == round_number),
             key=lambda t: t.speaker.position,
         ):
-            blocks.append(f"### {turn.speaker}")
-            if thinking:
-                blocks.append(
-                    "**Thinking** (private — neither the judge nor the opponent "
-                    "ever saw this)"
-                )
-                blocks.append(
-                    defang_markdown(turn.thinking.strip()) or "_(none recorded)_"
-                )
-                blocks.append("**Argument** (public)")
-            blocks.append(defang_markdown(turn.argument))
+            blocks += [
+                f"### {turn.speaker}",
+                "**Thinking** (private during the debate — neither the judge nor "
+                "the opponent ever saw this)",
+                defang_markdown(turn.thinking.strip()) or "_(none recorded)_",
+                "**Argument** (what the judge read)",
+                defang_markdown(turn.argument),
+            ]
     return blocks
-
-
-def render_public_markdown(transcript: Transcript) -> str:
-    """The public record: arguments only, no question, no decision.
-
-    A re-render, not a byte-copy of what the judge saw — the byte-exact artifact
-    is the judge request body in ``calls.jsonl``.
-    """
-    blocks = [
-        "# Public transcript",
-        "Arguments only. Debaters' private `Thinking` sections are excluded by "
-        "protocol and are not part of the public record.",
-        *_rounds(transcript.all_turns(), thinking=False),
-    ]
-    return "\n\n".join(blocks) + "\n"
 
 
 def _grounds_caveat(verdict: Verdict, judge_cot: bool) -> str:
@@ -190,17 +202,29 @@ def _grounds_caveat(verdict: Verdict, judge_cot: bool) -> str:
 
 
 def _decision(
-    task: Task, seating: Seating, verdict: Verdict | None, judge_cot: bool
+    task: Task,
+    seating: Seating,
+    verdict: Verdict | None,
+    judge_cot: bool,
+    *,
+    heading: str = "## Decision",
 ) -> list[str]:
+    """Render a verdict as a section.
+
+    ``heading`` exists for the recourse document, where this block sits above a
+    second decision — the ruling on the challenge to it. Two sections headed
+    "Decision" in one document, meaning different things, would be worse than
+    no heading at all.
+    """
     if verdict is None:
         return [
-            "## Decision",
+            heading,
             "No verdict recorded — this run did not reach a decision. See "
             "`run.json` for its status.",
         ]
     winner = seating.speaker_for_choice(verdict.choice)
     blocks = [
-        "## Decision",
+        heading,
         f"The judge chose **{verdict.choice}**: "
         f"{defang_markdown(task.answers[verdict.answer_index])}",
         f"That is `answers[{verdict.answer_index}]`, the answer {winner} defended.",
@@ -230,27 +254,160 @@ def _decision(
     return blocks
 
 
-def render_full_markdown(
+def _challenge_provenance(challenge: Challenge) -> str:
+    """State where a challenge came from, before quoting a word of it.
+
+    A generated ``specious`` challenge is written to read as a serious
+    objection — that is its job — and it is stored verbatim, so the only place a
+    reader can learn what it is, is here. Saying so is not editorialising; a
+    document that presents a deliberately ungrounded argument as an ordinary
+    challenge would be misleading its reader.
+    """
+    if challenge.origin == "file":
+        source = f" from `{challenge.source}`" if challenge.source else ""
+        return f"Supplied{source}."
+
+    lines = [
+        f"Generated by the `{challenge.arm}` arm of the challenge generator "
+        f"(`{challenge.model}`)."
+    ]
+    if challenge.visibility == "full":
+        lines.append(
+            "It was shown the **full** record, including the debaters' private "
+            "`Thinking` sections, which the judge who decided this question "
+            "never saw."
+        )
+    else:
+        lines.append("It was shown the public record and the decision, nothing more.")
+    if challenge.arm == "specious":
+        lines.append(
+            "**The generator was instructed to write a challenge that is not "
+            "grounded in the record** — persuasive in form, identifying no "
+            "actual error. It is an input to a test of whether the process can "
+            "tell a grounded objection from a merely rhetorical one, and it "
+            "should not be read as a genuine objection to this decision."
+        )
+    return " ".join(lines)
+
+
+def _challenge_section(challenge: Challenge) -> list[str]:
+    return [
+        "## The challenge",
+        _challenge_provenance(challenge),
+        defang_markdown(challenge.text.strip()),
+    ]
+
+
+def _ruling(task: Task, ruling: Ruling | None, judge_cot: bool) -> list[str]:
+    if ruling is None:
+        return [
+            "## Ruling",
+            "No ruling recorded — this recourse did not reach one. See "
+            "`run.json` for its status.",
+        ]
+    outcome = "UPHELD" if ruling.upheld else "OVERTURNED"
+    blocks = [
+        "## Ruling",
+        f"The challenge was rejected and the decision **{outcome}**."
+        if ruling.upheld
+        else f"The challenge succeeded and the decision was **{outcome}**.",
+        f"The answer that now stands is `answers[{ruling.answer_index}]` (the "
+        f"judge's choice {ruling.choice}): "
+        f"{defang_markdown(task.answers[ruling.answer_index])}",
+    ]
+    if ruling.changed_the_decision:
+        blocks.append(
+            f"This **changed** the decision, which had gone to "
+            f"`answers[{ruling.parent_answer_index}]`."
+        )
+    else:
+        blocks.append("This left the original decision standing.")
+    if ruling.correct is not None:
+        graded = "correct" if ruling.correct else "incorrect"
+        blocks.append(f"Against the task's gold answer, this is **{graded}**.")
+    if ruling.repair_attempts:
+        blocks.append(
+            "The recourse judge's first response was not in the required "
+            "format, so this ruling came from a format-repair reply. The first "
+            "response is in `calls.jsonl`, under this ruling's `call_id`."
+        )
+
+    blocks.append("### The recourse judge's response")
+    if ruling.raw.strip():
+        blocks.append(defang_markdown(ruling.raw.strip()))
+    if not response_states_grounds(ruling.raw, decision_re=RULING_RE):
+        blocks.append(_ruling_grounds_caveat(ruling, judge_cot))
+    return blocks
+
+
+def _ruling_grounds_caveat(ruling: Ruling, judge_cot: bool) -> str:
+    """Why this ruling states no grounds. Mirrors ``_grounds_caveat``."""
+    if ruling.repair_attempts:
+        return (
+            "**No grounds are recorded**: the format-repair reply above asks "
+            "for the ruling line alone."
+        )
+    if not judge_cot:
+        return (
+            "**No grounds are recorded, by configuration.** This run set "
+            "`judge_cot = false`, so the recourse judge was instructed to give "
+            "its ruling and nothing else. A ruling that states no grounds "
+            "cannot itself be contested; re-run without `--no-judge-cot`."
+        )
+    return (
+        "**No grounds are recorded.** The recourse judge was asked to explain "
+        "itself first and ruled without doing so."
+    )
+
+
+def recourse_transcript_document(
     task: Task,
     seating: Seating,
     transcript: Transcript,
-    verdict: Verdict | None = None,
     *,
-    judge_cot: bool,
-) -> str:
-    """The whole record in one document: question, debate, thinking, decision.
+    parent_run_id: str,
+    parent_rounds: int,
+) -> dict[str, Any]:
+    """The recourse ``transcript.json``: this run's turns, and what came before.
 
-    ``judge_cot`` is the run's setting, not a rendering option: it is the
-    difference between a judge that had nothing to say and one that was told not
-    to say anything, and a decision document that cannot tell a reader which
-    should not exist.  Required rather than defaulted for that reason — a wrong
-    guess here would not degrade the document, it would make it state something
-    untrue.
+    Only the recourse's own turns. The parent's live in ``parent/transcript.json``
+    and are verified there — duplicating them here would put the same turn in two
+    places that can disagree, and would break the join from a turn to the wire
+    log that produced it, which for an inherited turn is the parent's.
+    """
+    return {
+        **transcript_document(task, seating, transcript),
+        "parent_run_id": parent_run_id,
+        "parent_rounds": parent_rounds,
+    }
+
+
+def render_recourse_record(
+    task: Task,
+    seating: Seating,
+    composed: Transcript,
+    *,
+    parent_rounds: int,
+    parent_verdict: Verdict,
+    challenge: Challenge,
+    ruling: Ruling | None = None,
+    judge_cot: bool,
+    parent_judge_cot: bool,
+) -> str:
+    """The whole affair in one document: debate, decision, challenge, ruling.
+
+    ``parent_judge_cot`` is separate from ``judge_cot`` for the same reason
+    ``judge_cot`` is required at all: a silent original decision and a silent
+    ruling have different causes, and a document that cannot tell a reader which
+    it is looking at should not exist. The two are usually equal and must not be
+    assumed to be.
     """
     position_map = positions(task, seating)
+    before, after = composed.split_at(parent_rounds)
+    parent_turns, recourse_turns = before.all_turns(), after.all_turns()
     blocks = [
-        "# Full transcript",
-        NOT_PUBLIC_BANNER,
+        "# The decision, and the challenge to it",
+        PRIVATE_THINKING_NOTE,
         "## Question",
         defang_markdown(task.question),
         "## Answers",
@@ -269,7 +426,67 @@ def render_full_markdown(
             f"{defang_markdown(position['answer'])}"
             for speaker, position in position_map.items()
         ),
-        *_rounds(transcript.all_turns(), thinking=True),
+        *_rounds(parent_turns),
+        # The original decision, rendered by the same helper that renders it in
+        # the parent's own document, so the two cannot come to differ.
+        *_decision(
+            task, seating, parent_verdict, parent_judge_cot,
+            heading="## The original decision",
+        ),
+        *_challenge_section(challenge),
+    ]
+    if recourse_turns:
+        blocks += _rounds(recourse_turns)
+    else:
+        blocks.append(
+            "_No further rounds: this recourse ran the judge-only protocol "
+            "(`recourse_rounds = 0`), in which the judge rules on the challenge "
+            "without a further exchange._"
+        )
+    blocks += _ruling(task, ruling, judge_cot)
+    return "\n\n".join(blocks) + "\n"
+
+
+def render_decision_record(
+    task: Task,
+    seating: Seating,
+    transcript: Transcript,
+    verdict: Verdict | None = None,
+    *,
+    judge_cot: bool,
+) -> str:
+    """The whole record in one document: question, debate, thinking, decision.
+
+    ``judge_cot`` is the run's setting, not a rendering option: it is the
+    difference between a judge that had nothing to say and one that was told not
+    to say anything, and a decision document that cannot tell a reader which
+    should not exist.  Required rather than defaulted for that reason — a wrong
+    guess here would not degrade the document, it would make it state something
+    untrue.
+    """
+    position_map = positions(task, seating)
+    blocks = [
+        "# The decision",
+        PRIVATE_THINKING_NOTE,
+        "## Question",
+        defang_markdown(task.question),
+        "## Answers",
+        "\n".join(
+            f"- `answers[{index}]` (the judge saw this as choice "
+            f"{judge_choice_for_answer(seating, index)}): "
+            f"{defang_markdown(answer)}"
+            for index, answer in enumerate(task.answers)
+        ),
+        "The order above is the task's own; the judge's choice order was "
+        "randomised independently.",
+        "## Positions",
+        "\n".join(
+            f"- **{speaker}** argues for `answers[{position['answer_index']}]` "
+            f"(the judge's choice {position['judge_choice']}): "
+            f"{defang_markdown(position['answer'])}"
+            for speaker, position in position_map.items()
+        ),
+        *_rounds(transcript.all_turns()),
         *_decision(task, seating, verdict, judge_cot),
     ]
     return "\n\n".join(blocks) + "\n"

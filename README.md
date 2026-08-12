@@ -5,11 +5,13 @@ affect many people. The claim under test is that such a process can be
 **whitebox** — the public record determines the decision — and **contestable** —
 valid challenges change the decision, specious ones do not.
 
-This repository currently implements the debate protocol itself: a reimplementation
-of Kenton et al. 2024, *On scalable oversight with weak LLMs judging strong LLMs*
+It implements two things: the **debate protocol** — a reimplementation of Kenton et
+al. 2024, *On scalable oversight with weak LLMs judging strong LLMs*
 ([arXiv:2407.04622](https://arxiv.org/abs/2407.04622)), extended to unverifiable
-questions and to an optional constitution. Prompt-only: prompts, an async
-orchestration layer, and a record you can audit. No finetuning, no RL.
+questions and to an optional constitution — and a **recourse mechanism**, by which a
+recorded decision can be challenged and either upheld or overturned. Prompt-only:
+prompts, an async orchestration layer, and a record you can audit. No finetuning,
+no RL.
 
 ## Quickstart
 
@@ -28,6 +30,11 @@ uv run constitutional-debate --task data/tasks/habermas/habermas-S173963710.json
 
 # audit the result
 uv run python scripts/verify_run.py outputs/runs/<run_id>
+
+# contest the decision, and audit that too
+uv run constitutional-recourse --run outputs/runs/<run_id> --generate grounded \
+  2>&1 | tee outputs/recourse.log
+uv run python scripts/verify_run.py outputs/runs/<recourse_id>
 ```
 
 Useful flags: `--turn-style sequential`, `--constitution constitutions/minimal.md`,
@@ -73,64 +80,152 @@ the file is the intended way to run the same question under a different standard
 When no constitution is supplied, no constitution-specific string appears in any
 prompt — that is an invariant with a test, not a convention.
 
+## Recourse: contesting a decision
+
+A completed run can be **challenged**: an argument that the decision was mistaken,
+pointing at an error in the judge's reasoning or a consideration it overlooked. A
+**recourse** is a new run that puts that challenge to a fresh judge and either
+upholds or overturns the decision.
+
+```bash
+# supply a challenge, or generate one under a named arm
+constitutional-recourse --run outputs/runs/<run_id> --challenge my_challenge.md
+constitutional-recourse --run outputs/runs/<run_id> --generate specious
+```
+
+**The judge rules on the challenge, not on the question.** It answers
+`Ruling: <UPHOLD|OVERTURN>`, and which answer stands afterwards is *derived* —
+unchanged if upheld, flipped if overturned. That asymmetry is the point: the burden
+lies with the challenge, so a specious one has to actively win to change anything.
+Deciding the question afresh instead would let ordinary verdict instability (see the
+word-limit limitation below) masquerade as successful contestation.
+
+**Two protocols, one code path.** `recourse_rounds = 0` is the judge-only protocol:
+the judge rules on the challenge alone. `1`, the default, adds a round of debate
+first — the debater whose answer **lost** argues that the challenge is well founded,
+the winner argues that it is not, both still defending their originally assigned
+answers. Any `N` follows. `run.json` names the protocol (`judge_only` / `debate`)
+rather than leaving a reader to infer it from the round count.
+
+Recourse rounds inherit the parent's `turn_style`, and `--turn-style sequential`
+overrides it — it is reasonable to contest a simultaneous debate sequentially, so
+that the side defending the decision answers the case against it.
+
+**Generated challenges have arms**, which is what makes contestability measurable:
+`grounded` (find a real error and cite the record), `specious` (persuasive in form,
+identifying no actual error), `neutral` (no steer). The claim under test is the gap
+in overturn rate between the first two. The arm reaches the generator's prompt and
+nothing else — a judge shown the label would be grading the label.
+
+**One audit covers the whole affair.** The challenged run is copied into
+`<recourse>/parent/` before the first call, so `verify_run.py` over a recourse
+directory checks the original debate *and* the contest of it.
+
 ## What the whitebox claim actually is
 
-**Prompt construction is a pure function of `(task, config, seating, constitution,
-prior turns)`** — all five of which are in the run directory. So a third party can
-re-derive every request that was sent and byte-compare it against the wire log.
-`scripts/verify_run.py` does exactly that, and checks that:
+**A reader of the published record can see what determined the decision.** That is
+the whole of it. `transcript.md` states the question, both answers, who argued for
+which, every argument, every debater's reasoning, the decision, and the grounds the
+judge gave for it — and, where a decision was contested, the challenge, the further
+round, and the ruling. Nothing that moved the outcome sits outside that document.
 
-- no prompt differs from the one re-derived from the record;
-- no debater's private `Thinking` reached the opponent, the judge, or the published
-  `transcript.public.md`;
-- whichever answer is gold left no trace in any prompt;
-- the constitution, if any, reached both debaters and the judge;
-- the verdict resolves through the recorded seating;
-- the reasoning published alongside the verdict is what the judge's recorded response
-  parses to, not what someone later wrote there;
-- the question, answers and positions restated in `transcript.json` agree with
-  `task.json` and `seating.json`.
+Three design decisions do the work, and each of them is a place the claim could
+have failed:
 
-Note that **prior turns are an input**. Round-2 and round-3 prompts embed earlier
-generations, so "a pure function of task and config" would be false and an auditor
-following it would fail at round 2.
+- **The judge decides on the transcript, not on what it already believed.** Asking a
+  model who is *right* about tax havens invites it to answer from its trained
+  priors, which no reader could inspect. The `opinion` profile asks instead who made
+  the stronger case *on the arguments given*, and the constitutional profile binds
+  the judge to a published standard.
+- **The judge states its grounds.** `judge_cot` is on by default — a deviation from
+  Kenton et al., who found chain-of-thought null-to-harmful for accuracy. Accuracy
+  is not the reason: a decision that states no grounds cannot be read, and cannot be
+  contested.
+- **There is no invisible channel.** `reasoning_effort` defaults to `off`, so the
+  provider's own hidden reasoning is not in play; the debaters' `Thinking` is a
+  channel the protocol defines, and it is published. Everything that can change a
+  decision is in `config.json`, which is part of the record.
 
-**What is not reproducible: the generations.** Sampling is not deterministic, and
-OpenRouter's `seed` is best-effort and ignored by some providers. In one six-call
-debate we observed the same model id served by five different providers
+**This is not a claim that the run is reproducible.** Sampling is not deterministic,
+and OpenRouter's `seed` is best-effort and ignored by some providers — in one
+six-call debate we observed the same model id served by five different providers
 (GMICloud, DigitalOcean, Morph, SiliconFlow, Phala), so each call records its
-resolved `provider` and `response_model` to keep that confound visible. The honest
-claim is **auditable and deterministic in prompt construction, not bit-reproducible
-in generation**.
+resolved `provider` and `response_model` to keep that confound visible. Re-running
+this question would produce a different debate. What a reader gets is not the
+ability to reproduce the decision but the ability to *read* it.
 
-`verify_run.py` also reports when the working tree differs from the one that
-produced a run, since a prompt mismatch can mean either an altered record or a
-changed template, and those mean opposite things.
+### What the audit does, and does not, add
+
+`scripts/verify_run.py` checks the one thing a reader cannot check by eye: that the
+published document is not **misreporting** the run it describes. It verifies that
+every argument and decision is what the recorded response actually says, that the
+published grounds are the judge's own, that no debater's `Thinking` reached the
+opponent or the judge *during* the debate, that the constitution reached everyone it
+binds, that a challenge is the one actually put to the judge, and that the answer
+left standing follows from the ruling.
+
+It also checks that the requests carried what the record says they did — the
+constitution, the challenge, the decision under challenge, the arguments the judge
+decided on, and the framing the recorded profile and `judge_cot` select — and that
+`transcript.md` states the question, every argument, every `Thinking` section, which
+answer stands, and the grounds. Reformatting the document is a note; getting one of
+those wrong is a failure.
+
+What it does not do is compare a request against the prompt this code would have
+built for it. An instruction inserted into a request alongside the expected content
+would pass, and so would a mislabelled challenge arm. Prompt *templates* are
+covered by property tests in `tests/test_prompts.py` — no golden snapshots — so an
+edit to a template is caught only if it violates one of those properties.
 
 ## Run records
 
 ```
 outputs/runs/<run_id>/
-  run.json               status, timings, git sha + diff, client config, provenance
-  config.json  task.json  seating.json  constitution.md    <- the audit inputs
+  transcript.md          THE PUBLISHED RECORD — the question, the answers, who
+                         argued which, every argument, the debaters' Thinking, and
+                         the decision with the judge's own words
+  run.json               status, timings, git sha, client config, provenance
+  config.json  task.json  seating.json  constitution.md    <- the inputs
   calls.jsonl            one line per HTTP attempt: full request and response
                          bodies, provider, resolved model, finish_reason, usage
-  transcript.json        audit artifact — the question, the answers, who defends
-                         which, and every turn including private Thinking
-  transcript.public.md   public record — arguments only
-  transcript.full.md     the whole record in one readable document: question,
-                         positions, arguments, private Thinking, and the decision
-                         with the judge's own words. NOT publishable — it carries
-                         the Thinking sections
+  transcript.json        the same turns as structured data, for tooling
   verdict.json           raw text, choice, resolved answer index, the judge's
                          stated reasoning, correctness
   run.log
 ```
 
-The markdown files are re-renders, not byte-copies of what the judge saw; the
-byte-exact artifact is the judge request body in `calls.jsonl`. Their escaping
-differs too — the judge-facing render defends a tagged plaintext document, these
-defend markdown structure.
+A recourse directory is the same shape, plus:
+
+```
+outputs/runs/<run_id>-recourse/
+  challenge.md           the challenge verbatim; the audit checks the requests
+                         actually carried it
+  challenge.json         its provenance: supplied or generated, under which arm,
+                         shown how much of the record, and the generator's Thinking
+  ruling.json            UPHOLD/OVERTURN, the derived answer index, the grounds
+  transcript.json        this run's turns only, plus parent_run_id/parent_rounds —
+                         the parent's turns live in parent/ and nowhere else
+  transcript.md          debate -> decision -> challenge -> recourse rounds -> ruling
+  parent/                a verbatim copy of the challenged run directory
+```
+
+There is no `verdict.json` in a recourse directory: a recourse records a *ruling*,
+whose shape is different, and restating it as a verdict would put false values in
+`raw` and `choice`. Downstream tooling that globs for verdicts must learn about
+`ruling.json`. Note also that editing anything under `parent/` — even a typo in a
+log — invalidates the recorded `parent_sha256`. That is the intended behaviour, not
+a bug to work around.
+
+`transcript.md` is a re-render rather than a copy of what the judge saw: the judge
+read a tagged plaintext transcript, and the document defends markdown structure
+instead. The requests themselves are in `calls.jsonl`.
+
+**The debaters' `Thinking` is published.** It was private *during* the debate — the
+judge and the opponent never saw it, which is what makes the arguments the debate —
+but a reader of a public decision should be able to see everything that went into
+it, including what a debater worked out and chose not to say. The document labels
+which is which, because a reader who could not tell them apart would credit the
+judge with reasoning it never saw.
 
 ## Known limitations
 
@@ -160,9 +255,17 @@ defend markdown structure.
   debater cannot forge a round, a speaker, or a decision in the readable record.
 - **The judge explains itself by default**, which deviates from the paper. Kenton
   et al. found judge chain-of-thought null-to-harmful for *accuracy* (see
-  `protocols.md`); it is on here for a different reason — a decision that states
-  no grounds cannot be contested, and contestability is the claim under test.
-  `--no-judge-cot` restores the paper's predict judge.
+  `protocols.md`); it is on here for a different reason — a decision that states no
+  grounds can be neither read nor contested, and both are the claim under test.
+  `--no-judge-cot` restores the paper's predict judge, and is a control arm rather
+  than a configuration a real decision should use.
+- **Nothing checks that the grounds are grounded.** The constitutional judge is
+  instructed to cite provisions by identifier and quote their operative words, and
+  the opinion judge is told not to fill gaps from its own knowledge. Neither
+  instruction is verified. A judge that decided from its own priors and wrote
+  plausible-looking grounds citing things absent from the transcript would pass
+  every check in the repo. This is the most valuable check the project does not
+  have.
 - **The word limit is not a neutral knob.** In our runs, debaters used 80–90% of
   whatever budget they were given, and the same question under the same seating
   returned *different verdicts* at 150 and 250 words. The constitutional profile
@@ -171,8 +274,34 @@ defend markdown structure.
   same question. Neither of these is a bug; both mean single runs should not be
   read as results.
 - Prompts are faithful to the reconstruction in `protocols.md`, which is itself a
-  paraphrase — there is no verbatim source text. The golden prompt tests are
-  regression tests against drift, not fidelity tests.
+  paraphrase — there is no verbatim source text, so nothing here is a fidelity
+  test against an original.
+
+### Limitations specific to recourse
+
+- **`--challenge-visibility full` makes the two decisions incomparable.** The
+  generator is shown the debaters' `Thinking`, so its challenge can put to the
+  recourse judge something the judge who decided the question never had. This is
+  not a secrecy problem — the record publishes the `Thinking` either way — but the
+  ruling is then answering a different question from the decision. The record marks
+  it and the audit emits a `DISCLOSURE`. `public` is the default, and it means "the
+  record as the deciding judge saw it".
+- **The recourse debaters still may not concede.** `Do not concede your assigned
+  answer under any circumstances` now applies to a recourse round, so the winning
+  side produces a fluent rebuttal even of a correct challenge. That is the
+  adversarial design working as intended, but it means "valid challenges change the
+  decision" is measured through a filter that always manufactures opposition — and
+  with debaters and judge on the same model, self-preference compounds it.
+- **A narrow challenge is flattened.** A challenge can say "the grounds were wrong,
+  though the answer may be right"; the pro/anti split cannot represent that. The
+  prompts argue about *the decision* rather than *the answer*, which is the best
+  available fix, not a complete one.
+- **A ruling cannot itself be contested.** A recourse records a ruling, not a
+  verdict, so there is no decision-under-challenge for a second round of the
+  mechanism to quote; `load_run_record` refuses it and says why. Chained recourse
+  would need its own design.
+- **Copying the parent is not free.** `calls.jsonl` carries full request bodies, and
+  it is the largest artifact in a run directory.
 
 ## Prior art
 
@@ -213,4 +342,19 @@ The suite is offline — no test makes a network call. The load-bearing ones:
 `FakeClient` counts in-flight calls to prove that simultaneous rounds really are
 concurrent (`max_in_flight == 2`) and sequential ones really are not (`== 1`);
 the audit tests confirm that a tampered transcript, a leaked `Thinking` section,
-and an inverted verdict are each caught.
+and an inverted verdict are each caught. For recourse, the equivalents are an
+edited `challenge.md`, a ruling whose answer index does not follow from it, a
+consistently inverted ruling, a doctored `parent/`, and a challenge claiming a
+provenance it does not have.
+
+Every recorded run should still verify after any change, which is the gate worth
+running before committing:
+
+```bash
+for d in outputs/runs/*/; do uv run python scripts/verify_run.py "$d"; done \
+  2>&1 | tee outputs/verify_all.log
+```
+
+`tests/test_prompts.py` is all property assertions — no golden snapshots — so an
+accidental edit to a prompt template is caught only if it violates one of those
+properties. Golden-string tests over the templates would close that.

@@ -1,6 +1,8 @@
 # Purpose
 
-This repo prototypes a **public decision-making process** built on LLMs, for decisions that affect many people in significant ways. The claim under test: the process is **whitebox** — the publicly available record (question, debate transcript) is what determines the decision — and **contestable** — valid challenges change the decision, specious ones do not.
+This repo prototypes a **public decision-making process** built on LLMs, for decisions that affect many people in significant ways. The claim under test: the process is **whitebox** — a reader of the published record can see what determined the decision — and **contestable** — valid challenges change the decision, specious ones do not.
+
+"Whitebox" means *transparent*, not *reproducible*. It is not a claim that an auditor can re-derive the run: sampling is nondeterministic and re-running a question produces a different debate. It is a claim about what one document, `transcript.md`, lets a reader see — the question, the arguments, the decision, and the grounds given for it. Design decisions are justified by whether a reader could follow the decision, not by whether a machine could reproduce it.
 
 The mechanism is **debate**: AI safety via debate, applied to unverifiable domains (no ground-truth answer).
 

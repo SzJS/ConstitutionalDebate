@@ -1,7 +1,9 @@
 """Command line entry point.
 
 Only this module reads the environment; the library takes its API key as an
-argument, so nothing deep in the call stack can reach for a global.
+argument, so nothing deep in the call stack can reach for a global. The recourse
+entry point imports ``read_api_key`` from here rather than reaching for
+``os.environ`` itself, which is what keeps that literally true of two commands.
 """
 
 from __future__ import annotations
@@ -94,6 +96,17 @@ OVERRIDE_KEYS = (
     "reasoning_effort",
     "seed",
     "judge_cot",
+)
+
+
+def read_api_key() -> str | None:
+    """The one place in the package that touches the environment."""
+    return os.environ.get(API_KEY_ENV)
+
+
+MISSING_API_KEY = (
+    f"{API_KEY_ENV} is not set. Put it in .env or the environment "
+    f"(note: the name is {API_KEY_ENV}, not OPENROUTER_API_KEY)."
 )
 
 
@@ -264,14 +277,10 @@ def main(argv: list[str] | None = None) -> int:
         writer.finish(status="dryrun")
         return 0
 
-    api_key = os.environ.get(API_KEY_ENV)
+    api_key = read_api_key()
     if not api_key:
         writer.finish(status="failed", error=f"{API_KEY_ENV} is not set")
-        print(
-            f"{API_KEY_ENV} is not set. Put it in .env or the environment "
-            f"(note: the name is {API_KEY_ENV}, not OPENROUTER_API_KEY).",
-            file=sys.stderr,
-        )
+        print(MISSING_API_KEY, file=sys.stderr)
         return 2
 
     try:

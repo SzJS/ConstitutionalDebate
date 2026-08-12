@@ -20,6 +20,16 @@ from typing import Any, Literal
 TurnStyle = Literal["simultaneous", "sequential"]
 ProfileKey = Literal["paper", "opinion", "constitutional"]
 
+# Settings that describe how a decision is *contested*, not how it was made. A
+# debate run records them because config.json records every field, but it had no
+# opinion about them, so a recourse must not inherit them — it would pick up a
+# stale default and silently run a different protocol. For the same reason a
+# recourse legitimately differs from its parent here, and the audit exempts them
+# from its "ran under different settings" note. One list, so the two agree.
+RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
+    {"recourse_rounds", "challenger_model", "challenge_word_limit"}
+)
+
 TURN_STYLES: tuple[str, ...] = ("simultaneous", "sequential")
 PROFILE_KEYS: tuple[str, ...] = ("paper", "opinion", "constitutional")
 REASONING_EFFORTS: tuple[str, ...] = ("off", "low", "medium", "high")
@@ -60,6 +70,22 @@ class DebateConfig:
     judge_cot: bool
     seed: int
     word_limit_by_profile: dict[str, int] = field(default_factory=dict)
+    # --- recourse ---------------------------------------------------------- #
+    # Defaulted, not required, so ``DebateConfig(**config.json)`` still loads a
+    # run recorded before recourse existed — which is what lets the audit keep
+    # verifying every earlier record.
+    #
+    # 0 rounds is the judge-only protocol: the recourse judge rules on the
+    # challenge alone. The protocol is *named* in run.json rather than left to
+    # be inferred from this number.
+    recourse_rounds: int = 1
+    # None means the debater model. A challenger is a debater by another name,
+    # and a capability asymmetry here would confound the grounded/specious arms
+    # with a difference in who wrote the challenge.
+    challenger_model: str | None = None
+    # None means the profile's word limit. A challenge has to quote the record
+    # back, which 150 words does not leave much room for.
+    challenge_word_limit: int | None = None
 
     def __post_init__(self) -> None:
         if self.turn_style not in TURN_STYLES:
@@ -77,6 +103,15 @@ class DebateConfig:
             raise ConfigError(f"word_limit must be >= 1, got {self.word_limit}")
         if self.max_tokens < 1:
             raise ConfigError(f"max_tokens must be >= 1, got {self.max_tokens}")
+        if self.recourse_rounds < 0:
+            raise ConfigError(
+                f"recourse_rounds must be >= 0, got {self.recourse_rounds}"
+            )
+        if self.challenge_word_limit is not None and self.challenge_word_limit < 1:
+            raise ConfigError(
+                f"challenge_word_limit must be >= 1 or unset, got "
+                f"{self.challenge_word_limit}"
+            )
         for key, value in self.word_limit_by_profile.items():
             if key not in PROFILE_KEYS:
                 raise ConfigError(
@@ -92,6 +127,26 @@ class DebateConfig:
     def word_limit_for(self, profile_key: str) -> int:
         """Word cap for a profile, falling back to the global limit."""
         return self.word_limit_by_profile.get(profile_key, self.word_limit)
+
+    def challenger_model_for(self) -> str:
+        """The model that writes a generated challenge."""
+        return self.challenger_model or self.debater_model
+
+    def challenge_word_limit_for(self, profile_key: str) -> int:
+        """Word cap for a generated challenge."""
+        if self.challenge_word_limit is not None:
+            return self.challenge_word_limit
+        return self.word_limit_for(profile_key)
+
+    @property
+    def recourse_protocol(self) -> str:
+        """The named protocol this round count selects.
+
+        A reader of the record should never have to infer which of the two
+        mechanisms ran from an integer, so the name is written into run.json —
+        and the audit checks the name against the count.
+        """
+        return "judge_only" if self.recourse_rounds == 0 else "debate"
 
     def to_dict(self) -> dict[str, Any]:
         return {f.name: getattr(self, f.name) for f in fields(self)}
@@ -149,16 +204,31 @@ def load_config(
     path: Path | None = None,
     *,
     overrides: dict[str, Any] | None = None,
+    inherit: dict[str, Any] | None = None,
 ) -> tuple[DebateConfig, ClientConfig]:
-    """Load config, applying precedence: defaults -> ``path`` -> ``overrides``.
+    """Load config, applying precedence: defaults -> ``inherit`` -> ``path`` ->
+    ``overrides``.
 
     ``overrides`` are flat ``[debate]`` keys, i.e. the CLI's per-field flags.
     Passing ``None`` for an override value is ignored, so callers can forward
     argparse results without filtering.
+
+    ``inherit`` is a recorded run's ``config.json``, and it sits directly above
+    the defaults so that a recourse continues under the settings the decision
+    was made under. Starting a recourse from ``default.toml`` instead would let
+    an unrelated change to the defaults silently alter an inherited setting, and
+    the contest would then be judged under a standard the decision never faced.
+    Defaults still fill any key the recorded config predates.
     """
     defaults = _load_toml(DEFAULT_CONFIG_PATH)
     debate_table = dict(defaults.get("debate", {}))
     client_table = dict(defaults.get("client", {}))
+
+    if inherit is not None:
+        unknown = sorted(set(inherit) - {f.name for f in fields(DebateConfig)})
+        if unknown:
+            raise ConfigError(f"inherited config has unknown keys: {unknown}")
+        debate_table = {**debate_table, **inherit}
 
     if path is not None and path.resolve() != DEFAULT_CONFIG_PATH:
         extra = _load_toml(path)
