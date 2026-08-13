@@ -51,3 +51,24 @@ To compare the debate method with the baseline, we need similar constructed and 
 One plausible outcome is that the weak model raises a valid objection but this isn't accepted by the judge. We would like to measure how often this happens. We define a valid objection as a weak model identifying the flaw and why overturning the flaw changes the overall decision. We can measure this on the constructed error cases, where we know what the actual error is, i.e. we can measure P(valid objection|initially incorrect). (On non-constructed data this would be difficult to measure).
 
 Note that this requires us to annotate the constructed cases with information about the errors, i.e. what the errors are and how they should be corrected.
+
+### On underspecified objections
+One finding in literature is that models may be able to detect errors without being able to fully explain what the flaw is. One possible result of this is that debate might be useful to handle such underspecified objections. Specifically, further rounds of debate would give the speaker representing the objection a chance to specify a valid objection. We could also try to test how often this occurs.
+
+### FindTheFlaws
+FindTheFlaws seems like a perfect domain - see the dataset https://github.com/modulo-research/findtheflaws and the paper https://arxiv.org/abs/2503.22989
+This dataset contains both correct and constructed error cases, with an explanation of the errors. We can use this for the basis of our dataset - we can construct synthetic reasoning, critique-revision and debate based on this.
+
+### Habermas machine
+This is also a good domain. However, there are no constructed errors (since it is an unverifiable domain), so we cannot measure the rate of valid objections.
+
+## Misc.
+Everything on this page that the harness does *not* implement is tracked in
+[`deferred.md`](deferred.md), including all of the below.
+
+I am also planning to implement the below ideas:
+- It could interesting to see what weak models say about whether they understand the reasoning of debate vs baselines more (self-reporting is an interesting additional metric)
+- It could be interesting to see how purely normative claims are addressed
+    - Some people may not be smart but they may have genuine value conflicts; how would they interact with such a debate-based system?
+- It would also be interesting to see how different model families engage with debate
+    - Is there a difference between Chinese and American models? Since they have different values
