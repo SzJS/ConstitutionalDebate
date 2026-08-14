@@ -234,6 +234,18 @@ async def _execute(
             "word_counts": [t.word_count for t in result.transcript.all_turns()],
         },
     )
+    if ruling is None:
+        # The challenger reviewed the decision and raised nothing, so there was
+        # nothing to rule on. A completed run with no ruling.json is what says
+        # "never contested" as against "contested and upheld" — the two are
+        # different outcomes and the funnel counts them differently.
+        log.info(
+            "no challenge was raised; the decision stands uncontested "
+            "(answer %d: %s)",
+            parent.verdict.answer_index,
+            parent.task.answers[parent.verdict.answer_index],
+        )
+        return 0
     log.info(
         "ruling: %s -> answer %d (%s) | %s%s",
         ruling.ruling,

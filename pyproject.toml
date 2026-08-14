@@ -9,9 +9,20 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
+[project.optional-dependencies]
+# Only scripts/get_tasks.py needs this: FindTheFlaws ships an AES-encrypted zip
+# and stdlib zipfile handles only ZipCrypto. The decision path never opens an
+# archive, so this stays out of a minimal install.
+datasets = ["pyzipper>=0.3"]
+# Imported by analysis.py alone. Keeping it out of `dependencies` is what lets
+# the decision path — client, debate, arms, prompts, persistence, artifacts —
+# stay at two runtime dependencies.
+analysis = ["pandas>=2.0", "statsmodels>=0.14"]
+
 [project.scripts]
 constitutional-debate = "constitutional_debate.cli:main"
 constitutional-recourse = "constitutional_debate.recourse_cli:main"
+constitutional-experiment = "constitutional_debate.experiment_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -26,6 +37,8 @@ packages = ["src/constitutional_debate"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    # The analysis tests import pandas/statsmodels; the suite stays offline.
+    "constitutional-debate[analysis,datasets]",
 ]
 
 [tool.pytest.ini_options]

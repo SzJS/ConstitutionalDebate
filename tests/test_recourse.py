@@ -424,3 +424,49 @@ async def test_a_recourse_does_not_inherit_the_parents_recourse_settings(
     )
     assert inherited.word_limit == 250, "decision-relevant settings are inherited"
     assert inherited.recourse_rounds == 1, "how it is contested is not"
+
+
+async def test_a_recourse_republishes_the_parents_provider_reasoning(tmp_path):
+    """The parent's reasoning channel must survive the round-trip to a contest.
+
+    A recourse re-renders the parent's rounds from the loaded record. If
+    load_run_record drops native_reasoning, the published contest document shows
+    the parent debate with the provider's channel missing — and the whole point
+    of publishing it is that the record contains every channel that moved the
+    outcome. The failure is silent: the document still renders, just without it.
+    """
+    from constitutional_debate.persistence import load_run_record
+    from helpers import config, make_seating, make_task, recorded_run
+
+    NEEDLE = "PROVIDER-REASONING-must-survive-the-round-trip"
+    writer, _ = await recorded_run(
+        tmp_path, make_task(gold_index=0), config(), make_seating()
+    )
+    # stamp reasoning onto the recorded turns, as a reasoning-bearing model would
+    data = json.loads((writer.dir / "transcript.json").read_text())
+    for turn in data["turns"]:
+        turn["native_reasoning"] = NEEDLE
+        turn["has_native_reasoning"] = True
+    (writer.dir / "transcript.json").write_text(json.dumps(data), encoding="utf-8")
+
+    parent = load_run_record(writer.dir)
+    assert all(t.native_reasoning == NEEDLE for t in parent.transcript.all_turns()), (
+        "load_run_record must restore native_reasoning, not drop it"
+    )
+
+
+async def test_withheld_reasoning_survives_the_round_trip_too(tmp_path):
+    """The flag matters more than the text: it marks the uninspectable case."""
+    from constitutional_debate.persistence import load_run_record
+    from helpers import config, make_seating, make_task, recorded_run
+
+    writer, _ = await recorded_run(
+        tmp_path, make_task(gold_index=0), config(), make_seating()
+    )
+    data = json.loads((writer.dir / "transcript.json").read_text())
+    for turn in data["turns"]:
+        turn["reasoning_withheld"] = True
+    (writer.dir / "transcript.json").write_text(json.dumps(data), encoding="utf-8")
+
+    parent = load_run_record(writer.dir)
+    assert all(t.reasoning_withheld for t in parent.transcript.all_turns())

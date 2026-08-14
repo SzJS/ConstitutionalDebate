@@ -256,8 +256,18 @@ def test_word_limit_is_interpolated_and_profile_overridable():
         make_task(), None, make_seating(), cfg, Transcript(),
         speaker=Speaker.ALICE, round=1,
     )
+    # The budget is stated exactly once, in the system prompt, and the round
+    # instruction points back at it without repeating the number.
+    #
+    # Not cosmetic. With the number in both places, a debater defending the
+    # weaker case fell into a verbatim loop at the Thinking->Argument
+    # transition — "I'll write the argument. I'll keep it under 400 words."
+    # repeated for 126,000 characters — until it hit the token ceiling and
+    # killed the run. The looped text is the model worrying about the budget,
+    # so the budget is named once and not nagged about again.
     assert "at most 150 words" in plain[0]["content"]
-    assert "at most 150 words" in plain[1]["content"]
+    assert "150" not in plain[1]["content"]
+    assert "within the word limit" in plain[1]["content"]
 
     constitutional = build_debater_messages(
         make_task(), constitution, make_seating(), cfg, Transcript(),

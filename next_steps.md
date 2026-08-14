@@ -72,3 +72,19 @@ I am also planning to implement the below ideas:
     - Some people may not be smart but they may have genuine value conflicts; how would they interact with such a debate-based system?
 - It would also be interesting to see how different model families engage with debate
     - Is there a difference between Chinese and American models? Since they have different values
+
+# Notes to self
+Actually, the judge and the challenger should be equally weak. The setup is that two powerful AIs argue, decided by a potentially weaker judge, reviewed by similarly weak challengers. The main difference is that the challenger should be biased towards one side - their side - whereas the judge is instructed to be neutral.
+
+> **Refined since.** This holds for the **deciding** judge, which is instrumental —
+> it exists to generate flawed decisions, and a strong one produces almost none
+> (MEASURED: 1/18 strong vs 7/18 weak). The **recourse** judge is a different role
+> and is deliberately *strong*, because it is part of the measured outcome rather
+> than a fault generator. See §5 of [`design_decisions.md`](design_decisions.md).
+>
+> Also refined: the main question — can a weak challenger *notice* faults more
+> easily in a debate — is answered by the **decide** and **challenge** stages
+> alone, graded against the FindTheFlaws annotation. The **rule** stage answers
+> whether an objection was *accepted*, which is the demoted secondary question.
+
+Also, I should think about cases where the models collaborate to try to fool the judge. Can a challenger notice this?

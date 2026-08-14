@@ -114,6 +114,187 @@ class Task:
         }
 
 
+ERROR_TYPES: tuple[str, ...] = (
+    "unspecified",
+    "factual",
+    "inference",
+    "omission",
+    "misinterpretation",
+    "aggregation",
+    "logical",
+)
+
+# What the annotation is good for. Not cosmetic: FindTheFlaws' GPQA subset
+# annotates every flaw as "The first error occurs in Step N" -- 9 distinct
+# strings across 198 rows -- which pins down *where* the error is and says
+# nothing about *what* it is. Grading whether a challenge characterised the
+# error needs the second thing. Carrying the distinction on the data means the
+# grader and the analysis can skip what they cannot measure, instead of a
+# subset name being hardcoded somewhere downstream.
+ANNOTATION_QUALITIES: tuple[str, ...] = ("explanation", "location_only", "none")
+
+
+@dataclass(frozen=True)
+class ErrorSpec:
+    """A known error in a case, and how it got there.
+
+    Two halves that must never be confused.
+
+    ``seed`` and ``sound_seed`` are inputs to the *decision procedure*: they
+    reach the prompts of the roles named in ``seed_targets`` and no others.
+
+    ``flaw_location`` and ``annotation`` are inputs to the *grader*: where the
+    error is and what it is. They reach no prompt anywhere on the decision path.
+    That is enforced structurally rather than by convention -- ``load_run_record``
+    does not read ``error.json``, so nothing downstream of a decision can reach
+    them even by accident.
+
+    ``mechanism`` is written *after* the decision, by the runner: an error case
+    is ``genuine`` when the procedure fell for the seeded flaw unaided, and
+    ``manufactured`` when the adjudicator had to be steered to reach it. Both
+    are usable; only the first is evidence about what the system does on its own.
+    """
+
+    error_id: str
+    error_type: str = "unspecified"
+    origin: str = "dataset"  # "dataset" | "injected" | "natural"
+    mechanism: str = ""  # "genuine" | "manufactured", set post hoc
+    seed: str = ""  # the flawed reasoning, given to the wrong-side role
+    sound_seed: str = ""  # the correct reasoning, given to the right-side role
+    # False where upstream annotators disagreed about whether the *sound* seed
+    # is itself sound — 323 of Python650's 648 rows. Such a case is still fine
+    # for detection (the flawed side is annotated either way) and shaky as a
+    # control, so it is stratified in the analysis rather than dropped, and the
+    # reason is carried here rather than being re-derived from a subset name.
+    sound_seed_reliable: bool = True
+    seed_targets: tuple[str, ...] = ()
+    flaw_location: str = ""  # ground truth for "where"
+    annotation: str = ""  # ground truth for "what"
+    annotation_quality: str = "none"
+    corrected_answer_index: int | None = None
+    source: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.error_type not in ERROR_TYPES:
+            raise ValueError(
+                f"error_type must be one of {ERROR_TYPES}, got {self.error_type!r}"
+            )
+        if self.annotation_quality not in ANNOTATION_QUALITIES:
+            raise ValueError(
+                f"annotation_quality must be one of {ANNOTATION_QUALITIES}, "
+                f"got {self.annotation_quality!r}"
+            )
+
+    @property
+    def grades_characterisation(self) -> bool:
+        """Whether this case can support the strict valid-objection metric.
+
+        False for a location-only annotation: there is nothing to check a
+        challenge's characterisation of the error *against*, so scoring one
+        would be scoring the grader's imagination.
+        """
+        return self.annotation_quality == "explanation"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["seed_targets"] = list(self.seed_targets)
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ErrorSpec":
+        known = {f.name for f in fields(cls)}
+        kwargs = {k: v for k, v in data.items() if k in known}
+        if "seed_targets" in kwargs:
+            kwargs["seed_targets"] = tuple(kwargs["seed_targets"])
+        return cls(**kwargs)
+
+
+@dataclass(frozen=True)
+class Case:
+    """A task and the error it is known to contain, as one file on disk.
+
+    A case is the unit the experiment iterates. The task half is exactly what a
+    ``--task`` file would have held, so a case can always be run as a plain
+    task by ignoring its error half -- which is what the correct-condition arm
+    does.
+    """
+
+    task: Task
+    error: ErrorSpec | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Case":
+        # A bare task file is a valid case with no known error, so the same
+        # loader serves both and --case never has to guess at the shape.
+        if "task" not in data:
+            return cls(task=Task.from_dict(data), error=None)
+        error = data.get("error")
+        return cls(
+            task=Task.from_dict(data["task"]),
+            error=ErrorSpec.from_dict(error) if error else None,
+        )
+
+    @classmethod
+    def from_json(cls, path: Path) -> "Case":
+        return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task": self.task.to_dict(),
+            "error": self.error.to_dict() if self.error else None,
+        }
+
+
+def seeded_case_for(
+    *, speaker: "Speaker", seating: "Seating", task: Task, error: ErrorSpec | None
+) -> str:
+    """The reasoning handed to this debater as the case for its answer.
+
+    The correct solution goes to whoever defends the gold answer and the flawed
+    one to whoever defends the other — which is what makes the constructed error
+    the *same bytes* in every arm rather than merely the same specification.
+
+    Keyed on ``task.gold_index``, never on literal index 0. ``gold_index`` is
+    drawn per task precisely so that "correct" is not confounded with "first in
+    ``Task.answers``", and written as ``answers[0]`` this would hand the flawed
+    solution to the debater defending the *right* answer on half the dataset.
+    Every run would still complete, the transcripts would still read plausibly,
+    and the error condition would be silently inverted on half the corpus.
+    """
+    if error is None or task.gold_index is None:
+        return ""
+    defending = seating.answer_for(speaker)
+    return error.sound_seed if defending == task.gold_index else error.seed
+
+
+def seeded_case_for_solo(*, task: Task, error: ErrorSpec | None) -> str:
+    """The reasoning handed to a solo agent as its own.
+
+    A solo arm has no sides, so there is nothing to key on the way
+    ``seeded_case_for`` keys on which answer a debater defends. It gets the
+    flawed reasoning in the error condition and the correct reasoning otherwise
+    — which is what makes the constructed error the *same bytes* here as in the
+    debate arm's flawed side.
+
+    ``ErrorSpec.seed`` is the flawed text by construction, so "the error
+    condition" is simply "an error spec was supplied".
+    """
+    if error is None or task.gold_index is None:
+        return ""
+    return error.seed
+
+
+def load_cases(path: Path) -> list[Case]:
+    """Load one case from ``.json`` or many from ``.jsonl``."""
+    if path.suffix == ".jsonl":
+        return [
+            Case.from_dict(json.loads(line))
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    return [Case.from_json(path)]
+
+
 @dataclass(frozen=True)
 class Seating:
     """Who defends what, and how the judge's two choices are ordered."""
@@ -122,6 +303,16 @@ class Seating:
     bob_answer: int
     choice_order: tuple[int, int]  # choice N shows task.answers[choice_order[N-1]]
     seed_material: str
+    # Which of the two debater models speaks first, when the run uses two.
+    # ``False`` — the default and the only value for a same-model debate — means
+    # Alice takes ``debater_model``.
+    #
+    # A fourth independent draw, for the same reason as the other three: Alice
+    # always speaks first, so "Alice is always DeepSeek" would make model
+    # identity a proxy for speaking order, and a capability gap between the two
+    # would then read as a first-mover effect. Drawn even when only one model is
+    # configured, so the seating is identical whether or not the variant is used.
+    swap_debater_models: bool = False
 
     def answer_for(self, speaker: Speaker) -> int:
         return self.alice_answer if speaker is Speaker.ALICE else self.bob_answer
@@ -146,12 +337,26 @@ class Seating:
         answer_index = self.answer_index_for_choice(choice)
         return Speaker.ALICE if answer_index == self.alice_answer else Speaker.BOB
 
+    def model_for(self, speaker: "Speaker", primary: str, secondary: str | None) -> str:
+        """Which model speaks as this debater.
+
+        ``secondary is None`` is the same-model variant: both sides get the
+        primary, and the swap draw has no effect.
+        """
+        if secondary is None:
+            return primary
+        first, second = (
+            (secondary, primary) if self.swap_debater_models else (primary, secondary)
+        )
+        return first if speaker is Speaker.ALICE else second
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "alice_answer": self.alice_answer,
             "bob_answer": self.bob_answer,
             "choice_order": list(self.choice_order),
             "seed_material": self.seed_material,
+            "swap_debater_models": self.swap_debater_models,
         }
 
 
@@ -169,11 +374,13 @@ def make_seating(task: Task, seed: int) -> Seating:
     rng = random.Random(seed_material)
     alice_answer = rng.randint(0, 1)
     first_choice = rng.randint(0, 1)
+    swap_models = bool(rng.randint(0, 1))
     return Seating(
         alice_answer=alice_answer,
         bob_answer=1 - alice_answer,
         choice_order=(first_choice, 1 - first_choice),
         seed_material=seed_material,
+        swap_debater_models=swap_models,
     )
 
 
@@ -193,6 +400,16 @@ class Turn:
     has_native_reasoning: bool
     call_id: str
     raw: str
+    # The provider's own reasoning channel, when the model has one. Recorded as
+    # text rather than as a bare flag because the project's claim is that every
+    # channel which moved the outcome is *published* — and the newest models
+    # refuse to disable this one, so suppressing it is no longer an option that
+    # keeps the claim true. Empty when reasoning was off or none was returned.
+    native_reasoning: str = ""
+    # True when the provider billed reasoning tokens but returned no text for
+    # them. That is a genuinely invisible channel and the one case the claim
+    # cannot cover, so it is recorded per turn rather than averaged away.
+    reasoning_withheld: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -346,7 +563,8 @@ def neutralise_tags(text: str) -> str:
 # a ``<decision>`` block could invent grounds the original judge never gave.
 _STRUCTURAL_TAG_RE = re.compile(
     r"</?\s*(transcript|constitution|question|your_answer|opponent_answer"
-    r"|decision|challenge|private_reasoning)\s*>",
+    r"|decision|challenge|private_reasoning|your_case|record|solution"
+    r"|draft|critique)\s*>",
     re.IGNORECASE,
 )
 
@@ -381,6 +599,83 @@ def render_private_reasoning(turns: Sequence[Turn]) -> str:
     return "\n\n".join(blocks)
 
 
+SOLO_STAGES: tuple[str, ...] = ("draft", "critique", "revision", "answer")
+
+
+@dataclass
+class Step:
+    """One model contribution to a non-debate decision procedure.
+
+    The sibling of ``Turn``, not a subclass. A ``Turn`` carries an
+    ``answer_index`` because a debater was *assigned* an answer before it wrote
+    a word; a step is written by an agent that was assigned nothing.
+
+    Reusing ``Transcript`` with a solo ``Speaker.ALICE`` would have saved this
+    class and made every renderer apply unchanged — but ``artifacts.positions()``
+    would then state that Bob argues for ``answers[1]`` in a run where Bob never
+    spoke. The whole claim under test is that the published record is readable
+    *and true*, so the false statement is not worth the saving.
+    """
+
+    index: int  # 1-based, production order
+    stage: str  # one of SOLO_STAGES
+    thinking: str
+    text: str
+    word_count: int
+    parse_mode: str
+    repair_attempts: int
+    finish_reason: str | None
+    has_native_reasoning: bool
+    call_id: str
+    raw: str
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
+
+    def __post_init__(self) -> None:
+        if self.stage not in SOLO_STAGES:
+            raise ValueError(f"stage must be one of {SOLO_STAGES}, got {self.stage!r}")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class Trace:
+    """The steps of a non-debate decision, in production order."""
+
+    steps: list[Step] = field(default_factory=list)
+
+    def add(self, step: Step) -> None:
+        self.steps.append(step)
+
+    def all_steps(self) -> list[Step]:
+        return sorted(self.steps, key=lambda s: s.index)
+
+    def visible_to(self, index: int) -> list[Step]:
+        """Steps this one may condition on: everything strictly before it."""
+        return [s for s in self.all_steps() if s.index < index]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"steps": [s.to_dict() for s in self.all_steps()]}
+
+
+def render_trace(steps: Sequence[Step]) -> str:
+    """Render steps as the agent sees them on its next pass.
+
+    Model-facing, and here rather than in ``artifacts`` for the same reason as
+    ``render_transcript``: this module owns everything a model is shown.
+    """
+    if not steps:
+        return EMPTY_TRACE
+    return "\n\n".join(
+        f"{s.stage.capitalize()}:\n{indent_continuations(s.text)}"
+        for s in sorted(steps, key=lambda s: s.index)
+    )
+
+
+EMPTY_TRACE = "[Nothing has been written yet.]"
+
+
 @dataclass
 class Verdict:
     """The judge's decision, and enough context to account for it."""
@@ -402,6 +697,13 @@ class Verdict:
     # Empty when the judge decided before explaining; ``raw`` is always the
     # complete record, and the markdown artifact renders that instead.
     reasoning: str = ""
+    # The provider's own reasoning channel, distinct from ``reasoning`` above,
+    # which is the judge's stated grounds parsed out of ``raw``. Published for
+    # the same reason a debater's is: the claim is that every channel which
+    # moved the decision is in the record, and a judge's hidden deliberation
+    # moves it more directly than anyone's.
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -437,8 +739,15 @@ class Challenge:
 
     text: str
     origin: str  # "file" | "generated"
+    # False when the challenger reviewed the decision and found nothing to
+    # contest. Not the same as an empty challenge: a decline is a recorded
+    # judgement that the decision looks sound, and it is what separates "did
+    # not detect the error" from "detected it and argued badly". Defaulted so
+    # that a challenge written before this existed, and every supplied one,
+    # loads as raised.
+    raised: bool = True
     source: str | None = None  # the path, when origin == "file"
-    arm: str | None = None  # "grounded" | "specious" | "neutral"
+    arm: str | None = None  # "grounded" | "specious" | "neutral" | "stakeholder"
     visibility: str | None = None  # "public" | "full" — what the generator saw
     model: str | None = None
     call_id: str | None = None
@@ -450,6 +759,11 @@ class Challenge:
     # argument, and this is the working behind it.
     thinking: str = ""
     raw: str = ""
+    # As on ``Verdict``: the provider's channel, beside the generator's own
+    # ``thinking``. A challenge written partly in a channel nobody can read is
+    # exactly what the transparency claim rules out.
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
 
     @property
     def shown_private_reasoning(self) -> bool:
@@ -503,13 +817,21 @@ class Ruling:
     repair_attempts: int = 0
     # As on ``Verdict``: the text preceding the decisive "Ruling:" match.
     reasoning: str = ""
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
 
     @property
     def changed_the_decision(self) -> bool:
         return self.answer_index != self.parent_answer_index
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        # The property must be serialised explicitly: ``asdict`` omits it, and
+        # the index reads ``changed_the_decision`` straight out of ruling.json.
+        # Left out, every headline revision rate reads 0/N with a confident
+        # interval — a wrong number that never crashes.
+        data = asdict(self)
+        data["changed_the_decision"] = self.changed_the_decision
+        return data
 
 
 def resolve_ruling(ruling: str, parent_answer_index: int) -> int:
@@ -532,4 +854,8 @@ class RecourseResult:
     seating: Seating
     challenge: Challenge
     transcript: Transcript  # the recourse turns only
-    ruling: Ruling
+    # ``None`` when the challenger declined to challenge: there was nothing to
+    # rule on, so no ruling was sought and none is written. A reader — and the
+    # analysis — distinguishes "the decision survived a challenge" from "the
+    # decision was never challenged" by which of the two is absent.
+    ruling: Ruling | None

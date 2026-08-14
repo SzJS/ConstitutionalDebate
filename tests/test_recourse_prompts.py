@@ -321,7 +321,9 @@ def test_each_arm_reaches_the_generator(arm):
     assert {
         "grounded": "Find a real error.",
         "specious": "not in fact grounded in the record",
-        "neutral": "Write a challenge to this decision.",
+        "bare": "Write a challenge to this decision.",
+        "neutral": "You are a person affected by this decision",
+        "partisan": "You represent the side this decision went against",
     }[arm] in text
 
 
@@ -451,4 +453,11 @@ def test_the_repair_instruction_is_role_specific():
     assert "Ruling: UPHOLD" in instruction("recourse_judge")
     assert instruction("judge").startswith("Your last response did not contain a decision")
     assert "Thinking:" in instruction("challenger")
-    assert instruction("challenger") == instruction("debater")
+    # The challenger used to share the debater's instruction, because it shares
+    # the debater's output format. It no longer can: its argument opens with a
+    # "Challenge:" decision line, and repairing it with an instruction that
+    # never mentions that line would ask for a response the parser refuses —
+    # spending the one repair attempt to produce a second failure.
+    assert instruction("challenger") != instruction("debater")
+    assert "Challenge: YES" in instruction("challenger")
+    assert "Challenge" not in instruction("debater")

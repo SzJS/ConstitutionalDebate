@@ -29,14 +29,20 @@ from typing import Any
 
 from .artifacts import (
     recourse_transcript_document,
+    render_solo_record,
+    trace_document,
     render_decision_record,
     render_recourse_record,
     transcript_document,
 )
 from .config import ClientConfig, DebateConfig
+from .accounting import aggregate_calls
 from .types import (
     Challenge,
+    Step,
     Context,
+    ErrorSpec,
+    Trace,
     Ruling,
     Seating,
     Speaker,
@@ -152,6 +158,11 @@ class RunRecord:
     profile_key: str
     transcript: Transcript
     verdict: Verdict
+    # A solo arm records ``steps``, not ``turns``. Both load; which one is
+    # populated depends on ``arm``, and a reader that assumed ``transcript`` is
+    # always the body would silently see an empty debate for every solo run.
+    arm: str = "debate"
+    trace: Trace | None = None
 
     @property
     def chain(self) -> list[str]:
@@ -183,6 +194,7 @@ def load_run_record(run_dir: Path) -> RunRecord:
         bob_answer=seating_data["bob_answer"],
         choice_order=tuple(seating_data["choice_order"]),
         seed_material=seating_data["seed_material"],
+        swap_debater_models=seating_data.get("swap_debater_models", False),
     )
     constitution = run_dir / "constitution.md"
     context = (
@@ -195,8 +207,25 @@ def load_run_record(run_dir: Path) -> RunRecord:
         else None
     )
 
+    document = _read_json(run_dir / "transcript.json")
+    arm = manifest.get("arm", "debate")
     transcript = Transcript()
-    for turn in _read_json(run_dir / "transcript.json")["turns"]:
+    trace: Trace | None = None
+
+    if "steps" in document:
+        trace = Trace()
+        for step in document["steps"]:
+            trace.add(Step(**{k: v for k, v in step.items()
+                              if k in Step.__dataclass_fields__}))
+        return RunRecord(
+            dir=run_dir, run_id=manifest["run_id"], manifest=manifest, task=task,
+            context=context, seating=seating, config=config,
+            profile_key=manifest.get("profile", "paper"),
+            transcript=transcript, verdict=_verdict_from(_read_json(verdict_path)),
+            arm=arm, trace=trace,
+        )
+
+    for turn in document["turns"]:
         transcript.add(
             Turn(
                 round=turn["round"],
@@ -211,21 +240,18 @@ def load_run_record(run_dir: Path) -> RunRecord:
                 has_native_reasoning=turn.get("has_native_reasoning", False),
                 call_id=turn["call_id"],
                 raw=turn.get("raw", ""),
+                # Restored, not dropped. A recourse re-renders the parent's
+                # rounds from this record, so a Turn that loses its provider
+                # reasoning here publishes a contest document with the channel
+                # missing and the withheld-reasoning warning gone — falsifying
+                # the transparency claim in the one artifact it is about.
+                # Defaulted, so a run recorded before these fields existed loads.
+                native_reasoning=turn.get("native_reasoning", ""),
+                reasoning_withheld=turn.get("reasoning_withheld", False),
             )
         )
 
-    verdict_data = _read_json(verdict_path)
-    verdict = Verdict(
-        choice=verdict_data["choice"],
-        answer_index=verdict_data["answer_index"],
-        parse_mode=verdict_data["parse_mode"],
-        raw=verdict_data["raw"],
-        call_id=verdict_data["call_id"],
-        finish_reason=verdict_data.get("finish_reason"),
-        correct=verdict_data.get("correct"),
-        repair_attempts=verdict_data.get("repair_attempts", 0),
-        reasoning=verdict_data.get("reasoning", ""),
-    )
+    verdict = _verdict_from(_read_json(verdict_path))
     return RunRecord(
         dir=run_dir,
         run_id=manifest["run_id"],
@@ -236,6 +262,7 @@ def load_run_record(run_dir: Path) -> RunRecord:
         config=config,
         profile_key=manifest["profile"],
         transcript=transcript,
+        arm=arm,
         verdict=verdict,
     )
 
@@ -291,12 +318,21 @@ class RunWriter:
         profile_key: str,
         outputs_root: Path = Path("outputs"),
         status: str = "running",
+        error: ErrorSpec | None = None,
+        arm: str = "debate",
     ) -> "RunWriter":
         run_dir, run_id = _claim_run_dir(outputs_root, f"{_run_id_stamp()}-{task.task_id}")
 
         _write_json(run_dir / "config.json", config.to_dict())
         _write_json(run_dir / "task.json", task.to_dict())
         _write_json(run_dir / "seating.json", seating.to_dict())
+        if error is not None:
+            # Beside task.json, and deliberately NOT loaded by load_run_record.
+            # The annotation in here is what a challenge is graded against, so
+            # the containment is structural: nothing downstream of a decision
+            # has a code path that reaches it. Only load_error_spec does, and
+            # only the grader and the case validator call that.
+            _write_json(run_dir / "error.json", error.to_dict())
         if context is not None:
             (run_dir / "constitution.md").write_text(context.text, encoding="utf-8")
 
@@ -315,6 +351,10 @@ class RunWriter:
                 "profile": profile_key,
                 "task_id": task.task_id,
                 "task_source": task.source,
+                "error_id": error.error_id if error else None,
+                "error_type": error.error_type if error else None,
+                "error_origin": error.origin if error else None,
+                "annotation_quality": error.annotation_quality if error else None,
                 "constitution_source": context.source if context else None,
                 "constitution_sha256": context.sha256() if context else None,
                 "client_config": client_config.to_dict(),
@@ -322,9 +362,11 @@ class RunWriter:
                 # Read as ``manifest.get("kind", "debate")``, so every run
                 # recorded before recourse existed reads as what it is.
                 "kind": "debate",
+                "arm": arm,
                 **git_provenance(),
             },
         )
+        writer.arm = arm
         # Flushed before any API call, so a crashed run is distinguishable from
         # a completed one by inspection alone.
         writer._flush_manifest()
@@ -467,7 +509,25 @@ class RunWriter:
         else:
             self._write_recourse_transcripts(transcript, ruling=None)
 
-    def record_verdict(self, verdict: Verdict, transcript: Transcript) -> None:
+    def record_step(self, trace: "Trace") -> None:
+        """Rewrite the solo artifacts after each completed step.
+
+        The ``Trace`` analogue of ``record_turn``: written as produced, so a run
+        that dies at the revision still has its draft and critique on disk.
+        """
+        self._write_solo(trace, verdict=None)
+
+    def _write_solo(self, trace: "Trace", *, verdict: Verdict | None) -> None:
+        _write_json(self.dir / "transcript.json", trace_document(self._task, trace))
+        _write_atomic(
+            self.dir / "transcript.md",
+            render_solo_record(
+                self._task, self._seating, trace, verdict=verdict,
+                arm=getattr(self, "arm", "single"),
+            ),
+        )
+
+    def record_verdict(self, verdict: Verdict, transcript) -> None:
         """Record the decision, and restate the full record with it.
 
         The transcript is a parameter rather than state carried over from
@@ -475,7 +535,13 @@ class RunWriter:
         alone, not on the order the writer happened to be called in.
         """
         _write_json(self.dir / "verdict.json", verdict.to_dict())
-        self._write_transcripts(transcript, verdict=verdict)
+        # Dispatch on what the decision actually is, not on a flag: a Trace has
+        # no speakers and rendering it through the debate renderer would print
+        # positions for debaters that never spoke.
+        if isinstance(transcript, Trace):
+            self._write_solo(transcript, verdict=verdict)
+        else:
+            self._write_transcripts(transcript, verdict=verdict)
 
     def record_challenge(self, challenge: Challenge, transcript: Transcript) -> None:
         """Record what is being contested, before any recourse round runs.
@@ -571,6 +637,16 @@ class RunWriter:
             ),
         )
 
+    def manifest_update(self, **fields: Any) -> None:
+        """Stamp extra identity onto the manifest and flush it.
+
+        Used by the batch harness to record which cell a run belongs to and
+        which attempt it was, before any call is made — so a run that dies
+        mid-decision can still be attributed to its cell by inspection.
+        """
+        self._manifest.update(fields)
+        self._flush_manifest()
+
     def finish(
         self,
         *,
@@ -578,10 +654,53 @@ class RunWriter:
         error: str | None = None,
         totals: dict[str, Any] | None = None,
     ) -> None:
+        # Spend is read back off this run's own wire log and merged under the
+        # caller's totals, so both CLIs get accounting without either of them
+        # knowing about it. Caller-supplied keys win: they are protocol facts
+        # (turns, word counts) and this is measurement.
+        usage = aggregate_calls(self.dir / "calls.jsonl")
         self._manifest.update(
             status=status,
             ended_utc=utc_now(),
             error=error,
-            totals=totals or {},
+            totals={**usage, **(totals or {})},
         )
         self._flush_manifest()
+
+
+# The only door to a recorded error annotation. Deliberately *not* part of
+# ``load_run_record``: a decision procedure that could reach the annotation
+# would be able to recite the flaw rather than find it, and every rate measured
+# downstream would be measuring that instead. Callers are enumerated — the
+# objection grader and the case validator — and a third one should have to
+# justify itself by failing a test.
+ERROR_SPEC_READERS = frozenset({"grading.grade_objection", "grading.validate_case"})
+
+
+def load_error_spec(run_dir: Path) -> ErrorSpec | None:
+    """Read the error annotation recorded beside a run, if there is one."""
+    path = Path(run_dir) / "error.json"
+    if not path.is_file():
+        return None
+    return ErrorSpec.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def _verdict_from(data: dict[str, Any]) -> Verdict:
+    """Rebuild a ``Verdict`` from its recorded form.
+
+    Shared by both record shapes: a solo run's decision is the same object as a
+    debate's, which is what keeps every downstream metric arm-independent.
+    """
+    return Verdict(
+        choice=data["choice"],
+        answer_index=data["answer_index"],
+        parse_mode=data["parse_mode"],
+        raw=data["raw"],
+        call_id=data["call_id"],
+        finish_reason=data.get("finish_reason"),
+        correct=data.get("correct"),
+        repair_attempts=data.get("repair_attempts", 0),
+        reasoning=data.get("reasoning", ""),
+        native_reasoning=data.get("native_reasoning", ""),
+        reasoning_withheld=data.get("reasoning_withheld", False),
+    )

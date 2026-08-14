@@ -141,10 +141,28 @@ have failed:
   Kenton et al., who found chain-of-thought null-to-harmful for accuracy. Accuracy
   is not the reason: a decision that states no grounds cannot be read, and cannot be
   contested.
-- **There is no invisible channel.** `reasoning_effort` defaults to `off`, so the
-  provider's own hidden reasoning is not in play; the debaters' `Thinking` is a
-  channel the protocol defines, and it is published. Everything that can change a
-  decision is in `config.json`, which is part of the record.
+- **Every channel is published.** The debaters' `Thinking` is a channel the protocol
+  defines, and it is published. Where a model has a *native* reasoning channel of
+  its own, that is published too, labelled as the provider's rather than the
+  protocol's. Everything that can change a decision is in `config.json`, which is
+  part of the record.
+
+  This used to read "there is no invisible channel: `reasoning_effort` defaults to
+  `off`, so the provider's own hidden reasoning is not in play". That is no longer
+  a claim this project can make by suppression, because it is no longer a setting
+  every model honours — `openai/gpt-oss-20b` and `google/gemini-3.7-flash` both
+  reject `reasoning: {enabled: false}` outright with *"Reasoning is mandatory for
+  this endpoint"*. Suppression would have meant excluding a growing class of
+  models rather than seeing their reasoning.
+
+  Every model tested does return the reasoning text, so publishing is available
+  where switching off is not, and it is the stronger claim: not "that channel was
+  closed" but "that channel is in this document". Two caveats belong with it.
+  Some providers return a **summary** of their reasoning rather than the trace
+  itself, so "published" means less for them than it does for others. And a
+  provider that bills reasoning tokens while returning no text has a channel that
+  genuinely cannot be inspected — that case is detected and marked in the record
+  rather than left to look like the clean one.
 
 **This is not a claim that the run is reproducible.** Sampling is not deterministic,
 and OpenRouter's `seed` is best-effort and ignored by some providers — in one
@@ -246,6 +264,22 @@ judge with reasoning it never saw.
   whatever budget they were given, and the same question under the same seating
   returned *different verdicts* at 150 and 250 words. The constitutional profile
   runs closest to the cap, consistent with its instruction to quote provisions.
+- **Removing the word limit breaks runs, asymmetrically.** `word_limit = 0` states
+  no cap. On long technical questions that produced a ~60% run-failure rate: the
+  limit had been disciplining the *private* `Thinking` section as a side effect,
+  and without it debaters ran past the token ceiling before ever reaching
+  `Argument:`. Truncation is fatal by design, so those runs die. The instruction
+  now bounds the scratchpad explicitly, but the deeper point is the asymmetry —
+  the failures fall on the debater defending the **weaker** case, which strains
+  hardest, so discarding failed runs is not a neutral exclusion.
+- **Some questions induce a degenerate decoding loop.** A debater emitted one
+  sentence verbatim for 126,000 characters at the `Thinking`→`Argument`
+  transition, and hit the ceiling. It recurs at 8k, at 32k, and with a frequency
+  penalty; a model with ~4× the active compute fails the same way, so it is a
+  decoding pathology rather than a capability limit. It is stochastic — the same
+  case can pass on a re-run — which is why `max_decision_attempts` retries the
+  *whole* decision rather than the truncated response. Roughly a quarter of
+  decisions need more than one attempt, and that rate is recorded per run.
 - **The profile changes the verdict too**: `paper` and `opinion` disagreed on the
   same question. Neither of these is a bug; both mean single runs should not be
   read as results.

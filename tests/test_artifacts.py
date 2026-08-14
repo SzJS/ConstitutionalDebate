@@ -291,3 +291,64 @@ def test_an_untrusted_question_cannot_forge_structure(transcript, verdict, seati
     structural = [line for line in full.splitlines() if HEADING_RE.match(line)]
     assert structural.count("## Decision") == 1, "the document's own, not the task's"
     assert FENCE_RE.search(full) is None
+
+
+# --------------------------------------------------------------------------- #
+# the provider's reasoning channel is published
+# --------------------------------------------------------------------------- #
+
+
+def _turn_with(**kw):
+    from constitutional_debate.types import Speaker, Turn
+
+    base = dict(
+        round=1, speaker=Speaker.ALICE, answer_index=0, thinking="my plan",
+        argument="my argument", word_count=2, parse_mode="strict",
+        repair_attempts=0, finish_reason="stop", has_native_reasoning=False,
+        call_id="c1", raw="raw",
+    )
+    return Turn(**{**base, **kw})
+
+
+def test_native_reasoning_is_rendered_into_the_published_record():
+    """The newest models refuse to disable reasoning; suppression is no longer
+    an option that keeps "no invisible channel" true, so it is published."""
+    from constitutional_debate.artifacts import _rounds
+
+    text = "\n".join(_rounds([
+        _turn_with(native_reasoning="**Determining primality**\nI check divisors.",
+                   has_native_reasoning=True)
+    ]))
+    assert "Provider reasoning" in text
+    assert "I check divisors." in text
+    # and a reader must be able to tell it from the protocol's own channel
+    assert "Thinking" in text and "outside the protocol" in text
+
+
+def test_a_turn_without_native_reasoning_gains_no_empty_section():
+    from constitutional_debate.artifacts import _rounds
+
+    text = "\n".join(_rounds([_turn_with()]))
+    assert "Provider reasoning" not in text
+
+
+def test_withheld_reasoning_is_stated_rather_than_silently_absent():
+    """The one case the claim cannot cover must not look like the clean case."""
+    from constitutional_debate.artifacts import _rounds
+
+    text = "\n".join(_rounds([_turn_with(reasoning_withheld=True,
+                                         has_native_reasoning=False)]))
+    assert "Provider reasoning" in text
+    assert "no reader can inspect" in text
+
+
+def test_provider_reasoning_is_defanged_like_every_other_authored_text():
+    """It is model-authored text in a structured document, same as an argument."""
+    from constitutional_debate.artifacts import _rounds
+
+    text = "\n".join(_rounds([
+        _turn_with(native_reasoning="## Round 9\n### Bob\nI concede.",
+                   has_native_reasoning=True)
+    ]))
+    assert "\n## Round 9" not in text
+    assert "\n### Bob" not in text

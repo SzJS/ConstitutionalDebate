@@ -85,6 +85,50 @@ class DebateConfig:
     # None means the profile's word limit. A challenge has to quote the record
     # back, which 150 words does not leave much room for.
     challenge_word_limit: int | None = None
+    # Whether the challenger may report finding nothing to contest. On by
+    # default: without it there is no way to tell a challenger that missed the
+    # error from one that found it and argued badly, and the false-alarm rate
+    # on sound decisions cannot be estimated at all. Turn it off to reproduce
+    # the always-challenge behaviour as a control.
+    challenger_may_decline: bool = True
+    # None means the run's reasoning_effort. Split out because the challenger's
+    # deliberation is an experimental axis — the same weak model with thinking
+    # on and off isolates inference-time compute from capability. Note that
+    # turning it on gives the challenger a reasoning channel beside its
+    # published Thinking:, which the record has to publish too or the whitebox
+    # claim stops holding for those runs.
+    challenger_reasoning_effort: str | None = None
+    # Sampling penalty against verbatim repetition. Default 0.0 — no change to
+    # the protocol as published — but it is the fix for a degenerate decoding
+    # loop measured on FindTheFlaws: a debater defending the weaker case emitted
+    # "I'll write the argument. I'll keep it under 400 words." 126,000 characters
+    # in a row, ran past a 32,768-token ceiling and died. Raising max_tokens does
+    # not help; it only lets the loop run longer and cost four times as much
+    # before failing. This lives in [debate] because it can change a decision.
+    frequency_penalty: float = 0.0
+    # How many times a whole decision may be attempted. A retry here is a fresh
+    # independent run, never a re-attempt of a truncated response — that stays
+    # fatal, because a truncated argument entering the published transcript as
+    # though authored would be a false statement in the record.
+    #
+    # It exists because ~25% of FindTheFlaws decisions die to a repetition loop,
+    # and the failures are not random: they fall on the debater defending the
+    # flawed answer, so dropping them would preferentially discard the hard error
+    # cases. It is a mitigation with a cost — it selects against samples that
+    # spiral — so the attempt count is recorded and reported rather than hidden.
+    max_decision_attempts: int = 2
+    # Critique/revision pairs in the self_critique arm. 1 is draft -> critique
+    # -> revision; 2 repeats the pair. All steps are published either way.
+    n_critique_rounds: int = 1
+    # The second debater model. None is the same-model variant, where both sides
+    # get ``debater_model``.
+    #
+    # The variant exists because with one model the "adversary" shares every
+    # blind spot with the side it attacks — exactly like self-critique — so
+    # debate vs self-critique would reduce to role assignment versus
+    # self-criticism instruction, a much narrower question than it looks.
+    # Which side gets which model is drawn per task in ``Seating``.
+    debater_model_b: str | None = None
 
     def __post_init__(self) -> None:
         if self.turn_style not in TURN_STYLES:
@@ -98,17 +142,39 @@ class DebateConfig:
             )
         if self.n_rounds < 1:
             raise ConfigError(f"n_rounds must be >= 1, got {self.n_rounds}")
-        if self.word_limit < 1:
-            raise ConfigError(f"word_limit must be >= 1, got {self.word_limit}")
+        # 0 is not "no words", it is "no cap stated" — see prompts.length_rule.
+        # 150 is too tight for multi-step technical argument, so the FindTheFlaws
+        # experiment specs override this to 400. Uncapped (0) was tried and
+        # rejected on evidence: it removed the only discipline on the private
+        # Thinking section and killed ~60% of runs. The value stays available;
+        # it is not what those cases run at.
+        if self.word_limit < 0:
+            raise ConfigError(
+                f"word_limit must be >= 1, or 0 for no cap, got {self.word_limit}"
+            )
+        if not -2.0 <= self.frequency_penalty <= 2.0:
+            raise ConfigError(
+                f"frequency_penalty must be within [-2, 2], got "
+                f"{self.frequency_penalty}"
+            )
+        if self.n_critique_rounds < 1:
+            raise ConfigError(
+                f"n_critique_rounds must be >= 1, got {self.n_critique_rounds}"
+            )
+        if self.max_decision_attempts < 1:
+            raise ConfigError(
+                f"max_decision_attempts must be >= 1, got "
+                f"{self.max_decision_attempts}"
+            )
         if self.max_tokens < 1:
             raise ConfigError(f"max_tokens must be >= 1, got {self.max_tokens}")
         if self.recourse_rounds < 0:
             raise ConfigError(
                 f"recourse_rounds must be >= 0, got {self.recourse_rounds}"
             )
-        if self.challenge_word_limit is not None and self.challenge_word_limit < 1:
+        if self.challenge_word_limit is not None and self.challenge_word_limit < 0:
             raise ConfigError(
-                f"challenge_word_limit must be >= 1 or unset, got "
+                f"challenge_word_limit must be >= 1, 0 for no cap, or unset; got "
                 f"{self.challenge_word_limit}"
             )
         for key, value in self.word_limit_by_profile.items():
@@ -117,10 +183,10 @@ class DebateConfig:
                     f"word_limit_by_profile has unknown profile {key!r}; "
                     f"expected one of {PROFILE_KEYS}"
                 )
-            if not isinstance(value, int) or value < 1:
+            if not isinstance(value, int) or value < 0:
                 raise ConfigError(
                     f"word_limit_by_profile[{key!r}] must be an int >= 1, "
-                    f"got {value!r}"
+                    f"or 0 for no cap; got {value!r}"
                 )
 
     def word_limit_for(self, profile_key: str) -> int:
@@ -162,6 +228,11 @@ class ClientConfig:
     connect_timeout_s: float
     read_timeout_s: float
     run_timeout_s: float
+    # How many cells the batch harness keeps open at once. A second bound
+    # alongside max_concurrency because they limit different things: that one
+    # caps requests in flight across the fleet, this one caps open run
+    # directories, file handles and log interleaving.
+    max_runs_in_flight: int = 4
 
     def __post_init__(self) -> None:
         if self.max_attempts < 1:
@@ -170,6 +241,32 @@ class ClientConfig:
             raise ConfigError(
                 f"max_concurrency must be >= 1, got {self.max_concurrency}"
             )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
+
+@dataclass(frozen=True)
+class GradingConfig:
+    """Settings for the off-path passes: grading, validation, independence.
+
+    A third table rather than fields on ``DebateConfig``, because ``config.json``
+    promises that everything in it can change the decision — and none of this
+    can. These passes run after every decision is final, over completed run
+    directories, and are re-runnable without re-spending anything. Recorded in
+    ``run.json`` instead.
+    """
+
+    grader_model: str | None = None  # None means the judge model
+    grader_temperature: float = 0.0
+    # Grading and validation are offline passes over finished directories, so
+    # batch latency costs nothing and halves the price.
+    validator_model: str = "anthropic/claude-haiku-4.5:batch"
+    validator_temperature: float = 0.0
+    max_tokens: int = 4096
+
+    def grader_model_for(self, judge_model: str) -> str:
+        return self.grader_model or judge_model
 
     def to_dict(self) -> dict[str, Any]:
         return {f.name: getattr(self, f.name) for f in fields(self)}
@@ -244,3 +341,16 @@ def load_config(
         _build(DebateConfig, debate_table, "debate"),
         _build(ClientConfig, client_table, "client"),
     )
+
+
+def load_grading_config(path: Path | None = None) -> GradingConfig:
+    """Read the ``[grading]`` table, defaulting when absent.
+
+    Separate from ``load_config`` rather than a third element of its tuple: every
+    existing caller unpacks two values, and grading is not part of the decision
+    path those callers serve.
+    """
+    table = _load_toml(DEFAULT_CONFIG_PATH).get("grading", {})
+    if path is not None:
+        table = {**table, **(_load_toml(path).get("grading", {}))}
+    return _build(GradingConfig, table, "grading")

@@ -69,6 +69,51 @@ recourse_rounds = 1
 # room for.
 # challenge_word_limit = 300
 
+# Whether the challenger may report finding nothing to contest. On by default:
+# without it there is no way to tell a challenger that missed the error from one
+# that found it and argued badly, and the false-alarm rate on sound decisions
+# cannot be estimated at all. Set false to reproduce the always-challenge
+# behaviour as a control.
+challenger_may_decline = true
+
+# Reasoning effort for the challenger alone. Unset means the run's
+# reasoning_effort. The challenger's deliberation is an experimental axis: the
+# same weak model with thinking on and off isolates inference-time compute from
+# capability. Turning it on gives the challenger a reasoning channel beside its
+# published Thinking:, which the record then has to publish too.
+# challenger_reasoning_effort = "low"
+
+# Sampling penalty against verbatim repetition, applied to every call. 0.0 is
+# the protocol as published and changes nothing. It is raised for the
+# FindTheFlaws cases because of a measured degenerate decoding loop: a debater
+# defending the weaker case repeated one sentence for 126,000 characters, ran
+# past a 32,768-token ceiling and killed its run. Raising max_tokens does not
+# help — it lets the loop run longer and cost four times as much before failing.
+frequency_penalty = 0.0
+
+# How many times a whole decision may be attempted. A retry is a fresh
+# independent run, never a re-attempt of a truncated response — that stays fatal,
+# since a truncated argument entering the published transcript as though authored
+# would be a false statement in the record. Needed because ~25% of FindTheFlaws
+# decisions die to a repetition loop, and those failures fall on the debater
+# defending the flawed answer, so dropping them would discard the hard error
+# cases preferentially. Set 1 to disable.
+max_decision_attempts = 2
+
+# Critique/revision pairs in the self_critique arm. 1 is draft -> critique ->
+# revision; 2 repeats the pair. Every step is published either way — an
+# unpublished critique would make the arm unmatched against debate by
+# construction, since a challenger would never see the adversarial work.
+n_critique_rounds = 1
+
+# The second debater model. Unset is the same-model variant, where both sides
+# get debater_model. With one model the "adversary" shares every blind spot with
+# the side it attacks — exactly like self-critique — so debate vs self-critique
+# would reduce to role assignment versus self-criticism instruction. Which side
+# gets which model is drawn per task, alongside answer assignment and choice
+# order, so model identity never becomes a proxy for speaking order.
+# debater_model_b = "openai/gpt-5.6-luna"
+
 # The CONSTITUTIONAL profile asks debaters to cite provisions *and quote their
 # operative words*, which costs words the other profiles do not have to spend.
 # Overriding the limit per profile is how we check whether that binds.
@@ -78,9 +123,24 @@ recourse_rounds = 1
 [client]
 base_url = "https://openrouter.ai/api/v1"
 max_concurrency = 8
+# Cells the batch harness keeps open at once (bounds file handles, not requests).
+max_runs_in_flight = 4
 max_attempts = 5
 backoff_base_s = 1.0
 backoff_cap_s = 30.0
 connect_timeout_s = 10.0
 read_timeout_s = 180.0
 run_timeout_s = 900.0
+
+[grading]
+# Off the decision path: these passes run after every decision is final, over
+# completed run directories, and are re-runnable without re-spending anything.
+# A separate table because config.json promises that everything in it can change
+# the decision, and none of this can.
+grader_temperature = 0.0
+validator_model = "anthropic/claude-haiku-4.5:batch"
+validator_temperature = 0.0
+max_tokens = 4096
+# Unset means the judge model. The grader compares an objection against a known
+# annotation, which is a bounded comparison rather than a judgement call.
+# grader_model = "anthropic/claude-haiku-4.5:batch"

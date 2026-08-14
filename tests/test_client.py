@@ -6,6 +6,7 @@ actual classification code runs — a mocked client would test nothing.
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -298,3 +299,115 @@ async def test_reasoning_effort_off_disables_it_in_the_body():
     assert captured["body"]["reasoning"] == {"enabled": False}
     assert captured["body"]["usage"] == {"include": True}
     assert captured["body"]["max_tokens"] == 8192
+
+
+async def test_a_shared_semaphore_bounds_concurrency_across_clients():
+    """A batch harness builds one client per run; the fleet still needs a bound.
+
+    Each run needs its own client so ``sink`` stays per-run and the call logs do
+    not interleave, but that would otherwise put ``max_concurrency`` requests in
+    flight *per run*. Passing one semaphore to every client is what bounds the
+    whole fleet, and this is the assertion that it does.
+    """
+    in_flight = 0
+    peak = 0
+
+    async def handler(request):
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        try:
+            await asyncio.sleep(0.01)
+            return httpx.Response(200, json=ok_body())
+        finally:
+            in_flight -= 1
+
+    shared = asyncio.Semaphore(2)
+    clients = [
+        OpenRouterClient(
+            "test-key",
+            # max_concurrency=8 each: without the shared semaphore, six clients
+            # would admit far more than two at once.
+            client_config(max_concurrency=8),
+            transport=httpx.MockTransport(handler),
+            semaphore=shared,
+        )
+        for _ in range(6)
+    ]
+    try:
+        await asyncio.gather(
+            *(
+                client.complete(
+                    model="deepseek/deepseek-v4-flash",
+                    messages=MESSAGES,
+                    temperature=0.0,
+                    max_tokens=8192,
+                    reasoning_effort="off",
+                    meta={"role": "judge", "purpose": "judge"},
+                )
+                for client in clients
+            )
+        )
+    finally:
+        for client in clients:
+            await client.aclose()
+
+    assert peak == 2, f"the shared semaphore should cap the fleet at 2, saw {peak}"
+
+
+async def test_without_a_shared_semaphore_each_client_bounds_only_itself():
+    """The default is unchanged: one client, its own bound. Guards the `or`."""
+    async def handler(request):
+        await asyncio.sleep(0.005)
+        return httpx.Response(200, json=ok_body())
+
+    client = OpenRouterClient(
+        "test-key",
+        client_config(max_concurrency=3),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        assert client._semaphore._value == 3
+    finally:
+        await client.aclose()
+
+
+async def test_a_no_endpoints_404_is_retried_but_a_bad_model_id_is_not():
+    """OpenRouter uses 404 for two unrelated things, told apart only by text.
+
+    A model whose providers are all momentarily unavailable is transient; a
+    model id that does not exist is not. Treating both as fatal cost a real
+    experiment: deepseek-v4-pro-0813 has two providers, both blipped, and the
+    run recorded the model as unusable when it worked again minutes later. The
+    models with the fewest providers are the capable ones, so the failure falls
+    exactly where it hurts.
+    """
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        if len(seen) == 1:
+            return httpx.Response(404, json={"error": {
+                "message": "No endpoints available matching your guardrail "
+                           "restrictions and data policy. Configure: "
+                           "https://openrouter.ai/settings/privacy",
+                "code": 404}})
+        return httpx.Response(200, json=ok_body())
+
+    completion = await run(handler)
+    assert completion.content == "Answer: 1"
+    assert len(seen) == 2, "the transient 404 should have been retried"
+
+
+async def test_a_genuine_404_still_fails_immediately():
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(404, json={"error": {
+            "message": "No allowed providers are available for the selected model.",
+            "code": 404}})
+
+    with pytest.raises(FatalError, match="retrying will not help"):
+        await run(handler)
+    assert len(seen) == 1, "a bad model id must not be retried"

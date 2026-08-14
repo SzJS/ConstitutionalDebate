@@ -169,10 +169,51 @@ def _rounds(turns: list[Turn]) -> list[str]:
                 "**Thinking** (private during the debate — neither the judge nor "
                 "the opponent ever saw this)",
                 defang_markdown(turn.thinking.strip()) or "_(none recorded)_",
+            ]
+            blocks += _native_reasoning_block(turn)
+            blocks += [
                 "**Argument** (what the judge read)",
                 defang_markdown(turn.argument),
             ]
     return blocks
+
+
+def _native_reasoning_block(turn: Turn) -> list[str]:
+    """The provider's own reasoning channel, published rather than suppressed.
+
+    ``reasoning_effort = "off"`` used to make this section impossible, and the
+    claim was that the channel was simply not in play. That is no longer a
+    choice available for every model: the newest ones refuse to disable
+    reasoning at all (``"Reasoning is mandatory for this endpoint"``). They do
+    return the text, so the honest form of the claim is not "the channel is off"
+    but "every channel that moved the outcome is in this document".
+
+    Two things a reader needs and would otherwise have to infer:
+
+    - this text is the *provider's*, generated outside the protocol, and is not
+      the ``Thinking`` section the prompts asked for;
+    - some providers return a **summary** of their reasoning rather than the
+      trace itself, so its presence here is not a guarantee of completeness.
+
+    And the case the claim cannot cover — reasoning billed but withheld — is
+    stated outright rather than left as a silent absence.
+    """
+    if turn.reasoning_withheld:
+        return [
+            "**Provider reasoning** — _the provider billed reasoning tokens for "
+            "this turn but returned no text for them. This is a channel that "
+            "shaped the argument below and that no reader can inspect; it is "
+            "recorded here because the record should say so rather than look "
+            "complete._",
+        ]
+    if not turn.native_reasoning.strip():
+        return []
+    return [
+        "**Provider reasoning** (the model's own reasoning channel, outside the "
+        "protocol — published, not suppressed; some providers return a summary "
+        "rather than the full trace)",
+        defang_markdown(turn.native_reasoning.strip()),
+    ]
 
 
 def _grounds_caveat(verdict: Verdict, judge_cot: bool) -> str:
@@ -489,4 +530,109 @@ def render_decision_record(
         *_rounds(transcript.all_turns()),
         *_decision(task, seating, verdict, judge_cot),
     ]
+    return "\n\n".join(blocks) + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# solo arms
+# --------------------------------------------------------------------------- #
+
+TRACE_DOC_KEYS = frozenset({"question", "answers", "steps"})
+
+SOLO_PRIVATE_NOTE = (
+    "> **The `Thinking` sections below were private while the decision was being "
+    "made.** They are published afterwards for the same reason a debater's are: "
+    "a record of a public decision should let a reader see everything that went "
+    "into it, including what the agent worked out and chose not to say."
+)
+
+SOLO_CRITIQUE_NOTE = (
+    "> **The critique is part of the record, not a hidden step.** The agent "
+    "criticised its own draft and then revised it; all three are published. "
+    "Publishing only the revision would leave a reader unable to see what the "
+    "agent decided to change, or to disagree with it."
+)
+
+
+def trace_document(task: Task, trace) -> dict[str, Any]:
+    """``transcript.json`` for a solo arm.
+
+    A different key set from the debate document on purpose: widening
+    ``TRANSCRIPT_DOC_KEYS`` to admit ``steps`` would let a solo key appear
+    unnoticed in a debate record, and vice versa.
+    """
+    return {
+        "question": task.question,
+        "answers": list(task.answers),
+        "steps": [s.to_dict() for s in trace.all_steps()],
+    }
+
+
+def render_solo_record(
+    task: Task,
+    seating: Seating,
+    trace,
+    *,
+    verdict: Verdict | None = None,
+    arm: str = "single",
+) -> str:
+    """The published record of a decision reached without a debate.
+
+    States **no positions**. There are no debaters, so there is nobody to say
+    argued for what — and printing a seating here, as the debate renderer does,
+    would put a false statement in the document.
+    """
+    steps = trace.all_steps()
+    blocks: list[str] = [
+        "# The decision",
+        SOLO_PRIVATE_NOTE,
+    ]
+    if any(s.stage == "critique" for s in steps):
+        blocks.append(SOLO_CRITIQUE_NOTE)
+    blocks += [
+        "## Question",
+        defang_markdown(task.question),
+        "## Answers",
+        "\n".join(
+            f"- `answers[{i}]` — {defang_markdown(answer)} "
+            f"(shown to the agent as choice {seating.choice_for_answer(i)})"
+            for i, answer in enumerate(task.answers)
+        ),
+        f"## How this decision was made\n\nArm: `{arm}`. "
+        + (
+            "One agent, one pass."
+            if arm == "single"
+            else "One agent: draft, then a critique of that draft, then a revision."
+        ),
+    ]
+
+    for step in steps:
+        blocks.append(f"## Step {step.index} — {step.stage}")
+        blocks += [
+            "**Thinking** (private while the decision was being made)",
+            defang_markdown(step.thinking.strip()) or "_(none recorded)_",
+        ]
+        blocks += _native_reasoning_block(step)
+        blocks += [
+            "**Published**" if step.stage != "critique" else "**Critique**",
+            defang_markdown(step.text),
+        ]
+
+    if verdict is not None:
+        blocks += [
+            "## Decision",
+            "\n".join(
+                [
+                    f"- Choice: **{verdict.choice}**",
+                    f"- Resolved answer: `answers[{verdict.answer_index}]` — "
+                    f"{defang_markdown(task.answers[verdict.answer_index])}",
+                ]
+                + (
+                    []
+                    if verdict.correct is None
+                    else [f"- Graded against the gold answer: **"
+                          f"{'correct' if verdict.correct else 'incorrect'}**"]
+                )
+            ),
+        ]
     return "\n\n".join(blocks) + "\n"

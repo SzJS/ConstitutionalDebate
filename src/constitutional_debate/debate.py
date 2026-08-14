@@ -10,20 +10,27 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
-from .client import ChatClient, Completion
+from .client import ChatClient
 from .config import DebateConfig
+# Re-exported rather than merely used: these lived here before the call layer
+# was split out, and both the tests and the other orchestrators import them
+# from this module.
+from .engine import (  # noqa: F401
+    DebateFailure,
+    TruncatedOutputError,
+    _complete,
+    _complete_with_repair,
+)
 from .persistence import RunRecord, RunWriter
 from .prompts import (
     PROFILES,
-    MalformedOutputError,
     RecourseFrame,
     TaskProfile,
     build_challenger_messages,
     build_debater_messages,
     build_judge_messages,
-    build_repair_messages,
+    parse_challenge_output,
     parse_debater_output,
     parse_judge_output,
     parse_ruling_output,
@@ -33,6 +40,7 @@ from .types import (
     ORDER,
     Challenge,
     Context,
+    ErrorSpec,
     DebateResult,
     RecourseResult,
     Ruling,
@@ -45,23 +53,10 @@ from .types import (
     compose_transcript,
     count_words,
     resolve_ruling,
+    seeded_case_for,
 )
 
 log = logging.getLogger(__name__)
-
-
-class TruncatedOutputError(RuntimeError):
-    """A response hit the token ceiling.
-
-    Not retried. At the configured ceiling a truncated response means something
-    is structurally wrong — most likely native reasoning consuming the budget —
-    and a retry at the same cap fails the same way while costing another call.
-    The fix is the ``max_tokens`` lever, so say so and stop.
-    """
-
-
-class DebateFailure(RuntimeError):
-    """A debate could not be completed. The partial record is still on disk."""
 
 
 async def run_debate(
@@ -73,8 +68,16 @@ async def run_debate(
     *,
     writer: RunWriter | None = None,
     profile: TaskProfile | None = None,
+    error: ErrorSpec | None = None,
 ) -> DebateResult:
-    """Run one debate to a verdict."""
+    """Run one debate to a verdict.
+
+    ``error`` seeds each debater with the reasoning for the answer it defends,
+    which is how a constructed-error case is set up: the flawed solution goes to
+    the debater arguing the wrong answer, the correct one to its opponent. Only
+    ``ErrorSpec.seed`` / ``sound_seed`` are read here. The annotation half never
+    is, and must not be — it is what the grader scores a challenge against.
+    """
     profile = profile or select_profile(task, context)
     transcript = Transcript()
 
@@ -82,6 +85,7 @@ async def run_debate(
         await _run_round(
             task, context, config, seating, client, transcript,
             round_number=round_number, profile=profile, writer=writer,
+            error=error,
         )
 
     verdict = await _judge(
@@ -109,12 +113,13 @@ async def _run_round(
     profile: TaskProfile,
     writer: RunWriter | None,
     recourse: RecourseFrame | None = None,
+    error: ErrorSpec | None = None,
 ) -> None:
     async def turn_for(speaker: Speaker) -> Turn:
         return await _debater_turn(
             task, context, config, seating, client, transcript,
             speaker=speaker, round_number=round_number, profile=profile,
-            recourse=recourse,
+            recourse=recourse, error=error,
         )
 
     if config.turn_style == "simultaneous":
@@ -165,75 +170,6 @@ def _commit(transcript: Transcript, turn: Turn, writer: RunWriter | None) -> Non
         )
 
 
-async def _complete_with_repair(
-    client: ChatClient,
-    *,
-    model: str,
-    messages: list[dict[str, str]],
-    temperature: float,
-    config: DebateConfig,
-    meta: dict[str, Any],
-    parse: Any,
-    role: str,
-    word_limit: int,
-) -> tuple[Any, Completion, int]:
-    """Call the model, and on a format failure spend exactly one repair attempt.
-
-    One bounded retry converts a class of run-killing hiccups into a logged
-    annotation. More would select for compliant outputs and bias the sample.
-    """
-    completion = await _complete(
-        client, model=model, messages=messages, temperature=temperature,
-        config=config, meta=meta,
-    )
-    try:
-        return parse(completion.content), completion, 0
-    except MalformedOutputError as first_error:
-        log.warning("%s output malformed (%s); attempting one repair", role, first_error)
-
-    repair_messages = build_repair_messages(
-        messages, completion.content, role=role, word_limit=word_limit
-    )
-    repaired = await _complete(
-        client, model=model, messages=repair_messages, temperature=temperature,
-        config=config, meta={**meta, "purpose": "repair"},
-    )
-    try:
-        return parse(repaired.content), repaired, 1
-    except MalformedOutputError as error:
-        raise DebateFailure(
-            f"{role} output still malformed after one repair attempt: {error}"
-        ) from error
-
-
-async def _complete(
-    client: ChatClient,
-    *,
-    model: str,
-    messages: list[dict[str, str]],
-    temperature: float,
-    config: DebateConfig,
-    meta: dict[str, Any],
-) -> Completion:
-    completion = await client.complete(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=config.max_tokens,
-        reasoning_effort=config.reasoning_effort,
-        meta=meta,
-    )
-    if completion.truncated:
-        raise TruncatedOutputError(
-            f"{meta.get('role')} response stopped on "
-            f"finish_reason={completion.finish_reason!r} at max_tokens="
-            f"{config.max_tokens}. A truncated argument would enter the public "
-            f"transcript as if authored, so this is fatal. Raise max_tokens, or "
-            f"check whether native reasoning is consuming the budget."
-        )
-    return completion
-
-
 async def _debater_turn(
     task: Task,
     context: Context | None,
@@ -246,15 +182,25 @@ async def _debater_turn(
     round_number: int,
     profile: TaskProfile,
     recourse: RecourseFrame | None = None,
+    error: ErrorSpec | None = None,
 ) -> Turn:
+    # Only in round 1: after that the case is in the transcript, and repeating
+    # it every round would let a seeded debater re-read its script instead of
+    # engaging with what its opponent said.
+    seeded_case = (
+        seeded_case_for(speaker=speaker, seating=seating, task=task, error=error)
+        if round_number == 1 and recourse is None
+        else ""
+    )
     messages = build_debater_messages(
         task, context, seating, config, transcript,
-        speaker=speaker, round=round_number, profile=profile, recourse=recourse,
+        speaker=speaker, round=round_number, seeded_case=seeded_case,
+        profile=profile, recourse=recourse,
     )
     word_limit = config.word_limit_for(profile.key)
     (thinking, argument, parse_mode), completion, repairs = await _complete_with_repair(
         client,
-        model=config.debater_model,
+        model=seating.model_for(speaker, config.debater_model, config.debater_model_b),
         messages=messages,
         temperature=config.debater_temperature,
         config=config,
@@ -263,6 +209,11 @@ async def _debater_turn(
             "speaker": str(speaker),
             "round": round_number,
             "purpose": "turn" if recourse is None else "recourse_turn",
+            "model_side": "b" if (
+                config.debater_model_b is not None
+                and seating.model_for(speaker, config.debater_model,
+                                      config.debater_model_b) != config.debater_model
+            ) else "a",
         },
         parse=parse_debater_output,
         role="debater",
@@ -270,9 +221,10 @@ async def _debater_turn(
     )
 
     words = count_words(argument)
-    if words > word_limit:
+    if word_limit > 0 and words > word_limit:
         # Recorded and warned, never truncated: cutting the text would inject an
         # edit the model did not author, applied unevenly between debaters.
+        # word_limit == 0 is "no cap stated", so there is no overrun to report.
         log.warning(
             "round %d %s ran to %d words against a %d-word limit",
             round_number, speaker, words, word_limit,
@@ -291,6 +243,8 @@ async def _debater_turn(
         has_native_reasoning=completion.has_native_reasoning,
         call_id=completion.call_id,
         raw=completion.content,
+        native_reasoning=completion.reasoning or "",
+        reasoning_withheld=completion.reasoning_withheld,
     )
 
 
@@ -333,6 +287,8 @@ async def _judge(
         ),
         repair_attempts=repairs,
         reasoning=reasoning,
+        native_reasoning=completion.reasoning or "",
+        reasoning_withheld=completion.reasoning_withheld,
     )
     if writer is not None:
         writer.record_verdict(verdict, transcript)
@@ -352,8 +308,17 @@ async def run_recourse(
     *,
     writer: RunWriter,
     profile: TaskProfile | None = None,
+    rule: bool = True,
 ) -> RecourseResult:
-    """Contest one completed decision, to a ruling.
+    """Contest one completed decision, optionally to a ruling.
+
+    ``rule=False`` stops after recording the challenge. That is the **challenge**
+    stage, and it is separable because the main research question — can a weak
+    challenger *notice* the fault — is answered by the challenge alone, graded
+    against the annotation. The ruling answers whether the objection was
+    *accepted*, which is a different and secondary question, and one whose
+    answer depends on the recourse judge's competence rather than the
+    challenger's.
 
     The two protocols are one code path. ``recourse_rounds = 0`` — the
     judge-only protocol — simply runs the loop below zero times, so there is no
@@ -376,6 +341,27 @@ async def run_recourse(
     # Recorded before any round runs, so a recourse that fails halfway still
     # says on disk what was being contested.
     writer.record_challenge(challenge, transcript)
+
+    if not rule or not challenge.raised:
+        # Nothing to rule on. Running the rounds and the judge anyway would put
+        # a manufactured objection in front of them and record a ruling on a
+        # challenge nobody made — and the funnel would then be unable to tell a
+        # decision that survived contestation from one that was never contested.
+        # The absence of ruling.json is what says so on disk.
+        if not challenge.raised:
+            log.info("no challenge was raised; recording the decline without a ruling")
+        else:
+            log.info("challenge recorded; stopping before the ruling (rule=False)")
+        _, own = transcript.split_at(parent.config.n_rounds)
+        return RecourseResult(
+            run_id=writer.run_id,
+            parent_run_id=parent.run_id,
+            task=parent.task,
+            seating=parent.seating,
+            challenge=challenge,
+            transcript=own,
+            ruling=None,
+        )
 
     frame = RecourseFrame.from_record(
         challenge_text=challenge.text,
@@ -423,17 +409,19 @@ async def _generate_challenge(
     response re-parse and private-reasoning containment scan all apply to it
     without a line of new machinery.
     """
+    may_decline = config.challenger_may_decline
     messages = build_challenger_messages(
         parent.task, parent.context, parent.seating, config, transcript,
         arm=challenge.arm,
         visibility=challenge.visibility,
         decision_answer_index=parent.verdict.answer_index,
         decision_grounds=parent.verdict.raw,
+        may_decline=may_decline,
         profile=profile,
     )
     model = config.challenger_model_for()
     word_limit = config.challenge_word_limit_for(profile.key)
-    (thinking, text, parse_mode), completion, repairs = await _complete_with_repair(
+    parsed, completion, repairs = await _complete_with_repair(
         client,
         model=model,
         messages=messages,
@@ -445,20 +433,31 @@ async def _generate_challenge(
             "round": None,
             "purpose": "challenge",
         },
-        parse=parse_debater_output,
+        parse=parse_challenge_output if may_decline else parse_debater_output,
         role="challenger",
         word_limit=word_limit,
+        reasoning_effort=config.challenger_reasoning_effort,
     )
+    if may_decline:
+        thinking, raised, text, parse_mode = parsed
+    else:
+        thinking, text, parse_mode = parsed
+        raised = True
+
     words = count_words(text)
-    if words > word_limit:
+    if word_limit > 0 and words > word_limit:
         log.warning(
             "the generated challenge ran to %d words against a %d-word limit",
             words, word_limit,
         )
-    log.info("generated a %s challenge (%d words)", challenge.arm, words)
+    if raised:
+        log.info("generated a %s challenge (%d words)", challenge.arm, words)
+    else:
+        log.info("the %s challenger declined to challenge this decision", challenge.arm)
     return Challenge(
         text=text,
         origin="generated",
+        raised=raised,
         source=None,
         arm=challenge.arm,
         visibility=challenge.visibility,
@@ -469,6 +468,8 @@ async def _generate_challenge(
         repair_attempts=repairs,
         thinking=thinking,
         raw=completion.content,
+        native_reasoning=completion.reasoning or "",
+        reasoning_withheld=completion.reasoning_withheld,
     )
 
 
@@ -522,6 +523,8 @@ async def _recourse_judge(
         correct=None if gold is None else answer_index == gold,
         repair_attempts=repairs,
         reasoning=reasoning,
+        native_reasoning=completion.reasoning or "",
+        reasoning_withheld=completion.reasoning_withheld,
     )
     if writer is not None:
         writer.record_ruling(ruling, transcript)

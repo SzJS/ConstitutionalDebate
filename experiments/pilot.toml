@@ -1,0 +1,29 @@
+# Plan A: the pilot. 100 Python650 cases, debate arm only for now — the two
+# baseline arms land in Phases 4 and 5, and the challenger ladder in the contest
+# stage. Its transcripts double as the hand-read.
+name = "pilot-a"
+cases = "data/cases/ftf-python650.jsonl"
+arms = ["debate"]
+conditions = ["matched"]
+repeats = 1
+profile = "paper"
+
+[debate]
+# Settled by A/B against v4-flash and v4-pro-0813: same reliability as a model
+# with ~4x the active compute, at 1/17th the cost per decided debate.
+debater_model = "deepseek/deepseek-v4-flash-0731"
+judge_model = "deepseek/deepseek-v4-flash-0731"
+n_rounds = 3
+# 400, not uncapped: uncapped killed ~60% of runs through runaway Thinking
+# sections. May still be too small — first knob to revisit.
+word_limit = 400
+max_tokens = 8192
+# ~25% of decisions die to a repetition loop, and the failures fall on the
+# debater defending the flawed answer, so they cannot simply be dropped.
+max_decision_attempts = 2
+judge_cot = true
+seed = 0
+
+[client]
+max_concurrency = 8
+max_runs_in_flight = 4

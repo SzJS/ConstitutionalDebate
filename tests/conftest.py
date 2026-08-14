@@ -42,12 +42,19 @@ class FakeClient:
     # Roles that have exactly one call per run, so a script can key on the role
     # alone. Debaters need (round, speaker).
     SINGLETON_ROLES = frozenset({"judge", "recourse_judge", "challenger"})
+    # Roles that occur several times per run but carry no round or speaker — a
+    # grader runs once per objection, a validator once per case and again per
+    # ruling. They would all collide on ``(None, None)``, so they key on
+    # ``(role, purpose)`` instead. Existing keys are untouched.
+    STAGED_ROLES = frozenset({"grader", "validator", "solo", "critic"})
 
     @staticmethod
     def key(meta: dict[str, Any]) -> Any:
         role = meta.get("role")
         if role in FakeClient.SINGLETON_ROLES:
             return role
+        if role in FakeClient.STAGED_ROLES:
+            return (role, meta.get("purpose"))
         return (meta.get("round"), meta.get("speaker"))
 
     async def complete(
@@ -59,6 +66,7 @@ class FakeClient:
         max_tokens: int,
         reasoning_effort: str,
         meta: dict[str, Any],
+        frequency_penalty: float = 0.0,
     ) -> Completion:
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
@@ -89,13 +97,39 @@ class FakeClient:
                     "identifying an error in the decision's reasoning.\n\n"
                     "Ruling: UPHOLD"
                 )
+            elif meta.get("role") == "critic":
+                # No format contract: a critique produces no decision, so there
+                # is nothing to parse and nothing a malformed reply could break.
+                content = "Step 2 asserts the bound without establishing it."
+            elif meta.get("role") == "solo":
+                content = (
+                    "Thinking: private working, published only afterwards\n\n"
+                    "Reasoning: The first choice follows from the constraint.\n"
+                    "Answer: 1"
+                )
+            elif meta.get("role") == "grader":
+                content = (
+                    "The objection names the divisor and says the answer flips.\n\n"
+                    "Localisation: 2\n"
+                    "Changes the decision: YES"
+                )
+            elif meta.get("role") == "validator":
+                content = (
+                    "The intended flaw is present and drove the decision.\n\n"
+                    "Fidelity: YES\nSurvived: YES\nCross-arm match: YES\n"
+                    "Re-derived: NO"
+                )
             elif meta.get("role") == "challenger":
+                # Carries the "Challenge: YES" decision line, because the
+                # challenger may decline by default and the parser refuses a
+                # response without it. A scripted reply that omitted it would
+                # test the repair path rather than the thing under test.
                 content = (
                     "Thinking: private plan for the challenge — this scratchpad "
                     "is not part of the challenge and must not reach the judge "
                     "or either debater.\n\n"
-                    "Argument: The decision rests on a figure neither debater "
-                    "supported."
+                    "Argument: Challenge: YES\n"
+                    "The decision rests on a figure neither debater supported."
                 )
             else:
                 # Thinking is deliberately long, distinctive and *multi-line*:

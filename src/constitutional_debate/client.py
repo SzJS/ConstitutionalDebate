@@ -28,6 +28,10 @@ RETRY_STATUSES = frozenset({408, 409, 429, 500, 502, 503, 504})
 # Client errors that another attempt cannot fix: a bad key or model id should
 # fail in one second naming the problem, not after five backoffs.
 FATAL_STATUSES = frozenset({400, 401, 402, 403, 404})
+# The one 404 that is transient rather than terminal: every provider serving the
+# model was momentarily unavailable. Matched on the message because the status
+# code alone cannot tell it apart from a model id that does not exist.
+NO_ENDPOINTS_MARKER = "no endpoints available"
 # Blank completions are usually deterministic, so they get a tighter cap than
 # genuine transport failures.
 MAX_BLANK_ATTEMPTS = 2
@@ -64,6 +68,19 @@ class Completion:
         return bool(self.reasoning)
 
     @property
+    def reasoning_withheld(self) -> bool:
+        """Reasoning tokens were billed, but no reasoning text came back.
+
+        The one case the transparency claim cannot cover. Every model tested so
+        far returns the text — Gemini as a summary, gpt-oss and DeepSeek more
+        fully — but a provider that bills for reasoning and withholds it has a
+        channel that moved the outcome and that no reader can inspect. Detected
+        rather than assumed absent, and recorded per turn.
+        """
+        details = self.usage.get("completion_tokens_details") or {}
+        return bool(details.get("reasoning_tokens")) and not self.reasoning
+
+    @property
     def truncated(self) -> bool:
         return (
             self.finish_reason is not None
@@ -83,6 +100,7 @@ class ChatClient(Protocol):
         max_tokens: int,
         reasoning_effort: str,
         meta: dict[str, Any],
+        frequency_penalty: float = 0.0,
     ) -> Completion: ...
 
 
@@ -106,10 +124,17 @@ class OpenRouterClient:
         *,
         sink: CallSink | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        semaphore: asyncio.Semaphore | None = None,
     ) -> None:
         self._config = config
         self._sink = sink
-        self._semaphore = asyncio.Semaphore(config.max_concurrency)
+        # A batch harness runs many decisions at once, and each one builds its
+        # own client so that ``sink`` stays per-run and the call logs do not
+        # interleave. Left to itself that would put ``max_concurrency`` requests
+        # in flight *per run*, so a caller may pass one semaphore shared across
+        # clients to bound the whole fleet. ``None`` is the single-run case and
+        # behaves exactly as before.
+        self._semaphore = semaphore or asyncio.Semaphore(config.max_concurrency)
         self._client = httpx.AsyncClient(
             base_url=config.base_url,
             headers={
@@ -143,6 +168,7 @@ class OpenRouterClient:
         temperature: float,
         max_tokens: int,
         reasoning_effort: str,
+        frequency_penalty: float = 0.0,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model,
@@ -151,6 +177,11 @@ class OpenRouterClient:
             "max_tokens": max_tokens,
             "usage": {"include": True},
         }
+        # Omitted entirely at 0.0 rather than sent as an explicit zero: the
+        # default protocol should put nothing on the wire it does not mean, and
+        # a recorded request body is part of the published record.
+        if frequency_penalty:
+            body["frequency_penalty"] = frequency_penalty
         # The protocol's private channel is the "Thinking:" block, which we
         # persist and audit. Native reasoning is a second private channel
         # outside the protocol, so it is set deliberately rather than left to a
@@ -170,6 +201,7 @@ class OpenRouterClient:
         max_tokens: int,
         reasoning_effort: str,
         meta: dict[str, Any],
+        frequency_penalty: float = 0.0,
     ) -> Completion:
         body = self._build_body(
             model=model,
@@ -177,6 +209,7 @@ class OpenRouterClient:
             temperature=temperature,
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
+            frequency_penalty=frequency_penalty,
         )
         blank_attempts = 0
         last_error: Exception | None = None
@@ -262,9 +295,27 @@ class OpenRouterClient:
     ) -> Completion:
         """Classify one response. Raises Retryable/Fatal; never writes records."""
         if response.status_code in FATAL_STATUSES:
+            message = _error_message(payload)
+            # OpenRouter returns 404 for two unrelated things: a model id that
+            # does not exist, and a model whose providers are all momentarily
+            # unavailable. The second is transient and is distinguished only by
+            # the message text. Treating it as fatal cost us a real experiment
+            # once: deepseek-v4-pro-0813 is served by two providers, both were
+            # briefly unavailable, and the run recorded the model as unusable
+            # when it was working again minutes later. The failure mode is worst
+            # exactly where it matters most — the capable models have the fewest
+            # providers and so the least fallback.
+            if response.status_code == 404 and NO_ENDPOINTS_MARKER in message.lower():
+                error = RetryableError(
+                    f"HTTP 404 from OpenRouter (model={body['model']!r}): "
+                    f"{message}. No provider was available for this model at "
+                    f"this moment; retrying."
+                )
+                error.retry_after = _retry_after_seconds(response)  # type: ignore[attr-defined]
+                raise error
             raise FatalError(
                 f"HTTP {response.status_code} from OpenRouter "
-                f"(model={body['model']!r}): {_error_message(payload)}. "
+                f"(model={body['model']!r}): {message}. "
                 f"Check OPENROUTER_KEY and the model id; retrying will not help."
             )
 

@@ -28,7 +28,15 @@ from .prompts import (
     build_judge_messages,
     select_profile,
 )
-from .types import ORDER, Context, Task, Transcript, make_seating
+from .types import (
+    ORDER,
+    Case,
+    Context,
+    Task,
+    Transcript,
+    make_seating,
+    seeded_case_for,
+)
 
 API_KEY_ENV = "OPENROUTER_KEY"
 
@@ -40,7 +48,17 @@ def build_parser() -> argparse.ArgumentParser:
         prog="constitutional-debate",
         description="Run one debate over a binary question and record it.",
     )
-    parser.add_argument("--task", type=Path, required=True, help="task JSON file")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--task", type=Path, help="task JSON file")
+    source.add_argument(
+        "--case",
+        type=Path,
+        help=(
+            "case JSON file: a task plus the error it is known to contain. The "
+            "error seeds each debater with the reasoning for its answer; its "
+            "annotation is recorded for the grader and reaches no prompt."
+        ),
+    )
     parser.add_argument(
         "--constitution",
         type=Path,
@@ -120,7 +138,7 @@ def load_context(path: Path | None) -> Context | None:
     )
 
 
-def render_all_prompts(task, context, seating, config, profile) -> list[tuple[str, str]]:
+def render_all_prompts(task, context, seating, config, profile, error=None) -> list[tuple[str, str]]:
     """Every prompt this configuration would send, as ``(label, text)`` pairs.
 
     Rounds after the first are rendered against an empty transcript, since no
@@ -133,7 +151,15 @@ def render_all_prompts(task, context, seating, config, profile) -> list[tuple[st
         for speaker in ORDER:
             messages = build_debater_messages(
                 task, context, seating, config, empty,
-                speaker=speaker, round=round_number, profile=profile,
+                speaker=speaker, round=round_number,
+                seeded_case=(
+                    seeded_case_for(
+                        speaker=speaker, seating=seating, task=task, error=error
+                    )
+                    if round_number == 1
+                    else ""
+                ),
+                profile=profile,
             )
             for message in messages:
                 rendered.append(
@@ -172,7 +198,7 @@ def configure_logging(run_dir: Path, verbose: bool) -> None:
 
 
 async def _execute(config, client_config: ClientConfig, task, context, seating,
-                   profile, api_key: str, writer: RunWriter) -> int:
+                   profile, api_key: str, writer: RunWriter, error=None) -> int:
     """Run the debate, recording the outcome in the manifest either way."""
     async with OpenRouterClient(
         api_key, client_config, sink=writer.record_call
@@ -181,7 +207,7 @@ async def _execute(config, client_config: ClientConfig, task, context, seating,
             async with asyncio.timeout(client_config.run_timeout_s):
                 result = await run_debate(
                     task, context, config, seating, client,
-                    writer=writer, profile=profile,
+                    writer=writer, profile=profile, error=error,
                 )
         except asyncio.CancelledError:
             # Must propagate: swallowing it would let asyncio.Runner complete
@@ -221,7 +247,11 @@ def main(argv: list[str] | None = None) -> int:
             args.config,
             overrides={key: getattr(args, key) for key in OVERRIDE_KEYS},
         )
-        task = Task.from_json(args.task)
+        if args.case is not None:
+            case = Case.from_json(args.case)
+            task, error = case.task, case.error
+        else:
+            task, error = Task.from_json(args.task), None
         context = load_context(args.constitution)
         profile = (
             PROFILES[args.profile] if args.profile else select_profile(task, context)
@@ -251,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         profile_key=profile.key,
         outputs_root=args.outputs,
         status="dryrun" if args.dry_run else "running",
+        error=error,
     )
     configure_logging(writer.dir, args.verbose)
     print(writer.dir)
@@ -267,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.dry_run:
-        rendered = render_all_prompts(task, context, seating, config, profile)
+        rendered = render_all_prompts(task, context, seating, config, profile, error)
         blocks = [
             f"{'=' * 78}\n=== {label}\n{'=' * 78}\n{text}" for label, text in rendered
         ]
@@ -286,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return asyncio.run(
             _execute(config, client_config, task, context, seating, profile,
-                     api_key, writer)
+                     api_key, writer, error)
         )
     except KeyboardInterrupt:
         # BaseException, so _execute's handler never sees it; without this the
