@@ -349,6 +349,22 @@ async def test_decide_challenge_grade_analyse_end_to_end(tmp_path, cases,
     assert metrics["rows"] == len(grid)
     assert set(metrics["funnel"]) >= {"overall", "debate", "single", "self_critique"}
 
+    # The funnel is computed over the tasks wrong in *every* arm. The scripted
+    # client answers the same way every time, so it is right about one of the
+    # two cases and wrong about the other: `case-b` comes out correct in all
+    # three arms and has no flaw for anyone to detect, so the intersection drops
+    # it. That is the filter working, end to end, on a real pipeline.
+    matching = metrics["matching"]
+    assert matching["checked"] and matching["arms_source"] == "index"
+    assert matching["tasks_total"] == len(annotated)
+    assert matching["dropped_task_ids"] == ["case-b"]
+    assert matching["tasks_matched"] == 1
+    for arm in ("debate", "single", "self_critique"):
+        assert matching["dropped"][arm] == {
+            "decided_correctly": 1, "never_decided": 0
+        }
+        assert metrics["funnel"][arm]["n"] == 1, "one task, the same one, per arm"
+
 
 async def test_the_challenge_stage_is_resumable_and_spends_nothing_on_a_rerun(
     tmp_path, cases, patched_client
@@ -392,3 +408,57 @@ async def test_grading_skips_a_decline_rather_than_grading_an_empty_objection(
     )
     assert all(r["status"] == "skipped" for r in graded)
     assert all(r["reason"] == "no challenge raised" for r in graded)
+
+
+def test_the_analyse_report_names_what_the_intersection_cost(tmp_path, monkeypatch, capsys):
+    """The denominator caveat is printed before the rates it caveats.
+
+    A reader who sees "detection 40%" without knowing 8 of 30 tasks were dropped
+    — and that 3 of those were construction refusals rather than results — is
+    reading a number that does not mean what it says.
+    """
+    import json as _json
+
+    from constitutional_debate import experiment_cli as cli
+
+    arms = ["single", "self_critique", "debate"]
+    rows = []
+    for i in range(30):
+        for arm in arms:
+            if arm == "self_critique" and i < 3:
+                continue  # construction refused: no decision, so no row
+            rows.append({
+                "task_id": f"t{i}", "decision_arm": arm, "condition": "matched",
+                "challenger_model": "qwen3-8b", "mechanism": "unaided",
+                "initially_correct": arm == "debate" and 3 <= i < 8,
+                "challenge_raised": True, "found_the_flaw": True,
+                "grade_valid": True, "underspecified": False, "changed": True,
+                "final_correct": True, "gradable": True,
+                "decision_record_words": 1600 if arm == "debate" else 200,
+            })
+    monkeypatch.setattr(cli, "build_index", lambda root: rows)
+
+    spec = tmp_path / "spec.toml"
+    spec.write_text(
+        'name = "x"\ncases = "data/cases/ftf-gpqa.jsonl"\n'
+        'arms = ["single", "self_critique", "debate"]\n',
+        encoding="utf-8",
+    )
+    root = tmp_path / "out" / "x"
+    root.mkdir(parents=True)
+    (root / "experiment.json").write_text(_json.dumps({"arms": arms}), encoding="utf-8")
+
+    assert cli.main([
+        "--spec", str(spec), "--stage", "analyse", "--outputs", str(tmp_path / "out"),
+    ]) == 0
+
+    out = capsys.readouterr().out
+    assert "matched 22/30 tasks across single, self_critique, debate" in out
+    assert "3 never decided" in out and "construction refused" in out
+    assert "5 decided correctly" in out and "the arm resisted" in out
+    # ...and it lands above the rates it qualifies.
+    assert out.index("matched 22/30") < out.index("detection")
+
+    metrics = _json.loads((root / "metrics.json").read_text())
+    assert metrics["matching"]["dropped_task_ids"] == [f"t{i}" for i in range(8)]
+    assert metrics["matching"]["arms_source"] == "experiment.json"

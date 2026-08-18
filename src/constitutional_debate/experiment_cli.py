@@ -202,6 +202,26 @@ def main(argv: list[str] | None = None) -> int:
         metrics = analyse(index_path)
         _write_json(root / "metrics.json", metrics)
         print(f"wrote {index_path} ({len(index)} rows) and metrics.json")
+        # Before the rates, because it is the caveat on their denominator: the
+        # funnel is computed over the tasks that came out wrong in *every* arm.
+        matching = metrics.get("matching", {})
+        if matching.get("checked"):
+            print(
+                f"  matched {matching['tasks_matched']}/{matching['tasks_total']} "
+                f"tasks across {', '.join(matching['arms'])}"
+            )
+            for arm, causes in sorted(matching["dropped"].items()):
+                if causes["never_decided"]:
+                    print(f"    {arm:<16}{causes['never_decided']:>4} never decided"
+                          f"      (construction refused — regenerate)")
+                if causes["decided_correctly"]:
+                    print(f"    {arm:<16}{causes['decided_correctly']:>4} decided "
+                          f"correctly  (the arm resisted — a finding)")
+            if matching.get("unmatchable_rows"):
+                print(f"    {matching['unmatchable_rows']} rows had no readable "
+                      f"parent manifest and could not be matched")
+        elif matching:
+            print(f"  arms not intersected: {matching.get('reason')}")
         for label, entry in metrics["funnel"].items():
             rates = entry.get("rates", {})
             detection = rates.get("detection", {})

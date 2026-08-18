@@ -30,33 +30,37 @@ Ordered by what they would do to a published number.
 7. `run_stage_grade`'s docstring claims it skips location-only annotations; it
    does not (the clamp in `grade_objection` covers correctness, but the coverage
    figures do not mean what the docstring says).
-8. **`analysis` does not intersect the arms.** `by_cell` conditions on
-   `initially_correct == False`, and under outcome control `single` contributes
-   every case while `debate` and `self_critique` contribute only what survived
-   their steering route. Comparing detection across those denominators compares
-   different case sets. The fix is a `matched_tasks(frame)` filter keeping only
-   `task_id`s wrong in every arm, applied as a hard filter — see
-   `design_decisions.md` §4b.
-
-   **The intersection also has to be watched, not just applied.** Every case it
-   drops was dropped by one of the construction's own refusals — a critique that
-   caught the seeded flaw twice, a steered output that narrated its steer twice,
-   an injector that rewrote the solution, a judge that resisted even under
-   steering. Those are cheap to retry: sampling is nondeterministic, so
-   regenerating a dropped case is a fresh draw rather than a re-run of the same
-   failure. So if the intersection removes an appreciable share of the corpus,
-   the response is to **regenerate the dropped cases** and only then decide
-   whether what remains is enough.
-
-   Two things that must not be quietly skipped when doing so. Regenerating
-   selects for cases whose construction happens to succeed, which is a bias in
-   the same family as the ones `design_decisions.md` §4 tabulates — how many
-   attempts each case took should be recorded, not just whether it eventually
-   worked. And a case that keeps failing after several draws is telling you
-   something about that case rather than about sampling luck; it should be
-   dropped and counted, not retried indefinitely.
-
 ## Fixed in this commit
+
+**`analysis` did not intersect the arms** (was #8). `funnel` conditions on
+`initially_correct == False`, and the arms reach that state by different routes:
+`single` is wrong by construction on every task, `self_critique` contributes what
+survived its construction, and `debate` only what its judge got wrong. So a rate
+for one arm was computed over a different set of tasks than the next, and the
+missing ones were where the construction had most trouble — which plausibly
+tracks how hard the flaw is to see, so the confound pointed the wrong way.
+
+`analysis.matched_tasks` keeps only the `task_id`s wrong in **every** arm, and
+both `funnel` and `token_balance` now run over that intersection. The arm list
+comes from `experiment.json` beside the index rather than from the index itself,
+so an arm whose every construction refused is loudly missing instead of quietly
+dropped from the comparison.
+
+**What it drops is reported, split by cause**, because the two causes call for
+opposite responses. A task **decided correctly** in an arm leaves a row saying
+so — that is a finding about the arm, which saw through the planted flaw. A task
+that **never decided** leaves no row at all: the construction refused, the
+challenge stage skipped it for want of a decision, and nothing reached the
+index. That is work to redo. `metrics.json` carries the counts and the dropped
+task ids, and `--stage analyse` prints them above the rates they qualify.
+
+Regenerating is the response to the second. Sampling is nondeterministic, so a
+dropped case is a fresh draw rather than a re-run of the same failure — but
+regeneration selects for cases whose construction happens to succeed, a bias in
+the same family as the ones `design_decisions.md` §4 tabulates, so
+attempts-per-case should be recorded and not just eventual success. A case that
+keeps failing after several draws is telling you something about that case
+rather than about sampling luck; drop it and count it.
 
 **The challenger was shown an empty record for both solo arms** (was #1,
 BLOCKING). `load_run_record` puts a solo run's body in `.trace` and returns an

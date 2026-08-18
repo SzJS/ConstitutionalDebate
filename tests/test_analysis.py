@@ -25,6 +25,7 @@ from constitutional_debate.analysis import (
     by_cell,
     funnel,
     read_index,
+    matched_tasks,
     token_balance,
 )
 
@@ -281,3 +282,177 @@ def test_analyse_reads_an_index_and_produces_metrics(tmp_path):
 def test_a_missing_index_is_an_empty_frame_not_an_error(tmp_path):
     assert read_index(tmp_path / "nope.jsonl").empty
     assert analyse(tmp_path / "nope.jsonl")["rows"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# intersecting the arms
+#
+# The funnel conditions on `initially_correct == False`, and the arms reach that
+# state by different routes — `single` is wrong by construction, `debate` only
+# when its judge got it wrong. Comparing rates across those denominators
+# compares different case sets.
+# --------------------------------------------------------------------------- #
+
+ARMS = ["single", "self_critique", "debate"]
+
+
+def arm_rows(task: str, *, correct_in=(), absent_from=()) -> list[dict]:
+    """One row per arm for one task, minus any arm it never reached."""
+    return [
+        row(task_id=task, decision_arm=arm, initially_correct=arm in correct_in)
+        for arm in ARMS
+        if arm not in absent_from
+    ]
+
+
+def test_a_task_wrong_in_every_arm_survives_with_all_its_rows():
+    f = frame(arm_rows("t1") + arm_rows("t2"))
+    matched, info = matched_tasks(f, arms=ARMS)
+    assert info["checked"] and info["tasks_matched"] == 2
+    assert len(matched) == len(f), "no rows lost from a task that qualifies"
+    assert info["dropped_task_ids"] == []
+
+
+def test_a_task_decided_correctly_in_one_arm_is_dropped_and_the_arm_named():
+    """A finding about that arm: it saw through the planted flaw."""
+    f = frame(arm_rows("t1") + arm_rows("t2", correct_in=("debate",)))
+    matched, info = matched_tasks(f, arms=ARMS)
+
+    assert info["tasks_matched"] == 1
+    assert info["dropped_task_ids"] == ["t2"]
+    assert set(matched["task_id"]) == {"t1"}
+    assert info["dropped"]["debate"] == {"decided_correctly": 1, "never_decided": 0}
+    assert info["dropped"]["single"] == {"decided_correctly": 0, "never_decided": 0}
+
+
+def test_a_task_that_never_decided_in_one_arm_is_counted_separately():
+    """Not the same problem as deciding correctly, and not the same response.
+
+    A construction refusal leaves no row at all — nothing decided, so nothing
+    was contested, so nothing reached the index. That is work to redo; a correct
+    decision is a result. Pooling them would invite one answer to two questions.
+    """
+    f = frame(arm_rows("t1") + arm_rows("t2", absent_from=("self_critique",)))
+    _, info = matched_tasks(f, arms=ARMS)
+
+    assert info["dropped"]["self_critique"] == {
+        "decided_correctly": 0,
+        "never_decided": 1,
+    }
+
+
+def test_the_two_drop_causes_are_never_pooled():
+    f = frame(
+        arm_rows("t1", correct_in=("debate",))
+        + arm_rows("t2", absent_from=("debate",))
+    )
+    _, info = matched_tasks(f, arms=ARMS)
+    assert info["dropped"]["debate"] == {"decided_correctly": 1, "never_decided": 1}
+
+
+def test_an_arm_with_no_rows_at_all_still_fails_the_intersection():
+    """The case the data-only alternative would have missed silently.
+
+    If every `self_critique` construction refused, that arm contributes nothing.
+    Asking the frame which arms exist would then quietly compare two arms and
+    report a healthy number.
+    """
+    f = frame(arm_rows("t1", absent_from=("self_critique",)))
+    matched, info = matched_tasks(f, arms=ARMS)
+
+    assert info["tasks_matched"] == 0
+    assert matched.empty
+    assert info["dropped"]["self_critique"]["never_decided"] == 1
+
+
+def test_rows_that_belong_to_no_identifiable_task_are_counted_not_kept():
+    """A parent manifest that would not parse leaves task_id and decision_arm
+    null. Such a row cannot be matched either way, so it is reported rather than
+    silently kept or silently dropped."""
+    f = frame(arm_rows("t1") + [row(task_id=None, decision_arm=None)])
+    matched, info = matched_tasks(f, arms=ARMS)
+
+    assert info["unmatchable_rows"] == 1
+    assert info["tasks_matched"] == 1
+    assert matched["task_id"].notna().all()
+
+
+def test_a_single_arm_experiment_is_a_no_op_that_still_reports():
+    f = frame([row(task_id="t1", decision_arm="debate")])
+    matched, info = matched_tasks(f, arms=["debate"])
+    assert info["checked"] and info["tasks_matched"] == 1
+    assert len(matched) == 1
+
+
+def test_the_intersection_declines_rather_than_guessing():
+    """Same house style as token_balance: a check that cannot run says so."""
+    bare = frame([{k: v for k, v in row().items() if k != "initially_correct"}])
+    _, info = matched_tasks(bare, arms=ARMS)
+    assert info["checked"] is False
+    assert "initially_correct" in info["reason"]
+
+    _, empty = matched_tasks(frame([]), arms=ARMS)
+    assert empty["checked"] is False
+
+
+def write_index(tmp_path, rows, *, arms=None):
+    path = tmp_path / "index.jsonl"
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    if arms is not None:
+        (tmp_path / "experiment.json").write_text(
+            json.dumps({"name": "x", "arms": arms}), encoding="utf-8"
+        )
+    return path
+
+
+def test_analyse_computes_the_funnel_over_the_intersection(tmp_path):
+    """The whole point: every arm's denominator is the same *set* of tasks, not
+    merely the same size."""
+    rows = []
+    for i in range(10):
+        # debate resists on half of them, so those tasks leave the stratum.
+        rows += arm_rows(f"t{i}", correct_in=("debate",) if i < 5 else ())
+    out = analyse(write_index(tmp_path, rows, arms=ARMS))
+
+    assert out["rows"] == len(rows), "rows describes the index, unfiltered"
+    assert out["matching"]["tasks_matched"] == 5
+    for arm in ARMS:
+        assert out["funnel"][arm]["n"] == 5, f"{arm} is measured over the same 5"
+    assert out["funnel"]["overall"]["n"] == 15
+
+
+def test_analyse_requires_an_arm_that_produced_nothing(tmp_path):
+    rows = [r for i in range(4) for r in arm_rows(f"t{i}", absent_from=("debate",))]
+    out = analyse(write_index(tmp_path, rows, arms=ARMS))
+
+    assert out["matching"]["arms_source"] == "experiment.json"
+    assert out["matching"]["tasks_matched"] == 0
+    assert out["matching"]["dropped"]["debate"]["never_decided"] == 4
+
+
+def test_analyse_falls_back_to_the_index_when_intent_is_unrecorded(tmp_path):
+    """`analyse` on a bare index file still works — it just cannot know about an
+    arm that produced no rows."""
+    rows = [r for i in range(4) for r in arm_rows(f"t{i}", absent_from=("debate",))]
+    out = analyse(write_index(tmp_path, rows, arms=None))
+
+    assert out["matching"]["arms_source"] == "index"
+    assert set(out["matching"]["arms"]) == {"single", "self_critique"}
+    assert out["matching"]["tasks_matched"] == 4, "debate is no longer required"
+
+
+def test_the_record_balance_is_measured_over_the_same_tasks_as_the_rates(tmp_path):
+    """Balancing record length over a different case set than the rates would be
+    incoherent — the check exists to qualify those rates."""
+    rows = []
+    for i in range(6):
+        rows += [
+            row(task_id=f"t{i}", decision_arm="single",
+                initially_correct=False, decision_record_words=200),
+            row(task_id=f"t{i}", decision_arm="debate",
+                initially_correct=i < 3, decision_record_words=1600),
+        ]
+    out = analyse(write_index(tmp_path, rows, arms=["single", "debate"]))
+    assert out["matching"]["tasks_matched"] == 3
+    assert out["token_balance"]["mean_by_arm"] == {"single": 200.0, "debate": 1600.0}
+    assert set(out["token_balance"]["outside_band"]) == {"single", "debate"}

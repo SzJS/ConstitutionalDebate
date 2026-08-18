@@ -265,8 +265,14 @@ flaws disjoint, localisation alone tells them apart. 1 of 91 TheoremQA cases and
 **Three caveats that must travel with every number.**
 
 1. **Unequal denominators.** `single` is wrong by construction; `debate` and
-   `self_critique` contribute only what survived steering. Analysis must
-   intersect on tasks wrong in *every* arm (`KNOWN_ISSUES` #8).
+   `self_critique` contribute only what survived steering.
+   `analysis.matched_tasks` therefore intersects on the tasks wrong in *every*
+   arm, and the funnel and the record-length balance both run over that
+   intersection. What it drops is reported split by cause, because the two
+   differ: a task **decided correctly** in an arm is a finding about that arm,
+   while one that **never decided** is a construction refusal to regenerate. The
+   arm list comes from `experiment.json`, not from the index, so an arm that
+   produced nothing is loudly missing rather than quietly excused.
 2. **Record length.** A constructed `single` record is the seed alone (81-216
    words); a debate record adds four generated turns near the 400-word cap. That
    is roughly an 8:1 imbalance in what a challenger reads, which is exactly the

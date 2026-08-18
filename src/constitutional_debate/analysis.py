@@ -19,6 +19,13 @@ cells would treat correlated observations as independent and understate the
 interval — which for a paired comparison is the error that most easily
 manufactures a result.
 
+A third choice is not statistical but is just as load-bearing: **the headline
+rates are computed over the intersection of the arms**, the tasks that came out
+wrong in every one of them, not over whatever each arm happens to contribute.
+That is not visible from ``funnel`` alone — it takes an already-filtered slice —
+so it happens in ``analyse``, via ``matched_tasks``, which also returns what the
+filter cost and why.
+
 This module imports pandas and statsmodels; nothing on the decision path does.
 """
 
@@ -27,7 +34,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -264,11 +271,135 @@ def token_balance(frame: pd.DataFrame, *, tolerance: float = 0.25) -> dict[str, 
     }
 
 
+def matched_tasks(
+    frame: pd.DataFrame, *, arms: Sequence[str]
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Rows for the tasks that came out wrong in **every** arm, and what that cost.
+
+    The funnel conditions on ``initially_correct == False`` — only a wrong
+    decision has a flaw to detect — and under outcome control the arms reach
+    that state by different routes. ``single`` is wrong by construction on every
+    task; ``self_critique`` contributes what survived its construction; ``debate``
+    contributes only what its judge got wrong, so a judge that resists even the
+    steer takes its task out of the stratum. Comparing detection across those
+    denominators compares different case sets, and the tasks that go missing are
+    the ones the construction found hardest — which plausibly tracks how hard the
+    flaw is to see, so the confound points the wrong way.
+
+    Hence a hard filter rather than a reported caveat. What it drops is returned
+    beside it, because the two ways a task can fail the intersection call for
+    opposite responses:
+
+    - **decided correctly** — a row exists saying so. That is a finding about
+      that arm: it saw through the planted flaw.
+    - **never decided** — no row exists at all. The construction refused (see
+      ``experiment._classify``), the challenge stage skipped it for want of a
+      decision, and nothing reached the index. That is work to redo, not a
+      result; sampling is nondeterministic, so regenerating is a fresh draw.
+
+    Pooling those two into "17 dropped" would invite one response to two
+    problems. ``arms`` is the set that must be present, and is the caller's to
+    supply: taken from the frame it would silently stop requiring an arm that
+    produced no rows at all — the failure this filter exists to catch.
+    """
+    needed = {"task_id", "decision_arm", "initially_correct"}
+    missing = sorted(needed - set(frame.columns))
+    if frame.empty or missing:
+        return frame, {
+            "checked": False,
+            "reason": (
+                "index is empty"
+                if frame.empty
+                else f"index has no {', '.join(missing)} column"
+            ),
+        }
+    if not arms:
+        return frame, {"checked": False, "reason": "no arms to match on"}
+
+    usable = frame[frame["task_id"].notna() & frame["decision_arm"].notna()]
+    tasks = sorted(usable["task_id"].unique())
+
+    # One (task, arm) pair is wrong iff *any* of its rows says so. Safe because
+    # ``initially_correct`` describes the decision, not the contest: every
+    # contest of one cell reads the same copied verdict.json.
+    wrong = {
+        (task, arm)
+        for task, arm in usable.loc[
+            usable["initially_correct"] == False,  # noqa: E712
+            ["task_id", "decision_arm"],
+        ].itertuples(index=False, name=None)
+    }
+    present = set(
+        usable[["task_id", "decision_arm"]].itertuples(index=False, name=None)
+    )
+
+    dropped: dict[str, dict[str, int]] = {
+        arm: {"decided_correctly": 0, "never_decided": 0} for arm in arms
+    }
+    keep: list[Any] = []
+    dropped_ids: list[Any] = []
+    for task in tasks:
+        failing = [arm for arm in arms if (task, arm) not in wrong]
+        if not failing:
+            keep.append(task)
+            continue
+        dropped_ids.append(task)
+        for arm in failing:
+            cause = "decided_correctly" if (task, arm) in present else "never_decided"
+            dropped[arm][cause] += 1
+
+    return frame[frame["task_id"].isin(keep)], {
+        "checked": True,
+        "arms": list(arms),
+        "tasks_total": len(tasks),
+        "tasks_matched": len(keep),
+        "dropped": dropped,
+        "dropped_task_ids": dropped_ids,
+        # Rows whose parent manifest could not be read, so they belong to no
+        # identifiable (task, arm) and cannot be matched either way.
+        "unmatchable_rows": int(len(frame) - len(usable)),
+    }
+
+
+def _intended_arms(index_path: Path, frame: pd.DataFrame) -> tuple[list[str], str]:
+    """The arms the run meant to produce, and where that was learnt.
+
+    ``experiment.json`` sits beside ``index.jsonl`` and records the spec's
+    ``arms``. Preferred over the frame's own values because an arm whose every
+    construction refused produces *no rows*, and asking the data would then stop
+    requiring it — the intersection would compare two arms, report a healthy
+    number, and say nothing about the third having vanished.
+    """
+    try:
+        spec = json.loads(
+            (Path(index_path).parent / "experiment.json").read_text(encoding="utf-8")
+        )
+        arms = [str(a) for a in spec.get("arms") or []]
+        if arms:
+            return arms, "experiment.json"
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+    if "decision_arm" not in frame.columns:
+        return [], "index"
+    return sorted(str(a) for a in frame["decision_arm"].dropna().unique()), "index"
+
+
 def analyse(index_path: Path, *, keys: Iterable[str] = ("decision_arm",)) -> dict[str, Any]:
-    """Everything, for ``--stage analyse`` to write as ``metrics.json``."""
+    """Everything, for ``--stage analyse`` to write as ``metrics.json``.
+
+    The funnel and the record-length balance are both computed over the
+    *intersection* — the tasks wrong in every arm — because a rate over one case
+    set compared against a rate over another is not a comparison. ``rows`` stays
+    the unfiltered count: it describes the index, and what the filter cost is in
+    ``matching``.
+    """
     frame = read_index(index_path)
+    arms, source = _intended_arms(index_path, frame)
+    matched, matching = matched_tasks(frame, arms=arms)
+    matching["arms_source"] = source
     return {
         "rows": int(len(frame)),
-        "funnel": by_cell(frame, keys=keys),
-        "token_balance": token_balance(frame),
+        "matching": matching,
+        "funnel": by_cell(matched, keys=keys),
+        "token_balance": token_balance(matched),
     }
