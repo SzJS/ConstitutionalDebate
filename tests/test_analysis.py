@@ -32,7 +32,7 @@ from constitutional_debate.analysis import (
 def row(**kw) -> dict:
     base = dict(
         task_id="t1", decision_arm="debate", challenger_model="qwen3-8b",
-        condition="matched", mechanism="genuine", initially_correct=False,
+        condition="matched", mechanism="unaided", initially_correct=False,
         challenge_raised=True, found_the_flaw=True, grade_valid=True,
         underspecified=False, changed=True, final_correct=True, gradable=True,
         decision_completion_tokens=2000, decision_record_words=1600,
@@ -143,13 +143,13 @@ def test_the_funnel_is_reported_per_arm_and_split_by_mechanism():
     hides which way the estimate leans.
     """
     f = frame([
-        row(decision_arm="debate", mechanism="genuine"),
-        row(decision_arm="debate", mechanism="manufactured"),
-        row(decision_arm="single", mechanism="genuine"),
+        row(decision_arm="debate", mechanism="unaided"),
+        row(decision_arm="debate", mechanism="steered"),
+        row(decision_arm="single", mechanism="unaided"),
     ])
     out = by_cell(f, keys=("decision_arm",))
     assert set(out) >= {"overall", "debate", "single"}
-    assert set(out["debate"]["by_mechanism"]) == {"genuine", "manufactured"}
+    assert set(out["debate"]["by_mechanism"]) == {"unaided", "steered"}
 
 
 # --------------------------------------------------------------------------- #

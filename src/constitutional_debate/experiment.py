@@ -559,10 +559,11 @@ def build_index(root: Path) -> list[dict[str, Any]]:
             "condition": parent_manifest.get("condition"),
             "challenger_model": manifest.get("challenger_model"),
             "challenge_arm": manifest.get("challenge_arm"),
-            # No default. The field went unwritten for so long that
-            # ``or "genuine"`` made every row read genuine, so the split that
-            # interprets the arms' results was a default rather than a
-            # measurement. An unlabelled row is now visibly unlabelled.
+            # No default. The field went unwritten for so long that the old
+            # ``or "genuine"`` made every row read as though the procedure had
+            # erred unaided, so the split that interprets the arms' results was
+            # a default rather than a measurement. An unlabelled row is now
+            # visibly unlabelled. Values: unaided | steered | constructed.
             "mechanism": error.get("mechanism") or None,
             "outcome_control": parent_config.get("outcome_control"),
             "gradable": error.get("annotation_quality") == "explanation",

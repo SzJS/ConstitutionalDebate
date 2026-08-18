@@ -86,10 +86,14 @@ where nobody did — the exact false statement `render_solo_record` exists to
 avoid, and it feeds `run_stage_validate` as well as a human reader.
 
 **`ErrorSpec.mechanism` is never written** (was #3). Now stamped at decide time
-by `RunWriter.record_mechanism`: `genuine` when the procedure reached the wrong
-decision unaided, `manufactured` when it had to be steered, `constructed` when
-no procedure ran. `build_index` no longer defaults it to `genuine`, which had
-made the split in `analysis.by_cell` a default rather than a measurement.
+by `RunWriter.record_mechanism`. It asks one question of every arm — did the
+procedure's own adversarial step have to be overridden? — with values `unaided`,
+`steered` and `constructed` (the last for `single`, which has no adversarial
+step). Which step is overridden differs by arm, the judge in a debate and the
+critique in `self_critique`, so a rate is comparable across arms and a
+description is not; `by_cell` says so where the split is read, and
+`construction.json` records what was steered. `build_index` no longer defaults
+the field, which had made the split a default rather than a measurement.
 
 **`analysis.token_balance` measured the wire, not the record** (was #9). It read
 `decision_completion_tokens`, which is zero for a constructed `single` cell by

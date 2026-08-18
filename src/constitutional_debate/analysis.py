@@ -134,10 +134,20 @@ def by_cell(frame: pd.DataFrame, keys: Iterable[str] = ("decision_arm",)) -> dic
     """The funnel per group, plus the same split by error mechanism.
 
     Reporting split by ``mechanism`` is not bookkeeping. The two error routes
-    are biased in opposite directions — natural errors select the debates where
-    debate surfaced the flaw *worst*, forced errors include debates where it was
-    well exposed and so are artificially easy to contest — so a combined number
-    hides which way the estimate leans.
+    are biased in opposite directions — unaided errors select the debates where
+    debate surfaced the flaw *worst*, steered errors include debates where it
+    was well exposed and so are artificially easy to contest — so a combined
+    number hides which way the estimate leans.
+
+    **The split is nested inside each group, and must stay that way.**
+    ``mechanism`` asks one question of every arm — did the procedure's own
+    adversarial step have to be overridden? — but *which* step that is differs:
+    the judge weighing both sides in ``debate``, the critique in
+    ``self_critique``, and none at all in ``single``, whose rows are all
+    ``constructed``. So a ``steered`` rate is comparable across arms as a rate
+    and not as a description: reading one across groups pools a judge that had
+    to be pushed with a critique that had to be constrained. What was steered is
+    in each run's ``construction.json``.
     """
     keys = [k for k in keys if k in frame.columns]
     if frame.empty or not keys:

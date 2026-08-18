@@ -237,3 +237,20 @@ means, since the original had no sides to inherit. `build_judge_messages` now
 takes a `parent_record` and renders both shapes, so the judge half is done; the
 recourse *debaters* still receive the parent's transcript and would need the
 same treatment.
+
+**Multi-round self-critique under outcome control.** The constructed
+`self_critique` arm is always draft -> critique -> revision, and
+`construct_self_critique` refuses `n_critique_rounds != 1` rather than ignoring
+it, so a record can never disagree with the `config.json` beside it. One round
+is what the comparison needs: the arm exists to be a baseline against debate,
+and one adversarial pass is the closest analogue of one exchange.
+
+More rounds are implementable and would be their own ablation — does a second
+critique/revision pair catch what the first missed, and does the extra text
+change how contestable the record is? Two things it needs. The revision is the
+case's text restored, so only the *last* revision can be that; the intermediate
+ones would have to be generated, which puts model-written text on the decisive
+path and breaks the byte-identity the design rests on. And each additional
+critique needs its own injected error to find, or the second pair has nothing
+to do but attack the case's own flaw — which is the failure the steer exists to
+prevent. Neither is hard; both are decisions, not code.

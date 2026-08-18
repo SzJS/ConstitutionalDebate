@@ -71,10 +71,12 @@ CONSTRUCTED = "constructed"
 # own parse mode would imply the agent's reply parsed that way.
 INJECTED = "injected"
 
-# ``mechanism`` values. ``genuine`` and ``manufactured`` are ErrorSpec's own;
-# ``constructed`` is added here for a decision no procedure ever made.
-GENUINE = "genuine"
-MANUFACTURED = "manufactured"
+# ``mechanism`` values -- see ``ErrorSpec`` for the question they answer: did
+# the procedure's own adversarial step have to be overridden? The step differs
+# by arm (the judge in a debate, the critique here) and the question does not,
+# which is what makes the value comparable across them.
+UNAIDED = "unaided"
+STEERED = "steered"
 
 # How far the injected draft may drift from the solution it was built from
 # before it stops being that solution with one error added. A model that
@@ -247,9 +249,9 @@ async def construct_single(
     if writer is not None:
         writer.record_step(trace)
         writer.record_verdict(verdict, trace)
-        # No procedure ran, so neither "fell for it" nor "had to be pushed"
-        # describes this. Saying so is what keeps the genuine/manufactured
-        # split meaning what it says for the arms that did run one.
+        # There is no adversarial step here to override, so neither ``unaided``
+        # nor ``steered`` applies. Saying so is what keeps the split meaning
+        # what it says for the two arms that do have one.
         writer.record_mechanism(CONSTRUCTED)
     return SoloResult(
         run_id=getattr(writer, "run_id", ""),
@@ -616,10 +618,10 @@ async def construct_self_critique(
             "critique_steer_leak_retries": leak_retries,
         })
         # Steering was needed exactly when the unsteered critique caught the
-        # case's own flaw. That is the manufactured/genuine distinction for this
-        # arm: manufactured means the record only holds together because the
-        # critique was constrained.
-        writer.record_mechanism(MANUFACTURED if steered else GENUINE)
+        # case's own flaw. That is this arm's adversarial step being overridden:
+        # ``steered`` means the record only holds together because the critique
+        # was constrained away from the flaw the revision restores.
+        writer.record_mechanism(STEERED if steered else UNAIDED)
 
     return SoloResult(
         run_id=getattr(writer, "run_id", ""),

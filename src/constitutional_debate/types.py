@@ -149,16 +149,29 @@ class ErrorSpec:
     does not read ``error.json``, so nothing downstream of a decision can reach
     them even by accident.
 
-    ``mechanism`` is written *after* the decision, by the runner: an error case
-    is ``genuine`` when the procedure fell for the seeded flaw unaided, and
-    ``manufactured`` when the adjudicator had to be steered to reach it. Both
-    are usable; only the first is evidence about what the system does on its own.
+    ``mechanism`` is written *after* the decision, by the runner. It answers one
+    question, and the same one for every arm:
+
+        **did the procedure's own adversarial step have to be overridden?**
+
+    - ``unaided``     — no; the procedure produced a usable error case by itself
+    - ``steered``     — yes; its adversarial step was constrained or pushed
+    - ``constructed`` — not applicable; this arm has no adversarial step
+
+    Which step that is differs by arm — the judge weighing both sides in a
+    debate, the critique in ``self_critique``, and none at all in ``single`` —
+    but the question does not, which is what makes the value comparable across
+    them. What was steered is recorded in ``construction.json``.
+
+    All three are usable. Only ``unaided`` is evidence about what the procedure
+    does on its own, which is why the unsteered attempt is always made first and
+    its outcome recorded even when it is then overridden.
     """
 
     error_id: str
     error_type: str = "unspecified"
     origin: str = "dataset"  # "dataset" | "injected" | "natural"
-    mechanism: str = ""  # "genuine" | "manufactured", set post hoc
+    mechanism: str = ""  # "unaided" | "steered" | "constructed", set post hoc
     seed: str = ""  # the flawed reasoning, given to the wrong-side role
     sound_seed: str = ""  # the correct reasoning, given to the right-side role
     # False where upstream annotators disagreed about whether the *sound* seed

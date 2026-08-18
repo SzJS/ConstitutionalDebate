@@ -310,12 +310,12 @@ async def _steer_if_resisted(
     correct, the cell is not an error case, and saying so is the honest outcome —
     ``analysis`` conditions on ``initially_correct`` and will exclude it.
     """
-    from .construct import GENUINE, MANUFACTURED
+    from .construct import STEERED, UNAIDED
 
     if verdict.correct is not True:
-        # Already wrong: the judge fell for the flaw unaided.
+        # Already wrong: the judge fell for the flaw with no help.
         if writer is not None:
-            writer.record_mechanism(GENUINE)
+            writer.record_mechanism(UNAIDED)
         return verdict
 
     from .config import load_grading_config
@@ -360,7 +360,7 @@ async def _steer_if_resisted(
         raise ConstructionError("steered_judge_referenced_the_steer")
 
     if writer is not None:
-        writer.record_mechanism(MANUFACTURED if steered.correct is False else GENUINE)
+        writer.record_mechanism(STEERED if steered.correct is False else UNAIDED)
         writer.record_construction({
             "arm": "debate",
             "judge_steered": True,

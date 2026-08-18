@@ -406,7 +406,7 @@ def mechanism_of(writer) -> str:
     return json.loads((writer.dir / "error.json").read_text())["mechanism"]
 
 
-async def test_an_unsteered_critique_is_labelled_genuine(tmp_path):
+async def test_an_unsteered_critique_is_labelled_unaided(tmp_path):
     task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
     writer = make_writer_with_error(
         tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
@@ -414,7 +414,7 @@ async def test_an_unsteered_critique_is_labelled_genuine(tmp_path):
     await run_self_critique(
         task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
     )
-    assert mechanism_of(writer) == "genuine"
+    assert mechanism_of(writer) == "unaided"
     construction = json.loads((writer.dir / "construction.json").read_text())
     assert construction["critique_steered"] is False
     assert construction["critique_caught_the_seeded_flaw_unsteered"] is False
@@ -438,7 +438,7 @@ async def test_a_critique_that_catches_the_seeded_flaw_is_steered_and_labelled(t
         task, None, cfg, seating, client, writer=writer,
         error=error_spec(),
     )
-    assert mechanism_of(writer) == "manufactured"
+    assert mechanism_of(writer) == "steered"
     construction = json.loads((writer.dir / "construction.json").read_text())
     assert construction["critique_steered"] is True
     assert construction["critique_caught_the_seeded_flaw_unsteered"] is True
@@ -488,7 +488,7 @@ async def test_a_judge_that_falls_for_the_flaw_unaided_is_genuine(tmp_path):
         task, None, cfg, seating, client, writer=writer, error=error_spec()
     )
     assert result.verdict.correct is False
-    assert mechanism_of(writer) == "genuine"
+    assert mechanism_of(writer) == "unaided"
     assert not (writer.dir / "construction.json").is_file(), "no steering happened"
 
 
@@ -519,7 +519,7 @@ async def test_a_judge_that_resists_is_re_judged_with_a_steer(tmp_path):
 
     assert Resisting.seen == 2, "one unsteered judgment, then one steered"
     assert result.verdict.correct is False
-    assert mechanism_of(writer) == "manufactured"
+    assert mechanism_of(writer) == "steered"
     construction = json.loads((writer.dir / "construction.json").read_text())
     assert construction["judge_steered"] is True
     assert construction["unsteered_correct"] is True
@@ -775,7 +775,7 @@ async def test_a_clean_steered_output_passes(tmp_path):
     )
     assert client.steered_calls == 1, "one steered judgment, accepted"
     assert result.verdict.correct is False
-    assert mechanism_of(writer) == "manufactured"
+    assert mechanism_of(writer) == "steered"
 
 
 async def test_the_injectors_private_channels_never_reach_the_record(tmp_path):
@@ -873,3 +873,64 @@ async def test_each_step_says_where_its_words_came_from(tmp_path):
     assert "## Step 1 — draft (built from the case by a construction step" in doc
     assert "## Step 3 — revision (inserted verbatim from the case)" in doc
     assert "## Step 2 — critique\n" in doc, "the agent's own step is unmarked"
+
+
+async def test_mechanism_asks_the_same_question_of_every_arm(tmp_path):
+    """One question — did the procedure's adversarial step have to be
+    overridden? — answered per arm by whichever step that is.
+
+    `single` has no such step, so neither `unaided` nor `steered` applies to it;
+    the other two answer about the judge and the critique respectively. Pinned
+    because the values were once `genuine`/`manufactured`, which said nothing
+    about what was genuine and left `constructed` outside the pair.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+
+    def writer_for(arm):
+        return make_writer_with_error(
+            tmp_path / arm, task, cfg, seating, error_spec(), arm=arm
+        )
+
+    # single: no adversarial step at all.
+    w = writer_for("single")
+    await construct_single(
+        task, None, cfg, seating, solo_client(), writer=w, error=error_spec()
+    )
+    assert mechanism_of(w) == "constructed"
+
+    # self_critique: the critique needed no steer.
+    w = writer_for("self_critique")
+    await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=w, error=error_spec()
+    )
+    assert mechanism_of(w) == "unaided"
+
+    # self_critique: the critique caught the seeded flaw and had to be confined.
+    w = writer_for("self_critique_steered")
+    await run_self_critique(
+        task, None, cfg, seating,
+        solo_client(
+            grades=[GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+            leaks=[LEAK_CLEAN],
+        ),
+        writer=w, error=error_spec(),
+    )
+    assert mechanism_of(w) == "steered"
+
+    # debate: the judge fell for the flaw with no help.
+    w = writer_for("debate")
+    await run_debate(
+        task, None, cfg, seating,
+        solo_client(scripted={"judge": "Bob was clearer.\n\nAnswer: 2"}, grades=[]),
+        writer=w, error=error_spec(),
+    )
+    assert mechanism_of(w) == "unaided"
+
+    # debate: the judge resisted and had to be pushed.
+    w = writer_for("debate_steered")
+    await run_debate(
+        task, None, cfg, seating,
+        ResistingJudge(leaks=[LEAK_CLEAN], grades=[]),
+        writer=w, error=error_spec(),
+    )
+    assert mechanism_of(w) == "steered"

@@ -167,8 +167,16 @@ Other data decisions:
 ## 4. Generating error cases
 
 **Seed, filter, escalate.** Seed the flawed solution and run honestly; where the
-decision lands wrong, keep it as **genuine**; where it lands right anyway, re-run
-with the adjudicator steered and keep it as **manufactured**. Both labelled.
+decision lands wrong, keep it as **unaided**; where it lands right anyway, re-run
+with the adjudicator steered and keep it as **steered**. Both labelled.
+
+`ErrorSpec.mechanism` carries the label, and asks one question of every arm:
+*did the procedure's own adversarial step have to be overridden?* Which step
+that is differs — the judge in a debate, the critique in `self_critique`, none
+at all in `single`, whose runs are `constructed` — but the question does not,
+which is what makes the value comparable across arms. (These were `genuine` and
+`manufactured`; renamed because neither said what it was genuine *about*, and a
+two-word pair had acquired a third value.)
 
 **Judge strength is the binding constraint on yield**, measured on 20 TheoremQA
 cases with everything else held fixed:
@@ -194,8 +202,8 @@ reported.** This is the most important methodological point in the document:
 
 | route | bias |
 |---|---|
-| natural (weak judge, filter) | If the correct side argues *well*, the judge gets it right and there is no error case. So natural error cases systematically select the debates where **debate surfaced the flaw worst** — the hypothesis is tested on its weakest examples. |
-| forced (instruct the error) | Includes debates where the flaw *was* well exposed, producing a record in which a debater refuted the flaw and the judge chose it anyway — internally contradictory and artificially easy to contest. |
+| unaided (weak judge, filter) | If the correct side argues *well*, the judge gets it right and there is no error case. So natural error cases systematically select the debates where **debate surfaced the flaw worst** — the hypothesis is tested on its weakest examples. |
+| steered (instruct the error) | Includes debates where the flaw *was* well exposed, producing a record in which a debater refuted the flaw and the judge chose it anyway — internally contradictory and artificially easy to contest. |
 
 Neither is trustworthy alone. Together they bracket the answer from opposite
 sides. Note also that the single-agent arm has **no equivalent filter**, so the
