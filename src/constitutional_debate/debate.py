@@ -646,6 +646,10 @@ async def _recourse_judge(
     messages = build_judge_messages(
         parent.task, parent.context, parent.seating, config, transcript,
         profile=profile, recourse=frame,
+        # Only for a parent that was not a debate. `challenger_view()` decides
+        # the shape from the run itself, so the judge and the challenger are
+        # shown the same record rather than two accounts of it.
+        parent_record=parent.challenger_view() if parent.trace is not None else None,
     )
     (word, reasoning, parse_mode), completion, repairs = await _complete_with_repair(
         client,

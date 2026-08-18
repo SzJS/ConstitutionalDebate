@@ -35,6 +35,13 @@ profile = "paper"
 
 [debate]
 outcome_control = true
+# Judge-only recourse: the challenger writes a challenge and a recourse judge
+# rules on it, with no exchange in between. The alternative -- a round of debate
+# about the challenge -- would assign advocates to a solo decision that had
+# none, and the contest stage has to be the constant across arms. Its own
+# question (does a recourse debate *amplify* a weak challenge?) is a planned
+# extension, recorded in deferred.md.
+recourse_rounds = 0
 debater_model = "deepseek/deepseek-v4-flash-0731"
 judge_model = "deepseek/deepseek-v4-flash-0731"
 n_rounds = 3

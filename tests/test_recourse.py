@@ -561,3 +561,86 @@ async def test_the_recourse_judge_never_sees_a_solo_agents_thinking(
     )
     assert SOLO_THINKING not in body
     assert "Thinking:" not in body
+
+
+@pytest.mark.parametrize("recourse_rounds", [0, 1])
+async def test_the_recourse_judge_reads_a_solo_parents_own_record(
+    tmp_path, task, seating, config, recourse_rounds
+):
+    """It rules on the correction step, so what it is shown is load-bearing.
+
+    It used to be told "Alice argues for 1" and "A judge read the transcript
+    above and decided" for a decision no judge made, and shown either an empty
+    transcript (judge-only) or the recourse exchange alone (with rounds) — never
+    the record it was ruling on.
+    """
+    from dataclasses import replace
+
+    cfg = replace(config, recourse_rounds=recourse_rounds)
+    parent, _ = await recorded_solo_run(
+        tmp_path, task, cfg, seating, arm="self_critique"
+    )
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, cfg)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(parent_record, file_challenge(), cfg, client, writer=writer)
+
+    body = next(
+        c for c in client.calls if c["meta"]["role"] == "recourse_judge"
+    )["messages"][-1]["content"]
+    assert "argues for 1" not in body, "no positions existed in the decision"
+    if recourse_rounds == 0:
+        # With rounds, the *recourse* exchange has advocates of its own and
+        # naming them is correct — the falsehood was only ever about the
+        # original decision.
+        assert "Alice" not in body and "Bob" not in body
+    assert "A judge read the transcript above" not in body
+    assert "no arguments have been made yet" not in body
+    assert "single agent working alone" in body
+    assert "The second choice follows from the constraint" in body, (
+        "the judge must be shown the record it is ruling on"
+    )
+
+
+async def test_the_recourse_judge_still_reads_a_debate_parent_as_a_debate(
+    tmp_path, task, seating, config
+):
+    """The regression guard on the other shape."""
+    parent, _ = await recorded_run(
+        tmp_path, task, config, seating, scripted={"judge": JUDGE_COT}
+    )
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(parent_record, file_challenge(), config, client, writer=writer)
+
+    body = next(
+        c for c in client.calls if c["meta"]["role"] == "recourse_judge"
+    )["messages"][-1]["content"]
+    assert "argues for 1" in body
+    assert "A judge read the transcript above" in body
+    assert "single agent working alone" not in body
+
+
+async def test_a_solo_parents_challenger_is_not_told_a_judge_decided(
+    tmp_path, task, seating, config
+):
+    """The same falsehood on the challenger's path, in the decision block.
+
+    Fixing the record block left this one standing: `_decision_block` opened
+    with "A judge read the transcript above and decided the question" for every
+    parent shape.
+    """
+    parent, _ = await recorded_solo_run(tmp_path, task, config, seating)
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(
+        parent_record, generated_challenge(), config, client, writer=writer
+    )
+
+    body = next(
+        c for c in client.calls if c["meta"]["role"] == "challenger"
+    )["messages"][-1]["content"]
+    assert "A judge read the transcript above" not in body
+    assert "decided the question for itself" in body

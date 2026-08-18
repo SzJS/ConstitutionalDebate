@@ -215,3 +215,25 @@ localisation-only grading for GPQA cannot detect. 280 of 282 cases are usable
 for `self_critique`; the other two are usable for `single` and `debate`, which
 do not inject. Reconciling upstream's numbering with the seed's would recover
 them and is not scheduled.
+
+**Recourse debate as an amplifier.** The contest stage runs judge-only under
+outcome control (`recourse_rounds = 0`): a challenger writes a challenge and a
+recourse judge rules on it, with no exchange in between. That keeps the contest
+procedure identical across the three arms, which is what makes the arms
+comparable — a round of debate about the challenge would have to assign
+advocates to a solo decision that never had any.
+
+The question it sets aside is its own: **does a round of debate amplify a weak
+challenge?** The machinery for measuring that already exists —
+`grade_objection` takes `subject_kind="pro_argument"`, and grading the recourse
+debater's closing argument against the same annotation as the challenge is what
+`grading.py` calls *specification lift*: given the challenge was underspecified,
+did the exchange carry it to valid? That is a real result about whether debate
+helps a stakeholder who has noticed something but cannot yet say what, and it is
+not one of the three metrics in `next_steps.md`.
+
+Running it needs a decision about what a recourse debate over a solo decision
+means, since the original had no sides to inherit. `build_judge_messages` now
+takes a `parent_record` and renders both shapes, so the judge half is done; the
+recourse *debaters* still receive the parent's transcript and would need the
+same treatment.

@@ -197,6 +197,7 @@ def render_all_prompts(
     for message in build_judge_messages(
         parent.task, parent.context, parent.seating, config, transcript,
         profile=profile, recourse=frame,
+        parent_record=parent.challenger_view() if parent.trace is not None else None,
     ):
         rendered.append((f"recourse judge [{message['role']}]", message["content"]))
     return rendered

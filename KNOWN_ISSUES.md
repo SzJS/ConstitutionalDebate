@@ -113,6 +113,18 @@ with `steered_judge_referenced_the_steer` /
 `steered_critique_referenced_the_steer`. Off the decision path, so containment QC
 does not inflate the token balance it protects.
 
+**The recourse roles were told a solo decision had been a debate.** The
+challenger's view was fixed first; the *recourse judge* was not. It was told
+"Alice argues for 1", shown either an empty transcript (judge-only) or the
+recourse exchange alone (with rounds), and told "A judge read the transcript
+above and decided" — never the record it was ruling on. That sits on the
+correction step, which is where `P(revised | initially incorrect)` comes from.
+`build_judge_messages` now takes a `parent_record` and renders both shapes.
+`_decision_block` carried the same falsehood to the challenger and is now
+shape-aware too. The contest stage runs judge-only under outcome control, so the
+recourse *debaters* are not reached; see `deferred.md` for what running them
+would need.
+
 **`seeded_case_for_solo` can only ever hand over the flawed seed** (was #2,
 BLOCKING) has moved to `deferred.md`. It bites only for the correct/control
 condition, which is itself deferred, and outcome control does not route through
