@@ -652,6 +652,9 @@ class RunWriter:
                 # document publishes what happened instead of asserting
                 # positions for debaters that never spoke.
                 parent_trace=parent.trace,
+                # From the *parent's* config, not this recourse's: what is being
+                # described is how the challenged decision was made.
+                outcome_control=getattr(parent.config, "outcome_control", False),
             ),
         )
 

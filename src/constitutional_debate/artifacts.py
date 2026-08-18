@@ -249,6 +249,7 @@ def _decision(
     judge_cot: bool,
     *,
     heading: str = "## Decision",
+    solo: bool = False,
 ) -> list[str]:
     """Render a verdict as a section.
 
@@ -256,6 +257,13 @@ def _decision(
     second decision — the ruling on the challenge to it. Two sections headed
     "Decision" in one document, meaning different things, would be worse than
     no heading at all.
+
+    ``solo`` drops the two claims that only a debate can support: that a *judge*
+    chose, and that some speaker *defended* the chosen answer. A solo decision
+    has neither, and asserting them is the same falsehood the positions rule
+    exists to prevent — ``render_solo_record`` avoids it by not using this
+    helper at all, and the recourse document has to make the same distinction
+    because it renders both shapes.
     """
     if verdict is None:
         return [
@@ -263,13 +271,21 @@ def _decision(
             "No verdict recorded — this run did not reach a decision. See "
             "`run.json` for its status.",
         ]
-    winner = seating.speaker_for_choice(verdict.choice)
-    blocks = [
-        heading,
-        f"The judge chose **{verdict.choice}**: "
-        f"{defang_markdown(task.answers[verdict.answer_index])}",
-        f"That is `answers[{verdict.answer_index}]`, the answer {winner} defended.",
-    ]
+    answer = defang_markdown(task.answers[verdict.answer_index])
+    if solo:
+        blocks = [
+            heading,
+            f"The agent chose **{verdict.choice}**: {answer}",
+            f"That is `answers[{verdict.answer_index}]`.",
+        ]
+    else:
+        winner = seating.speaker_for_choice(verdict.choice)
+        blocks = [
+            heading,
+            f"The judge chose **{verdict.choice}**: {answer}",
+            f"That is `answers[{verdict.answer_index}]`, the answer "
+            f"{winner} defended.",
+        ]
     if verdict.correct is not None:
         graded = "correct" if verdict.correct else "incorrect"
         blocks.append(f"Against the task's gold answer, this is **{graded}**.")
@@ -282,7 +298,9 @@ def _decision(
             "`calls.jsonl`, under this verdict's `call_id`."
         )
 
-    blocks.append("### The judge's response")
+    blocks.append(
+        "### The agent's response" if solo else "### The judge's response"
+    )
     # The judge's own words verbatim, not the parsed `reasoning`: a judge that
     # writes "Answer: 2. Here is why: ..." puts its justification *after* the
     # decisive match, where the parser cannot see it. Nothing is dropped here —
@@ -435,6 +453,7 @@ def render_recourse_record(
     judge_cot: bool,
     parent_judge_cot: bool,
     parent_trace=None,
+    outcome_control: bool = False,
 ) -> str:
     """The whole affair in one document: debate, decision, challenge, ruling.
 
@@ -474,7 +493,14 @@ def render_recourse_record(
         blocks += [
             "## How the challenged decision was made",
             "One agent working alone. No advocates were assigned to the two "
-            "answers, so this document states no positions.",
+            "answers, so this document states no positions."
+            + (
+                " The decision was **constructed** rather than generated: its "
+                "published reasoning is the flawed solution supplied with the "
+                "case, reproduced unaltered."
+                if outcome_control
+                else ""
+            ),
             *_solo_steps(parent_trace.all_steps()),
         ]
     else:
@@ -494,7 +520,7 @@ def render_recourse_record(
         # the parent's own document, so the two cannot come to differ.
         *_decision(
             task, seating, parent_verdict, parent_judge_cot,
-            heading="## The original decision",
+            heading="## The original decision", solo=solo_parent,
         ),
         *_challenge_section(challenge),
     ]
@@ -569,10 +595,10 @@ SOLO_PRIVATE_NOTE = (
 )
 
 CONSTRUCTED_NOTE = (
-    "_This record was **constructed**, not generated. The published reasoning "
-    "below is the flawed solution supplied with this case, reproduced "
-    "unaltered; no model wrote it. Steps marked `constructed` were inserted "
-    "verbatim, and the decision follows from them by construction._"
+    "_This record was **constructed**. The step the decision rests on is the "
+    "flawed solution supplied with this case, reproduced unaltered — no model "
+    "wrote it, and the decision follows from it by construction. Any other step "
+    "was generated. Each step says which it is, beside its stage._"
 )
 
 SOLO_CRITIQUE_NOTE = (
@@ -607,7 +633,16 @@ def _solo_steps(steps) -> list[str]:
     """
     blocks: list[str] = []
     for step in steps:
-        blocks.append(f"## Step {step.index} — {step.stage}")
+        # The provenance marker matters most in a constructed record, where
+        # steps of three different origins sit side by side and a reader cannot
+        # otherwise tell which words a model chose: text copied from the case,
+        # text a construction tool wrote from it, and the agent's own.
+        origin = {
+            "constructed": " (inserted verbatim from the case)",
+            "injected": " (built from the case by a construction step, not by "
+                        "the agent)",
+        }.get(step.parse_mode, "")
+        blocks.append(f"## Step {step.index} — {step.stage}{origin}")
         blocks += [
             "**Thinking** (private while the decision was being made)",
             defang_markdown(step.thinking.strip()) or "_(none recorded)_",

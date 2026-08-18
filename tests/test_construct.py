@@ -49,7 +49,6 @@ def make_writer_with_error(tmp_path, task, cfg, seating, error, arm="single"):
 
 
 NEEDLE_ANNOTATION = "SECRET-ANNOTATION-must-never-reach-a-prompt"
-NEEDLE_LOCATION = "SECRET-LOCATION"
 
 SEED = "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 4.\nStep 3: so the answer is 4."
 SOUND = "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 3.\nStep 3: so the answer is 3."
@@ -60,9 +59,15 @@ SOUND = "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 3.\nStep 3: so the ans
 INJECTED_DRAFT = (
     "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 4.\nStep 3: so the answer is 9."
 )
+# Distinctive needles in the injector's *private* channels: its Thinking says
+# which step it planted an error in, and its description names the decoy. Both
+# must stay out of the record — see
+# test_the_injectors_private_channels_never_reach_the_record.
+INJECTOR_THINKING = "DECOY-PLAN-choosing-step-3"
+INJECTED_DESCRIPTION = "DECOY-DESC step 3 restates the total as 9."
 INJECTOR_REPLY = (
-    f"Thinking:\nchoosing step 3\n\nDraft:\n{INJECTED_DRAFT}\n\n"
-    "Injected error: step 3 restates the total as 9, which does not follow."
+    f"Thinking:\n{INJECTOR_THINKING}\n\nDraft:\n{INJECTED_DRAFT}\n\n"
+    f"Injected error: {INJECTED_DESCRIPTION}"
 )
 CRITIQUE_REPLY = "Step 3 states 9, which does not follow from step 2."
 
@@ -229,15 +234,56 @@ async def test_the_injector_is_never_told_where_the_case_flaw_is():
     """It is given a target step, not the ground truth. Told the flaw's location
     it could condition the draft on the answer the experiment is measuring."""
     task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
-    error = error_spec(flaw_location=NEEDLE_LOCATION, annotation=NEEDLE_ANNOTATION)
-    # A location that is not a step number leaves every step available.
+    error = error_spec(flaw_location="2", annotation=NEEDLE_ANNOTATION)
     client = solo_client()
     await run_self_critique(task, None, cfg, seating, client, error=error)
 
     injector_call = next(c for c in client.calls if c["meta"]["role"] == "injector")
-    body = json.dumps(injector_call["messages"])
-    assert NEEDLE_LOCATION not in body
+    body = injector_call["messages"][-1]["content"]
     assert NEEDLE_ANNOTATION not in body
+    # The only step it is told about is the one to target, and that is not the
+    # case's own. `flaw_location` is a bare digit, so its *absence* cannot be
+    # asserted directly -- what is checkable is that the instruction names the
+    # target and that the target is disjoint from the flaw.
+    assert f"at step {target_step_for(error)}" in body
+    assert str(target_step_for(error)) != error.flaw_location
+
+
+def test_a_flaw_annotated_outside_the_solutions_own_steps_is_refused():
+    """`ftf-gpqa-59` annotates step 4 in a solution numbered 5-7.
+
+    Excluding a step number that is not there excludes nothing, so the
+    disjointness guard would pass while the injected error landed on the case's
+    own flaw -- and the localisation-only grading for GPQA has no other way to
+    tell the two apart.
+    """
+    with pytest.raises(ConstructionError, match="not among the solution's steps"):
+        target_step_for(
+            error_spec(seed="Step 5: a\nStep 6: b\nStep 7: c", flaw_location="4")
+        )
+
+
+async def test_a_self_critique_without_a_gold_answer_is_refused_before_spending():
+    """Its two siblings guard up front; this one used to pay for the injector
+    and the critique before dying inside the grading on `1 - gold_index`."""
+    client = solo_client()
+    with pytest.raises(ConstructionError, match="gold answer"):
+        await run_self_critique(
+            make_task(gold_index=None), None, oc_config(), make_seating(), client,
+            error=error_spec(),
+        )
+    assert client.calls == [], "refused before any call was made"
+
+
+async def test_more_than_one_critique_round_is_refused_rather_than_ignored():
+    """The constructed arm is always draft -> critique -> revision. Silently
+    ignoring the setting would publish a record that disagrees with the
+    config.json beside it."""
+    with pytest.raises(ConstructionError, match="n_critique_rounds"):
+        await run_self_critique(
+            make_task(gold_index=0), None, oc_config(n_critique_rounds=2),
+            make_seating(), solo_client(), error=error_spec(),
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -730,3 +776,100 @@ async def test_a_clean_steered_output_passes(tmp_path):
     assert client.steered_calls == 1, "one steered judgment, accepted"
     assert result.verdict.correct is False
     assert mechanism_of(writer) == "manufactured"
+
+
+async def test_the_injectors_private_channels_never_reach_the_record(tmp_path):
+    """The draft is the injector's *text*, and nothing else of the injector.
+
+    Its Thinking says which step it planted an error in, and its raw reply
+    carries the `Injected error:` description outright. Copied onto the step
+    those are published — `_solo_steps` prints thinking as "private while the
+    decision was being made", and a full-visibility challenger is served it as
+    "the agent also wrote a private Thinking section". That is a fabricated
+    attribution, and it hands the challenger the decoy's location, which is the
+    thing this arm's detection rate exists to measure.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    result = await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    draft = result.trace.all_steps()[0]
+    assert draft.stage == "draft"
+    assert draft.thinking == ""
+    assert draft.raw == draft.text, "the reply's private sections are not the record"
+    assert "Injected error" not in draft.raw
+    assert INJECTOR_THINKING not in draft.raw
+
+    document = (writer.dir / "transcript.json").read_text()
+    published = (writer.dir / "transcript.md").read_text()
+    for needle in (INJECTOR_THINKING, INJECTED_DESCRIPTION, "Injected error"):
+        assert needle not in document, f"{needle!r} reached transcript.json"
+        assert needle not in published, f"{needle!r} reached transcript.md"
+
+    # ...and it is kept, where only the construction can read it.
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["injector_thinking"] == INJECTOR_THINKING
+    assert construction["injected_error"] == INJECTED_DESCRIPTION
+    assert INJECTOR_THINKING in construction["injector_raw"]
+
+
+async def test_the_injectors_thinking_never_reaches_a_full_visibility_challenger(
+    tmp_path,
+):
+    from constitutional_debate.persistence import load_run_record
+    from constitutional_debate.debate import run_recourse
+    from helpers import generated_challenge, make_recourse_writer
+
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    parent = load_run_record(writer.dir)
+    recourse_writer = make_recourse_writer(tmp_path, parent, cfg)
+    client = FakeClient(
+        sink=recourse_writer.record_call,
+        scripted={"recourse_judge": "Stands.\n\nRuling: UPHOLD"},
+    )
+    await run_recourse(
+        parent, generated_challenge(visibility="full"), cfg, client,
+        writer=recourse_writer,
+    )
+    body = json.dumps(
+        next(c for c in client.calls if c["meta"]["role"] == "challenger")["messages"]
+    )
+    assert INJECTOR_THINKING not in body
+    assert INJECTED_DESCRIPTION not in body
+
+
+async def test_each_step_says_where_its_words_came_from(tmp_path):
+    """Three origins sit side by side in a constructed self_critique record:
+    text copied from the case, text a construction step built from it, and the
+    agent's own. A reader cannot tell them apart unless the document says."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    result = await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    modes = {s.stage: s.parse_mode for s in result.trace.all_steps()}
+    assert modes["draft"] == "injected", "generated by the injector, not copied"
+    assert modes["revision"] == CONSTRUCTED, "the case's own text, verbatim"
+    assert modes["critique"] not in {CONSTRUCTED, "injected"}, "the agent's own"
+
+    doc = (writer.dir / "transcript.md").read_text()
+    assert "## Step 1 — draft (built from the case by a construction step" in doc
+    assert "## Step 3 — revision (inserted verbatim from the case)" in doc
+    assert "## Step 2 — critique\n" in doc, "the agent's own step is unmarked"

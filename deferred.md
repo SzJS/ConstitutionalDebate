@@ -204,3 +204,14 @@ rounds 4-5 in a record whose parent contributed no rounds at all. The rendering
 is correct — the document publishes the parent's steps instead of rounds — but
 the numbering still refers to a debate that did not happen. Only reachable with
 `recourse_rounds > 0`, which is off by default.
+
+**Two cases fail the disjoint-step rule.** `target_step_for` refuses a case
+whose annotated flaw step is not among the steps its solution is actually
+numbered with — `ftf-gpqa-59` annotates step 4 in a solution numbered 5-7 — and
+one TheoremQA case has no second step to inject into. Excluding a step number
+that is not there excludes nothing, so the guard would otherwise pass while the
+injected error landed on the case's own flaw, which is exactly what the
+localisation-only grading for GPQA cannot detect. 280 of 282 cases are usable
+for `self_critique`; the other two are usable for `single` and `debate`, which
+do not inject. Reconciling upstream's numbering with the seed's would recover
+them and is not scheduled.

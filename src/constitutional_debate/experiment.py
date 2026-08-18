@@ -281,14 +281,16 @@ def _record_words(document: dict) -> int | None:
 
 def _classify(failure: BaseException) -> str:
     text = str(failure)
-    if "length" in text or isinstance(failure, TruncatedOutputError):
-        return "loop_or_truncation"
-    if "malformed" in text:
-        return "malformed_after_repair"
-    # Construction failures are named rather than collapsed into the class name.
-    # Rejecting cases whose critique caught the seeded flaw selects against
-    # exactly the cases self-critique handles best, so that rate has to be
-    # visible in ``decide_summary.json`` rather than inferred.
+    # Construction failures are matched **first**, and named rather than
+    # collapsed into the class name. Rejecting cases whose critique caught the
+    # seeded flaw selects against exactly the cases self-critique handles best,
+    # so that rate has to be visible in ``decide_summary.json`` rather than
+    # inferred.
+    #
+    # Ordered before the generic checks because they overlap: the drift message
+    # reads "55% length change", which the ``"length" in text`` heuristic below
+    # would file as a truncation -- burying a construction failure inside an
+    # unrelated rate.
     for reason in (
         "critique_caught_the_seeded_flaw",
         "critique_missed_the_injected_error",
@@ -302,6 +304,10 @@ def _classify(failure: BaseException) -> str:
     ):
         if reason in text:
             return reason.replace(" ", "_")
+    if "length" in text or isinstance(failure, TruncatedOutputError):
+        return "loop_or_truncation"
+    if "malformed" in text:
+        return "malformed_after_repair"
     return type(failure).__name__
 
 

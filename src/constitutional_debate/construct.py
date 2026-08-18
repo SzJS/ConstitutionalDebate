@@ -64,6 +64,13 @@ log = logging.getLogger(__name__)
 # Constructed text was never a reply at all, and the record should say so.
 CONSTRUCTED = "constructed"
 
+# The draft of a constructed self_critique is neither. It *was* generated — by
+# the injector, from the case's solution — but not by the agent whose record it
+# is, and not copied from the dataset either. Calling it ``constructed`` would
+# tell a reader it was inserted verbatim, which is false; leaving the injector's
+# own parse mode would imply the agent's reply parsed that way.
+INJECTED = "injected"
+
 # ``mechanism`` values. ``genuine`` and ``manufactured`` are ErrorSpec's own;
 # ``constructed`` is added here for a decision no procedure ever made.
 GENUINE = "genuine"
@@ -113,11 +120,24 @@ def target_step_for(error: ErrorSpec) -> int:
     """
     steps = solution_steps(error.seed)
     flaw = error.flaw_location.strip()
+    if not flaw or not flaw.isdigit() or int(flaw) not in steps:
+        # Excluding a step number that is not in the solution excludes nothing,
+        # so the guard below would pass while the injected error lands on the
+        # case's own flaw -- and the whole localisation-only argument for GPQA
+        # rests on the two being separable. Upstream and the seed do sometimes
+        # disagree (ftf-gpqa-59 annotates step 4 in a solution numbered 5-7), so
+        # this is refused rather than assumed away.
+        raise ConstructionError(
+            f"case {error.error_id} annotates its flaw at step "
+            f"{flaw or 'unrecorded'}, which is not among the solution's steps "
+            f"{steps or 'none'}; the injected error could not be kept disjoint "
+            f"from it"
+        )
     candidates = [s for s in steps if str(s) != flaw]
     if not candidates:
         raise ConstructionError(
             f"case {error.error_id} has no step to inject into that is not the "
-            f"flaw step ({flaw or 'unrecorded'}); steps found: {steps or 'none'}"
+            f"flaw step ({flaw}); steps found: {steps}"
         )
     # The last available step, so the injected error sits downstream of the
     # case's own wherever possible and the critique has the whole solution in
@@ -250,7 +270,7 @@ async def _inject_error(
     error: ErrorSpec,
     target_step: int,
     profile: TaskProfile,
-) -> tuple[Step, str]:
+) -> tuple[Step, str, dict[str, Any]]:
     """Build the draft: the case's flawed solution plus one more error.
 
     Backward construction. Read forward — "write a draft with two errors, then
@@ -258,9 +278,12 @@ async def _inject_error(
     text, which was written independently and will not resemble the draft minus
     an error. Built this way the revision is simply the original, restored.
 
-    Returns the draft step and the injector's description of what it added. That
-    description is the annotation the critique is graded against, and it is
-    ground truth: it goes to ``construction.json``, never to a prompt.
+    Returns the draft step, the injector's description of what it added, and
+    the injector's own provenance. The description is the annotation the
+    critique is graded against and is ground truth; it and the injector's
+    private channels go to ``construction.json``, never to a prompt and never
+    onto the step. See the comment at the ``Step`` construction below for why
+    that separation is load-bearing rather than tidy.
     """
     messages = [
         {"role": "system", "content": INJECTOR_SYSTEM},
@@ -302,22 +325,43 @@ async def _inject_error(
             f"the case's own flaw may not have survived"
         )
 
+    # Only the draft text survives onto the step. The injector is a construction
+    # tool, not the agent whose record this is, and its private channels say
+    # what it planted and where -- ``Thinking: choosing step 3``, and an
+    # ``Injected error:`` section naming the decoy outright.
+    #
+    # Carried onto the step, all three would be published: ``_solo_steps``
+    # prints ``thinking`` under "private while the decision was being made",
+    # ``raw`` lands in ``transcript.json``, and a ``visibility="full"``
+    # challenger is served the thinking as "the agent also wrote a private
+    # Thinking section". That is a fabricated attribution -- no agent thought
+    # it -- and it hands the challenger the decoy's location, which is the
+    # thing the self_critique arm's detection rate is supposed to measure.
+    #
+    # ``call_id`` is kept: the generation is real and a reader should be able
+    # to find it in the wire log. Everything about *how* it was produced goes
+    # to ``construction.json``, which no prompt can reach.
     step = Step(
         index=1,
         stage="draft",
-        thinking=thinking,
+        thinking="",
         text=draft,
         word_count=count_words(draft),
-        parse_mode=parse_mode,
-        repair_attempts=repairs,
+        parse_mode=INJECTED,
+        repair_attempts=0,
         finish_reason=completion.finish_reason,
-        has_native_reasoning=completion.has_native_reasoning,
+        has_native_reasoning=False,
         call_id=completion.call_id,
-        raw=completion.content,
-        native_reasoning=completion.reasoning or "",
-        reasoning_withheld=completion.reasoning_withheld,
+        raw=draft,
+        native_reasoning="",
+        reasoning_withheld=False,
     )
-    return step, injected_error
+    return step, injected_error, {
+        "injector_parse_mode": parse_mode,
+        "injector_repair_attempts": repairs,
+        "injector_thinking": thinking,
+        "injector_raw": completion.content,
+    }
 
 
 async def _critique(
@@ -460,12 +504,30 @@ async def construct_self_critique(
             "outcome control constructs the record from the case's error spec; "
             f"task {task.task_id} was dispatched without one"
         )
+    if task.gold_index is None:
+        # The same up-front refusal ``construct_single`` and ``opening_turns``
+        # make. Without it this pays for the injector and the critique before
+        # dying on ``1 - task.gold_index`` deep inside the grading, which
+        # ``_classify`` files as a bare TypeError and ``decide_cell`` retries.
+        raise ConstructionError(
+            f"outcome control needs a gold answer to know which side is flawed; "
+            f"task {task.task_id} has none"
+        )
+    if config.n_critique_rounds != 1:
+        # The constructed arm is always draft -> critique -> revision: the
+        # revision is the case's text restored, and there is nothing for a
+        # second pair to revise toward. Refused rather than ignored, so a record
+        # can never disagree with the config.json beside it.
+        raise ConstructionError(
+            f"outcome control builds exactly one critique round; config asks "
+            f"for n_critique_rounds = {config.n_critique_rounds}"
+        )
     profile = profile or select_profile(task, context)
     grading = grading or load_grading_config()
     target_step = target_step_for(error)
 
     trace = Trace()
-    draft, injected_error = await _inject_error(
+    draft, injected_error, injector_provenance = await _inject_error(
         task, context, config, client,
         error=error, target_step=target_step, profile=profile,
     )
@@ -547,6 +609,7 @@ async def construct_self_critique(
             "target_step": target_step,
             "flaw_step": error.flaw_location,
             "injected_error": injected_error,
+            **injector_provenance,
             "critique_steered": steered,
             "critique_caught_the_seeded_flaw_unsteered": caught_natural,
             "critique_steer_leaked": False,

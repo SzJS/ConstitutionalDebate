@@ -296,6 +296,21 @@ its completion-token count is 0 by construction and balancing on it would report
 a gulf that says nothing about how much text a challenger has to attack — while
 hiding the real ~8:1 record-length gap behind a number meaning something else.
 
+**Nothing of the injector reaches the record but its text.** The injector's
+private channels say what it planted and where — its Thinking names the target
+step, and its reply carries an `Injected error:` description outright. Copied
+onto the draft step those would be published, and served to a full-visibility
+challenger as "the agent also wrote a private Thinking section": a fabricated
+attribution, and a handout of the decoy's location to the very challenger whose
+detection rate this arm measures. Only the draft text survives onto the step;
+the rest goes to `construction.json`.
+
+For the same reason each step states its origin. A constructed `self_critique`
+record holds three kinds of words side by side — the case's own, a construction
+step's, and the agent's — and a reader who cannot tell them apart cannot check
+the decision. `parse_mode` carries the distinction (`constructed`, `injected`,
+or an ordinary parse outcome) and the document prints it beside the stage.
+
 **The record says it was constructed.** `render_solo_record` prints a standing
 note and drops "One agent, one pass", which would otherwise be false for a run
 in which no agent made a pass. The note is in `artifacts`, which nothing on a
