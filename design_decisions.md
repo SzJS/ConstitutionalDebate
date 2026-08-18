@@ -205,6 +205,106 @@ selection effect applies asymmetrically across arms.
 
 ---
 
+## 4b. Outcome control
+
+Supersedes seed-and-filter for the three-arm comparison. Instead of seeding a
+model and hoping it errs, the **decisive content of each arm's record is fixed
+to the dataset's own text**, so the flaw is byte-identical across arms rather
+than merely specified identically.
+
+| arm | fixed (not generated) | generated |
+|---|---|---|
+| `single` | the whole output — flawed solution + `Answer:` line | nothing; zero API calls |
+| `self_critique` | the revision, byte-identical to `single`'s output | draft, critique |
+| `debate` | round 1: both solutions verbatim as the openings | rounds 2-3, judgment |
+
+**Why this rather than seeding.** Under seed-and-hope the three arms each wrote
+their own version of "the same" flaw, so a cross-arm detection rate compared
+three different detection problems, and one annotation graded all three as
+though it did not. It also makes the `single` arm free, and it removes the
+steering asymmetry: seeding the solo arms meant instructing the *decider* to
+argue from flawed reasoning, while the debate seeds go to advocates and the
+judge decides unseeded — the same bytes, a structurally different intervention.
+
+**The revision is generated backward.** Read forward — "write a draft with two
+errors, then critique one away" — the revision would have to *land on* the
+dataset's text, which was written independently and will not resemble the draft
+minus an error. So the draft is built *from* the flawed solution by injecting
+one additional error, and the revision is simply that solution restored.
+
+**The critique is generated forward, and rejected rather than steered first.**
+It is shown the draft and is blind to the revision, so it is representative of
+what self-critique produces. When it catches the case's own flaw the record
+cannot stand — it would criticise a step the revision then restores — but that
+outcome is *self-critique working*, so the unsteered attempt is made and
+recorded before a steered one is tried. `mechanism` carries which happened, and
+`_classify` names both failure modes so the natural-catch rate reaches
+`decide_summary.json`.
+
+**The two flaws must sit on different steps.** The injector is told a
+`target_step` chosen to differ from `flaw_location`, and is never shown
+`flaw_location` or `annotation`. This is what makes the construction checkable
+on GPQA, whose 191 cases carry a step number and an *empty* annotation: with the
+flaws disjoint, localisation alone tells them apart. 1 of 91 TheoremQA cases and
+0 of 191 GPQA cases have no second step and are dropped.
+
+**A third route, with its own bias.** Against §4's table:
+
+| route | bias |
+|---|---|
+| outcome-controlled | The flaw is never surfaced by the procedure at all in two of three arms, because those arms do not reason about it. What is measured is whether a *challenger* can find a fixed flaw in three record shapes — cleaner for the transparency claim, further from "does this procedure produce contestable decisions". |
+
+**Three caveats that must travel with every number.**
+
+1. **Unequal denominators.** `single` is wrong by construction; `debate` and
+   `self_critique` contribute only what survived steering. Analysis must
+   intersect on tasks wrong in *every* arm (`KNOWN_ISSUES` #8).
+2. **Record length.** A constructed `single` record is the seed alone (81-216
+   words); a debate record adds four generated turns near the 400-word cap. That
+   is roughly an 8:1 imbalance in what a challenger reads, which is exactly the
+   confound `next_steps.md` warns about. `build_index` emits
+   `decision_record_words` for it; `token_balance` measures the wire, which is
+   zero here for an unrelated reason (`KNOWN_ISSUES` #9).
+3. **Round 1 does not read like a debate.** `seed` and `sound_seed` are 0.89
+   character-similar at the median on TheoremQA and 0.76 on GPQA, so the judge
+   is shown two near-identical worked solutions differing in about one step. A
+   real detection task; not two arguments. The paraphrase ablation in
+   `deferred.md` is what would separate the two.
+
+**A steered model must not say it was steered.** The steer is an artefact of
+how the case was built, and both steered outputs are published: a steered
+judge's `raw` is rendered verbatim in `transcript.md` *and* is what a challenger
+is shown as the decision's grounds; a steered critique's text and provider
+reasoning reach the challenger through the solo record. A response that narrates
+its instruction hands the challenger something to contest that is not the flaw,
+which measures nothing.
+
+So every steered output is checked by `grading.references_the_steer`, over `raw`
+**and** the provider reasoning channel — the likelier place for a model to
+narrate its own instructions, and the one published verbatim for a critique.
+Model-graded rather than pattern-matched, because the risk is paraphrase ("the
+standard I was asked to apply") rather than quotation. On a hit the steered call
+is retried once — one call, not a whole debate — and a second hit fails the cell
+with a named reason, so the rate reaches `decide_summary.json` rather than being
+inferred. The check runs `role="grader"`, off the decision path, so containment
+QC does not inflate the token balance it exists to protect. It does **not** run
+on unsteered outputs: there is no instruction there to reference.
+
+**Balance is measured on the record, not the wire.** `analysis.token_balance`
+reads `decision_record_words`. A constructed `single` cell makes zero calls, so
+its completion-token count is 0 by construction and balancing on it would report
+a gulf that says nothing about how much text a challenger has to attack — while
+hiding the real ~8:1 record-length gap behind a number meaning something else.
+
+**The record says it was constructed.** `render_solo_record` prints a standing
+note and drops "One agent, one pass", which would otherwise be false for a run
+in which no agent made a pass. The note is in `artifacts`, which nothing on a
+prompt path may import, and a test asserts it reaches no request. One knowing
+exception: `run_stage_validate` feeds `transcript.md` to the case validator, so
+the validator does see it — that is off the decision path, and arguably useful.
+
+---
+
 ## 5. The two judges
 
 They are separate roles with opposite requirements, and conflating them was an

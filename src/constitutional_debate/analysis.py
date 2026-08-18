@@ -213,13 +213,29 @@ def bootstrap_difference(
 
 
 def token_balance(frame: pd.DataFrame, *, tolerance: float = 0.25) -> dict[str, Any]:
-    """Whether the arms actually spent comparable generated tokens.
+    """Whether the arms give a challenger comparable amounts of record to read.
 
-    Compute matching is the confound the design tries to control, so it is
-    checked rather than assumed. Flagged, not enforced: an arm outside the band
-    is a fact to report beside the funnel, not a reason to discard it.
+    Matching is the confound the design tries to control, so it is checked
+    rather than assumed. Flagged, not enforced: an arm outside the band is a
+    fact to report beside the funnel, not a reason to discard it.
+
+    Measured on ``decision_record_words`` — the published record — and **not**
+    on ``decision_completion_tokens``, which counts what came back over the
+    wire. The two came apart with outcome control: a constructed ``single`` cell
+    makes zero calls, so its wire figure is 0 by construction and balancing on
+    it would report the arms as unmatched for a reason that has nothing to do
+    with how much text there is to attack. What a challenger reads is the
+    quantity ``next_steps.md`` warns about — "debate may simply win because it
+    generates more text" — and it is the same quantity whether the words were
+    generated or inserted.
+
+    Generation cost has not stopped being reportable: it is ``decision_cost_usd``
+    per row and ``aggregate_tree`` over the run. It is simply not this check.
+
+    An index built before ``decision_record_words`` existed lacks the column and
+    reports ``{"checked": False}`` rather than a number meaning something else.
     """
-    column = "decision_completion_tokens"
+    column = "decision_record_words"
     if frame.empty or column not in frame.columns or "decision_arm" not in frame.columns:
         return {"checked": False}
     means = frame.groupby("decision_arm")[column].mean()

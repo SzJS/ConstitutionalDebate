@@ -39,6 +39,7 @@ from .config import ClientConfig, DebateConfig
 from .accounting import aggregate_calls
 from .types import (
     Challenge,
+    DecisionRecord,
     Step,
     Context,
     ErrorSpec,
@@ -168,6 +169,37 @@ class RunRecord:
     def chain(self) -> list[str]:
         """Every run this one is built on, oldest first, including itself."""
         return [*self.manifest.get("parent_chain", []), self.run_id]
+
+    def challenger_view(self) -> DecisionRecord:
+        """The record a challenger is shown, in whichever shape this run has.
+
+        Keyed on ``trace is not None``, **not** on ``arm``: the trace's presence
+        *is* the shape, while ``arm`` is a manifest string that a hand-edited or
+        older record can get wrong. Getting it wrong here would show a solo
+        challenger an empty debate, which is exactly the bug this replaces.
+        """
+        if self.trace is not None:
+            return DecisionRecord.for_solo(self.trace)
+        return DecisionRecord.for_debate(self.transcript)
+
+    @property
+    def decision_grounds(self) -> str:
+        """The decision's stated grounds, as a prompt may quote them.
+
+        Shape-aware, and it cannot be a blanket switch to ``verdict.reasoning``.
+        A judge configured to answer before explaining leaves ``reasoning``
+        empty (see ``parse_judge_output``), so the debate shape must quote
+        ``raw`` or put a challenge to a judge shown no grounds at all.
+
+        A solo arm's ``reasoning`` is the last step's parsed public text and is
+        non-empty by construction — ``parse_solo_output`` refuses a response
+        with no ``Reasoning:`` label rather than publishing the private working.
+        Its ``raw`` is the whole completion, private ``Thinking:`` included,
+        which a ``visibility="public"`` challenger must never be shown.
+        """
+        if self.trace is not None:
+            return self.verdict.reasoning
+        return self.verdict.raw
 
 
 def load_run_record(run_dir: Path) -> RunRecord:
@@ -524,6 +556,9 @@ class RunWriter:
             render_solo_record(
                 self._task, self._seating, trace, verdict=verdict,
                 arm=getattr(self, "arm", "single"),
+                # From the run's own config, so the document cannot disagree
+                # with the config.json beside it about how it was made.
+                outcome_control=getattr(self._config, "outcome_control", False),
             ),
         )
 
@@ -613,6 +648,10 @@ class RunWriter:
                 ruling=ruling,
                 judge_cot=self._config.judge_cot,
                 parent_judge_cot=parent.config.judge_cot,
+                # None for a debate parent; the steps for a solo one, so the
+                # document publishes what happened instead of asserting
+                # positions for debaters that never spoke.
+                parent_trace=parent.trace,
             ),
         )
 
@@ -646,6 +685,38 @@ class RunWriter:
         """
         self._manifest.update(fields)
         self._flush_manifest()
+
+    def record_construction(self, payload: dict[str, Any]) -> None:
+        """What was done to build this run's record, beside ``error.json``.
+
+        The injected error's description and any steering applied. Both are
+        ground truth about a constructed fixture — the first is what the
+        critique is graded against — so they get the same containment as the
+        error spec: written here, read only by ``load_construction``, and never
+        loaded by ``load_run_record``. Nothing downstream of a decision has a
+        code path that reaches them.
+        """
+        _write_json(self.dir / "construction.json", payload)
+
+    def record_mechanism(self, mechanism: str) -> None:
+        """How this run's error came about, written once the run knows.
+
+        ``genuine`` — the procedure reached the wrong decision unaided;
+        ``manufactured`` — it had to be steered; ``constructed`` — no procedure
+        ran. Stamped into ``error.json`` and mirrored into the manifest, because
+        ``build_index`` reads the spec while a human reads the manifest.
+
+        Written at decide time rather than post hoc, which is the whole point:
+        the field defaulted to ``genuine`` everywhere it was read, so the split
+        that interprets the arms' results was a default rather than a
+        measurement.
+        """
+        path = self.dir / "error.json"
+        if path.is_file():
+            spec = json.loads(path.read_text(encoding="utf-8"))
+            spec["mechanism"] = mechanism
+            _write_json(path, spec)
+        self.manifest_update(mechanism=mechanism)
 
     def finish(
         self,
@@ -683,6 +754,21 @@ def load_error_spec(run_dir: Path) -> ErrorSpec | None:
     if not path.is_file():
         return None
     return ErrorSpec.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def load_construction(run_dir: Path) -> dict[str, Any] | None:
+    """Read what was done to construct a run's record, if anything was.
+
+    The sibling of ``load_error_spec`` and under the same rule: it holds the
+    injected error's description, which the critique is graded against, and any
+    steering that was applied. Both would let a decision procedure recite what
+    it is supposed to find. ``load_run_record`` does not call this, so nothing
+    downstream of a decision can reach it even by accident.
+    """
+    path = Path(run_dir) / "construction.json"
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _verdict_from(data: dict[str, Any]) -> Verdict:

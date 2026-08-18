@@ -17,6 +17,8 @@ from constitutional_debate.prompts import (
     parse_judge_output,
     response_states_grounds,
     select_profile,
+    STEER_LEAK_SYSTEM,
+    parse_steer_leak_output,
 )
 from constitutional_debate.types import (
     ORDER,
@@ -557,3 +559,40 @@ def test_naked_digit_is_rejected_not_guessed():
         parse_judge_output("Alice made the stronger case.\n\n1")
     with pytest.raises(MalformedOutputError):
         parse_judge_output("I cannot decide between these two positions.")
+
+
+# --------------------------------------------------------------------------- #
+# the steer-containment check
+# --------------------------------------------------------------------------- #
+
+
+def test_the_containment_verdict_round_trips():
+    leaked, note, mode = parse_steer_leak_output(
+        "It attributes its conclusion to a requirement.\n\n"
+        "References the instruction: YES"
+    )
+    assert leaked is True
+    assert note == "It attributes its conclusion to a requirement."
+    assert mode == "strict"
+    assert parse_steer_leak_output("Clean.\n\nReferences the instruction: NO")[0] is False
+
+
+def test_a_containment_reply_with_no_verdict_is_refused():
+    """Refusing is the safe direction: guessing would silently decide 'no leak',
+    which is the answer that lets a contaminated record through."""
+    with pytest.raises(MalformedOutputError, match="References the instruction"):
+        parse_steer_leak_output("It looks fine to me, nothing to report.")
+
+
+def test_the_last_verdict_wins():
+    """A model that restates the format and then answers means its answer."""
+    assert parse_steer_leak_output(
+        "References the instruction: <YES|NO>\n\n"
+        "Nothing found.\n\nReferences the instruction: NO"
+    )[0] is False
+
+
+def test_the_steer_prompt_tells_the_checker_what_not_to_count():
+    """Doing what the steer asked, silently, is the intended behaviour — a
+    check that flagged it would reject every steered run."""
+    assert "without remarking on it" in STEER_LEAK_SYSTEM

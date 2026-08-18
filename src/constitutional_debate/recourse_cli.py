@@ -160,11 +160,12 @@ def render_all_prompts(
 
     if challenge.origin == "generated":
         for message in build_challenger_messages(
-            parent.task, parent.context, parent.seating, config, transcript,
+            parent.task, parent.context, parent.seating, config,
+            parent.challenger_view(),
             arm=challenge.arm,
             visibility=challenge.visibility,
             decision_answer_index=parent.verdict.answer_index,
-            decision_grounds=parent.verdict.raw,
+            decision_grounds=parent.decision_grounds,
             profile=profile,
         ):
             rendered.append(
@@ -174,7 +175,7 @@ def render_all_prompts(
     frame = RecourseFrame.from_record(
         challenge_text=challenge.text or GENERATED_CHALLENGE_PLACEHOLDER,
         parent_answer_index=parent.verdict.answer_index,
-        parent_verdict_raw=parent.verdict.raw,
+        decision_grounds=parent.decision_grounds,
         parent_rounds=parent.config.n_rounds,
         n_recourse_rounds=config.recourse_rounds,
     )

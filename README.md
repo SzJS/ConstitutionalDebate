@@ -223,6 +223,24 @@ judge with reasoning it never saw.
 
 ## Known limitations
 
+- **Under `outcome_control`, a record is not a model's output.** The `single`
+  arm makes **zero API calls**: its published reasoning is the flawed solution
+  supplied with the case, reproduced unaltered, and its `Answer:` line follows
+  from the run's seating. The `self_critique` revision and the `debate` arm's
+  round 1 are the same text. Steps and turns built this way carry
+  `parse_mode = "constructed"` and an empty `call_id`, the record states that it
+  was constructed, and `render_solo_record` drops "One agent, one pass" — which
+  would otherwise be false. This is a controlled-stimulus design: it buys a flaw
+  that is byte-identical across arms, and it gives up the claim that the arm's
+  own competence produced the decision. See `design_decisions.md` §4b.
+- **The arms are badly unmatched on record length.** A constructed `single`
+  record is the seed alone, 81-216 words. A debate record adds four generated
+  turns near the 400-word cap. That is roughly 8:1 in how much text a challenger
+  has to read, and `next_steps.md` names this as the confound that could make
+  debate win for the wrong reason. `analysis.token_balance` measures it, on
+  `decision_record_words` rather than on generated tokens — which are zero for a
+  constructed arm and would report a match for the wrong reason. It is flagged,
+  not enforced.
 - **Judge and debaters default to the same model.** This tests the protocol's
   plumbing, not the paper's strong-debater/weak-judge asymmetry, and it invites
   self-preference. Set `--judge-model` to something weaker before drawing any

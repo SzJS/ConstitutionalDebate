@@ -81,7 +81,26 @@ async def run_debate(
     profile = profile or select_profile(task, context)
     transcript = Transcript()
 
-    for round_number in range(1, config.n_rounds + 1):
+    start_round = 1
+    if config.outcome_control:
+        # Deferred import: ``construct`` imports ``arms``, which imports this
+        # module. Kept out of the module body so the cycle never exists.
+        from .construct import ConstructionError, opening_turns
+
+        if error is None or task.gold_index is None:
+            raise ConstructionError(
+                f"outcome control needs an annotated case with a gold answer; "
+                f"task {task.task_id} has "
+                f"{'no error spec' if error is None else 'no gold answer'}"
+            )
+        for turn in opening_turns(task, seating, error):
+            _commit(transcript, turn, writer)
+        # Round 1 is now on the transcript, so the loop starts at 2. That also
+        # means ``_debater_turn``'s ``round_number == 1`` seeding guard never
+        # fires, and the later rounds are not re-seeded.
+        start_round = 2
+
+    for round_number in range(start_round, config.n_rounds + 1):
         await _run_round(
             task, context, config, seating, client, transcript,
             round_number=round_number, profile=profile, writer=writer,
@@ -92,6 +111,11 @@ async def run_debate(
         task, context, config, seating, client, transcript,
         profile=profile, writer=writer,
     )
+    if config.outcome_control:
+        verdict = await _steer_if_resisted(
+            task, context, config, seating, client, transcript,
+            verdict=verdict, profile=profile, writer=writer,
+        )
     return DebateResult(
         run_id=writer.run_id if writer else "unrecorded",
         task=task,
@@ -162,7 +186,14 @@ def _commit(transcript: Transcript, turn: Turn, writer: RunWriter | None) -> Non
         "round %d %s: %d words (%s)",
         turn.round, turn.speaker, turn.word_count, turn.parse_mode,
     )
-    if turn.parse_mode != "strict":
+    if turn.parse_mode == "constructed":
+        # Not a parse outcome at all: this turn was inserted verbatim from the
+        # case, so there was nothing to parse and nothing went wrong.
+        log.info(
+            "round %d %s: inserted verbatim, %d words",
+            turn.round, turn.speaker, turn.word_count,
+        )
+    elif turn.parse_mode != "strict":
         # Salvaged or trailing-dropped output is a fact about the run, not an
         # implementation detail — surface it rather than burying it in JSON.
         log.warning(
@@ -248,6 +279,116 @@ async def _debater_turn(
     )
 
 
+async def _steer_if_resisted(
+    task: Task,
+    context: Context | None,
+    config: DebateConfig,
+    seating: Seating,
+    client: ChatClient,
+    transcript: Transcript,
+    *,
+    verdict: Verdict,
+    profile: TaskProfile,
+    writer: RunWriter | None,
+) -> Verdict:
+    """Force an error case when the judge saw through the planted flaw.
+
+    Under outcome control the solo arms are wrong by construction while a debate
+    is wrong only if its judge falls for the pasted seed — around 39% of the
+    time at the weak judge. Without this the debate arm's error stratum would be
+    a *filtered* subset: only the cases where the flaw survived scrutiny, which
+    are plausibly the subtler ones, compared against the other arms' whole
+    corpus.
+
+    The unsteered judgment runs first and its outcome is what
+    ``mechanism`` records, so how often debate resists on its own stays a
+    measurement rather than something this function hides. Only the judge is
+    re-run: round 1 stays verbatim and rounds 2-3 stay as they were, so the
+    record a challenger reads differs from an unforced one only in the judgment.
+
+    A judge that resists even under steering is left alone. Its verdict is
+    correct, the cell is not an error case, and saying so is the honest outcome —
+    ``analysis`` conditions on ``initially_correct`` and will exclude it.
+    """
+    from .construct import GENUINE, MANUFACTURED
+
+    if verdict.correct is not True:
+        # Already wrong: the judge fell for the flaw unaided.
+        if writer is not None:
+            writer.record_mechanism(GENUINE)
+        return verdict
+
+    from .config import load_grading_config
+    from .construct import ConstructionError
+    from .grading import references_the_steer
+
+    log.info("judge resisted the planted flaw; re-judging with a steer")
+    steer_text = _judge_steer_text(task, seating)
+    grading = load_grading_config()
+
+    steered: Verdict | None = None
+    leak_retries = 0
+    # Two attempts: the steer is a construction artefact, and a judgment that
+    # narrates it goes straight onto the published path. Only the judge is
+    # re-run, so a retry is one call rather than a whole debate.
+    for attempt in range(2):
+        candidate = await _judge(
+            task, context, config, seating, client, transcript,
+            profile=profile, writer=writer, steer=True,
+        )
+        leak = await references_the_steer(
+            steer_text=steer_text,
+            # The provider's reasoning channel too: it is the likelier place
+            # for a model to narrate its own instructions.
+            output_text=f"{candidate.raw}\n\n{candidate.native_reasoning}",
+            config=config, grading=grading, client=client,
+        )
+        if not leak.leaked:
+            steered = candidate
+            break
+        leak_retries = attempt + 1
+        log.warning(
+            "steered judgment referenced the steer (%s); attempt %d of 2",
+            leak.note[:120], attempt + 1,
+        )
+
+    if steered is None:
+        # Refused rather than published. A record that says it was instructed
+        # lets a challenger contest the instruction instead of the flaw, which
+        # measures nothing -- and the challenger is shown these grounds
+        # directly, not just the document.
+        raise ConstructionError("steered_judge_referenced_the_steer")
+
+    if writer is not None:
+        writer.record_mechanism(MANUFACTURED if steered.correct is False else GENUINE)
+        writer.record_construction({
+            "arm": "debate",
+            "judge_steered": True,
+            "unsteered_choice": verdict.choice,
+            "unsteered_correct": verdict.correct,
+            "steer_worked": steered.correct is False,
+            "judge_steer_leaked": False,
+            "judge_steer_leak_retries": leak_retries,
+        })
+    if steered.correct is not False:
+        log.warning("judge resisted the steer as well; cell is not an error case")
+    return steered
+
+
+def _judge_steer_text(task: Task, seating: Seating) -> str:
+    """The addendum a steered judge is sent.
+
+    One definition, because the containment check has to be given the *same*
+    string the prompt carried. Two copies would drift, and the check would then
+    be looking for something the judge was never told.
+    """
+    from .prompts import JUDGE_STEER
+
+    return JUDGE_STEER.format(
+        gold_label=f"answer {seating.choice_for_answer(task.gold_index)}"
+    )
+
+
 async def _judge(
     task: Task,
     context: Context | None,
@@ -258,17 +399,33 @@ async def _judge(
     *,
     profile: TaskProfile,
     writer: RunWriter | None,
+    steer: bool = False,
 ) -> Verdict:
+    """The judge's decision.
+
+    ``steer`` appends a construction-only addendum used when a constructed
+    debate needs an error case and this judge already resisted the planted flaw
+    once. It raises the standard of proof demanded of the correct answer rather
+    than naming an answer to pick: a judge told which side to choose writes
+    grounds that say so, and the challenger would then be contesting an
+    instruction instead of a judgement. The addendum is recorded in
+    ``construction.json`` and reaches no published artifact.
+    """
     messages = build_judge_messages(
         task, context, seating, config, transcript, profile=profile
     )
+    if steer:
+        messages[-1]["content"] += _judge_steer_text(task, seating)
     (choice, reasoning, parse_mode), completion, repairs = await _complete_with_repair(
         client,
         model=config.judge_model,
         messages=messages,
         temperature=config.judge_temperature,
         config=config,
-        meta={"role": "judge", "speaker": None, "round": None, "purpose": "judge"},
+        meta={
+            "role": "judge", "speaker": None, "round": None,
+            "purpose": "judge_steered" if steer else "judge",
+        },
         parse=parse_judge_output,
         role="judge",
         word_limit=config.word_limit_for(profile.key),
@@ -366,7 +523,7 @@ async def run_recourse(
     frame = RecourseFrame.from_record(
         challenge_text=challenge.text,
         parent_answer_index=parent.verdict.answer_index,
-        parent_verdict_raw=parent.verdict.raw,
+        decision_grounds=parent.decision_grounds,
         parent_rounds=parent.config.n_rounds,
         n_recourse_rounds=config.recourse_rounds,
     )
@@ -411,11 +568,14 @@ async def _generate_challenge(
     """
     may_decline = config.challenger_may_decline
     messages = build_challenger_messages(
-        parent.task, parent.context, parent.seating, config, transcript,
+        # The parent's own record, in whichever shape it has -- NOT ``transcript``,
+        # which is the (empty) container for this recourse's own turns.
+        parent.task, parent.context, parent.seating, config,
+        parent.challenger_view(),
         arm=challenge.arm,
         visibility=challenge.visibility,
         decision_answer_index=parent.verdict.answer_index,
-        decision_grounds=parent.verdict.raw,
+        decision_grounds=parent.decision_grounds,
         may_decline=may_decline,
         profile=profile,
     )

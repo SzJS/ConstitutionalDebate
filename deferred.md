@@ -34,6 +34,33 @@ raises these as further arms. The arm seam is *designed* to accept them — a fo
 `arms.DECIDERS` alongside `single`, `self_critique` and `debate` — but **that module does
 not exist yet** (PLANNED), and no such arm is designed or scheduled either.
 
+**The correct/control condition**, and with it `types.seeded_case_for_solo`'s
+inability to reach `sound_seed`. The claim under test has two halves — valid
+challenges change the decision, **and specious ones do not** — and only the
+error stratum tests the first. A system that scores perfectly on it might merely
+be maximally suggestible; nothing distinguishes the two without decisions that
+are already correct, which is what supplies `P(revised | initially correct)`
+against `P(revised | initially incorrect)`.
+
+The code cannot express it. `seeded_case_for_solo` returns `error.seed` whenever
+an error exists and `""` when it does not, so `sound_seed` is unreachable from
+the solo arms under any configuration, and its own docstring describes a
+condition the function cannot produce. The fix is an explicit error/correct
+parameter rather than inference from `error is None` — it was BLOCKING while
+seed-and-hope was the construction route, and is here rather than there because
+outcome control does not route through it.
+
+Two things travel with it. `ErrorSpec.sound_seed_reliable` is **False for 323 of
+Python650's 648 rows** — annotators disagreed about whether the *correct*
+explanation is itself sound — and it is written into `error.json` but read
+nowhere in `src/`, so the stratification its docstring promises is not yet
+possible. For the error condition that flag is mostly harmless; for a control
+built from the sound seed it is about half that corpus. And
+`ErrorSpec.corrected_answer_index` is written by the converters and likewise
+read nowhere: it coincides with `gold_index` on every FindTheFlaws case and
+comes apart only in an unverifiable domain, which is exactly where a control
+condition would need it.
+
 ## From "On weak models"
 
 **Human challengers.** The harness uses weak models throughout. `constitutional-recourse
@@ -135,3 +162,45 @@ one is which): can the LLM contest successfully in this case?
 
 Note that one extension we could add is the question of what to do when the
 challenger doesn't agree with either of the debaters.
+
+## Raised while building outcome control
+
+**A paraphrase ablation for round 1.** The debate arm inserts the dataset's two
+solutions verbatim as the opening arguments, which is what makes the flaw the
+same bytes in every arm. The cost is register: they are worked solutions —
+"Step 1: … Step 3: Therefore …" — with no address to the judge and no
+engagement with an opponent, so round 1 does not read like a debate. Worse, on
+these two subsets the two solutions are *near-identical to each other*: `seed`
+and `sound_seed` are 0.89 character-similar at the median on TheoremQA and 0.76
+on GPQA, so the judge is shown two versions of one worked solution differing in
+about one step.
+
+An ablation that has a debater **paraphrase** the dataset's reasoning into
+debate register, holding the claims fixed, would separate "the flaw is the same
+bytes" from "the flaw is presented the same way". It reintroduces exactly what
+outcome control removes — a paraphraser can soften or repair the flaw — so it
+needs the same `grade_objection` validation the self-critique construction uses,
+pointed at the paraphrase rather than at a critique. Not scheduled.
+
+**The valid-objection metric is TheoremQA-only.** All 191 GPQA cases carry
+`annotation_quality="location_only"` with an *empty* annotation, and
+`grade_objection` clamps localisation to ≤ 1 for those. So `next_steps.md`'s
+second metric — can the challenger formulate a valid objection — is computable
+on 91 of the 282 cases in play; detection and correction are computable on all
+of them. Deriving annotations for GPQA by diffing `correct_solution` against
+`flawed_solution` at the known step would unlock it, at the cost of the
+annotation no longer being upstream's ground truth. Not done, and the two
+denominators must be reported separately in the meantime.
+
+**`--challenge-visibility full` has nothing to show for a constructed arm.** The
+ablation shows a challenger the private `Thinking` the decider wrote. A
+constructed `single` record has none — nothing was thought — so the ablation is
+debate-only under outcome control, and comparing "full" across arms would
+compare a real private channel against an empty one.
+
+**A solo parent's recourse turns are numbered oddly.** `_write_recourse_transcripts`
+splits at `parent.config.n_rounds`, so the recourse debaters' turns land at
+rounds 4-5 in a record whose parent contributed no rounds at all. The rendering
+is correct — the document publishes the parent's steps instead of rounds — but
+the numbering still refers to a debate that did not happen. Only reachable with
+`recourse_rounds > 0`, which is off by default.

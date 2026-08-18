@@ -15,12 +15,14 @@ from conftest import FakeClient
 from helpers import (
     CONSTITUTION,
     JUDGE_COT,
+    SOLO_THINKING,
     file_challenge,
     generated_challenge,
     make_recourse_writer,
     make_writer,
     recorded_recourse,
     recorded_run,
+    recorded_solo_run,
 )
 
 from constitutional_debate.debate import run_recourse
@@ -470,3 +472,92 @@ async def test_withheld_reasoning_survives_the_round_trip_too(tmp_path):
 
     parent = load_run_record(writer.dir)
     assert all(t.reasoning_withheld for t in parent.transcript.all_turns())
+
+
+# --------------------------------------------------------------------------- #
+# contesting a decision that was not a debate
+#
+# Every test above builds a *debate* parent, which is why the solo shape went
+# unexercised: `load_run_record` puts a solo body in `.trace` and leaves
+# `.transcript` empty, and the recourse path read only `.transcript`.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("arm", ["single", "self_critique"])
+async def test_a_solo_decisions_record_reaches_its_challenger(
+    tmp_path, task, seating, config, arm
+):
+    parent, _ = await recorded_solo_run(tmp_path, task, config, seating, arm=arm)
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(
+        parent_record, generated_challenge(visibility="public"), config, client,
+        writer=writer,
+    )
+
+    body = json.dumps(
+        next(c for c in client.calls if c["meta"]["role"] == "challenger")["messages"]
+    )
+    assert "The second choice follows from the constraint" in body, (
+        "the agent's published reasoning is the record; without it the challenger "
+        "is contesting a decision it has not been shown"
+    )
+    assert "no arguments have been made yet" not in body
+    assert "argues for 1" not in body
+
+
+async def test_a_public_visibility_challenger_is_not_shown_a_solo_agents_thinking(
+    tmp_path, task, seating, config
+):
+    """The guard that would have caught sub-fault (c).
+
+    A solo `Verdict.raw` is the whole completion, private `Thinking:` included.
+    Passed as the decision's grounds it reached the challenger through the
+    `<decision>` block even at public visibility, while
+    `Challenge.shown_private_reasoning` went on reporting False.
+    """
+    parent, _ = await recorded_solo_run(tmp_path, task, config, seating)
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    result = await run_recourse(
+        parent_record, generated_challenge(visibility="public"), config, client,
+        writer=writer,
+    )
+
+    challenger_call = next(c for c in client.calls if c["meta"]["role"] == "challenger")
+    assert SOLO_THINKING not in json.dumps(challenger_call["messages"])
+    assert result.challenge.shown_private_reasoning is False
+
+
+async def test_a_full_visibility_challenger_is_shown_a_solo_agents_thinking(
+    tmp_path, task, seating, config
+):
+    parent, _ = await recorded_solo_run(tmp_path, task, config, seating)
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(
+        parent_record, generated_challenge(visibility="full"), config, client,
+        writer=writer,
+    )
+
+    challenger_call = next(c for c in client.calls if c["meta"]["role"] == "challenger")
+    assert SOLO_THINKING in json.dumps(challenger_call["messages"])
+
+
+async def test_the_recourse_judge_never_sees_a_solo_agents_thinking(
+    tmp_path, task, seating, config
+):
+    parent, _ = await recorded_solo_run(tmp_path, task, config, seating)
+    parent_record = load_run_record(parent.dir)
+    writer = make_recourse_writer(tmp_path, parent_record, config)
+    client = FakeClient(sink=writer.record_call, scripted={"recourse_judge": UPHOLD})
+    await run_recourse(parent_record, file_challenge(), config, client, writer=writer)
+
+    body = json.dumps(
+        next(c for c in client.calls if c["meta"]["role"] == "recourse_judge")["messages"]
+    )
+    assert SOLO_THINKING not in body
+    assert "Thinking:" not in body

@@ -35,7 +35,7 @@ def row(**kw) -> dict:
         condition="matched", mechanism="genuine", initially_correct=False,
         challenge_raised=True, found_the_flaw=True, grade_valid=True,
         underspecified=False, changed=True, final_correct=True, gradable=True,
-        decision_completion_tokens=2000,
+        decision_completion_tokens=2000, decision_record_words=1600,
     )
     return {**base, **kw}
 
@@ -201,11 +201,11 @@ def test_the_bootstrap_declines_rather_than_inventing_a_number():
 # --------------------------------------------------------------------------- #
 
 
-def test_an_arm_outside_the_token_band_is_flagged_not_dropped():
+def test_an_arm_outside_the_record_band_is_flagged_not_dropped():
     """The confound the design controls for is checked, not assumed."""
     f = frame(
-        [row(decision_arm="debate", decision_completion_tokens=4000)] * 5
-        + [row(decision_arm="single", decision_completion_tokens=500)] * 5
+        [row(decision_arm="debate", decision_record_words=4000)] * 5
+        + [row(decision_arm="single", decision_record_words=500)] * 5
     )
     result = token_balance(f, tolerance=0.25)
     assert result["checked"]
@@ -214,10 +214,51 @@ def test_an_arm_outside_the_token_band_is_flagged_not_dropped():
 
 def test_balanced_arms_are_not_flagged():
     f = frame(
-        [row(decision_arm="debate", decision_completion_tokens=2000)] * 5
-        + [row(decision_arm="single", decision_completion_tokens=2100)] * 5
+        [row(decision_arm="debate", decision_record_words=2000)] * 5
+        + [row(decision_arm="single", decision_record_words=2100)] * 5
     )
     assert token_balance(f)["outside_band"] == {}
+
+
+def test_a_constructed_arm_is_judged_on_its_record_not_its_wire_tokens():
+    """The case that motivated the switch.
+
+    A constructed `single` cell makes zero calls, so its completion-token count
+    is 0 by construction. Balancing on that reports a gulf that says nothing
+    about how much text a challenger has to attack — and would hide the real
+    ~8:1 gap in the records themselves behind a number meaning something else.
+    """
+    f = frame(
+        [row(decision_arm="debate",
+             decision_completion_tokens=2400, decision_record_words=1600)] * 5
+        + [row(decision_arm="single",
+               decision_completion_tokens=0, decision_record_words=200)] * 5
+    )
+    result = token_balance(f, tolerance=0.25)
+    assert result["mean_by_arm"] == {"debate": 1600.0, "single": 200.0}
+    assert set(result["outside_band"]) == {"debate", "single"}
+
+
+def test_arms_matched_on_record_are_not_flagged_for_spending_differently():
+    """The converse: `single` generates nothing and still reads the same length.
+
+    Under outcome control that is the *intended* state, and a balance check that
+    flagged it would be reporting the construction rather than a confound.
+    """
+    f = frame(
+        [row(decision_arm="debate",
+             decision_completion_tokens=2400, decision_record_words=1000)] * 5
+        + [row(decision_arm="single",
+               decision_completion_tokens=0, decision_record_words=1000)] * 5
+    )
+    assert token_balance(f)["outside_band"] == {}
+
+
+def test_an_index_without_the_record_column_declines_rather_than_guessing():
+    """An index built before the column existed must not be scored on a
+    different quantity that happens to be present."""
+    f = frame([{k: v for k, v in row().items() if k != "decision_record_words"}] * 4)
+    assert token_balance(f) == {"checked": False}
 
 
 # --------------------------------------------------------------------------- #

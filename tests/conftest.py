@@ -46,7 +46,7 @@ class FakeClient:
     # grader runs once per objection, a validator once per case and again per
     # ruling. They would all collide on ``(None, None)``, so they key on
     # ``(role, purpose)`` instead. Existing keys are untouched.
-    STAGED_ROLES = frozenset({"grader", "validator", "solo", "critic"})
+    STAGED_ROLES = frozenset({"grader", "validator", "solo", "critic", "injector"})
 
     @staticmethod
     def key(meta: dict[str, Any]) -> Any:

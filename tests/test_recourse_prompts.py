@@ -26,7 +26,15 @@ from constitutional_debate.prompts import (
     build_repair_messages,
     parse_ruling_output,
 )
-from constitutional_debate.types import ORDER, Context, Speaker
+from constitutional_debate.types import (
+    EMPTY_TRANSCRIPT,
+    ORDER,
+    Context,
+    DecisionRecord,
+    Speaker,
+    Step,
+    Trace,
+)
 
 from helpers import (  # noqa: E402 - tests/ is on sys.path under pytest
     CONSTITUTION_TEXT,
@@ -51,7 +59,7 @@ def frame(
     return RecourseFrame.from_record(
         challenge_text=challenge,
         parent_answer_index=decision_answer_index,
-        parent_verdict_raw=grounds,
+        decision_grounds=grounds,
         parent_rounds=parent_rounds,
         n_recourse_rounds=n_recourse_rounds,
     )
@@ -298,7 +306,8 @@ def challenger(*, arm: str = "grounded", visibility: str = "public", **cfg) -> s
     return "\n".join(
         m["content"]
         for m in build_challenger_messages(
-            make_task(), None, make_seating(), config(**cfg), full_transcript(),
+            make_task(), None, make_seating(), config(**cfg),
+            DecisionRecord.for_debate(full_transcript()),
             arm=arm, visibility=visibility,
             decision_answer_index=0, decision_grounds=GROUNDS,
         )
@@ -461,3 +470,97 @@ def test_the_repair_instruction_is_role_specific():
     assert instruction("challenger") != instruction("debater")
     assert "Challenge: YES" in instruction("challenger")
     assert "Challenge" not in instruction("debater")
+
+
+# --------------------------------------------------------------------------- #
+# the challenger's view of a solo decision
+#
+# `build_challenger_messages` used to take a `Transcript`, so a decision reached
+# by a solo arm — whose body is a `Trace` — arrived here empty. The challenger
+# was shown `EMPTY_TRANSCRIPT` and told two debaters had argued for the two
+# answers, in a run where nobody argued at all.
+# --------------------------------------------------------------------------- #
+
+
+def solo_trace(thinking: str = "SECRET-THINKING-solo") -> Trace:
+    trace = Trace()
+    for index, (stage, text) in enumerate(
+        [("draft", "PUBLIC-DRAFT step one holds."),
+         ("critique", "PUBLIC-CRITIQUE step two is unsupported."),
+         ("revision", "PUBLIC-REVISION the bound follows.\nAnswer: 2")],
+        start=1,
+    ):
+        trace.add(
+            Step(index=index, stage=stage, thinking=f"{thinking}-{stage}", text=text,
+                 word_count=4, parse_mode="strict", repair_attempts=0,
+                 finish_reason="stop", has_native_reasoning=False,
+                 call_id=f"c{index}", raw="")
+        )
+    return trace
+
+
+# A solo decision's grounds are the agent's own published reasoning, not a
+# judge's account of who argued better. Reusing GROUNDS here would smuggle
+# "Alice" into the prompt through the decision block and make the no-debater
+# assertion below vacuous.
+SOLO_GROUNDS = "PUBLIC-REVISION the bound follows.\n\nAnswer: 2"
+
+
+def solo_challenger(*, visibility: str = "public", **cfg) -> str:
+    return "\n".join(
+        m["content"]
+        for m in build_challenger_messages(
+            make_task(), None, make_seating(), config(**cfg),
+            DecisionRecord.for_solo(solo_trace()),
+            arm="grounded", visibility=visibility,
+            decision_answer_index=0, decision_grounds=SOLO_GROUNDS,
+        )
+    )
+
+
+def test_a_solo_decisions_record_reaches_the_challenger():
+    prompt = solo_challenger()
+    assert "PUBLIC-DRAFT" in prompt
+    assert "PUBLIC-CRITIQUE" in prompt, "the critique is published, so it is shown"
+    assert "PUBLIC-REVISION" in prompt
+    assert EMPTY_TRANSCRIPT not in prompt
+
+
+def test_a_solo_record_names_no_debater():
+    """The prompt-side counterpart of test_arms.py's record-side guard.
+
+    A solo run has no speakers. Stating that Alice argues for choice 1 is the
+    same false statement `render_solo_record` refuses to print, and it was
+    reaching the challenger on every solo contest.
+    """
+    prompt = solo_challenger()
+    assert "Alice" not in prompt
+    assert "Bob" not in prompt
+    assert "argues for 1" not in prompt
+
+
+def test_a_debate_record_still_states_the_positions():
+    prompt = challenger()
+    assert "argues for 1" in prompt
+    assert "Alice" in prompt
+
+
+def test_a_public_visibility_challenger_is_not_shown_a_solo_agents_thinking():
+    assert "SECRET-THINKING-solo" not in solo_challenger(visibility="public")
+
+
+def test_a_full_visibility_challenger_is_shown_it_and_told_what_it_is():
+    prompt = solo_challenger(visibility="full")
+    assert "SECRET-THINKING-solo" in prompt
+    # The debate wording — "Each debater also wrote..." — would be false here.
+    assert "debater" not in prompt.lower()
+
+
+def test_a_transcript_passed_where_a_record_belongs_is_refused():
+    """Loudly, because a Transcript here is the original bug."""
+    with pytest.raises(TypeError, match="challenger_view"):
+        build_challenger_messages(
+            make_task(), None, make_seating(), config(), full_transcript(),
+            arm="grounded", visibility="public",
+            decision_answer_index=0, decision_grounds=GROUNDS,
+        )

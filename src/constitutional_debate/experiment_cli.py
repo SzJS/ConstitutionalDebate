@@ -74,6 +74,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def calls_per_cell(arm: str, config) -> int:
+    """The worst-case call count for one cell of this arm.
+
+    Arm-aware because outcome control changes it drastically: a constructed
+    ``single`` cell makes no calls at all, and an arm-blind estimate would quote
+    a budget for a grid that spends nothing.
+    """
+    if config.outcome_control:
+        if arm == "single":
+            return 0
+        if arm == "self_critique":
+            # inject, then per critique attempt: the critique, its two
+            # gradings, and (when steered) one containment check. Worst case is
+            # the unsteered attempt plus two steered ones.
+            return 1 + (1 + 2) + 2 * (1 + 2 + 1)
+        # Round 1 is inserted, so debaters run for n_rounds - 1 rounds. The
+        # judge runs once unsteered, then up to twice steered, each steered
+        # judgment paying one containment check.
+        return 2 * max(config.n_rounds - 1, 0) + 1 + 2 * 2
+    if arm == "single":
+        return 1
+    if arm == "self_critique":
+        return 1 + 2 * max(config.n_critique_rounds, 1)
+    # 2 debaters x n_rounds + 1 judge.
+    return 2 * config.n_rounds + 1
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     load_dotenv()
@@ -138,12 +165,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {cell.cell_id}")
         if len(grid) > 20:
             print(f"  ... and {len(grid) - 20} more")
-        # 2 debaters x n_rounds + 1 judge, times the worst-case attempt count.
-        per_cell = 2 * config.n_rounds + 1
+        total = sum(calls_per_cell(cell.arm, config) for cell in grid)
+        by_arm = {}
+        for cell in grid:
+            by_arm.setdefault(cell.arm, calls_per_cell(cell.arm, config))
+        detail = ", ".join(f"{arm}: {n}" for arm, n in sorted(by_arm.items()))
         print(
-            f"\n{len(grid)} cells, {per_cell} calls each "
-            f"({per_cell * len(grid)} calls; up to "
-            f"{per_cell * len(grid) * config.max_decision_attempts} with retries)"
+            f"\n{len(grid)} cells ({detail} calls each) "
+            f"= {total} calls; up to "
+            f"{total * config.max_decision_attempts} with retries"
         )
         print("dry run: nothing was spent")
         return 0

@@ -18,7 +18,7 @@ from constitutional_debate.prompts import (
     build_challenger_messages,
     parse_challenge_output,
 )
-from constitutional_debate.types import Transcript
+from constitutional_debate.types import DecisionRecord, Transcript
 
 from helpers import config, make_seating, make_task
 
@@ -110,7 +110,8 @@ def challenger_prompt(**kw) -> str:
     seating = make_seating()
     overrides = {k: kw.pop(k) for k in list(kw) if k in {"challenge_word_limit"}}
     messages = build_challenger_messages(
-        task, None, seating, config(**overrides), Transcript(),
+        task, None, seating, config(**overrides),
+        DecisionRecord.for_debate(Transcript()),
         arm=kw.pop("arm", "neutral"),
         visibility=kw.pop("visibility", "public"),
         decision_answer_index=0,

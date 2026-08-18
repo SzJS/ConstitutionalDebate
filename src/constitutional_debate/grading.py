@@ -36,9 +36,12 @@ from .prompts import (
     GRADER_SYSTEM,
     GRADER_USER,
     RULING_INDEPENDENCE_SYSTEM,
+    STEER_LEAK_SYSTEM,
+    STEER_LEAK_USER,
     VALIDATOR_SYSTEM,
     parse_grade_output,
     parse_independence_output,
+    parse_steer_leak_output,
     parse_validation_output,
 )
 from .types import ErrorSpec, Seating, Task, neutralise_tags
@@ -52,7 +55,12 @@ ERROR_SPEC_READERS: frozenset[str] = frozenset(
     {"grading.grade_objection", "grading.validate_case"}
 )
 
-SUBJECT_KINDS: tuple[str, ...] = ("challenge", "pro_argument")
+# ``critique`` is the self_critique arm's own critique step, graded during
+# construction rather than during measurement: outcome control needs to know
+# whether that critique caught the case's seeded flaw (which would leave the
+# published record criticising a step the revision then keeps) or the error
+# deliberately injected for it to find.
+SUBJECT_KINDS: tuple[str, ...] = ("challenge", "pro_argument", "critique")
 
 
 @dataclass(frozen=True)
@@ -370,6 +378,96 @@ async def check_independence(
         note=note,
         model=grading.validator_model,
         parse_mode=parse_mode,
+        raw=completion.content,
+        call_id=completion.call_id,
+        finish_reason=completion.finish_reason,
+        repair_attempts=repairs,
+    )
+
+
+@dataclass(frozen=True)
+class SteerLeak:
+    """Whether a steered response gave away that it was steered."""
+
+    leaked: bool
+    note: str
+    model: str
+    parse_mode: str
+    raw: str
+    call_id: str
+    finish_reason: str | None
+    repair_attempts: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {f: getattr(self, f) for f in self.__dataclass_fields__}
+
+
+async def references_the_steer(
+    *,
+    steer_text: str,
+    output_text: str,
+    config: DebateConfig,
+    grading: GradingConfig,
+    client: ChatClient,
+) -> SteerLeak:
+    """Does this steered response reveal that an instruction was appended?
+
+    Outcome control steers a judge that resisted the planted flaw, and a
+    critique that attacked the case's own. Both steers are construction
+    artefacts: they belong in ``construction.json`` and nowhere else. But the
+    *model* may talk about being steered, and its words go straight onto the
+    published path — a steered judge's ``raw`` is published verbatim in
+    ``transcript.md`` **and** is what a challenger is shown as the decision's
+    grounds; a steered critique's text and provider reasoning are published in
+    the solo record and reach the challenger through it.
+
+    A challenger that can see the instruction can contest the instruction rather
+    than the flaw, which is not a measurement of anything. Hence a check rather
+    than a hope.
+
+    Model-graded rather than pattern-matched because the risk is paraphrase, not
+    quotation: "applying the standard I was asked to use" never repeats a word
+    of the steer. ``role="grader"`` puts it in ``accounting.OFF_PATH_ROLES``, so
+    containment QC does not inflate the very token balance it protects.
+
+    Pass ``raw`` and the provider reasoning channel together. The channel is the
+    likelier place for a model to narrate its own instructions, and for the
+    critique step it is published verbatim.
+    """
+    messages = [
+        {"role": "system", "content": STEER_LEAK_SYSTEM},
+        {
+            "role": "user",
+            "content": STEER_LEAK_USER.format(
+                # Both are model- or template-authored text going into tagged
+                # blocks, defanged like everything else.
+                steer_text=neutralise_tags(steer_text.strip()),
+                output_text=neutralise_tags(output_text.strip()),
+            ),
+        },
+    ]
+    model = grading.grader_model_for(config.judge_model)
+    (leaked, note, parse_mode), completion, repairs = await _complete_with_repair(
+        client,
+        model=model,
+        messages=messages,
+        temperature=grading.grader_temperature,
+        config=config,
+        meta={
+            "role": "grader",
+            "speaker": None,
+            "round": None,
+            "purpose": "steer_leak",
+        },
+        parse=parse_steer_leak_output,
+        role="grader",
+        word_limit=0,
+    )
+    return SteerLeak(
+        leaked=leaked,
+        note=note,
+        model=model,
+        parse_mode=parse_mode if repairs == 0 else f"{parse_mode}_after_repair",
         raw=completion.content,
         call_id=completion.call_id,
         finish_reason=completion.finish_reason,

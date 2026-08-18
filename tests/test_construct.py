@@ -1,0 +1,732 @@
+"""Outcome-controlled construction: the invariants the design rests on.
+
+The load-bearing claim is that the flaw a challenger meets is the *same bytes*
+in every arm. Most of what follows exists to make that claim falsifiable, and
+to keep the two things a model must never be shown — the flaw's annotation and
+its location — out of every prompt on the construction path.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from conftest import FakeClient
+from helpers import config, make_seating, make_task
+
+from constitutional_debate.arms import run_self_critique, run_single_agent
+from constitutional_debate.construct import (
+    CONSTRUCTED,
+    ConstructionError,
+    construct_single,
+    flawed_solution_text,
+    opening_turns,
+    solution_steps,
+    target_step_for,
+)
+from constitutional_debate.debate import run_debate
+from constitutional_debate.types import ErrorSpec
+
+def make_writer_with_error(tmp_path, task, cfg, seating, error, arm="single"):
+    """A writer that recorded the error spec, so ``error.json`` exists to stamp.
+
+    ``make_writer`` does not take one, and ``record_mechanism`` has nothing to
+    write into without it. ``arm`` mirrors what ``decide_cell`` passes: the
+    published document names the arm from the writer, so a helper that omitted
+    it would let a test pass against a record labelled `debate` for a solo run.
+    """
+    from constitutional_debate.config import load_config
+    from constitutional_debate.persistence import RunWriter
+    from constitutional_debate.prompts import select_profile
+
+    _, client_config = load_config()
+    return RunWriter.create(
+        task=task, context=None, config=cfg, client_config=client_config,
+        seating=seating, profile_key=select_profile(task, None).key,
+        outputs_root=tmp_path, error=error, arm=arm,
+    )
+
+
+NEEDLE_ANNOTATION = "SECRET-ANNOTATION-must-never-reach-a-prompt"
+NEEDLE_LOCATION = "SECRET-LOCATION"
+
+SEED = "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 4.\nStep 3: so the answer is 4."
+SOUND = "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 3.\nStep 3: so the answer is 3."
+
+# The injector returns the seed with step 3 altered — the flaw is at step 2, so
+# the two are disjoint, which is what makes localisation alone able to tell them
+# apart on a subset with no flaw description.
+INJECTED_DRAFT = (
+    "Step 1: assume x = 2.\nStep 2: therefore x + 1 = 4.\nStep 3: so the answer is 9."
+)
+INJECTOR_REPLY = (
+    f"Thinking:\nchoosing step 3\n\nDraft:\n{INJECTED_DRAFT}\n\n"
+    "Injected error: step 3 restates the total as 9, which does not follow."
+)
+CRITIQUE_REPLY = "Step 3 states 9, which does not follow from step 2."
+
+# `parse_grade_output` wants both labels. 0 is "did not localise the flaw".
+GRADE_MISS = "The objection does not reach it.\n\nLocalisation: 0\nChanges the decision: NO"
+GRADE_HIT = "The objection names it.\n\nLocalisation: 2\nChanges the decision: YES"
+
+# The steer-containment check. Only ever called on a *steered* output.
+LEAK_CLEAN = "It argues from the record throughout.\n\nReferences the instruction: NO"
+LEAK_DIRTY = (
+    "It says it applied a standard it was asked to apply.\n\n"
+    "References the instruction: YES"
+)
+
+
+def error_spec(**kw) -> ErrorSpec:
+    return ErrorSpec(
+        error_id=kw.pop("error_id", "case-1"),
+        seed=kw.pop("seed", SEED),
+        sound_seed=kw.pop("sound_seed", SOUND),
+        flaw_location=kw.pop("flaw_location", "2"),
+        annotation=kw.pop("annotation", NEEDLE_ANNOTATION),
+        annotation_quality=kw.pop("annotation_quality", "explanation"),
+        **kw,
+    )
+
+
+class SequencedClient(FakeClient):
+    """A FakeClient whose grader replies come from a queue.
+
+    Both gradings of a critique carry ``subject_kind="critique"``, so they share
+    a scripting key and cannot be told apart by it. The order is fixed and
+    documented in ``_critique_verdict``: the seeded flaw first, the injected one
+    second.
+    """
+
+    def __init__(
+        self, *, grades: list[str] | None = None, leaks: list[str] | None = None, **kw
+    ) -> None:
+        super().__init__(**kw)
+        self.grades = list(grades or [])
+        self.leaks = list(leaks or [])
+
+    async def complete(self, **kw):
+        purpose = kw["meta"].get("purpose")
+        # Two queues, keyed on purpose. Both are role="grader", so popping on
+        # role alone would desync one against the other. The last entry repeats
+        # once a queue runs dry, so a test only scripts what it cares about.
+        if purpose == "grade_critique" and self.grades:
+            self.scripted = {
+                **self.scripted,
+                ("grader", "grade_critique"): self._next(self.grades),
+            }
+        elif purpose == "steer_leak" and self.leaks:
+            self.scripted = {
+                **self.scripted,
+                ("grader", "steer_leak"): self._next(self.leaks),
+            }
+        return await super().complete(**kw)
+
+    @staticmethod
+    def _next(queue: list[str]) -> str:
+        return queue.pop(0) if len(queue) > 1 else queue[0]
+
+
+def solo_client(**kw) -> SequencedClient:
+    scripted = {
+        ("injector", "inject"): INJECTOR_REPLY,
+        ("critic", "critique"): CRITIQUE_REPLY,
+    }
+    scripted.update(kw.pop("scripted", {}))
+    # Default: the critique missed the seeded flaw and found the injected one,
+    # which is the construction succeeding unsteered.
+    kw.setdefault("grades", [GRADE_MISS, GRADE_HIT])
+    return SequencedClient(scripted=scripted, **kw)
+
+
+def oc_config(**kw):
+    return config(outcome_control=True, **kw)
+
+
+# --------------------------------------------------------------------------- #
+# the invariant
+# --------------------------------------------------------------------------- #
+
+
+async def test_the_single_arm_and_the_self_critique_revision_are_byte_identical():
+    """The whole design in one assertion.
+
+    If these drift, the arms no longer carry the same flaw and a cross-arm
+    detection rate is comparing three different detection problems.
+    """
+    task, seating, cfg, error = make_task(gold_index=0), make_seating(), oc_config(), error_spec()
+
+    single = await run_single_agent(
+        task, None, cfg, seating, solo_client(), error=error
+    )
+    critique = await run_self_critique(
+        task, None, cfg, seating, solo_client(), error=error
+    )
+
+    revision = critique.trace.all_steps()[-1]
+    assert single.trace.all_steps()[-1].text == revision.text
+    assert SEED in revision.text, "the dataset's own flawed reasoning, unaltered"
+    assert single.verdict.reasoning == critique.verdict.reasoning
+
+
+async def test_the_answer_line_follows_the_seating_not_a_constant():
+    """`choice_order` is drawn per run, so a hardcoded `Answer: 2` would be
+    right on half the corpus and wrong on the other half, with every run still
+    completing."""
+    error = error_spec()
+    normal = flawed_solution_text(make_task(gold_index=0), make_seating(), error)
+    flipped = flawed_solution_text(make_task(gold_index=0), make_seating((1, 0)), error)
+    assert normal.endswith("Answer: 2")
+    assert flipped.endswith("Answer: 1")
+
+
+@pytest.mark.parametrize("gold", [0, 1])
+async def test_round_one_is_the_dataset_text_verbatim(gold):
+    """And the sound half reaches whoever defends the gold answer, both ways
+    round — written keyed on index 0 this inverts on half the corpus."""
+    task, seating, error = make_task(gold_index=gold), make_seating(), error_spec()
+    turns = opening_turns(task, seating, error)
+
+    assert [t.round for t in turns] == [1, 1]
+    assert all(t.parse_mode == CONSTRUCTED and t.call_id == "" for t in turns)
+    for turn in turns:
+        expected = SOUND if turn.answer_index == gold else SEED
+        assert turn.argument == expected
+
+
+# --------------------------------------------------------------------------- #
+# containment
+# --------------------------------------------------------------------------- #
+
+
+async def test_the_annotation_never_reaches_a_construction_prompt():
+    """The construction path legitimately holds the annotation in memory, which
+    the decision path never did. Nothing may put it in a request."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    error = error_spec(annotation=NEEDLE_ANNOTATION, flaw_location="2")
+
+    clients = []
+    for runner in (run_single_agent, run_self_critique):
+        client = solo_client()
+        await runner(task, None, cfg, seating, client, error=error)
+        clients.append(client)
+    debate_client = solo_client(
+        scripted={"judge": "Alice was clearer.\n\nAnswer: 2"}, grades=[]
+    )
+    await run_debate(task, None, cfg, seating, debate_client, error=error)
+    clients.append(debate_client)
+
+    for client in clients:
+        for call in client.calls:
+            if call["meta"].get("role") == "grader":
+                continue  # the grader is the one thing allowed to see it
+            body = json.dumps(call["messages"])
+            assert NEEDLE_ANNOTATION not in body, call["meta"]
+
+
+async def test_the_injector_is_never_told_where_the_case_flaw_is():
+    """It is given a target step, not the ground truth. Told the flaw's location
+    it could condition the draft on the answer the experiment is measuring."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    error = error_spec(flaw_location=NEEDLE_LOCATION, annotation=NEEDLE_ANNOTATION)
+    # A location that is not a step number leaves every step available.
+    client = solo_client()
+    await run_self_critique(task, None, cfg, seating, client, error=error)
+
+    injector_call = next(c for c in client.calls if c["meta"]["role"] == "injector")
+    body = json.dumps(injector_call["messages"])
+    assert NEEDLE_LOCATION not in body
+    assert NEEDLE_ANNOTATION not in body
+
+
+# --------------------------------------------------------------------------- #
+# the constructed record says what it is
+# --------------------------------------------------------------------------- #
+
+
+async def test_the_single_arm_spends_nothing():
+    client = solo_client()
+    await run_single_agent(
+        make_task(gold_index=0), None, oc_config(), make_seating(), client,
+        error=error_spec(),
+    )
+    assert client.calls == []
+
+
+async def test_the_constructed_record_states_no_thinking_that_was_never_thought():
+    result = await construct_single(
+        make_task(gold_index=0), None, oc_config(), make_seating(), solo_client(),
+        error=error_spec(),
+    )
+    step = result.trace.all_steps()[0]
+    assert step.thinking == ""
+    assert step.parse_mode == CONSTRUCTED
+    assert step.call_id == ""
+    assert step.raw == step.text, "nothing was stripped, because nothing was parsed"
+    assert result.verdict.correct is False
+
+
+async def test_a_constructed_single_run_is_written_and_reloads(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec())
+    await construct_single(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    from constitutional_debate.persistence import load_run_record
+
+    record = load_run_record(writer.dir)
+    assert record.trace is not None and len(record.trace.all_steps()) == 1
+    assert not (writer.dir / "calls.jsonl").is_file(), "no calls were made"
+    assert "_(none recorded)_" in (writer.dir / "transcript.md").read_text()
+
+
+# --------------------------------------------------------------------------- #
+# step disjointness
+# --------------------------------------------------------------------------- #
+
+
+def test_the_injected_step_is_never_the_flaw_step():
+    for flaw in ("1", "2", "3"):
+        assert str(target_step_for(error_spec(flaw_location=flaw))) != flaw
+
+
+def test_a_case_with_no_disjoint_step_is_refused():
+    """1 of 282 across the two subsets in play. Dropped loudly rather than
+    injected on top of the flaw the case is about."""
+    with pytest.raises(ConstructionError, match="no step to inject into"):
+        target_step_for(error_spec(seed="Step 1: the only step.", flaw_location="1"))
+
+
+def test_steps_are_found_in_both_subsets_notations():
+    assert solution_steps("Step 1: a\nStep 2: b") == [1, 2]
+    assert solution_steps("1. a\n2. b\n3. c") == [1, 2, 3]
+
+
+# --------------------------------------------------------------------------- #
+# construction failures
+# --------------------------------------------------------------------------- #
+
+
+async def test_an_injector_that_rewrites_the_solution_is_refused():
+    """A wholesale rewrite silently destroys the case's flaw, leaving a record
+    that carries a flaw nothing annotates."""
+    rewritten = "Completely different text. " * 20
+    client = solo_client(
+        scripted={
+            ("injector", "inject"): (
+                f"Thinking:\nx\n\nDraft:\n{rewritten}\n\nInjected error: rewrote it."
+            )
+        }
+    )
+    with pytest.raises(ConstructionError, match="rewrote the solution"):
+        await run_self_critique(
+            make_task(gold_index=0), None, oc_config(), make_seating(), client,
+            error=error_spec(),
+        )
+
+
+async def test_a_case_without_a_gold_answer_is_refused():
+    with pytest.raises(ConstructionError, match="gold answer"):
+        await construct_single(
+            make_task(gold_index=None), None, oc_config(), make_seating(),
+            solo_client(), error=error_spec(),
+        )
+
+
+async def test_a_debate_without_an_error_spec_is_refused_not_run_normally():
+    """Falling through to an ordinary debate would publish an unconstructed run
+    under the constructed arm's label."""
+    with pytest.raises(ConstructionError, match="annotated case"):
+        await run_debate(
+            make_task(gold_index=0), None, oc_config(), make_seating(),
+            solo_client(), error=None,
+        )
+
+
+# --------------------------------------------------------------------------- #
+# steering, and what `mechanism` records
+#
+# Both routes share one pattern: run unsteered, record the outcome, steer only
+# on failure. That ordering is the point — steering suppresses a baseline's
+# competence at exactly the cases where it is strongest, so how often it was
+# needed has to survive as a measurement.
+# --------------------------------------------------------------------------- #
+
+
+def mechanism_of(writer) -> str:
+    return json.loads((writer.dir / "error.json").read_text())["mechanism"]
+
+
+async def test_an_unsteered_critique_is_labelled_genuine(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    assert mechanism_of(writer) == "genuine"
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["critique_steered"] is False
+    assert construction["critique_caught_the_seeded_flaw_unsteered"] is False
+
+
+async def test_a_critique_that_catches_the_seeded_flaw_is_steered_and_labelled(tmp_path):
+    """The unsteered critique found the case's own flaw — self-critique working.
+
+    The record cannot stand as-is: it would criticise a step the revision then
+    restores. So a steered attempt is made, and the run says it was.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+        scripted={("grader", "steer_leak"): LEAK_CLEAN},
+    )
+    await run_self_critique(
+        task, None, cfg, seating, client, writer=writer,
+        error=error_spec(),
+    )
+    assert mechanism_of(writer) == "manufactured"
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["critique_steered"] is True
+    assert construction["critique_caught_the_seeded_flaw_unsteered"] is True
+
+
+async def test_a_critique_that_resists_the_steer_fails_the_construction(tmp_path):
+    """Caught the seeded flaw both times. Refused rather than published."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(grades=[GRADE_HIT, GRADE_HIT, GRADE_HIT, GRADE_HIT])
+    with pytest.raises(ConstructionError, match="critique_caught_the_seeded_flaw"):
+        await run_self_critique(
+            task, None, cfg, seating, client, writer=writer, error=error_spec()
+        )
+
+
+async def test_a_critique_that_misses_the_injected_error_fails_the_construction(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(grades=[GRADE_MISS, GRADE_MISS, GRADE_MISS, GRADE_MISS])
+    with pytest.raises(ConstructionError, match="critique_missed_the_injected_error"):
+        await run_self_critique(
+            task, None, cfg, seating, client, writer=writer, error=error_spec()
+        )
+
+
+async def test_the_single_arm_is_labelled_constructed(tmp_path):
+    """No procedure ran, so neither `genuine` nor `manufactured` is true."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec())
+    await construct_single(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    assert mechanism_of(writer) == "constructed"
+
+
+async def test_a_judge_that_falls_for_the_flaw_unaided_is_genuine(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec(), arm="debate")
+    # gold_index=0, choice_order=(0,1) -> choice 2 is the flawed answer.
+    client = solo_client(scripted={"judge": "Bob was clearer.\n\nAnswer: 2"}, grades=[])
+    result = await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+    assert result.verdict.correct is False
+    assert mechanism_of(writer) == "genuine"
+    assert not (writer.dir / "construction.json").is_file(), "no steering happened"
+
+
+async def test_a_judge_that_resists_is_re_judged_with_a_steer(tmp_path):
+    """Only the judge is re-run: round 1 stays verbatim and rounds 2-3 stay put,
+    so the record differs from an unforced one only in the judgment."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec(), arm="debate")
+
+    class Resisting(SequencedClient):
+        seen = 0
+
+        async def complete(self, **kw):
+            if kw["meta"].get("role") == "judge":
+                Resisting.seen += 1
+                reply = (
+                    "Alice was clearer.\n\nAnswer: 1"   # correct: resists
+                    if kw["meta"]["purpose"] == "judge"
+                    else "On reflection.\n\nAnswer: 2"  # steered: the flaw wins
+                )
+                self.scripted = {**self.scripted, "judge": reply}
+            return await super().complete(**kw)
+
+    client = Resisting(scripted={("grader", "steer_leak"): LEAK_CLEAN}, grades=[])
+    result = await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+
+    assert Resisting.seen == 2, "one unsteered judgment, then one steered"
+    assert result.verdict.correct is False
+    assert mechanism_of(writer) == "manufactured"
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["judge_steered"] is True
+    assert construction["unsteered_correct"] is True
+    # Round 1 is untouched by the re-judge.
+    turns = [t for t in result.transcript.all_turns() if t.round == 1]
+    assert {t.argument for t in turns} == {SEED, SOUND}
+
+
+async def test_the_steering_instruction_reaches_no_published_artifact(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec(), arm="debate")
+
+    class Resisting(SequencedClient):
+        async def complete(self, **kw):
+            if kw["meta"].get("role") == "judge":
+                self.scripted = {**self.scripted, "judge": (
+                    "Alice was clearer.\n\nAnswer: 1"
+                    if kw["meta"]["purpose"] == "judge"
+                    else "On reflection.\n\nAnswer: 2"
+                )}
+            return await super().complete(**kw)
+
+    await run_debate(
+        task, None, cfg, seating,
+        Resisting(scripted={("grader", "steer_leak"): LEAK_CLEAN}, grades=[]),
+        writer=writer, error=error_spec(),
+    )
+    writer.finish(status="completed")
+
+    published = (writer.dir / "transcript.md").read_text()
+    assert "demanding standard" not in published
+    assert "has not met its burden" not in published
+
+
+async def test_a_constructed_record_says_it_was_constructed(tmp_path):
+    """The document must not claim a pass that was never made.
+
+    `render_solo_record` refuses to print positions for a run with no debaters
+    for the same reason: a false statement in the one artifact the project's
+    transparency claim rests on.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec())
+    await construct_single(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    doc = (writer.dir / "transcript.md").read_text()
+    assert "constructed" in doc.lower()
+    assert "One agent, one pass" not in doc, "no pass was made"
+    assert "Arm: `single`" in doc
+
+
+async def test_the_construction_note_reaches_no_prompt(tmp_path):
+    """It lives in `artifacts`, which nothing on a prompt path may import."""
+    from constitutional_debate.debate import run_recourse
+    from constitutional_debate.persistence import load_run_record
+    from helpers import generated_challenge, make_recourse_writer
+
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(tmp_path, task, cfg, seating, error_spec())
+    await construct_single(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    parent = load_run_record(writer.dir)
+    recourse_writer = make_recourse_writer(tmp_path, parent, cfg)
+    client = FakeClient(
+        sink=recourse_writer.record_call,
+        scripted={"recourse_judge": "Stands.\n\nRuling: UPHOLD"},
+    )
+    await run_recourse(
+        parent, generated_challenge(), cfg, client, writer=recourse_writer
+    )
+    for call in client.calls:
+        body = json.dumps(call["messages"])
+        assert "was **constructed**" not in body
+        assert "no model wrote it" not in body
+
+
+# --------------------------------------------------------------------------- #
+# steer containment
+#
+# The steer is a construction artefact. A model that narrates it puts that
+# artefact on the published path — and for the judge, straight into the grounds
+# a challenger is shown. A challenger that can see the instruction can contest
+# the instruction rather than the flaw, which measures nothing.
+# --------------------------------------------------------------------------- #
+
+
+class ResistingJudge(SequencedClient):
+    """A judge that resists unaided, so every run through it gets steered."""
+
+    def __init__(self, *, steered_replies=None, **kw):
+        super().__init__(**kw)
+        self.steered_replies = list(steered_replies or [])
+        self.steered_calls = 0
+
+    async def complete(self, **kw):
+        meta = kw["meta"]
+        if meta.get("role") == "judge":
+            if meta["purpose"] == "judge":
+                reply = "Alice was clearer.\n\nAnswer: 1"  # correct -> resists
+            else:
+                self.steered_calls += 1
+                reply = (
+                    self.steered_replies.pop(0)
+                    if self.steered_replies
+                    else "On reflection.\n\nAnswer: 2"
+                )
+            self.scripted = {**self.scripted, "judge": reply}
+        return await super().complete(**kw)
+
+
+async def test_a_steered_judge_that_references_the_steer_is_retried(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+    client = ResistingJudge(leaks=[LEAK_DIRTY, LEAK_CLEAN], grades=[])
+    result = await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+
+    assert client.steered_calls == 2, "the first steered judgment was rejected"
+    assert result.verdict.correct is False
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["judge_steer_leak_retries"] == 1
+    assert construction["judge_steer_leaked"] is False
+
+
+async def test_a_steered_judge_that_leaks_twice_fails_the_cell(tmp_path):
+    """Refused rather than published: these grounds are what the challenger
+    reads, so a contaminated verdict is a contaminated measurement."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+    client = ResistingJudge(leaks=[LEAK_DIRTY], grades=[])
+    with pytest.raises(ConstructionError, match="steered_judge_referenced_the_steer"):
+        await run_debate(
+            task, None, cfg, seating, client, writer=writer, error=error_spec()
+        )
+    assert client.steered_calls == 2, "two attempts, then refused"
+
+
+async def test_the_containment_check_reads_the_provider_reasoning_channel(tmp_path):
+    """The case that motivated the check.
+
+    A response whose published text is clean can still narrate the steer in the
+    provider's reasoning channel — which `verdict.json` keeps for the judge and
+    `_solo_steps` publishes verbatim for a critique. A `raw`-only check misses
+    exactly this.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+    client = ResistingJudge(leaks=[LEAK_CLEAN], grades=[])
+    await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+
+    check = next(
+        c for c in client.calls if c["meta"].get("purpose") == "steer_leak"
+    )
+    body = json.dumps(check["messages"])
+    # The fake completion carries no native reasoning, so what matters is that
+    # the field is *sent* — the checker must be given the channel to inspect.
+    assert "<response>" in body
+    assert "demanding standard" in body, "the checker is shown the steer itself"
+
+
+async def test_a_steered_critique_that_references_the_steer_is_retried(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(
+        # unsteered catches the seeded flaw -> steer; then two clean gradings
+        # per steered attempt.
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+        leaks=[LEAK_DIRTY, LEAK_CLEAN],
+    )
+    await run_self_critique(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["critique_steered"] is True
+    assert construction["critique_steer_leak_retries"] == 1
+
+
+async def test_a_steered_critique_that_leaks_twice_fails_the_cell(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+        leaks=[LEAK_DIRTY],
+    )
+    with pytest.raises(
+        ConstructionError, match="steered_critique_referenced_the_steer"
+    ):
+        await run_self_critique(
+            task, None, cfg, seating, client, writer=writer, error=error_spec()
+        )
+
+
+async def test_an_unsteered_run_spends_no_containment_call():
+    """No steer, nothing to reference. Checking anyway would cost a call per
+    cell to learn nothing."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    client = solo_client()  # unsteered critique passes on the first attempt
+    await run_self_critique(task, None, cfg, seating, client, error=error_spec())
+    assert not [c for c in client.calls if c["meta"].get("purpose") == "steer_leak"]
+
+
+async def test_the_containment_check_is_off_the_decision_path(tmp_path):
+    """It exists to protect the record's comparability; billing it to the
+    decision path would inflate the very balance it protects."""
+    from constitutional_debate.accounting import aggregate_calls
+
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+    client = ResistingJudge(
+        leaks=[LEAK_CLEAN], grades=[], sink=writer.record_call
+    )
+    await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+    usage = aggregate_calls(writer.dir / "calls.jsonl")
+    assert usage["off_path"]["calls"] >= 1
+    roles = {c["meta"].get("role") for c in client.calls}
+    assert "grader" in roles
+
+
+async def test_a_clean_steered_output_passes(tmp_path):
+    """The false-positive guard. Without it a check that always fired would
+    satisfy every other test in this section."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+    client = ResistingJudge(leaks=[LEAK_CLEAN], grades=[])
+    result = await run_debate(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+    assert client.steered_calls == 1, "one steered judgment, accepted"
+    assert result.verdict.correct is False
+    assert mechanism_of(writer) == "manufactured"

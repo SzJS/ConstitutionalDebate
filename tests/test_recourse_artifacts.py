@@ -16,6 +16,8 @@ from constitutional_debate.types import (
     Challenge,
     Ruling,
     Speaker,
+    Step,
+    Trace,
     Transcript,
     Verdict,
     compose_transcript,
@@ -248,3 +250,74 @@ def test_the_transcript_document_carries_the_recourse_keys_and_nothing_else():
     assert document["parent_run_id"] == "a-parent"
     assert document["parent_rounds"] == PARENT_ROUNDS
     assert "gold_index" not in document
+
+
+# --------------------------------------------------------------------------- #
+# contesting a decision that was not a debate
+#
+# The document-side counterpart of the prompt fix. `render_recourse_record`
+# emitted `## Positions` unconditionally, so a contest of a solo decision
+# published a `transcript.md` stating that Alice argued for an answer in a run
+# where nobody argued -- the same false statement `render_solo_record` refuses
+# to make, and this document also feeds the case validator.
+# --------------------------------------------------------------------------- #
+
+
+def solo_parent_trace() -> Trace:
+    trace = Trace()
+    for index, (stage, text) in enumerate(
+        [("draft", "PUBLISHED-DRAFT the bound holds."),
+         ("critique", "PUBLISHED-CRITIQUE step two is unsupported."),
+         ("revision", "PUBLISHED-REVISION therefore choice 1.")],
+        start=1,
+    ):
+        trace.add(
+            Step(index=index, stage=stage, thinking=f"PRIVATE-{stage}", text=text,
+                 word_count=4, parse_mode="strict", repair_attempts=0,
+                 finish_reason="stop", has_native_reasoning=False,
+                 call_id=f"c{index}", raw="")
+        )
+    return trace
+
+
+def solo_full(challenge: Challenge = SUPPLIED, **kwargs) -> str:
+    """A recourse document whose parent was a solo decision.
+
+    The composed transcript holds only the recourse's own turns: a solo parent
+    contributed none, which is precisely why the parent's body has to arrive by
+    another route.
+    """
+    recourse = Transcript()
+    for speaker in (Speaker.ALICE, Speaker.BOB):
+        recourse.add(make_turn(PARENT_ROUNDS + 1, speaker))
+    return render_recourse_record(
+        make_task(), make_seating(), compose_transcript(Transcript(), recourse),
+        parent_rounds=PARENT_ROUNDS,
+        parent_verdict=parent_verdict(),
+        challenge=challenge,
+        ruling=kwargs.pop("ruling", ruling()),
+        judge_cot=kwargs.pop("judge_cot", True),
+        parent_judge_cot=kwargs.pop("parent_judge_cot", True),
+        parent_trace=solo_parent_trace(),
+    )
+
+
+def test_a_contest_of_a_solo_decision_states_no_positions():
+    text = solo_full()
+    assert "## Positions" not in text
+    assert "argues for" not in text
+    assert "One agent working alone" in text
+
+
+def test_a_contest_of_a_solo_decision_publishes_the_steps_it_contests():
+    text = solo_full()
+    for needle in ("PUBLISHED-DRAFT", "PUBLISHED-CRITIQUE", "PUBLISHED-REVISION"):
+        assert needle in text
+    # The published record carries the thinking; only the *prompts* withhold it.
+    assert "PRIVATE-draft" in text
+
+
+def test_a_contest_of_a_debate_decision_still_states_the_positions():
+    text = full(SUPPLIED)
+    assert "## Positions" in text
+    assert "argues for" in text

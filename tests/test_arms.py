@@ -38,6 +38,7 @@ CRITIQUE_REPLY = "Step 2 asserts the bound without establishing it."
 def solo_client(**kw) -> FakeClient:
     scripted = {
         ("solo", "draft"): SOLO_REPLY,
+        ("solo", "answer"): SOLO_REPLY,
         ("solo", "revision"): SOLO_REPLY,
         ("critic", "critique"): CRITIQUE_REPLY,
     }
@@ -81,7 +82,7 @@ async def test_the_choice_resolves_through_the_seating():
 async def test_a_single_agent_spends_exactly_one_call():
     result, client = await run_single()
     assert len(client.calls) == 1
-    assert [s.stage for s in result.trace.all_steps()] == ["draft"]
+    assert [s.stage for s in result.trace.all_steps()] == ["answer"]
 
 
 async def test_self_critique_is_draft_critique_revision():

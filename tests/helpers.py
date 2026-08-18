@@ -107,6 +107,56 @@ async def recorded_run(tmp_path, task, config, seating, context=None, **fake_kwa
     return writer, result
 
 
+# The solo arms' analogue of ``JUDGE_COT``: a reply carrying both a private
+# section and a public one, so a test can tell which of the two a challenger was
+# shown. The needle matches ``make_turn``'s so one assertion covers both shapes.
+SOLO_THINKING = "SECRET-THINKING-solo-working"
+SOLO_REPLY = (
+    f"Thinking:\n{SOLO_THINKING}\n\n"
+    "Reasoning:\nThe second choice follows from the constraint.\nAnswer: 2"
+)
+SOLO_CRITIQUE_REPLY = "Step 2 asserts the bound without establishing it."
+
+
+async def recorded_solo_run(
+    tmp_path, task, config, seating, *, arm: str = "single", context=None, **fake_kwargs
+):
+    """Run one solo decision to a completed record on disk, and hand back the writer.
+
+    The counterpart of ``recorded_run``. It exists because every recourse test
+    built a *debate* parent, which is why a challenger being shown an empty
+    record for a solo parent went unnoticed: the shape was never exercised.
+    """
+    from conftest import FakeClient
+    from constitutional_debate.arms import DECIDERS
+
+    _, client_config = load_config()
+    writer = RunWriter.create(
+        task=task,
+        context=context,
+        config=config,
+        client_config=client_config,
+        seating=seating,
+        profile_key=select_profile(task, context).key,
+        outputs_root=tmp_path,
+        arm=arm,
+    )
+    scripted = {
+        ("solo", "draft"): SOLO_REPLY,
+        ("solo", "answer"): SOLO_REPLY,
+        ("solo", "revision"): SOLO_REPLY,
+        ("critic", "critique"): SOLO_CRITIQUE_REPLY,
+    }
+    scripted.update(fake_kwargs.pop("scripted", {}))
+    client = FakeClient(scripted=scripted, sink=writer.record_call, **fake_kwargs)
+    result = await DECIDERS[arm](
+        task, context, config, seating, client,
+        writer=writer, profile=select_profile(task, context),
+    )
+    writer.finish(status="completed")
+    return writer, result
+
+
 def file_challenge(text: str = "The decision rests on an unsupported figure.") -> Challenge:
     return Challenge(text=text, origin="file", source="challenge.md")
 

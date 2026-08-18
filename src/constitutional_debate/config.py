@@ -120,6 +120,18 @@ class DebateConfig:
     # Critique/revision pairs in the self_critique arm. 1 is draft -> critique
     # -> revision; 2 repeats the pair. All steps are published either way.
     n_critique_rounds: int = 1
+    # Outcome control: fix the decisive content of every arm's record to the
+    # case's FindTheFlaws text instead of seeding a model and hoping it errs.
+    # The flaw is then byte-identical across arms rather than merely specified
+    # identically, which is what makes a cross-arm detection rate a comparison
+    # of the arms rather than of three different flaws.
+    #
+    # A config field, not a set of new arm names: ``Cell.cell_id`` embeds the
+    # arm and ``analysis.by_cell`` groups on it, so new names would fragment
+    # both. It belongs in the decision-relevant table because it changes what
+    # the decision is *made of*, and so must be visible in the published
+    # config.json rather than inferred from a directory name.
+    outcome_control: bool = False
     # The second debater model. None is the same-model variant, where both sides
     # get ``debater_model``.
     #

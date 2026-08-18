@@ -1,0 +1,49 @@
+# Outcome-controlled construction, gpqa (191 cases).
+#
+# 191 cases. Every one is annotation_quality="location_only" with an EMPTY
+# annotation: upstream's flaw_explanation is "The first error occurs in Step N",
+# 9 distinct strings across 198 rows, which restates the step pointer and says
+# nothing about what is wrong. So this subset supports detection and the
+# correction rates but NOT the valid-objection metric, and grade_objection
+# clamps localisation to <= 1 for it.
+#
+# The construction still works here because the injected error is placed at a
+# step the case's own flaw is not on, which makes localisation alone able to
+# tell the two apart.
+#
+# All three arms over one case file: the same cases decided three ways, which is
+# what makes a cross-arm detection rate a comparison of the arms rather than of
+# three different flaws. Under outcome_control the decisive content of each
+# arm's record is the dataset's own text:
+#
+#   single         the whole output, and no API call at all
+#   self_critique  the revision; the draft is that text with one error injected
+#                  at a different step, and the critique has to find that one
+#   debate         round 1, verbatim, as the two opening arguments
+#
+# Caveat worth knowing before reading any number off this: seed and sound_seed
+# are 0.76 (gpqa) to 0.89 (theoremqa) character-similar at the median, so a
+# verbatim round 1 shows the judge two near-identical worked solutions differing
+# in about one step. That is a real detection task; it does not read like a
+# debate.
+name = "ftf-oc-gpqa"
+cases = "data/cases/ftf-gpqa.jsonl"
+arms = ["single", "self_critique", "debate"]
+conditions = ["matched"]
+repeats = 1
+profile = "paper"
+
+[debate]
+outcome_control = true
+debater_model = "deepseek/deepseek-v4-flash-0731"
+judge_model = "deepseek/deepseek-v4-flash-0731"
+n_rounds = 3
+word_limit = 400
+max_tokens = 8192
+max_decision_attempts = 2
+judge_cot = true
+seed = 0
+
+[client]
+max_concurrency = 8
+max_runs_in_flight = 4

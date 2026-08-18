@@ -676,6 +676,71 @@ def render_trace(steps: Sequence[Step]) -> str:
 EMPTY_TRACE = "[Nothing has been written yet.]"
 
 
+def render_trace_private_reasoning(steps: Sequence[Step]) -> str:
+    """Render a solo agent's private ``Thinking`` sections, model-facing.
+
+    The ``Trace`` analogue of ``render_private_reasoning``, and here for the same
+    reason: it is interpolated into a request, and this module owns everything a
+    model is shown.
+
+    Every step appears, with a constant standing in for an empty section, so the
+    render stays a total function of the steps. A constructed step has no
+    thinking at all, and that is what this must then say — rather than omitting
+    the step and leaving a reader to infer the record is shorter than it is.
+    """
+    if not steps:
+        return EMPTY_TRACE
+    return "\n\n".join(
+        f"{s.stage.capitalize()}:\n"
+        f"{indent_continuations(s.thinking.strip() or PRIVATE_REASONING_NONE)}"
+        for s in sorted(steps, key=lambda s: s.index)
+    )
+
+
+@dataclass(frozen=True)
+class DecisionRecord:
+    """What a challenger is shown of a completed decision, in either shape.
+
+    A decision reached by debate has a ``Transcript`` of ``Turn``s; one reached
+    by a solo arm has a ``Trace`` of ``Step``s. Both are records of how a
+    decision was made, and a challenger must be able to read either — but the
+    two are different types with different renderers, and the recourse path used
+    to reach for ``transcript`` unconditionally. A solo decision therefore
+    presented as an empty debate: the challenger was shown
+    ``EMPTY_TRANSCRIPT`` and told two debaters had argued.
+
+    Normalising both to one type is what stops that being expressible. ``kind``
+    is carried rather than inferred downstream so the prompt can say something
+    true about which shape it is holding.
+
+    Deliberately carries no ``Seating`` and no ``Verdict``: who argued for what
+    is a claim only the debate shape can make, and the decision's grounds are
+    ``RunRecord.decision_grounds``.
+    """
+
+    body: str
+    private_reasoning: str
+    kind: str  # "debate" | "solo"
+
+    @classmethod
+    def for_debate(cls, transcript: "Transcript") -> "DecisionRecord":
+        turns = transcript.all_turns()
+        return cls(
+            body=render_transcript(turns),
+            private_reasoning=render_private_reasoning(turns),
+            kind="debate",
+        )
+
+    @classmethod
+    def for_solo(cls, trace: "Trace") -> "DecisionRecord":
+        steps = trace.all_steps()
+        return cls(
+            body=render_trace(steps),
+            private_reasoning=render_trace_private_reasoning(steps),
+            kind="solo",
+        )
+
+
 @dataclass
 class Verdict:
     """The judge's decision, and enough context to account for it."""

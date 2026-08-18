@@ -25,6 +25,7 @@ from constitutional_debate.prompts import (
 from constitutional_debate.types import (
     ORDER,
     Case,
+    DecisionRecord,
     ErrorSpec,
     Seating,
     Speaker,
@@ -105,7 +106,8 @@ def test_the_annotation_reaches_no_prompt(gold):
     rendered += [
         m["content"]
         for m in build_challenger_messages(
-            task, None, seating, cfg, Transcript(), arm="neutral",
+            task, None, seating, cfg, DecisionRecord.for_debate(Transcript()),
+            arm="neutral",
             visibility="full", decision_answer_index=0, decision_grounds="grounds",
             profile=PROFILES["paper"],
         )

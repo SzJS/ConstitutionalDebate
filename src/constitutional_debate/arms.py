@@ -74,10 +74,24 @@ async def run_single_agent(
     profile: TaskProfile | None = None,
     error: ErrorSpec | None = None,
 ) -> SoloResult:
-    """One agent, one pass: the baseline `next_steps.md` names first."""
+    """One agent, one pass: the baseline `next_steps.md` names first.
+
+    Under ``outcome_control`` the pass is not made: the record is constructed
+    from the case's own flawed reasoning, so the flaw a challenger reads here is
+    byte-identical to the one it reads in the other two arms. See
+    ``construct.construct_single``.
+    """
+    if config.outcome_control:
+        # Deferred: ``construct`` imports this module for ``SoloResult``.
+        from .construct import construct_single
+
+        return await construct_single(
+            task, context, config, seating, client,
+            writer=writer, profile=profile, error=error,
+        )
     return await _run_solo(
         task, context, config, seating, client,
-        stages=("draft",), arm="single", writer=writer, profile=profile, error=error,
+        stages=("answer",), arm="single", writer=writer, profile=profile, error=error,
     )
 
 
@@ -97,7 +111,19 @@ async def run_self_critique(
     ``n_critique_rounds`` repeats the critique/revision pair. The critique step
     is deliberately left honest: if it catches the seeded flaw, that is a result
     about self-critique, not a bug to suppress.
+
+    Under ``outcome_control`` the revision is the case's flawed text restored
+    and the draft is that text with one error injected elsewhere, so the
+    critique has something to find that is not the case's own flaw. See
+    ``construct.construct_self_critique``.
     """
+    if config.outcome_control:
+        from .construct import construct_self_critique
+
+        return await construct_self_critique(
+            task, context, config, seating, client,
+            writer=writer, profile=profile, error=error,
+        )
     stages: list[str] = ["draft"]
     for _ in range(max(1, config.n_critique_rounds)):
         stages += ["critique", "revision"]

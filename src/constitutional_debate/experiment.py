@@ -70,7 +70,14 @@ class Cell:
 
     case: Case
     arm: str
-    condition: str  # "matched" | "unconstrained"
+    # "matched" | "unconstrained" -- and currently **inert**. It reaches
+    # ``cell_id``, the manifest and ``build_index``'s ``condition`` column, and
+    # nothing branches on it: the word-limit ablation it names is already
+    # expressed by ``DebateConfig.word_limit`` / ``word_limit_by_profile``, and
+    # the error/correct stratum the module docstring describes is deferred (see
+    # ``deferred.md``). Two conditions here would multiply the grid and the cost
+    # while producing byte-identical decisions.
+    condition: str
     repeat: int = 0
 
     @property
@@ -259,12 +266,42 @@ async def decide_cell(
     return outcome
 
 
+def _record_words(document: dict) -> int | None:
+    """How much record there is, in words, whichever shape it has.
+
+    ``turns`` for a debate, ``steps`` for a solo arm — the same quantity either
+    way: what a challenger has to read. Returns None when neither key is
+    present, so a missing document is distinguishable from an empty one.
+    """
+    for key in ("turns", "steps"):
+        if key in document:
+            return sum(int(item.get("word_count") or 0) for item in document[key])
+    return None
+
+
 def _classify(failure: BaseException) -> str:
     text = str(failure)
     if "length" in text or isinstance(failure, TruncatedOutputError):
         return "loop_or_truncation"
     if "malformed" in text:
         return "malformed_after_repair"
+    # Construction failures are named rather than collapsed into the class name.
+    # Rejecting cases whose critique caught the seeded flaw selects against
+    # exactly the cases self-critique handles best, so that rate has to be
+    # visible in ``decide_summary.json`` rather than inferred.
+    for reason in (
+        "critique_caught_the_seeded_flaw",
+        "critique_missed_the_injected_error",
+        # A steered output that narrated its own steer. Reported rather than
+        # collapsed, because it drops the case from that arm and so widens the
+        # cross-arm imbalance the analysis has to intersect away.
+        "steered_judge_referenced_the_steer",
+        "steered_critique_referenced_the_steer",
+        "rewrote the solution",
+        "no step to inject into",
+    ):
+        if reason in text:
+            return reason.replace(" ", "_")
     return type(failure).__name__
 
 
@@ -504,7 +541,9 @@ def build_index(root: Path) -> list[dict[str, Any]]:
         parent = _read_json_or(contest / "parent" / "verdict.json", {})
         parent_manifest = _read_json_or(contest / "parent" / "run.json", {})
         error = _read_json_or(contest / "parent" / "error.json", {})
+        parent_config = _read_json_or(contest / "parent" / "config.json", {})
         usage = aggregate_calls(contest / "parent" / "calls.jsonl")
+        document = _read_json_or(contest / "parent" / "transcript.json", {})
 
         rows.append({
             "cell_id": manifest.get("cell_id"),
@@ -514,7 +553,12 @@ def build_index(root: Path) -> list[dict[str, Any]]:
             "condition": parent_manifest.get("condition"),
             "challenger_model": manifest.get("challenger_model"),
             "challenge_arm": manifest.get("challenge_arm"),
-            "mechanism": error.get("mechanism") or "genuine",
+            # No default. The field went unwritten for so long that
+            # ``or "genuine"`` made every row read genuine, so the split that
+            # interprets the arms' results was a default rather than a
+            # measurement. An unlabelled row is now visibly unlabelled.
+            "mechanism": error.get("mechanism") or None,
+            "outcome_control": parent_config.get("outcome_control"),
             "gradable": error.get("annotation_quality") == "explanation",
             "initially_correct": parent.get("correct"),
             "challenge_raised": challenge.get("raised"),
@@ -528,6 +572,11 @@ def build_index(root: Path) -> list[dict[str, Any]]:
             "validated": validation.get("usable") if validation else None,
             "decision_completion_tokens":
                 usage["decision_path"].get("completion_tokens"),
+            # What the challenger actually reads. Under outcome control the
+            # wire figure above is zero for a constructed arm, so balancing on
+            # it alone would report the arms as matched for a reason that has
+            # nothing to do with how much record there is to attack.
+            "decision_record_words": _record_words(document),
             "decision_cost_usd": usage["decision_path"].get("cost_usd"),
         })
     return rows

@@ -434,6 +434,7 @@ def render_recourse_record(
     ruling: Ruling | None = None,
     judge_cot: bool,
     parent_judge_cot: bool,
+    parent_trace=None,
 ) -> str:
     """The whole affair in one document: debate, decision, challenge, ruling.
 
@@ -442,10 +443,18 @@ def render_recourse_record(
     ruling have different causes, and a document that cannot tell a reader which
     it is looking at should not exist. The two are usually equal and must not be
     assumed to be.
+
+    ``parent_trace`` is set when the challenged decision was reached by a solo
+    arm. It replaces the positions block and the parent rounds with the steps
+    that actually happened — because there were no debaters, and printing a
+    seating here would state that Alice argued for an answer in a run where
+    nobody argued at all. That is the same false statement ``render_solo_record``
+    refuses to make, and this document feeds the case validator as well as a
+    human reader.
     """
-    position_map = positions(task, seating)
     before, after = composed.split_at(parent_rounds)
     parent_turns, recourse_turns = before.all_turns(), after.all_turns()
+    solo_parent = parent_trace is not None
     blocks = [
         "# The decision, and the challenge to it",
         PRIVATE_THINKING_NOTE,
@@ -460,14 +469,27 @@ def render_recourse_record(
         ),
         "The order above is the task's own; the judge's choice order was "
         "randomised independently.",
-        "## Positions",
-        "\n".join(
-            f"- **{speaker}** argues for `answers[{position['answer_index']}]` "
-            f"(the judge's choice {position['judge_choice']}): "
-            f"{defang_markdown(position['answer'])}"
-            for speaker, position in position_map.items()
-        ),
-        *_rounds(parent_turns),
+    ]
+    if solo_parent:
+        blocks += [
+            "## How the challenged decision was made",
+            "One agent working alone. No advocates were assigned to the two "
+            "answers, so this document states no positions.",
+            *_solo_steps(parent_trace.all_steps()),
+        ]
+    else:
+        position_map = positions(task, seating)
+        blocks += [
+            "## Positions",
+            "\n".join(
+                f"- **{speaker}** argues for `answers[{position['answer_index']}]` "
+                f"(the judge's choice {position['judge_choice']}): "
+                f"{defang_markdown(position['answer'])}"
+                for speaker, position in position_map.items()
+            ),
+            *_rounds(parent_turns),
+        ]
+    blocks += [
         # The original decision, rendered by the same helper that renders it in
         # the parent's own document, so the two cannot come to differ.
         *_decision(
@@ -546,6 +568,13 @@ SOLO_PRIVATE_NOTE = (
     "into it, including what the agent worked out and chose not to say."
 )
 
+CONSTRUCTED_NOTE = (
+    "_This record was **constructed**, not generated. The published reasoning "
+    "below is the flawed solution supplied with this case, reproduced "
+    "unaltered; no model wrote it. Steps marked `constructed` were inserted "
+    "verbatim, and the decision follows from them by construction._"
+)
+
 SOLO_CRITIQUE_NOTE = (
     "> **The critique is part of the record, not a hidden step.** The agent "
     "criticised its own draft and then revised it; all three are published. "
@@ -568,6 +597,50 @@ def trace_document(task: Task, trace) -> dict[str, Any]:
     }
 
 
+def _solo_steps(steps) -> list[str]:
+    """The per-step blocks of a solo decision, as published.
+
+    Shared by ``render_solo_record`` and ``render_recourse_record``: a contest of
+    a solo decision publishes the same steps the decision's own document does,
+    and two copies of this loop would be one edit away from disagreeing about
+    what a reader was shown.
+    """
+    blocks: list[str] = []
+    for step in steps:
+        blocks.append(f"## Step {step.index} — {step.stage}")
+        blocks += [
+            "**Thinking** (private while the decision was being made)",
+            defang_markdown(step.thinking.strip()) or "_(none recorded)_",
+        ]
+        blocks += _native_reasoning_block(step)
+        blocks += [
+            "**Published**" if step.stage != "critique" else "**Critique**",
+            defang_markdown(step.text),
+        ]
+    return blocks
+
+
+def _how_made(arm: str, outcome_control: bool) -> str:
+    """One sentence on how the decision was reached — true in every case.
+
+    Under outcome control the ``single`` arm made no pass at all, so the
+    ordinary sentence would be false rather than merely incomplete.
+    """
+    if arm == "single":
+        if outcome_control:
+            return (
+                "No pass was made: the reasoning and the decision are the "
+                "case's own flawed solution, reproduced unaltered."
+            )
+        return "One agent, one pass."
+    if outcome_control:
+        return (
+            "One agent: draft, then a critique of that draft. The revision was "
+            "not generated — it is the case's own flawed solution, restored."
+        )
+    return "One agent: draft, then a critique of that draft, then a revision."
+
+
 def render_solo_record(
     task: Task,
     seating: Seating,
@@ -575,18 +648,27 @@ def render_solo_record(
     *,
     verdict: Verdict | None = None,
     arm: str = "single",
+    outcome_control: bool = False,
 ) -> str:
     """The published record of a decision reached without a debate.
 
     States **no positions**. There are no debaters, so there is nobody to say
     argued for what — and printing a seating here, as the debate renderer does,
     would put a false statement in the document.
+
+    ``outcome_control`` says so when the record was constructed rather than
+    generated. Without it this document asserts "One agent, one pass" for a run
+    in which no agent made a pass — the same class of false statement the
+    positions rule exists to prevent, in the one artifact the project's
+    transparency claim rests on.
     """
     steps = trace.all_steps()
     blocks: list[str] = [
         "# The decision",
         SOLO_PRIVATE_NOTE,
     ]
+    if outcome_control:
+        blocks.append(CONSTRUCTED_NOTE)
     if any(s.stage == "critique" for s in steps):
         blocks.append(SOLO_CRITIQUE_NOTE)
     blocks += [
@@ -599,24 +681,10 @@ def render_solo_record(
             for i, answer in enumerate(task.answers)
         ),
         f"## How this decision was made\n\nArm: `{arm}`. "
-        + (
-            "One agent, one pass."
-            if arm == "single"
-            else "One agent: draft, then a critique of that draft, then a revision."
-        ),
+        + _how_made(arm, outcome_control),
     ]
 
-    for step in steps:
-        blocks.append(f"## Step {step.index} — {step.stage}")
-        blocks += [
-            "**Thinking** (private while the decision was being made)",
-            defang_markdown(step.thinking.strip()) or "_(none recorded)_",
-        ]
-        blocks += _native_reasoning_block(step)
-        blocks += [
-            "**Published**" if step.stage != "critique" else "**Critique**",
-            defang_markdown(step.text),
-        ]
+    blocks += _solo_steps(steps)
 
     if verdict is not None:
         blocks += [
