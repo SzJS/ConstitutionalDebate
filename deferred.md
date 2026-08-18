@@ -125,3 +125,13 @@ instructed to be neutral; the challenger stands in for a stakeholder and is
 biased toward its own side. How strongly it is told to advocate is a knob nobody
 has set deliberately, and it plausibly trades off detection against false alarms:
 a more partisan challenger should raise more objections, both good and bad.
+
+## Raised even later
+A further hypothesis we could test (e.g. through an ablation) is whether the
+presence of the correct answer is what makes contestabality possible in debate. To
+test this, we could have another baseline: where our contesting LLM sees two
+solutions, one correct, and another incorrect (although the LLM doesn't know which
+one is which): can the LLM contest successfully in this case?
+
+Note that one extension we could add is the question of what to do when the
+challenger doesn't agree with either of the debaters.
