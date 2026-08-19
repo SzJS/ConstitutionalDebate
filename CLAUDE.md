@@ -20,3 +20,13 @@ The implementation is **prompt-only**: prompts, an orchestration layer making AP
 **Observe everything.**
 - **Save all terminal outputs.** Capture every command's output to a file under `outputs/` while
   still printing it, e.g. `uv run python x.py 2>&1 | tee outputs/x.log`.
+
+# Choosing models
+
+- **Check throughput and latency on [openrouter.ai](https://openrouter.ai/models)** before using a
+  model, and again when swapping one in. Prefer high throughput and low latency: a sweep is
+  thousands of calls, so a third of the throughput turns a 10-minute stage into a 40-minute one and
+  starts tripping `run_timeout_s`.
+- **Pick weak/strong pairs from [artificialanalysis.ai/models](https://artificialanalysis.ai/models)**,
+  on intelligence index and **cost per task** — not cost per token, since a model that reasons at
+  length can be dearer per task while looking cheaper per token.
