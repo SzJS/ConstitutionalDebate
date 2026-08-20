@@ -8,7 +8,7 @@ The mechanism is **debate**: AI safety via debate, applied to unverifiable domai
 
 The implementation is **prompt-only**: prompts, an orchestration layer making API calls, and an evaluation harness. No finetuning, no RL.
 
-# Compute & training best practices
+# Best practices
 
 **Parallelize as much as possible.**
 - Make LLM and I/O calls **async and concurrent** — data generation, judge filtering, and eval
@@ -20,6 +20,10 @@ The implementation is **prompt-only**: prompts, an orchestration layer making AP
 **Observe everything.**
 - **Save all terminal outputs.** Capture every command's output to a file under `outputs/` while
   still printing it, e.g. `uv run python x.py 2>&1 | tee outputs/x.log`.
+- **Confirm every hyperparameter before the run.** When a script takes hyperparameters or command
+  line arguments, show the user the full set of values it will run with — defaults included — and
+  say in a line why each one is what it is. Run once   they confirm, and persist the settled
+  values with the run's outputs.
 
 # Choosing models
 
