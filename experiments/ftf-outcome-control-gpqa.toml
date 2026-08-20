@@ -43,8 +43,48 @@ outcome_control = true
 # extension, recorded in deferred.md.
 recourse_rounds = 0
 debater_model = "deepseek/deepseek-v4-flash-0731"
+# Judge and critic stay on the debater's model. Weak versions of both were
+# tried and measured on 10 TheoremQA cases, and neither earned its place:
+#
+#   weak judge   changed nothing — 6 of 10 decided correctly either way. Under
+#                outcome control the judge is not following a debate, it is
+#                diffing two solutions that are 0.89 character-similar at the
+#                median, which is an easy discrimination at any judge strength.
+#                §4's 6%-vs-39% measurement was taken on *generated* debates.
+#   weak critic  made it worse — self_critique went from 3 to 6 never-decided.
+#                It does miss the seeded flaw more often, but it also misses the
+#                injected decoy the construction needs it to find. Same
+#                capability doing both jobs.
+#
+# The intersection went 2/10 -> 0/10. Both runs are preserved side by side under
+# outputs/experiments/ftf-oc-theoremqa{,-strongjudge}/.
+#
+# Selection evidence for the model itself: Intelligence Index 52
+# (artificialanalysis.ai); v4-pro-0813 at ~4x active compute scored the same 3/4
+# at 17x the cost per decided debate (§2). Throughput 97 tps, latency 0.47s at
+# the best provider (openrouter.ai) — fast enough that a 30-cell stage runs in
+# ~10 minutes, where qwen3-8b took over 40.
 judge_model = "deepseek/deepseek-v4-flash-0731"
-n_rounds = 3
+critic_model = "deepseek/deepseek-v4-flash-0731"
+# 2, not 3, and the reason is arm matching rather than yield. Round 1 is
+# inserted verbatim, so a 2-round debate has the same three-move shape as the
+# self_critique arm it is compared against:
+#
+#     self_critique   draft            critique          revision
+#     debate          round 1 (fixed)  round 2 (gen.)    judgment
+#
+# A third round gives debate an extra exchange the baseline has no counterpart
+# for, which is the "debate wins because it generates more text" confound
+# next_steps.md warns about.
+#
+# It is *not* justified by yield. Measured on 10 GPQA cases: 3 rounds gave 5/10
+# wrong, 2 rounds gave 4/10 — but four cases flipped verdict between the runs,
+# two in each direction, which at n=10 is resampling noise rather than an
+# effect. Debater turns sample at 0.7 even though the judge is at 0. Treat any
+# single-run configuration comparison at this scale as uninformative.
+#
+# Cheaper too: 7 calls per debate cell rather than 9.
+n_rounds = 2
 word_limit = 400
 max_tokens = 8192
 max_decision_attempts = 2
