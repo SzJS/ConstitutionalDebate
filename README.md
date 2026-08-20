@@ -232,11 +232,11 @@ judge with reasoning it never saw.
   was constructed, and `render_solo_record` drops "One agent, one pass" — which
   would otherwise be false. This is a controlled-stimulus design: it buys a flaw
   that is byte-identical across arms, and it gives up the claim that the arm's
-  own competence produced the decision. See `design_decisions.md` §4b.
+  own competence produced the decision. See `Dox/design_decisions.md` §4b.
 - **The arms are badly unmatched on record length.** A constructed `single`
   record is the seed alone, 81-216 words. A debate record adds four generated
   turns near the 400-word cap. That is roughly 8:1 in how much text a challenger
-  has to read, and `next_steps.md` names this as the confound that could make
+  has to read, and `Dox/next_steps.md` names this as the confound that could make
   debate win for the wrong reason. `analysis.token_balance` measures it, on
   `decision_record_words` rather than on generated tokens — which are zero for a
   constructed arm and would report a match for the wrong reason. It is flagged,
@@ -267,7 +267,7 @@ judge with reasoning it never saw.
   debater cannot forge a round, a speaker, or a decision in the readable record.
 - **The judge explains itself by default**, which deviates from the paper. Kenton
   et al. found judge chain-of-thought null-to-harmful for *accuracy* (see
-  `protocols.md`); it is on here for a different reason — a decision that states no
+  `Dox/protocols.md`); it is on here for a different reason — a decision that states no
   grounds can be neither read nor contested, and both are the claim under test.
   `--no-judge-cot` restores the paper's predict judge, and is a control arm rather
   than a configuration a real decision should use.
@@ -301,7 +301,7 @@ judge with reasoning it never saw.
 - **The profile changes the verdict too**: `paper` and `opinion` disagreed on the
   same question. Neither of these is a bug; both mean single runs should not be
   read as results.
-- Prompts are faithful to the reconstruction in `protocols.md`, which is itself a
+- Prompts are faithful to the reconstruction in `Dox/protocols.md`, which is itself a
   paraphrase — there is no verbatim source text, so nothing here is a fidelity
   test against an original.
 

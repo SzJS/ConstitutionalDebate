@@ -40,7 +40,7 @@ max_tokens = 8192
 # Treat as an experiment variable: "off" | "low" | "medium" | "high".
 reasoning_effort = "off"
 
-# A documented deviation from the paper's default: protocols.md records judge
+# A documented deviation from the paper's default: Dox/protocols.md records judge
 # chain-of-thought as one of Kenton et al.'s null-or-harmful ablations. It is on
 # here for a reason that is not accuracy — a public decision that states no
 # grounds can be neither read nor contested, and both are the claim under test.

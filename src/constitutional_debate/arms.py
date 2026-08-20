@@ -74,7 +74,7 @@ async def run_single_agent(
     profile: TaskProfile | None = None,
     error: ErrorSpec | None = None,
 ) -> SoloResult:
-    """One agent, one pass: the baseline `next_steps.md` names first.
+    """One agent, one pass: the baseline `Dox/next_steps.md` names first.
 
     Under ``outcome_control`` the pass is not made: the record is constructed
     from the case's own flawed reasoning, so the flaw a challenger reads here is

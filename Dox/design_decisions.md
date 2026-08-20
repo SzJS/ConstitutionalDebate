@@ -6,7 +6,7 @@ and later *falsified* are kept, marked, because the null results are informative
 
 Companion documents: [`next_steps.md`](next_steps.md) states the research
 question, [`deferred.md`](deferred.md) lists what is deliberately out of scope,
-and [`README.md`](README.md) documents the protocol as implemented.
+and [`README.md`](../README.md) documents the protocol as implemented.
 
 **Status vocabulary.** Every claim below is marked **BUILT** (in the code and
 tested), **PLANNED** (designed, not written), or **MEASURED(n)** (an empirical

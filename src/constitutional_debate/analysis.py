@@ -242,7 +242,7 @@ def token_balance(frame: pd.DataFrame, *, tolerance: float = 0.25) -> dict[str, 
     makes zero calls, so its wire figure is 0 by construction and balancing on
     it would report the arms as unmatched for a reason that has nothing to do
     with how much text there is to attack. What a challenger reads is the
-    quantity ``next_steps.md`` warns about — "debate may simply win because it
+    quantity ``Dox/next_steps.md`` warns about — "debate may simply win because it
     generates more text" — and it is the same quantity whether the words were
     generated or inserted.
 

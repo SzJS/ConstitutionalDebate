@@ -75,7 +75,7 @@ class Cell:
     # nothing branches on it: the word-limit ablation it names is already
     # expressed by ``DebateConfig.word_limit`` / ``word_limit_by_profile``, and
     # the error/correct stratum the module docstring describes is deferred (see
-    # ``deferred.md``). Two conditions here would multiply the grid and the cost
+    # ``Dox/deferred.md``). Two conditions here would multiply the grid and the cost
     # while producing byte-identical decisions.
     condition: str
     repeat: int = 0

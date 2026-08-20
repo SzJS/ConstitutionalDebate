@@ -32,7 +32,7 @@ outcome_control = true
 # about the challenge -- would assign advocates to a solo decision that had
 # none, and the contest stage has to be the constant across arms. Its own
 # question (does a recourse debate *amplify* a weak challenge?) is a planned
-# extension, recorded in deferred.md.
+# extension, recorded in Dox/deferred.md.
 recourse_rounds = 0
 debater_model = "deepseek/deepseek-v4-flash-0731"
 # Judge and critic stay on the debater's model. Weak versions of both were

@@ -57,7 +57,7 @@ task ids, and `--stage analyse` prints them above the rates they qualify.
 Regenerating is the response to the second. Sampling is nondeterministic, so a
 dropped case is a fresh draw rather than a re-run of the same failure — but
 regeneration selects for cases whose construction happens to succeed, a bias in
-the same family as the ones `design_decisions.md` §4 tabulates, so
+the same family as the ones `Dox/design_decisions.md` §4 tabulates, so
 attempts-per-case should be recorded and not just eventual success. A case that
 keeps failing after several draws is telling you something about that case
 rather than about sampling luck; drop it and count it.
@@ -103,7 +103,7 @@ the field, which had made the split a default rather than a measurement.
 `decision_completion_tokens`, which is zero for a constructed `single` cell by
 design, so it reported the arms as unbalanced for a reason unrelated to how much
 record there is to attack. It now reads `decision_record_words` — what a
-challenger actually has to read, and the quantity `next_steps.md` warns about.
+challenger actually has to read, and the quantity `Dox/next_steps.md` warns about.
 Generation cost stays reportable through `decision_cost_usd` and
 `aggregate_tree`; it is simply not this check.
 
@@ -130,11 +130,11 @@ correction step, which is where `P(revised | initially incorrect)` comes from.
 `build_judge_messages` now takes a `parent_record` and renders both shapes.
 `_decision_block` carried the same falsehood to the challenger and is now
 shape-aware too. The contest stage runs judge-only under outcome control, so the
-recourse *debaters* are not reached; see `deferred.md` for what running them
+recourse *debaters* are not reached; see `Dox/deferred.md` for what running them
 would need.
 
 **`seeded_case_for_solo` can only ever hand over the flawed seed** (was #2,
-BLOCKING) has moved to `deferred.md`. It bites only for the correct/control
+BLOCKING) has moved to `Dox/deferred.md`. It bites only for the correct/control
 condition, which is itself deferred, and outcome control does not route through
 it.
 
