@@ -1,6 +1,6 @@
 """Prompt construction and output parsing.
 
-Templates follow the reconstruction in ``Dox/protocols.md``, which is itself a
+Templates follow the reconstruction in ``DESIGN.md`` Appendix A, which is itself a
 paraphrase of Kenton et al. 2024 -- there is no verbatim source text to be
 faithful to, so the tests over this module assert *properties* (a control arm
 carries no constitutional language, gold changes no prompt) rather than fidelity

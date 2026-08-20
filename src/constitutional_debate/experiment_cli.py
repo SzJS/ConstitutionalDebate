@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 
 # challenge and rule are separate stages, not one "contest": the headline
 # detection result needs the challenge and not the ruling, so the expensive half
-# is opt-in. See Dox/design_decisions.md §1.
+# is opt-in. See DESIGN.md §1.
 STAGES = ("decide", "challenge", "rule", "grade", "validate", "analyse")
 
 
