@@ -641,6 +641,15 @@ def _solo_steps(steps) -> list[str]:
             "constructed": " (inserted verbatim from the case)",
             "injected": " (built from the case by a construction step, not by "
                         "the agent)",
+            # The agent's own words, with material removed. Said plainly because
+            # the alternative is a document implying a completeness it does not
+            # have — the same rule that stops this renderer stating positions
+            # for debaters who never spoke. Nothing on a prompt path reads this
+            # file (see the module docstring), so saying it costs a challenger
+            # nothing; the removed text is in construction.json.
+            "redacted": " (the agent's own critique, cut down to this step "
+                        "during construction; the full text is in "
+                        "construction.json)",
         }.get(step.parse_mode, "")
         blocks.append(f"## Step {step.index} — {step.stage}{origin}")
         blocks += [
@@ -653,6 +662,15 @@ def _solo_steps(steps) -> list[str]:
             defang_markdown(step.text),
         ]
     return blocks
+
+
+MIXED_CRITIC_NOTE = (
+    "_The critique below was written by a **different model** from the one that "
+    "drafted and revised: `{critic}` rather than `{drafter}`. That is the "
+    "self-critique counterpart of a weak judge — the arm drafts strongly and "
+    "adjudicates weakly — but it does mean this record is not literally the work "
+    "of one agent. Which model wrote each step is in `calls.jsonl`._"
+)
 
 
 def _how_made(arm: str, outcome_control: bool) -> str:
@@ -684,6 +702,8 @@ def render_solo_record(
     verdict: Verdict | None = None,
     arm: str = "single",
     outcome_control: bool = False,
+    critic_model: str | None = None,
+    drafter_model: str | None = None,
 ) -> str:
     """The published record of a decision reached without a debate.
 
@@ -706,6 +726,10 @@ def render_solo_record(
         blocks.append(CONSTRUCTED_NOTE)
     if any(s.stage == "critique" for s in steps):
         blocks.append(SOLO_CRITIQUE_NOTE)
+        if critic_model and drafter_model and critic_model != drafter_model:
+            blocks.append(
+                MIXED_CRITIC_NOTE.format(critic=critic_model, drafter=drafter_model)
+            )
     blocks += [
         "## Question",
         defang_markdown(task.question),

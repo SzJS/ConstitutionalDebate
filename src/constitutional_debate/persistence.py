@@ -559,6 +559,8 @@ class RunWriter:
                 # From the run's own config, so the document cannot disagree
                 # with the config.json beside it about how it was made.
                 outcome_control=getattr(self._config, "outcome_control", False),
+                critic_model=self._config.critic_model_for(),
+                drafter_model=self._config.debater_model,
             ),
         )
 

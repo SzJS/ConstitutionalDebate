@@ -313,8 +313,12 @@ async def _steer_if_resisted(
     from .construct import STEERED, UNAIDED
 
     if verdict.correct is not True:
-        # Already wrong: the judge fell for the flaw with no help.
-        if writer is not None:
+        # ``is False`` rather than ``is not True``: a task with no gold answer
+        # grades as None, and calling that "reached the wrong decision unaided"
+        # would be a claim about a decision nobody can score. Outcome control
+        # already refuses a task without gold, so this is belt and braces.
+        if writer is not None and verdict.correct is False:
+            # Wrong with no help: the judge fell for the flaw by itself.
             writer.record_mechanism(UNAIDED)
         return verdict
 
@@ -360,7 +364,18 @@ async def _steer_if_resisted(
         raise ConstructionError("steered_judge_referenced_the_steer")
 
     if writer is not None:
-        writer.record_mechanism(STEERED if steered.correct is False else UNAIDED)
+        # Only an error case gets a mechanism. A judge that resisted the steer
+        # as well produced a *correct* decision, and neither value describes it:
+        # ``unaided`` asserts the procedure reached the wrong answer on its own,
+        # which is the opposite of what happened, and ``steered`` asserts the
+        # steer worked. Measured on the 50-case GPQA pilot, writing ``unaided``
+        # here put 25 non-error cells into that bucket beside 11 genuine ones,
+        # so ``analysis.by_cell``'s split read as 36 unaided errors when there
+        # were 11. Left unset, ``build_index`` emits None and the row is
+        # visibly unlabelled -- and the intersection drops it anyway, because it
+        # conditions on ``initially_correct``.
+        if steered.correct is False:
+            writer.record_mechanism(STEERED)
         writer.record_construction({
             "arm": "debate",
             "judge_steered": True,

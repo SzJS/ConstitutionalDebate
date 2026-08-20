@@ -325,6 +325,53 @@ step's, and the agent's — and a reader who cannot tell them apart cannot check
 the decision. `parse_mode` carries the distinction (`constructed`, `injected`,
 or an ordinary parse outcome) and the document prints it beside the stage.
 
+**Each arm generates strongly and adjudicates weakly.** `judge_model` and
+`critic_model` are both set to a weaker model than `debater_model`, which is the
+paper's strong-debater/weak-judge asymmetry applied to both arms rather than to
+one:
+
+| arm | generates | adjudicates |
+|---|---|---|
+| `debate` | strong debaters | weak judge |
+| `self_critique` | strong draft | weak critic |
+
+Setting only the judge weak would be asymmetric in the direction that penalises
+`self_critique` — the arm `debate` is being compared against — by giving one arm
+a strong adversary and the other a weak one.
+
+It is also what makes the construction work. Measured on the first pilot, 10
+TheoremQA cases with every role strong: the judge saw through the planted flaw
+on **6 of 10**, and a same-model critique characterised the case's own flaw on
+**20 of 30** gradings, so only **2 of 10** tasks came out wrong in all three
+arms. §4's own table already records the judge half — 6% error at `v4-flash`
+against 39% at `qwen3-8b` — and the critic half turns out to behave the same
+way. A weaker critic is *less likely to find the flaw in the first place*, which
+is a mechanism rather than a suppression, and a far easier thing to defend than
+an edited record.
+
+The cost is that a record whose steps come from different models is not
+literally the work of one agent. The per-step model stays in `calls.jsonl`
+(`response_model`), and `render_solo_record` says so in the document when the
+critic differs from the drafter — the same rule that produces the constructed
+note.
+
+**Steering the critique is a three-rung ladder, and the rungs are not equal.**
+Unsteered first, always, because a critique that catches the case's own flaw is
+self-critique working and the rate is a finding. Then a *narrower brief* — not a
+rider appended to the ordinary one, which was the first attempt and failed: the
+ordinary brief asks for "anything that would change the answer if it were
+wrong", a description of the case's own flaw, and the wider instruction won.
+Then, only where the critique genuinely *characterised* the flaw, a **redaction**
+pass that cuts it down to the target step.
+
+Redaction is the strongest rung and is labelled distinctly (`mechanism =
+"redacted"`) because it removes a detection the arm really made, where steering
+only shapes what gets written. The unredacted text is kept in
+`construction.json`, and the published record says the critique was cut down.
+Neither the steer nor the redaction is ever told where the case's own flaw is —
+both name only the target step — which is what keeps `flaw_location` grader-only
+even though this step's text is published and reaches the challenger.
+
 **The record says it was constructed.** `render_solo_record` prints a standing
 note and drops "One agent, one pass", which would otherwise be false for a run
 in which no agent made a pass. The note is in `artifacts`, which nothing on a

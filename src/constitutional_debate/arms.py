@@ -174,7 +174,10 @@ async def _run_solo(
             # nothing to parse and nothing a malformed reply could corrupt. It
             # therefore spends no repair attempt.
             completion = await _complete(
-                client, model=config.debater_model, messages=messages,
+                # The critic's model, which defaults to the debater's. Set it
+                # weaker and this arm adjudicates weakly while still drafting
+                # strongly — the self-critique analogue of a weak judge.
+                client, model=config.critic_model_for(), messages=messages,
                 temperature=config.debater_temperature, config=config, meta=meta,
             )
             thinking, text, parse_mode, repairs = "", completion.content.strip(), "none", 0

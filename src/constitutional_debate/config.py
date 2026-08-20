@@ -141,6 +141,35 @@ class DebateConfig:
     # self-criticism instruction, a much narrower question than it looks.
     # Which side gets which model is drawn per task in ``Seating``.
     debater_model_b: str | None = None
+    # The model that writes the self_critique arm's critique. None means the
+    # debater model, i.e. the agent criticises itself with its own capability.
+    #
+    # Setting it weaker is the self-critique analogue of a weak judge, and the
+    # two belong together. `README.md` already lists "judge and debaters default
+    # to the same model" as a limitation: it tests the plumbing rather than the
+    # paper's strong-debater/weak-judge asymmetry. Under that asymmetry each arm
+    # should generate strongly and *adjudicate* weakly —
+    #
+    #     debate         strong debaters   weak judge
+    #     self_critique  strong draft      weak critic
+    #
+    # — and a run with a weak judge but a strong critic is asymmetric in the
+    # direction that penalises self_critique, which is the arm debate is being
+    # compared against.
+    #
+    # It also changes the construction's economics. Measured on the first pilot
+    # (10 TheoremQA cases, critic = debater = deepseek-v4-flash), a same-model
+    # critique characterised the case's own seeded flaw on 20 of 30 gradings,
+    # so the steer and then the redaction rung had to suppress a detection the
+    # arm had genuinely made. A weaker critic is *less likely to find it in the
+    # first place*, which is a mechanism rather than a suppression — and a much
+    # easier thing to defend in a write-up than an edited record.
+    #
+    # The cost is that a record whose steps come from different models is not
+    # literally one agent. The per-step model stays recoverable from
+    # ``calls.jsonl`` (``response_model``), and the published record says so
+    # when the critic differs from the drafter.
+    critic_model: str | None = None
 
     def __post_init__(self) -> None:
         if self.turn_style not in TURN_STYLES:
@@ -208,6 +237,10 @@ class DebateConfig:
     def challenger_model_for(self) -> str:
         """The model that writes a generated challenge."""
         return self.challenger_model or self.debater_model
+
+    def critic_model_for(self) -> str:
+        """The model that writes the self_critique arm's critique."""
+        return self.critic_model or self.debater_model
 
     def challenge_word_limit_for(self, profile_key: str) -> int:
         """Word cap for a generated challenge."""

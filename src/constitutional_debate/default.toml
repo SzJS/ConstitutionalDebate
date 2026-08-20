@@ -122,9 +122,9 @@ n_critique_rounds = 1
 
 [client]
 base_url = "https://openrouter.ai/api/v1"
-max_concurrency = 8
+max_concurrency = 24
 # Cells the batch harness keeps open at once (bounds file handles, not requests).
-max_runs_in_flight = 4
+max_runs_in_flight = 12
 max_attempts = 5
 backoff_base_s = 1.0
 backoff_cap_s = 30.0

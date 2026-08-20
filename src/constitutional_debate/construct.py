@@ -35,7 +35,10 @@ from .config import DebateConfig, GradingConfig
 from .engine import DebateFailure, _complete, _complete_with_repair
 from .persistence import RunWriter
 from .prompts import (
+    CRITIQUE_REDACTION_SYSTEM,
+    CRITIQUE_REDACTION_USER,
     CRITIQUE_STEER,
+    SOLO_CRITIQUE_INSTRUCTION,
     INJECTOR_SYSTEM,
     INJECTOR_USER,
     TaskProfile,
@@ -77,6 +80,9 @@ INJECTED = "injected"
 # which is what makes the value comparable across them.
 UNAIDED = "unaided"
 STEERED = "steered"
+# The third rung: the critique was written, found the case's own flaw, and was
+# cut down to remove that. A stronger override than steering, so its own value.
+REDACTED = "redacted"
 
 # How far the injected draft may drift from the solution it was built from
 # before it stops being that solution with one error added. A model that
@@ -379,20 +385,31 @@ async def _critique(
 ) -> Step:
     """The critique step, prompted exactly as the generative arm prompts it.
 
-    ``steer_to`` appends the constraint that confines the critique to one step.
-    It is applied only on a second attempt, after an unsteered one has been made
-    and its outcome recorded, so how often the steer is needed stays a
-    measurement rather than a setting.
+    ``steer_to`` **replaces** the critique's brief rather than appending to it.
+    Appending was the first attempt and it did not work: the ordinary brief asks
+    for an exhaustive audit including "anything that would change the answer if
+    it were wrong", which is a description of the case's own flaw, so a trailing
+    "confine yourself to step N" was a contradiction the wider instruction won.
+    See ``prompts.CRITIQUE_STEER`` for the measurements.
+
+    Applied only on a second attempt, after an unsteered one has been made and
+    its outcome recorded, so how often the steer is needed stays a measurement
+    rather than a setting.
     """
     messages = build_solo_messages(
         task, context, seating, config, render_trace(trace.visible_to(2)),
         stage="critique", profile=profile,
     )
     if steer_to is not None:
-        messages[-1]["content"] += CRITIQUE_STEER.format(target_step=steer_to)
+        # Swap the stage instruction for the narrower one. The trace block and
+        # everything above it are untouched, so the critic sees exactly the same
+        # draft; only what it is asked to do with it changes.
+        messages[-1]["content"] = messages[-1]["content"].replace(
+            SOLO_CRITIQUE_INSTRUCTION, CRITIQUE_STEER.format(target_step=steer_to)
+        )
     completion = await _complete(
         client,
-        model=config.debater_model,
+        model=config.critic_model_for(),
         messages=messages,
         temperature=config.debater_temperature,
         config=config,
@@ -416,6 +433,61 @@ async def _critique(
         raw=completion.content,
         native_reasoning=completion.reasoning or "",
         reasoning_withheld=completion.reasoning_withheld,
+    )
+
+
+async def _redact_critique(
+    task: Task,
+    config: DebateConfig,
+    client: ChatClient,
+    *,
+    critique: Step,
+    target_step: int,
+) -> Step:
+    """Cut a critique down to the one step it was supposed to be about.
+
+    The third escalation, used only where the steered critique *characterised*
+    the case's own flaw. Steering shapes what gets written; this removes what
+    was written, which is a stronger intervention and is recorded as such.
+
+    The instruction names the target step and nothing else — the model already
+    knows what it wrote, so removing a reference to the case's flaw needs no
+    statement of where that flaw is. That is what keeps ``flaw_location``
+    grader-only even though this step's text is published.
+    """
+    completion = await _complete(
+        client,
+        # The critic edits its own critique, so it stays the critic's model.
+        model=config.critic_model_for(),
+        messages=[
+            {"role": "system", "content": CRITIQUE_REDACTION_SYSTEM},
+            {
+                "role": "user",
+                "content": CRITIQUE_REDACTION_USER.format(
+                    target_step=target_step,
+                    critique=neutralise_tags(critique.text),
+                ),
+            },
+        ],
+        temperature=config.debater_temperature,
+        config=config,
+        meta={"role": "critic", "purpose": "redact"},
+    )
+    text = completion.content.strip()
+    if not text or text.strip().upper() == "NOTHING":
+        raise ConstructionError("redaction_left_no_critique")
+    return replace(
+        critique,
+        text=text,
+        word_count=count_words(text),
+        parse_mode=REDACTED,
+        call_id=completion.call_id,
+        raw=completion.content,
+        # The pre-redaction reasoning described concerns that are no longer in
+        # the text; publishing it would restore what the edit removed.
+        native_reasoning="",
+        has_native_reasoning=False,
+        reasoning_withheld=False,
     )
 
 
@@ -571,14 +643,22 @@ async def construct_self_critique(
     steered = False
     leak_retries = 0
 
+    redacted = False
     if caught_natural or not caught_injected:
         critique = None
         # Two steered attempts. Each must pass the gradings *and* say nothing
         # about having been steered.
+        last_steered: Step | None = None
         for index in range(2):
             candidate, caught_seeded, caught_injected = await attempt(target_step)
             if caught_seeded or not caught_injected:
-                raise refuse(caught_seeded)
+                # A critique that never found the decoy has nothing worth
+                # keeping, so redaction cannot rescue it. One that found both is
+                # exactly what redaction is for, so it falls through.
+                if not caught_injected:
+                    raise refuse(caught_seeded)
+                last_steered = candidate
+                continue
             leak = await references_the_steer(
                 steer_text=CRITIQUE_STEER.format(target_step=target_step),
                 # The provider channel as well as the text: for a critique step
@@ -595,8 +675,45 @@ async def construct_self_critique(
                 "%s steered critique referenced the steer (%s); attempt %d of 2",
                 error.error_id, leak.note[:120], index + 1,
             )
-        if critique is None:
+        if critique is None and last_steered is None:
+            # Every steered attempt narrated its own steer.
             raise ConstructionError("steered_critique_referenced_the_steer")
+
+        if critique is None:
+            # The steered critique found the decoy *and* characterised the
+            # case's own flaw. Steering shapes what is written; redaction removes
+            # what was written, so it is tried last and labelled distinctly. The
+            # unredacted text is kept in construction.json — off the published
+            # path, but recoverable by anyone auditing what the edit removed.
+            unredacted = last_steered.text
+            candidate = await _redact_critique(
+                task, config, client,
+                critique=last_steered, target_step=target_step,
+            )
+            caught_seeded, caught_injected = await _critique_verdict(
+                task, seating, client,
+                critique_text=candidate.text, error=error,
+                injected_error=injected_error, target_step=target_step,
+                config=config, grading=grading,
+            )
+            if caught_seeded or not caught_injected:
+                log.info(
+                    "%s redacted critique still rejected (seeded=%s injected=%s)",
+                    error.error_id, caught_seeded, caught_injected,
+                )
+                raise refuse(caught_seeded)
+            leak = await references_the_steer(
+                steer_text=CRITIQUE_REDACTION_USER.format(
+                    target_step=target_step, critique="[the critique]"
+                ),
+                output_text=candidate.text,
+                config=config, grading=grading, client=client,
+            )
+            if leak.leaked:
+                raise ConstructionError("redacted_critique_referenced_the_edit")
+            critique, steered, redacted = candidate, True, True
+            injector_provenance["unredacted_critique"] = unredacted
+
     trace.add(critique)
     if writer is not None:
         writer.record_step(trace)
@@ -613,6 +730,7 @@ async def construct_self_critique(
             "injected_error": injected_error,
             **injector_provenance,
             "critique_steered": steered,
+            "critique_redacted": redacted,
             "critique_caught_the_seeded_flaw_unsteered": caught_natural,
             "critique_steer_leaked": False,
             "critique_steer_leak_retries": leak_retries,
@@ -621,7 +739,9 @@ async def construct_self_critique(
         # case's own flaw. That is this arm's adversarial step being overridden:
         # ``steered`` means the record only holds together because the critique
         # was constrained away from the flaw the revision restores.
-        writer.record_mechanism(STEERED if steered else UNAIDED)
+        writer.record_mechanism(
+            REDACTED if redacted else STEERED if steered else UNAIDED
+        )
 
     return SoloResult(
         run_id=getattr(writer, "run_id", ""),

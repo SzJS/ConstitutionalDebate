@@ -934,3 +934,220 @@ async def test_mechanism_asks_the_same_question_of_every_arm(tmp_path):
         writer=w, error=error_spec(),
     )
     assert mechanism_of(w) == "steered"
+
+
+def test_the_steer_replaces_the_exhaustive_brief_rather_than_contradicting_it():
+    """The first pilot's actual failure, pinned.
+
+    The ordinary critique brief asks for "the weakest steps… and anything that
+    would change the answer if it were wrong" — an exhaustive audit whose last
+    clause describes the case's own flaw. Appending "confine yourself to step N"
+    to that is a contradiction, and the wider, earlier instruction won: the
+    steered critique still characterised the seeded flaw on 20 of 30 gradings.
+    """
+    from constitutional_debate.prompts import (
+        CRITIQUE_STEER, SOLO_CRITIQUE_INSTRUCTION, build_solo_messages,
+    )
+
+    ordinary = build_solo_messages(
+        make_task(gold_index=0), None, make_seating(), oc_config(),
+        "Draft:\nStep 1: a", stage="critique",
+    )[-1]["content"]
+    steered = ordinary.replace(
+        SOLO_CRITIQUE_INSTRUCTION, CRITIQUE_STEER.format(target_step=4)
+    )
+
+    assert SOLO_CRITIQUE_INSTRUCTION in ordinary
+    assert SOLO_CRITIQUE_INSTRUCTION not in steered, "replaced, not appended"
+    assert "anything that would change the answer" not in steered
+    assert "single most serious thing wrong with step 4" in steered
+    # ...and the critic is still told nothing about where the case's own flaw is.
+    assert "flaw" not in steered.lower()
+
+
+async def test_the_steered_critic_is_still_never_told_where_the_case_flaw_is(tmp_path):
+    """The narrower brief is less to do, not more to know. `flaw_location` stays
+    grader-only even though this step's output is published and reaches the
+    challenger."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    error = error_spec(flaw_location="2", annotation=NEEDLE_ANNOTATION)
+    client = solo_client(
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT], leaks=[LEAK_CLEAN]
+    )
+    await run_self_critique(task, None, cfg, seating, client, error=error)
+
+    from constitutional_debate.prompts import CRITIQUE_STEER
+
+    critic_calls = [c for c in client.calls if c["meta"].get("role") == "critic"]
+    assert len(critic_calls) == 2, "unsteered attempt, then the steered one"
+    steered = critic_calls[1]["messages"][-1]["content"]
+    assert NEEDLE_ANNOTATION not in steered
+
+    # The draft legitimately contains every step, including the flawed one --
+    # the critic has to see what it is critiquing. What must never name the
+    # flaw's step is the *instruction*, so assert on that rather than on the
+    # whole prompt.
+    target = target_step_for(error)
+    instruction = CRITIQUE_STEER.format(target_step=target)
+    assert instruction in steered
+    assert str(error.flaw_location) != str(target)
+    assert f"step {error.flaw_location}" not in instruction.lower()
+
+
+async def test_a_characterising_critique_is_redacted_rather_than_refused(tmp_path):
+    """The third rung. The steered critique found the decoy *and* characterised
+    the case's own flaw, so it is cut down to the target step rather than the
+    cell being thrown away."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    client = solo_client(
+        # unsteered: caught both. steered x2: caught both. redacted: clean.
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_HIT, GRADE_HIT,
+                GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+        leaks=[LEAK_CLEAN],
+        scripted={("critic", "redact"): "Step 3 states 9, which does not follow."},
+    )
+    result = await run_self_critique(
+        task, None, cfg, seating, client, writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+
+    assert mechanism_of(writer) == "redacted"
+    critique = result.trace.all_steps()[1]
+    assert critique.parse_mode == "redacted"
+    assert critique.text == "Step 3 states 9, which does not follow."
+
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["critique_redacted"] is True
+    assert construction["unredacted_critique"] == CRITIQUE_REPLY, (
+        "what was removed stays recoverable, off the published path"
+    )
+    # ...and the record says the critique was cut down rather than implying it
+    # was complete.
+    doc = (writer.dir / "transcript.md").read_text()
+    assert "cut down to this step during construction" in doc
+
+
+async def test_the_redaction_instruction_never_names_the_case_flaw(tmp_path):
+    """The reason this form was chosen over telling the critic where the flaw is:
+    the model already knows what it wrote, so removing a reference to the flaw
+    needs no statement of where the flaw is."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    error = error_spec(flaw_location="2", annotation=NEEDLE_ANNOTATION)
+    client = solo_client(
+        grades=[GRADE_HIT, GRADE_HIT, GRADE_HIT, GRADE_HIT,
+                GRADE_HIT, GRADE_HIT, GRADE_MISS, GRADE_HIT],
+        leaks=[LEAK_CLEAN],
+        scripted={("critic", "redact"): "Step 3 is unsupported."},
+    )
+    await run_self_critique(task, None, cfg, seating, client, error=error)
+
+    redact = next(c for c in client.calls if c["meta"].get("purpose") == "redact")
+    body = json.dumps(redact["messages"])
+    assert NEEDLE_ANNOTATION not in body
+    assert f"step {target_step_for(error)}" in body.lower()
+
+
+async def test_a_critique_that_never_found_the_decoy_is_not_redacted():
+    """Redaction keeps material; a critique with nothing worth keeping cannot be
+    rescued by cutting it down."""
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    client = solo_client(grades=[GRADE_MISS, GRADE_MISS], leaks=[LEAK_CLEAN])
+    with pytest.raises(ConstructionError, match="critique_missed_the_injected_error"):
+        await run_self_critique(task, None, cfg, seating, client, error=error_spec())
+    assert not [c for c in client.calls if c["meta"].get("purpose") == "redact"]
+
+
+async def test_the_critique_can_come_from_a_different_model_than_the_draft():
+    """The self-critique analogue of a weak judge.
+
+    Each solo stage is an independent stateless completion — prior steps reach
+    the model as *text* in the user message, never as assistant turns — so
+    splitting the stages across models needs no prefill and no shared
+    conversation. It is one field.
+    """
+    task, seating = make_task(gold_index=0), make_seating()
+    cfg = oc_config(critic_model="qwen/qwen3-8b")
+    assert cfg.critic_model_for() == "qwen/qwen3-8b"
+    assert cfg.debater_model != "qwen/qwen3-8b"
+
+    client = solo_client()
+    await run_self_critique(task, None, cfg, seating, client, error=error_spec())
+
+    by_role = {c["meta"]["role"]: c["model"] for c in client.calls}
+    assert by_role["critic"] == "qwen/qwen3-8b", "the critique is the critic's"
+    assert by_role["injector"] == cfg.debater_model, "the draft is not"
+
+
+def test_critic_model_defaults_to_the_drafter():
+    """Unset, the agent criticises itself with its own capability, which is what
+    'one agent' means."""
+    assert oc_config().critic_model_for() == oc_config().debater_model
+
+
+async def test_a_mixed_model_record_says_so(tmp_path):
+    """A record whose steps come from different models is not literally one
+    agent. The document says which wrote the critique rather than implying the
+    drafter did — the same rule as the constructed note."""
+    task, seating = make_task(gold_index=0), make_seating()
+    writer = make_writer_with_error(
+        tmp_path, task, oc_config(critic_model="qwen/qwen3-8b"), seating,
+        error_spec(), arm="self_critique",
+    )
+    await run_self_critique(
+        task, None, oc_config(critic_model="qwen/qwen3-8b"), seating,
+        solo_client(), writer=writer, error=error_spec(),
+    )
+    writer.finish(status="completed")
+    doc = (writer.dir / "transcript.md").read_text()
+    assert "written by a **different model**" in doc
+    assert "qwen/qwen3-8b" in doc
+
+
+async def test_a_same_model_record_carries_no_such_note(tmp_path):
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="self_critique"
+    )
+    await run_self_critique(
+        task, None, cfg, seating, solo_client(), writer=writer, error=error_spec()
+    )
+    writer.finish(status="completed")
+    assert "different model" not in (writer.dir / "transcript.md").read_text()
+
+
+async def test_a_judge_that_resists_the_steer_gets_no_mechanism_label(tmp_path):
+    """A correct decision is not an error case, so neither value describes it.
+
+    `unaided` asserts the procedure reached the wrong answer on its own — the
+    opposite of what happened — and `steered` asserts the steer worked. Measured
+    on the 50-case GPQA pilot, labelling these `unaided` put 25 non-error cells
+    in that bucket beside 11 genuine ones, so `by_mechanism` read as 36 unaided
+    errors when there were 11.
+    """
+    task, seating, cfg = make_task(gold_index=0), make_seating(), oc_config()
+    writer = make_writer_with_error(
+        tmp_path, task, cfg, seating, error_spec(), arm="debate"
+    )
+
+    class AlwaysResists(SequencedClient):
+        async def complete(self, **kw):
+            if kw["meta"].get("role") == "judge":
+                # gold_index=0, choice_order=(0,1) -> choice 1 is the gold answer
+                self.scripted = {**self.scripted, "judge": "Alice.\n\nAnswer: 1"}
+            return await super().complete(**kw)
+
+    result = await run_debate(
+        task, None, cfg, seating, AlwaysResists(leaks=[LEAK_CLEAN], grades=[]),
+        writer=writer, error=error_spec(),
+    )
+    assert result.verdict.correct is True, "the judge resisted the steer too"
+
+    spec = json.loads((writer.dir / "error.json").read_text())
+    assert spec["mechanism"] == "", "unlabelled, not mislabelled"
+    # ...and the construction record still says what was attempted.
+    construction = json.loads((writer.dir / "construction.json").read_text())
+    assert construction["judge_steered"] is True
+    assert construction["steer_worked"] is False
