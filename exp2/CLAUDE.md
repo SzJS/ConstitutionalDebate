@@ -1,7 +1,12 @@
 # Purpose
 
-TBD — this experiment has not been specified yet. Write the research question, the
-claim under test, and the mechanism here before writing code.
+This repo prototypes a **public decision-making process** built on LLMs, for decisions that affect many people in significant ways. The claim under test: the process is **transparent** — a reader of the published record can see what determined the decision — and **contestable** — valid challenges change the decision, specious ones do not.
+
+Transparency is a claim about what one document, `transcript.md`, lets a reader see: the question, the arguments, the decision, and the grounds given for it. It is not a claim that the run is reproducible — sampling is nondeterministic, and re-running a question produces a different debate. Design decisions are justified by whether a reader could follow the decision, not by whether a machine could reproduce it.
+
+The mechanism is **debate**: AI safety via debate, applied to unverifiable domains (no ground-truth answer).
+
+The implementation is **prompt-only**: prompts, an orchestration layer making API calls, and an evaluation harness. No finetuning, no RL.
 
 # Working here
 
