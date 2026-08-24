@@ -32,6 +32,9 @@ The rules below apply to every experiment.
   command line arguments, show the user the full set of values it will run with — defaults included
   — and say in a line why each one is what it is. Run only once they confirm, and persist the
   settled values with the run's outputs.
+**Test every step.**
+- Where applicable, whenever you implement a new feature, test it immmediately - do not wait until
+  you have finished unrelated follow-up steps.
 
 # Choosing models
 
