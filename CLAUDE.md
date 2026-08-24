@@ -35,6 +35,7 @@ The rules below apply to every experiment.
 **Test every step.**
 - Where applicable, whenever you implement a new feature, test it immmediately - do not wait until
   you have finished unrelated follow-up steps.
+  - A part of testing (when appropriate) is to have me - the user - verify the transcripts.  
 
 # Choosing models
 
