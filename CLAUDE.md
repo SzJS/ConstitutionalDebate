@@ -20,10 +20,10 @@ The implementation is **prompt-only**: prompts, an orchestration layer making AP
 **Observe everything.**
 - **Save all terminal outputs.** Capture every command's output to a file under `outputs/` while
   still printing it, e.g. `uv run python x.py 2>&1 | tee outputs/x.log`.
-- **Confirm every hyperparameter before the run.** When a script takes hyperparameters or command
-  line arguments, show the user the full set of values it will run with — defaults included — and
-  say in a line why each one is what it is. Run once   they confirm, and persist the settled
-  values with the run's outputs.
+- **Confirm every hyperparameter before the run.** When an LLM or a script takes hyperparameters or
+  command line arguments, show the user the full set of values it will run with — defaults included
+  — and say in a line why each one is what it is. Run only once they confirm, and persist the
+  settled values with the run's outputs.
 
 # Choosing models
 
@@ -31,6 +31,6 @@ The implementation is **prompt-only**: prompts, an orchestration layer making AP
   model, and again when swapping one in. Prefer high throughput and low latency: a sweep is
   thousands of calls, so a third of the throughput turns a 10-minute stage into a 40-minute one and
   starts tripping `run_timeout_s`.
-- **Pick weak/strong pairs from [artificialanalysis.ai/models](https://artificialanalysis.ai/models)**,
+- **Pick models from [artificialanalysis.ai/models](https://artificialanalysis.ai/models)**,
   on intelligence index and **cost per task** — not cost per token, since a model that reasons at
   length can be dearer per task while looking cheaper per token.
