@@ -1,12 +1,20 @@
-# Purpose
+# Layout
 
-This repo prototypes a **public decision-making process** built on LLMs, for decisions that affect many people in significant ways. The claim under test: the process is **transparent** — a reader of the published record can see what determined the decision — and **contestable** — valid challenges change the decision, specious ones do not.
+Each experiment lives in its own subfolder and is self-contained — its own docs,
+configs, `pyproject.toml`, `.venv` and `outputs/`. **Run commands from inside the
+experiment's directory**, never from this root: `cd exp1 && uv run pytest`.
 
-Transparency is a claim about what one document, `transcript.md`, lets a reader see: the question, the arguments, the decision, and the grounds given for it. It is not a claim that the run is reproducible — sampling is nondeterministic, and re-running a question produces a different debate. Design decisions are justified by whether a reader could follow the decision, not by whether a machine could reproduce it.
+- `exp1/` — the contestable-debate experiment (transparent, contestable public
+  decision process built on LLM debate). See `exp1/CLAUDE.md`.
+- `exp2/` — purpose TBD. See `exp2/CLAUDE.md`.
 
-The mechanism is **debate**: AI safety via debate, applied to unverifiable domains (no ground-truth answer).
+Shared at this root, and only this: `.env` (the API key — `load_dotenv()` walks up
+from the calling module, so each experiment finds it without a symlink),
+`.gitignore` (its patterns are depth-agnostic and already cover every experiment's
+`outputs/`, `data/` and `.venv/`), `.claude/`, and this file. Nothing else belongs
+here; an experiment must not read across into another's directory.
 
-The implementation is **prompt-only**: prompts, an orchestration layer making API calls, and an evaluation harness. No finetuning, no RL.
+The rules below apply to every experiment.
 
 # Best practices
 
