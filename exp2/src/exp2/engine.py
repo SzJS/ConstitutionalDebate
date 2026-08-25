@@ -73,6 +73,7 @@ async def _complete_with_repair(
     max_tokens: int | None = None,
     public_label: str | None = None,
     unrepaired: Callable[[str], Any] | None = None,
+    unrepaired_truncated: Callable[[str], Any] | None = None,
 ) -> tuple[Any, Completion, int, list[dict[str, str]], str]:
     """Call the model, and on a format failure spend exactly one repair attempt.
 
@@ -87,20 +88,37 @@ async def _complete_with_repair(
     ``unrepaired`` parses a reply that is still malformed after the repair, for the
     roles whose output does not decide anything: a critique has no decision line, so
     the last resort there is withholding its public section, not failing the run.
+    ``unrepaired_truncated`` is the same last resort for a reply that was *truncated*
+    rather than malformed, so the withheld step can say which it was; it defaults to
+    ``unrepaired``, leaving roles that do not distinguish the two unchanged.
 
     ``public_label`` opens the **budget route**, and it is given only to the roles that
     produce record text ("Argument" for a debater, "Reasoning" for a solo stage). If the
     first call is truncated and the reply never reached that label on a line of its own,
     then nothing public was cut: the model spent the whole cap deliberating. That is a
     known cause, so the one repair is spent on it — "you ran out of budget, stop
-    deliberating, write the section now" — instead of the run dying. If the label **is**
-    present, something public may have been cut and truncation stays fatal, because a
-    half-written argument entering the transcript as if authored is the failure the rule
-    was written for. Roles with no ``public_label`` are unchanged.
+    deliberating, write the section now" — instead of the run dying.
+
+    If the label **is** present, something public was cut, and what happens next depends
+    on whether the role has a last resort:
+
+    * **No ``unrepaired`` — every role that decides.** Truncation stays fatal, exactly
+      as before. A half-written argument entering the transcript as if authored is the
+      failure the rule was written for, and there is nothing to fall back to.
+    * **``unrepaired`` supplied — today only the critic.** The one repair is spent
+      anyway, on the budget route, asking for the cut section again from the start; if
+      the repair fails for any reason the step is handed to ``unrepaired_truncated``.
+      Nothing half-written is published either way — the truncated reply is discarded
+      as it always was — but a single truncated critique no longer kills an otherwise
+      complete seven-stage decision. Pilot 3 lost **13 of its 30 lost cells** to exactly
+      that shape (LLM_NOTES §3n, §3o).
 
     Returns ``(parsed, completion, repair_attempts, messages_sent, repair_kind)``.
     """
-    budget_repair = False
+    budget_repair = reached_label = truncated = False
+    # The last resort for a truncation, which is the same object as ``unrepaired``
+    # unless the caller wanted the two told apart.
+    last_resort_truncated = unrepaired_truncated or unrepaired
     try:
         completion = await _complete(
             client, model=model, messages=messages, temperature=temperature,
@@ -109,15 +127,25 @@ async def _complete_with_repair(
         )
     except TruncatedOutputError as truncation:
         reply = truncation.completion
-        if (public_label is None or reply is None
-                or has_public_label(reply.content, public_label)):
+        if public_label is None or reply is None:
             raise
-        log.warning(
-            "%s ran out of budget before reaching '%s:' (%d chars of deliberation); "
-            "spending the repair on the budget rather than on the format",
-            role, public_label, len(reply.content),
-        )
-        budget_repair, completion = True, reply
+        reached_label = has_public_label(reply.content, public_label)
+        if reached_label and unrepaired is None:
+            raise
+        if reached_label:
+            log.warning(
+                "%s was cut off inside its '%s:' section (%d chars); the cut text is "
+                "discarded and the repair asks for the section again",
+                role, public_label, len(reply.content),
+            )
+        else:
+            log.warning(
+                "%s ran out of budget before reaching '%s:' (%d chars of "
+                "deliberation); spending the repair on the budget rather than on the "
+                "format", role, public_label, len(reply.content),
+            )
+        budget_repair = truncated = True
+        completion = reply
 
     shape: str | None = None
     if not budget_repair:
@@ -134,7 +162,8 @@ async def _complete_with_repair(
     kind = "budget" if budget_repair else "format"
     repair_messages = (
         build_budget_repair_messages(messages, completion.content,
-                                     label=public_label or "", word_limit=word_limit)
+                                     label=public_label or "", word_limit=word_limit,
+                                     reached_label=reached_label)
         if budget_repair else
         build_repair_messages(messages, completion.content, role=role,
                               word_limit=word_limit, kind=shape)
@@ -150,18 +179,23 @@ async def _complete_with_repair(
         # critique withheld costs a step of the record, and killing an otherwise
         # complete decision over it costs the whole cell.
         reply = truncation.completion
-        if unrepaired is not None and reply is not None:
+        if last_resort_truncated is not None and reply is not None:
             log.warning("%s truncated again after a %s repair; falling back",
                         role, kind)
-            return unrepaired(reply.content), reply, 1, repair_messages, kind
+            return (last_resort_truncated(reply.content), reply, 1,
+                    repair_messages, kind)
         raise DebateFailure(
             f"{role} response truncated again after a {kind} repair: {truncation}"
         ) from truncation
     try:
         return parse(repaired.content), repaired, 1, repair_messages, kind
     except MalformedOutputError as error:
-        if unrepaired is not None:
-            return unrepaired(repaired.content), repaired, 1, repair_messages, kind
+        # A chain that began with a truncation is reported as one whichever way the
+        # repair then failed: the truncation is what cost the step, and it is the shape
+        # a run has to be able to count.
+        last_resort = last_resort_truncated if truncated else unrepaired
+        if last_resort is not None:
+            return last_resort(repaired.content), repaired, 1, repair_messages, kind
         raise DebateFailure(
             f"{role} output still malformed after one {kind} repair attempt: {error}"
         ) from error

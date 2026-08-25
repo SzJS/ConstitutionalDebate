@@ -60,6 +60,14 @@ def _solo_stages(condition: str, config: DebateConfig) -> tuple[str, ...]:
 # generation is still in the record files and in calls.jsonl; what is withheld is the
 # claim that any particular part of it was the author's public text.
 WITHHELD = "[this step's public section could not be identified and is withheld]"
+# The same, for a critique that was cut off by the token cap rather than misformatted.
+# It says why, because the reader of a self_critique record is entitled to know whether
+# a step is missing because the model wrote it in the wrong place or because it never
+# finished writing it.
+WITHHELD_TRUNCATED = (
+    "[this step ran out of tokens before its public section was complete; the partial "
+    "text was cut and is withheld]"
+)
 
 
 def _split_solo(text: str) -> tuple[str, str, str]:
@@ -94,6 +102,19 @@ def _withhold_critique(text: str) -> tuple[str, str, str]:
     last resort in place of the failure the deciding stages raise.
     """
     return "", WITHHELD, "unparsed_withheld"
+
+
+def _withhold_truncated_critique(text: str) -> tuple[str, str, str]:
+    """The same last resort, for a critique the token cap cut off.
+
+    Kept apart from ``_withhold_critique`` because the two are different failures and a
+    run has to be able to count them separately: a malformed critique is the model
+    ignoring the format, a truncated one is the cap being too small for the way this
+    model deliberates (LLM_NOTES §3o). Anything counting withheld critiques should test
+    ``parse_mode.startswith("unparsed_withheld")``, since both may also carry the
+    ``_after_budget_repair`` suffix.
+    """
+    return "", WITHHELD_TRUNCATED, "unparsed_withheld_truncated"
 
 
 async def _run_solo(
@@ -131,6 +152,10 @@ async def _run_solo(
             # a model that files the whole critique under ``Thinking:`` leaves the record
             # with a placeholder. So it gets the same one repair the deciding stages get,
             # and withholding is what happens only after that repair also fails.
+            #
+            # Passing both last resorts is also what makes a truncation past the
+            # ``Reasoning:`` label survivable here and nowhere else: the deciding stages
+            # below pass no ``unrepaired``, so their truncations stay fatal.
             (thinking, text, parse_mode), completion, repairs, sent, repair_kind = (
                 await _complete_with_repair(
                     client, model=config.critic_model_for(), messages=messages,
@@ -140,6 +165,7 @@ async def _run_solo(
                     parse=_split_solo, role="critic", word_limit=config.word_limit,
                     max_tokens=config.generation_max_tokens,
                     public_label="Reasoning", unrepaired=_withhold_critique,
+                    unrepaired_truncated=_withhold_truncated_critique,
                 )
             )
         else:

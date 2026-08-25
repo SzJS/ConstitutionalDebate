@@ -1449,6 +1449,94 @@ judge, not evidence about contestability. The `caveats` block says so; a reader 
 judge strength.
 
 
+## 3o. The largest hole pilot 3 found: a critique truncating past its own label
+
+**Written 2026-08-26, after pilot 3 and before the first full sweep. No paid call was
+made for this section; the numbers in it are pilot 3's, re-read from
+`outputs/experiments/pilot-3/CHECKLIST.md` row 1.**
+
+Pilot 3 lost 30 of 207 cells, every one of them a truncation, and **13 of the 30 were a
+critique truncating past its own `Reasoning:` label** — the single commonest fatal shape
+in the run, against a pre-registered expectation of "one or two". §3m named the mechanism
+in advance: truncation past a public label is fatal by design, and the `unrepaired`
+withholding that exists precisely so a critique cannot kill a cell was reachable only on
+the **second** failure. So one cut critique killed a complete seven-stage decision.
+
+### What changed
+
+`engine._complete_with_repair`, on a **first-call** `TruncatedOutputError` whose reply
+**does** carry the line-anchored public label:
+
+- if the caller supplied no `unrepaired` — which is every role that decides — it
+  **re-raises, exactly as before**. A half-written argument or a cut decision line has
+  no last resort and must not enter the record as if authored.
+- if the caller did supply one — today only the critic — the one repair is spent on the
+  budget route, and if the repair fails for any reason the step goes to the last resort.
+
+Nothing half-written is ever published: the truncated reply is discarded on both paths,
+as it always was. What changes is only *what the loss costs* — a step of the record
+instead of the whole cell.
+
+The repair instruction gets its own sentence for this case (`BUDGET_REPAIR_CUT`): *"You
+ran out of budget partway through the {label} section, so it was cut off and cannot be
+used… write it again from the start."* The existing `BUDGET_REPAIR` says the model never
+reached the label, which is false here, and telling a model that wrote the label that it
+did not is the same error §3m fixed in the other direction.
+
+**The withheld step is countable apart from a malformed one.** `arms.WITHHELD_TRUNCATED`
+replaces the placeholder text and says the cap ran out; `parse_mode` is
+`unparsed_withheld_truncated` rather than `unparsed_withheld`, and both may still carry
+the `_after_budget_repair` suffix — so anything counting withheld critiques must test
+`parse_mode.startswith("unparsed_withheld")`. A chain that *began* with a truncation is
+reported as truncated whichever way the repair then failed: the truncation is what cost
+the step.
+
+### The accepted degradation, stated rather than discovered
+
+A withheld critique reaches `transcript.md` and the challenger's record as a placeholder,
+in the one condition whose record is *defined* by its critiques — the §3d confound, at a
+lower rate and now with a second cause. That is the price, and it is the right way round:
+pilot 2 had 21 of 139 critiques withheld and pilot 3 had 0 of 166, so the shape is rare,
+while a lost cell costs seven generations and a whole row of the funnel. Any run that
+withholds a critique must report the count, split by cause, beside its funnel.
+
+### What it is expected to do, and what it is not
+
+On pilot 3's own shapes this reaches **13 of the 30 lost cells**. It does not promise to
+recover them — the repair may truncate too, and the model that ran away once at 8,192
+tokens can run away again. The other 17 lost cells are untouched — debater turns and solo
+stages that truncated past their label, which stay fatal by design, and cells whose
+budget repair truncated as well. So the sweep's cell-loss rate should come in **below**
+pilot 3's 14.5%, and by how much is not predicted.
+
+Nothing about a cap, a model or `frequency_penalty` changed. `generation_max_tokens`
+stays 8192.
+
+### A loose end from the crashed sweep-1: a run left `"running"`
+
+`sweep-1` died mid-`decide` on ENOSPC (§7), which leaves cell directories whose
+`run.json` says `"running"` and whose `verdict.json` may or may not be there. Such a run
+is **not a decision**: `load_run_record` refuses any status but `completed`, so
+`existing_decision` reports nothing and the cell is decided again into a **new** run
+directory, with the abandoned one left on disk as the record of what happened. That was
+already the behaviour and it is now pinned by
+`test_a_run_left_running_is_not_a_decision_and_gets_retried`, because the alternative —
+a half-written cell silently entering an analysis, or a second writer opening a directory
+that already has one — is exactly the failure a 13-hour resumable stage cannot afford.
+
+### Tests
+
+In `tests/test_arms.py`, all against the fake client:
+`test_a_critique_cut_off_inside_its_label_spends_the_repair_and_survives`,
+`test_a_critique_cut_off_twice_is_withheld_and_the_placeholder_says_why`,
+`test_the_truncated_placeholder_reaches_the_document_and_the_challenger`,
+`test_a_critique_cut_off_then_malformed_is_still_reported_as_truncated`,
+`test_a_critique_that_reached_no_label_still_takes_the_ordinary_budget_route`,
+`test_a_solo_stage_that_decides_keeps_a_cut_label_fatal`, and the untouched
+`test_a_truncation_that_did_reach_the_public_label_stays_fatal` for the debater.
+**325 tests pass.**
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

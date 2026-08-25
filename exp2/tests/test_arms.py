@@ -10,11 +10,12 @@ from exp2.arms import (
     CONDITIONS,
     DECIDERS,
     WITHHELD,
+    WITHHELD_TRUNCATED,
     run_self_critique,
     run_single,
 )
 from exp2.debate import run_debate
-from exp2.engine import DebateFailure
+from exp2.engine import DebateFailure, TruncatedOutputError
 from exp2.types import FLAWED, SOUND, Speaker
 
 
@@ -434,8 +435,8 @@ async def test_a_critique_truncated_twice_is_withheld_rather_than_fatal():
                         truncated_content=RUNAWAY)
     result, _ = await decide("self_critique", client=client)
     critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
-    assert critiques[0].text == WITHHELD
-    assert critiques[0].parse_mode == "unparsed_withheld_after_budget_repair"
+    assert critiques[0].text == WITHHELD_TRUNCATED
+    assert critiques[0].parse_mode == "unparsed_withheld_truncated_after_budget_repair"
     assert result.verdict.verdict in (FLAWED, SOUND)
 
 
@@ -446,3 +447,97 @@ async def test_the_roles_that_decide_nothing_keep_truncation_fatal():
     with pytest.raises(Exception, match="stopped on"):
         await decide("debate", client=client)
     assert _repairs(client) == []
+
+
+# --- a truncation past the label, where the role has a last resort -------------------
+#
+# Pilot 3 lost 30 cells and **13 of them were a critique truncating past its own
+# `Reasoning:` label** (LLM_NOTES §3n, §3o) — one cut critique killing a complete
+# seven-stage decision, because the `unrepaired` withholding was reachable only on a
+# second failure. Nothing half-written is published by any of this: the truncated reply
+# is discarded exactly as before. What changes is that the critic, which decides
+# nothing, now spends its one repair instead of failing on the spot.
+
+CUT_REASONING = ("Thinking: private working.\n"
+                 "Reasoning: the draft takes step 2 on trust, and step 2 is where")
+
+
+async def test_a_critique_cut_off_inside_its_label_spends_the_repair_and_survives():
+    client = FakeClient(fail_on={"critic": "truncated"},
+                        truncated_content=CUT_REASONING)
+    result, client = await decide("self_critique", client=client)
+    critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert critiques and all(s.repair_attempts == 1 for s in critiques)
+    assert all(s.parse_mode.endswith("_after_budget_repair") for s in critiques)
+    assert result.verdict.verdict in (FLAWED, SOUND), "the decision survives"
+    # the cut half-sentence is not published anywhere
+    assert all("step 2 is where" not in s.text for s in critiques)
+    # and the repair says what actually happened rather than the other route's sentence
+    instruction = _repairs(client)[0]["messages"][-1]["content"]
+    assert "partway through the Reasoning section" in instruction
+    assert "ran out of budget before writing" not in instruction
+    assert _repairs(client)[0]["messages"][-2] == {"role": "assistant",
+                                                  "content": CUT_REASONING}
+
+
+async def test_a_critique_cut_off_twice_is_withheld_and_the_placeholder_says_why():
+    client = FakeClient(fail_on={"critic": "truncated_twice"},
+                        truncated_content=CUT_REASONING)
+    result, _ = await decide("self_critique", client=client)
+    critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert all(s.text == WITHHELD_TRUNCATED for s in critiques)
+    assert all(s.parse_mode == "unparsed_withheld_truncated_after_budget_repair"
+               for s in critiques), "a truncated withholding is countable apart"
+    assert result.verdict.verdict in (FLAWED, SOUND)
+
+
+async def test_the_truncated_placeholder_reaches_the_document_and_the_challenger(
+    tmp_path,
+):
+    """The accepted degradation, stated in LLM_NOTES §3o: the self_critique record can
+    now carry a placeholder where a critique should be, and the challenger reads it."""
+    from recording import recorded
+
+    from exp2.types import DecisionRecord
+
+    client = FakeClient(fail_on={"critic": "truncated_twice"},
+                        truncated_content=CUT_REASONING)
+    writer, result = await recorded(tmp_path, "self_critique", client=client)
+    assert WITHHELD_TRUNCATED in (writer.dir / "transcript.md").read_text()
+    assert WITHHELD_TRUNCATED in DecisionRecord.for_solo(result.trace).body
+
+
+async def test_a_critique_that_reached_no_label_still_takes_the_ordinary_budget_route():
+    """The route that already existed is untouched: nothing public was cut, so the
+    repair asks for the section that was never begun."""
+    client = FakeClient(fail_on={"critic": "truncated"}, truncated_content=RUNAWAY)
+    result, client = await decide("self_critique", client=client)
+    critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert all(s.parse_mode.endswith("_after_budget_repair") for s in critiques)
+    assert all("repair assessment" in s.text for s in critiques), (
+        "the repair's own reply is what the record carries")
+    assert "ran out of budget before writing the Reasoning section" in (
+        _repairs(client)[0]["messages"][-1]["content"])
+
+
+async def test_a_solo_stage_that_decides_keeps_a_cut_label_fatal():
+    """The deciding stages pass no last resort, so the rescue cannot reach them. A cut
+    `Reasoning:` section may be a decision cut in half, and there is nothing to fall
+    back to — the same rule the debater keeps two tests above."""
+    client = FakeClient(fail_on={("solo", "answer"): "truncated"},
+                        truncated_content=CUT_REASONING)
+    with pytest.raises(TruncatedOutputError, match="stopped on"):
+        await decide("single", client=client)
+    assert _repairs(client) == []
+
+
+async def test_a_critique_cut_off_then_malformed_is_still_reported_as_truncated():
+    """The truncation is what cost the step, whichever way the repair then failed."""
+    client = FakeClient(fail_on={("critic", "critique"): "truncated"},
+                        truncated_content=CUT_REASONING,
+                        replies={("critic", "repair"): "no labels at all"})
+    result, _ = await decide("self_critique", client=client)
+    critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert all(s.text == WITHHELD_TRUNCATED for s in critiques)
+    assert all(s.parse_mode == "unparsed_withheld_truncated_after_budget_repair"
+               for s in critiques)

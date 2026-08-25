@@ -36,7 +36,7 @@ from conftest import FakeClient  # noqa: E402  (needs the path above)
 
 from exp2 import experiment as experiment_module  # noqa: E402
 from exp2.analysis import analyse  # noqa: E402
-from exp2.arms import WITHHELD  # noqa: E402
+from exp2.arms import WITHHELD, WITHHELD_TRUNCATED  # noqa: E402
 from exp2.config import load_config, load_grading_config  # noqa: E402
 from exp2.experiment import (  # noqa: E402
     build_grid,
@@ -211,7 +211,7 @@ def report_documents() -> int:
         trace = json.loads((run / "trace.json").read_text(encoding="utf-8"))
         critiques = [s for s in trace["steps"] if s["stage"] == "critique"]
         bad = [s for s in critiques
-               if not s["text"].strip() or s["text"] == WITHHELD
+               if not s["text"].strip() or s["text"] in (WITHHELD, WITHHELD_TRUNCATED)
                or s["text"].strip().splitlines()[0] not in text]
         if bad or not critiques:
             withheld.append(f"{run.relative_to(ROOT)}  "

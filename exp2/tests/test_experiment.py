@@ -18,6 +18,7 @@ from exp2.experiment import (
     Cell,
     build_grid,
     build_index,
+    cell_dir,
     existing_decision,
     run_stage_agreement,
     run_stage_contest,
@@ -132,6 +133,39 @@ async def test_decide_resumes_and_spends_nothing_the_second_time(tmp_path, no_ne
     again = await decide(tmp_path, grid)
     assert [r["status"] for r in again] == ["skipped"] * 2
     assert len(no_network.calls) == before
+
+
+async def test_a_run_left_running_is_not_a_decision_and_gets_retried(tmp_path,
+                                                                    no_network):
+    """A cell killed mid-``decide`` — a crash, an ENOSPC, a Ctrl-C — leaves ``run.json``
+    at ``"running"`` with whatever files it had managed to write.
+
+    ``load_run_record`` refuses any status but ``completed``, so ``existing_decision``
+    reports no decision and the cell is decided again. Both halves matter: skipping it
+    would leave a half-written cell in the analysis, and treating it as decided *and*
+    writing to it again would double-write a run directory. The retry claims a **new**
+    run directory and the abandoned one stays on disk as the record of what happened.
+    """
+    grid = build_grid(cases(1), ["single"])
+    await decide(tmp_path, grid)
+    cell = grid[0]
+    runs = cell_dir(tmp_path, cell) / "runs"
+    killed = sorted(runs.glob("*"))[0]
+    manifest = json.loads((killed / "run.json").read_text())
+    assert manifest["status"] == "completed"
+    manifest["status"] = "running"
+    (killed / "run.json").write_text(json.dumps(manifest))
+    # the verdict is still there; it is the status alone that says this is not a decision
+    assert (killed / "verdict.json").is_file()
+    assert existing_decision(tmp_path, cell) is None
+
+    before = len(no_network.calls)
+    again = await decide(tmp_path, grid)
+    assert [r["status"] for r in again] == ["completed"]
+    assert len(no_network.calls) > before
+    assert existing_decision(tmp_path, cell) is not None
+    assert sorted(runs.glob("*")) != [killed], "the retry did not write over the corpse"
+    assert json.loads((killed / "run.json").read_text())["status"] == "running"
 
 
 async def test_one_failing_cell_does_not_take_the_stage_down(tmp_path, no_network):

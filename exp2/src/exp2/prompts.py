@@ -1253,9 +1253,24 @@ BUDGET_REPAIR = """\
 You ran out of budget before writing the {label} section. Do not deliberate further. \
 Give the {label} section now, in the required format, {length_clause}."""
 
+# The same route, for a reply that *did* reach the label and was cut off inside it.
+# Reachable only for a role with a last resort — see ``engine._complete_with_repair`` —
+# and it needs its own sentence because the other one would be false: telling a model
+# that had started the section that it never reached it is the same error as telling a
+# reply that wrote the label that none of it can be published (LLM_NOTES §3m). What the
+# model has to know here is that the partial section is discarded rather than continued,
+# because a half-written public section must never enter the record as if authored.
+BUDGET_REPAIR_CUT = """\
+You ran out of budget partway through the {label} section, so it was cut off and \
+cannot be used. Do not deliberate further. Write the {label} section again from the \
+start, in the required format, {length_clause}."""
 
-def budget_repair_instruction(label: str, word_limit: int) -> str:
-    return BUDGET_REPAIR.format(label=label, length_clause=length_clause(word_limit))
+
+def budget_repair_instruction(
+    label: str, word_limit: int, *, reached_label: bool = False
+) -> str:
+    template = BUDGET_REPAIR_CUT if reached_label else BUDGET_REPAIR
+    return template.format(label=label, length_clause=length_clause(word_limit))
 
 
 def build_budget_repair_messages(
@@ -1264,6 +1279,7 @@ def build_budget_repair_messages(
     *,
     label: str,
     word_limit: int = 400,
+    reached_label: bool = False,
 ) -> list[dict[str, str]]:
     """The one repair, spent on budget rather than on format.
 
@@ -1275,7 +1291,8 @@ def build_budget_repair_messages(
     return [
         *original,
         {"role": "assistant", "content": truncated_output},
-        {"role": "user", "content": budget_repair_instruction(label, word_limit)},
+        {"role": "user", "content": budget_repair_instruction(
+            label, word_limit, reached_label=reached_label)},
     ]
 
 
