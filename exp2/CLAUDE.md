@@ -1,12 +1,47 @@
 # Purpose
 
-This repo prototypes a **public decision-making process** built on LLMs, for decisions that affect many people in significant ways. The claim under test: the process is **transparent** — a reader of the published record can see what determined the decision — and **contestable** — valid challenges change the decision, specious ones do not.
+This experiment tests whether a **weak stakeholder can detect, contest and correct a
+bad AI decision more effectively when that decision was produced by debate**.
 
-Transparency is a claim about what one document, `transcript.md`, lets a reader see: the question, the arguments, the decision, and the grounds given for it. It is not a claim that the run is reproducible — sampling is nondeterministic, and re-running a question produces a different debate. Design decisions are justified by whether a reader could follow the decision, not by whether a machine could reproduce it.
+The decision task is a yes/no verdict: given a problem and one proposed solution,
+**does the solution contain a flaw?** Three conditions decide the same items — a
+single agent, a single agent with critique-and-revision, and a debate judged by a weak
+model. Each decision is then contested by a weak challenger who may decline, and the
+funnel `error → detection → valid objection → revision` is measured per condition and
+per error type.
 
-The mechanism is **debate**: AI safety via debate, applied to unverifiable domains (no ground-truth answer).
+The claim under test is that debate's record is **transparent** — a reader of
+`transcript.md` can see what determined the decision — and therefore **contestable**:
+valid challenges change the decision, specious ones do not. Transparency here is a
+claim about one document, not about reproducibility; sampling is nondeterministic and
+re-running a question produces a different debate.
 
-The implementation is **prompt-only**: prompts, an orchestration layer making API calls, and an evaluation harness. No finetuning, no RL.
+The implementation is **prompt-only**: prompts, an orchestration layer making API
+calls, and an evaluation harness. No finetuning, no RL.
+
+# Relationship to exp1
+
+exp2 was **ported from `exp1/` at commit `f5fc3c9`** and then diverged. It does not
+import from exp1, does not read exp1's data, and fetches its own copy of every
+upstream source. If you need to know how exp1 did something, read it — the port is the
+sanctioned reason to look. Do not add an import, a symlink, or a path into `../exp1/`.
+
+Two differences drive almost every divergence:
+
+1. **Task framing.** exp1 asks "which of these two *answers* is correct" and carries a
+   `gold_index`. exp2 asks "does this *solution* contain a flaw" and carries a
+   `gold_flawed` boolean. There is no answer pair, no choice ordering, and no seeded
+   case. The randomisation exp1 spent on `gold_index` and `choice_order` is re-spent
+   on which side each debater takes and which order the verdict template is presented
+   in.
+2. **No outcome control.** exp1 manufactured its error cases by steering a judge or a
+   critique into being wrong. exp2 takes **naturally occurring errors only** and
+   accepts a smaller incorrect-cell. Nothing steers, nothing injects; `construct.py`
+   and everything that referenced it are not ported.
+
+The problem statement and the solution under review are inside the transcript, visible
+to debaters, judge and challenger alike. Nobody sees the ground-truth label — that
+invariant is enforced by a property test, not by convention.
 
 # Working here
 
@@ -16,8 +51,5 @@ repo root's `.env` (`load_dotenv()` walks up to find it). `outputs/` and `data/`
 git-ignored.
 
 The repo root's `CLAUDE.md` carries the practice rules that apply to every
-experiment — parallelism, saving outputs, confirming hyperparameters, choosing
-models. They are not repeated here.
-
-Do not read across into `../exp1/`. If this experiment needs the same upstream
-question sets, fetch its own copy.
+experiment — parallelism, saving outputs, testing each step, confirming
+hyperparameters, choosing models. They are not repeated here.

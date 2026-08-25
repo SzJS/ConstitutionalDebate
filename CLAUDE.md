@@ -6,7 +6,9 @@ experiment's directory**, never from this root: `cd exp1 && uv run pytest`.
 
 - `exp1/` — the contestable-debate experiment (transparent, contestable public
   decision process built on LLM debate). See `exp1/CLAUDE.md`.
-- `exp2/` — purpose TBD. See `exp2/CLAUDE.md`.
+- `exp2/` — the contestability experiment: can a weak stakeholder detect,
+  contest and correct a bad decision better when it came from debate? Ported
+  from `exp1/` and diverged. See `exp2/CLAUDE.md`.
 
 Shared at this root, and only this: `.env` (the API key — `load_dotenv()` walks up
 from the calling module, so each experiment finds it without a symlink),
@@ -15,6 +17,8 @@ from the calling module, so each experiment finds it without a symlink),
 here; an experiment must not read across into another's directory.
 
 The rules below apply to every experiment.
+
+Do NOT modify DESIGN.md on your own. Use LLM_NOTES.md instead. However, when you notice that something in DESIGN.md has become stale, you may *suggest* edits to me (the user).
 
 # Best practices
 
