@@ -1355,6 +1355,100 @@ afterwards as findings.
    of different inputs through different weights.
 
 
+### The outcome (2026-08-25 21:55–22:25 UTC), against those expectations
+
+All five stages ran sequentially and none was stopped. Full numbers in
+`outputs/experiments/pilot-3/CHECKLIST.md`; the derivations are
+`outputs/pilot-3-checks.py`, `-checks2.py`, `-handcheck-sample.py` and `-paths.py`.
+
+| stage | outcome | wall-clock | spend |
+|---|---|---|---|
+| decide | 177 completed, 30 failed | 26.0 min | — |
+| contest | 177 completed, 30 skipped | 2.7 min | — |
+| agreement | 177 completed, 30 skipped | 0.6 min | — |
+| grade | 2 graded, 205 skipped | 0.3 min | — |
+| analyse | 177 rows indexed | 5 s | — |
+| | **207 cells** | **30 min** | **$0.9504** |
+
+Running total for the experiment: $4.899 (probes) + $0.335 (pilot 1) + $0.486 (pilot 2)
++ $0.950 = **$6.670**.
+
+| # | pre-registered | outcome |
+|---|---|---|
+| 1 | contests ≈55% of replies, or a sharp fall; two-sided | **fell sharply: 30 of 177 = 17.0%** |
+| 2 | one of three reflex shapes; report which | **neither of the simple ones — see below** |
+| 3 | `single` moves ≤2 of 69 | **0 of 68** |
+| 4 | repair rate <10% of original calls | **22.5%** — falsified |
+| 5 | native reasoning ≈0 on the strong model | **16.0%** on GMICloud — falsified |
+| 6 | withheld critique steps below 15% | **0 of 166** |
+| 7 | ~3 cells lost to truncation; one or two a critique past its label | **30 cells lost, 13 of them exactly that** — falsified in magnitude |
+| 8 | `salvaged_no_thinking` below 10% on solo runs | **37.2%** — falsified, though not in the way it reads (below) |
+| 9 | no pilot-2 comparison, nothing attributed to the pin | held to |
+
+**Five things pilot 3 found.**
+
+1. **The instrument earned its cost on the first run.** 13 of 30 contests are **phantom
+   contests** — `Decision: REVERSE` at the head of a response whose prose argues the
+   verdict was right. That is **43% of every contest in the experiment**, and in `single`
+   it is **6 of 8 (75%)**. Without the `agreement` stage the `contests` column would have
+   read 30 and meant 17. The mirror error is almost absent: 2 of 147 declines argue for
+   reversal. A hand read of 20 replies, stratified by stance × parent verdict, agrees
+   with the Haiku reading **19 times out of 20**; the single disagreement is a reply
+   whose prose endorses the verdict at length and then closes "the correct decision is to
+   reverse", which Haiku called RIGHT and the hand read called NEITHER — both agree it is
+   not a clean contest.
+2. **The reflex has a shape, and it is not the one the pilot-2 axis predicted.** `single`
+   and `debate` contest FLAWED verdicts far more than SOUND ones (18.4% vs 3.3%; 34.6% vs
+   3.2%), which is pilot 2's asymmetry recurring. **`self_critique` inverts it** — 16.7%
+   on FLAWED against **28.6%** on SOUND — and it is also the condition with the *lowest*
+   phantom rate (2 of 12). A record that already contains the model's own criticism of
+   itself is apparently the one record a stakeholder can attack a SOUND verdict from.
+   That is one run at n=52 and it is a hypothesis, not a finding.
+3. **Zero cells died malformed, and zero critiques were withheld.** Pilot 2 lost 15 cells
+   to malformed-after-repair and withheld 21 of 139 critiques; both are now 0. All 198
+   aimed repairs were accepted by the parser. **Everything that killed a cell in pilot 3
+   is a truncation**, and the commonest single shape is a **critique truncating past its
+   own `Reasoning:` label — 13 of the 30 lost cells**. §3m named that as fatal-by-design
+   and expected one or two of it. The `unrepaired` withholding is reachable only on the
+   *second* failure, so this shape is fatal on the first, and it is now the largest hole
+   in the harness. It is a design question for the sweep, not a bug: making a
+   past-the-label truncation non-fatal would publish a half-written critique.
+4. **The scar is reduced, not removed, and the number needs decomposing.**
+   `salvaged_no_thinking` is 37.2% across all solo decision steps, against a
+   pre-registered <10%. Broken down: **2.6%** on steps *before* a repair, **96.1%** on the
+   repaired step itself (which is what the aimed instruction asks for, correctly),
+   **30.1%** on steps *after* the repair, and **23.1%** in runs that never spent a repair
+   at all. So the carry-over above this run's own no-repair baseline is about **7
+   percentage points**, where pilot 2's retry pass ran at 51.0% against a 4.8% baseline.
+   The rewording moved it a long way and did not close it. The honest statement is that
+   this model, on this routing, writes no `Thinking:` section about a quarter of the time
+   unprompted, and a spent repair roughly adds a third again on top.
+5. **The pin held perfectly and the repair rate is high anyway.** 1,078 of 1,079
+   strong-model calls went to GMICloud and 1 to CoreWeave; **0 of 1,679 attempts returned
+   anything but HTTP 200** — no 404, no 429, no 5xx. And the format-repair rate on that
+   traffic is **22.5%**, against the 2.1% GMICloud showed on n=48 in pilot 2, with native
+   reasoning at 16.0% against 8%. **Nothing here may be attributed to the pin** (there is
+   no unpinned arm, and expectation 9 forbids it), but two readings are worth stating so
+   the sweep can choose between them: either pilot-2's per-provider table was an n=48
+   accident, or the traffic mix differs — pilot 3's prompts, corpus and repair wording all
+   changed too. The one thing the run does establish is that **the pinned pair is
+   operationally reliable**: zero routing failures over half an hour at 16 concurrent.
+
+**The two numbers a sweep decision turns on.** `$0.00537` per decided cell → **$34 for
+6,330 cells** ($44 with 1.3× headroom), and 26 min per 207 cells → **≈13 h of `decide`**
+at `max_concurrency 16 / max_runs_in_flight 8`. The 14.5% cell loss is the price of
+holding `generation_max_tokens` at 8192 and `frequency_penalty` at 0; at sweep scale that
+is roughly 900 cells, which is a real decision and not a rounding error.
+
+**One thing the checklist cannot say, and it should be said here.** `debate` errs on
+26 of 57 items against `single`'s 8 of 68, so its incorrect cell is four times the size
+and made of different items. Its revision numbers (4/26 corrected, 2/31 broken) are the
+only ones in the run with a denominator worth reading, and that is a property of the weak
+judge, not evidence about contestability. The `caveats` block says so; a reader who takes
+`revised_given_incorrect` across conditions as a comparison is reading a difference in
+judge strength.
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later
@@ -1531,8 +1625,8 @@ promised cost-per-item and measured-latency figures impossible), and it screened
 
 ## 7. State of the build, and how to run it
 
-**284 tests pass** (`uv run pytest`) as of the grader fix and the shape-aware repair
-(§3m); 272 was the count at pilot 2, and the 240 below was the count when
+**311 tests pass** (`uv run pytest`) as of pilot 3's three changes (§3n); 284 was the
+count after the shape-aware repair, 272 at pilot 2, and the 240 below was the count when
 this section was written. Two probe runs have been paid for; the pilot has
 not been run and nothing exists under `outputs/experiments/pilot/`. The harness has been
 exercised end to end against a fake client over the **real** dataset: 84 cells decided,
@@ -1550,7 +1644,7 @@ contested and graded, all seven subsets and all three label bases flowing throug
 | `debate.py`, `arms.py` | the three conditions; solo conditions hold a real conversation |
 | `recourse.py` | the two contest mechanisms — the module exp1 lacks |
 | `persistence.py`, `artifacts.py`, `artifacts_full.py` | the run directory, `transcript.md` and `transcript_full.md` (§3k) |
-| `experiment.py`, `*_cli.py` | the staged batch harness |
+| `experiment.py`, `*_cli.py` | the staged batch harness — five stages since §3n: decide, contest, agreement, grade, analyse |
 | `grading.py`, `analysis.py` | the two bars, and the rates |
 
 ### The order to run things
@@ -1971,3 +2065,53 @@ cells were selected for having failed twice): `revised_given_incorrect` **9/28**
 also where right decisions get moved — 9 of 27 — so its accuracy falls 27/41 → 23/41
 while `self_critique` rises 31/41 → 34/41 and `single` does not move at all: **0 of 42
 contests changed a `single` decision**, which is the row to look at before the sweep.
+
+
+### Pilot 3, as run (2026-08-25) — the challenger's one line, the scar, and the pin
+
+**311 tests pass.** Three changes, each of which touches the sweep's prompts or its
+routing (§3n). Commands in order; every one teed or redirected under `outputs/`, every
+paid stage waited on its own PID (`until ! ps -p $PID`), never on `pgrep -f`, never
+concurrently.
+
+```bash
+# 0. the corpus, to its OWN path -- pilot.jsonl still means pilot-2's 42 items
+uv run python scripts/get_tasks.py --subset all --pilot 4 --pilot-longest 2 \
+    --pilot-out data/cases/pilot-3.jsonl 2>&1 | tee outputs/get-tasks-pilot-3.log
+# 1. the whole harness end to end against the fake client, agreement stage included
+uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline-pilot3.log
+# 2. every hyperparameter, all three tables, with its reason
+uv run exp2-experiment --spec experiments/pilot-3.toml --stage decide --dry-run \
+    2>&1 | tee outputs/pilot-3-dryrun.log
+# 3. VERIFY THE PROVIDER SLUGS -- the dry-run cannot catch a wrong one (§3n)
+uv run python <endpoints API + 5 real pinned calls> 2>&1 \
+    | tee outputs/pilot-3-provider-check.log
+# 4. the paid stages, sequentially
+nohup uv run exp2-experiment --spec experiments/pilot-3.toml --stage decide \
+    > outputs/pilot-3-decide.log 2>&1 &      # 21:55:09-22:21:11
+nohup … --stage contest   > outputs/pilot-3-contest.log 2>&1 &    # 22:21:29-22:24:13
+nohup … --stage agreement > outputs/pilot-3-agreement.log 2>&1 &  # 22:24:19-22:24:54
+nohup … --stage grade     > outputs/pilot-3-grade.log 2>&1 &      # 22:24:59-22:25:19
+nohup … --stage analyse   > outputs/pilot-3-analyse.log 2>&1 &    # 22:25:24-22:25:29
+# 5. the checklist's numbers, all of them re-derived from disk
+uv run python outputs/pilot-3-checks.py            2>&1 | tee outputs/pilot-3-checks.log
+uv run python outputs/pilot-3-checks2.py           2>&1 | tee outputs/pilot-3-checks2.log
+uv run python outputs/pilot-3-handcheck-sample.py  > outputs/pilot-3-handcheck.log 2>&1
+uv run python outputs/pilot-3-paths.py             2>&1 | tee outputs/pilot-3-paths.log
+```
+
+| stage | outcome | wall-clock |
+|---|---|---|
+| decide | 177 completed, 30 failed (all truncations) | 26.0 min |
+| contest | 177 completed, 30 skipped | 2.7 min |
+| agreement | 177 completed, 30 skipped | 0.6 min |
+| grade | 2 graded, 205 skipped | 0.3 min |
+| analyse | 177 rows indexed | 5 s |
+| | **207 cells, $0.9504** | **30 min** |
+
+`outputs/experiments/pilot-3/CHECKLIST.md` carries all ten rows with numbers. Rows 3, 6,
+7 and 10 PASS; rows 1 and 2 FAIL (85.5% decided, 22.5% repair rate); rows 4, 5, 8 and 9
+report. The outcome against the pre-registered expectations, and the five things the run
+found, are in §3n.
+
+Experiment total to date: **$6.670**.
