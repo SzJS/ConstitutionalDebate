@@ -130,6 +130,57 @@ async def test_the_document_publishes_the_problem_the_solution_and_the_grounds(t
     assert "**Grounds given:**" in document
 
 
+def test_the_verdict_is_printed_after_the_grounds_it_followed_from():
+    """The exact shape 12 of pilot 2's records carry: the model's reasoning ends on a
+    dangling `**Final verdict:**` header, because ``parse_verdict_output`` cuts the
+    grounds at the decision line and the header sits just before it. Printed above the
+    grounds, the header pointed at nothing. Nothing is edited to fix it — the order is."""
+    from exp2.artifacts import _decision_section
+
+    section = _decision_section({
+        "verdict": "FLAWED",
+        "reasoning": "Step 2 divides by zero.\n\n**Final verdict:**",
+        "repair_attempts": 0,
+    })
+    assert section.index("**Grounds given:**") < section.index("**Verdict:**")
+    # the model's own run-up runs straight into the verdict, and its text is untouched
+    assert "> **Final verdict:**" in section
+    assert section.rstrip().endswith("**Verdict:** the text under review "
+                                     "**contains a flaw**.")
+
+
+def test_the_repair_note_travels_with_the_verdict_line():
+    """It is a statement about which reply the verdict came from, so it has to sit with
+    the verdict — and it says "above" now that the grounds are printed first."""
+    from exp2.artifacts import _decision_section
+
+    section = _decision_section({
+        "verdict": "SOUND", "reasoning": "It checks out.", "repair_attempts": 1,
+    })
+    assert section.index("**Verdict:**") < section.index("format-repair reply")
+    assert "the grounds above are from that reply" in section
+    assert "grounds below" not in section
+
+
+async def test_a_ruling_prints_its_grounds_before_the_verdict_too(tmp_path):
+    """Same rendering artifact, same fix: a re-decider ends on the same dangling
+    header as the decider did."""
+    from exp2.artifacts import render_recourse_record
+
+    writer, _ = await recorded(tmp_path, "debate")
+    import json
+    (writer.dir / "ruling.json").write_text(json.dumps({
+        "form": "uphold_overturn", "ruling": "OVERTURN", "upheld": False,
+        "verdict": "SOUND", "reasoning": "The objection lands.\n\n**Ruling:**",
+    }), encoding="utf-8")
+    (writer.dir / "challenge.json").write_text(json.dumps({
+        "text": "Step 2 is fine.", "origin": "generated", "raised": True,
+        "stance": "contests", "claimed_verdict": "SOUND",
+    }), encoding="utf-8")
+    document = render_recourse_record(writer.dir)
+    assert document.index("**Grounds given:**") < document.index("**Verdict now:**")
+
+
 async def test_private_reasoning_is_not_in_the_readable_document_but_is_pointed_to(
     tmp_path,
 ):

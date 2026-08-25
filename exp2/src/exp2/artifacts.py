@@ -57,14 +57,22 @@ _VERDICT_PHRASE = {
 
 
 def _decision_section(verdict: dict[str, Any], heading: str = "## The decision") -> str:
+    """Grounds first, then the verdict they led to.
+
+    The order was the other way round until 2026-08-25, and the reason for turning it is
+    a rendering artifact rather than a preference. The grounds are the model's own text
+    up to its decision line, and a model that ends *"...and so my verdict is:"* or
+    writes a dangling ``**Final verdict:**`` header leaves that header as the last line
+    of the quote — 12 of pilot 2's records do exactly this. With the verdict printed
+    above, the header pointed at nothing and the document read as if the decision had
+    gone missing. Printed below, the model's own run-up runs straight into it.
+
+    Nothing is edited or trimmed to achieve that: the quote is the same bytes either
+    way. The repair note moves with the verdict line, because it is a statement about
+    which reply the verdict came from.
+    """
     phrase = _VERDICT_PHRASE.get(verdict["verdict"], verdict["verdict"])
-    lines = [heading, "", f"**Verdict:** {phrase}.", ""]
-    if verdict.get("repair_attempts"):
-        lines += [
-            f"*This verdict came from a format-repair reply "
-            f"({verdict['repair_attempts']} attempt(s)); the grounds below are from "
-            "that reply.*", "",
-        ]
+    lines = [heading, ""]
     grounds = (verdict.get("reasoning") or "").strip()
     if grounds:
         lines += ["**Grounds given:**", "", _quote(grounds), ""]
@@ -72,6 +80,13 @@ def _decision_section(verdict: dict[str, Any], heading: str = "## The decision")
         lines += [
             "*No grounds were stated before the verdict line. The full response is in "
             "`verdict.json`.*", "",
+        ]
+    lines += [f"**Verdict:** {phrase}.", ""]
+    if verdict.get("repair_attempts"):
+        lines += [
+            f"*This verdict came from a format-repair reply "
+            f"({verdict['repair_attempts']} attempt(s)); the grounds above are from "
+            "that reply.*", "",
         ]
     return "\n".join(lines)
 
@@ -206,11 +221,13 @@ def render_run_record(directory: Path) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-# What the document says about each of the four stances. The distinction the middle two
-# draw is the whole point of recording a claimed verdict: a stakeholder who writes
-# "Objection: RAISED" and then agrees with the verdict has not contested anything, and a
-# document that presented that as an objection which failed would be describing a
-# contest that never happened.
+# What the document says about each stance. `agrees` is unreachable since the
+# challenger's line became one relative token — a reply cannot both ask for a reversal
+# and name the verdict it is reversing to — but the branch stays, because contest
+# records written under the two-line instruction still render through here and a
+# document that presented such an objection as a contest which failed would be
+# describing a contest that never happened. What replaced the detection is the
+# `agreement` stage, which reads the prose rather than the label.
 def _objection_section(challenge: dict) -> list[str]:
     stance = challenge.get("stance") or (
         "contests" if challenge.get("raised", True) else "declined")
@@ -279,11 +296,14 @@ def render_recourse_record(directory: Path) -> str:
         else:
             lines.append("*Reconsidered by the same reviewer that made the decision, in "
                          "the same conversation.*")
-        lines += ["", f"**Verdict now:** "
-                      f"{_VERDICT_PHRASE.get(ruling['verdict'], ruling['verdict'])}.", ""]
+        # Same order as the decision section above, and for the same reason: the
+        # grounds end where the model's own decision line began, so the verdict has to
+        # follow them or a dangling "**Final verdict:**" points at nothing.
         grounds = (ruling.get("reasoning") or "").strip()
         if grounds:
-            lines += ["**Grounds given:**", "", _quote(grounds), ""]
+            lines += ["", "**Grounds given:**", "", _quote(grounds)]
+        lines += ["", f"**Verdict now:** "
+                      f"{_VERDICT_PHRASE.get(ruling['verdict'], ruling['verdict'])}.", ""]
         parts.append("\n".join(lines))
 
     if comprehension is not None:
