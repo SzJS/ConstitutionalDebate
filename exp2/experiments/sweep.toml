@@ -1,0 +1,112 @@
+# The full sweep: every item in the corpus, all three conditions, one repeat.
+# 2,110 items x 3 conditions x 1 repeat = 6,330 cells.
+#
+# READ FIRST: ../HANDOFF.md section 5, which is the run order, the stop triggers and
+# what has to be checked afterwards. This file is only the parameters.
+#
+# Nothing in the decision path differs from `pilot-3.toml`. The models, both token caps,
+# the challenger's temperature, the provider pin and the grader are pilot 3's, unedited,
+# so pilot 3's measured rates are this run's priors:
+#
+#   * $0.00537 per DECIDED cell  ->  ~$34 for 6,330 cells, ~$44 with 1.3x headroom.
+#   * 26.0 min per 207 cells at 16/8  ->  ~13 h of `decide`. The other four stages ran
+#     in 3.6 min per 207 cells, i.e. under 2 h in total here.
+#   * 0.616 MB of `outputs/` per cell  ->  ~3.9 GB. The pod this is run on needs 20 GB
+#     or more; the previous one had 5 GB and `sweep-1` died on ENOSPC 80 cells in.
+#   * 14.5% of cells lost to truncation, i.e. ~900 cells. That is the accepted price of
+#     `generation_max_tokens = 8192` and `frequency_penalty = 0`, and it is a real loss,
+#     not a rounding error. 13 of pilot 3's 30 losses were a critique truncating past
+#     its own `Reasoning:` label; that shape is no longer fatal on the first failure
+#     (LLM_NOTES.md 3o), so the loss rate should come in BELOW 14.5% -- by how much is
+#     not predicted, because the repair may truncate too.
+#   * 22.5% format-repair rate on the pinned pair. That costs calls, not cells: zero of
+#     pilot 3's cells died malformed after their repair.
+#
+# The corpus is the whole converted corpus, written by
+#     uv run python scripts/get_tasks.py --subset all --concat
+# which joins the seven `data/cases/ftf-*.jsonl` bundles in sorted-subset order.
+# NOT `--sample`, which rewrites those bundles in place with a subsample and would
+# destroy the corpus every finished run's provenance describes.
+name = "sweep"
+cases = "data/cases/ftf-all.jsonl"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# Unchanged from pilot 3. The judge and the challenger are the weak model; the debaters
+# stay strong, as the protocol requires.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# Unchanged. The cap for the roles that emit a decision line -- judge, challenger,
+# recourse judge, comprehension probe -- none of which has truncated in four runs.
+max_tokens = 16384
+
+# Unchanged. The cap for the roles that produce record text: debaters, the solo stages,
+# the critic. That is where every truncation in this experiment's history has been -- a
+# private Thinking block of 21k-64k characters, most often a debater assigned the
+# pro-flaw side of a *sound* item and unable to stop looking for a flaw that is not
+# there. 8192 covers every successful generation pilot 1 made (max 7,888 completion
+# tokens, p99 5,794) and halves what a runaway costs against 16,384.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing, verified before every run that uses it ------------------------
+# OpenRouter served the strong model from 20 providers in pilot 2, at format-repair
+# rates from 2.1% to 35.3% attributed to the call that FAILED (166/166 paired):
+#
+#   GMICloud       1/48   2.1%  [0.4, 10.9]   p < 0.0001 against the 25.5% pool
+#   Baidu         20/132  15.2%
+#   DeepInfra      6/31   19.4%
+#   CoreWeave      4/20   20.0% [8.1, 41.6]   p = 0.79 -- n=20, NO SIGNAL
+#   Relace        76/215  35.3%              p = 0.0001, worse than the pool
+#   DigitalOcean  30/85   35.3%
+#
+# GMICloud is the only provider with a significant effect. CoreWeave is the fallback and
+# its n=20 carries no signal -- it is second because nothing disqualifies it, not
+# because it was shown to be good. Pilot 3 then measured 22.5% on GMICloud itself over
+# 880 calls, so either the n=48 table was luck or the traffic mix differs; there is no
+# unpinned arm and nothing may be attributed to the pin either way. What pilot 3 does
+# establish is that the pinned pair is operationally reliable: 1,078 of 1,079 calls
+# served by GMICloud, 0 of 1,679 attempts anything but HTTP 200.
+#
+# VERIFY THE SLUGS AGAIN BEFORE RUNNING, with one real pinned call. `order` takes
+# OpenRouter provider slugs and `calls.jsonl` records display names, so they cannot be
+# checked against each other after the fact; and an unrecognised slug with
+# allow_fallbacks false returns "No endpoints found for ..." -- which contains the
+# substring "no endpoints", so `client.NO_ENDPOINTS_MARKER` classifies it as RETRYABLE
+# and every cell of a 13-hour stage dies slowly instead of fast. No dry-run can catch
+# that. The endpoints API path takes the model id with the slash UNESCAPED.
+# records/logs/pilot-3-provider-check.log is what the check looks like.
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# 16/8, which is what pilot 3 PROVED: 207 cells decided in 26.0 min with 0 non-200
+# responses in 1,679 attempts, and a per-cell timeout margin that improved rather than
+# eroding. `sweep-1.toml` raised this to 24/12 on a projection and the run died of a
+# full disk before the raise could be evaluated, so 24/12 remains unproven and is not
+# used here. 13 h is an acceptable price for a number that has been measured.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Stated rather than inherited, because it is the field the disk budget turns on: each
+# contest directory carries a full copy of the decision it contests. That is what makes
+# a contest record self-contained -- a contest you cannot read without also finding the
+# decision is not a published record -- and it is most of the 0.616 MB per cell.
+# Setting it false would roughly halve the disk and break that property; the answer to a
+# small disk is a bigger disk.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint. The `:batch` suffix this
+# field carried until 2026-08-25 routes to OpenRouter's separate Batch API, which
+# `client.py` does not speak, and it returned HTTP 404 on every call pilot 2 made. It is
+# also the model the `agreement` stage calls.
+grader_model = "anthropic/claude-haiku-4.5"

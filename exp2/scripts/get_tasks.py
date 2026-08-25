@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
 import random
 import sys
@@ -76,6 +77,46 @@ def write_subset(cases, subset_key: str, data_root: Path) -> Path:
     return bundle
 
 
+CONCAT_NAME = "ftf-all.jsonl"
+
+
+def concat_bundles(data_root: Path, keys: list[str]) -> tuple[Path, int, str]:
+    """Join the per-subset bundles into one whole-corpus bundle for the sweep.
+
+    The sweep decides every item in the corpus, and a spec takes one `cases` path, so
+    the seven bundles have to become one file. It is built here rather than by a shell
+    `cat` for three reasons: every case is round-tripped through `load_cases`, so a
+    malformed bundle fails here instead of at the first cell of a 13-hour stage;
+    duplicate `item_id`s are refused, because an item id is also a cell directory name
+    and `build_grid` would refuse the grid after the corpus was already fixed; and the
+    order is pinned.
+
+    **Deterministic**, which matters because the run order of a sweep decides which
+    cells a killed stage has already done: subsets in `sorted(SUBSETS)` order, and
+    within a subset the bundle's own order, which `convert_subset` fixes from the
+    upstream rows and the seeded CELS sentence draw. Rebuilding the corpus on another
+    machine at the same seed gives a byte-identical file, and the sha256 is printed so
+    that can be checked rather than assumed.
+    """
+    bundle = data_root / "cases" / CONCAT_NAME
+    lines: list[str] = []
+    seen: dict[str, str] = {}
+    for key in keys:
+        for case in load_cases(data_root / "cases" / f"ftf-{key}.jsonl"):
+            item_id = case.item.item_id
+            if item_id in seen:
+                raise SystemExit(
+                    f"duplicate item_id {item_id!r} in {key} and {seen[item_id]}; "
+                    "item ids are also cell directory names and would collide"
+                )
+            seen[item_id] = key
+            lines.append(json.dumps(case.to_dict()))
+    text = "\n".join(lines) + "\n"
+    bundle.parent.mkdir(parents=True, exist_ok=True)
+    bundle.write_text(text, encoding="utf-8")
+    return bundle, len(lines), hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def summarise(subset_key: str, cases) -> dict:
     sound = sum(1 for c in cases if not c.item.gold_flawed)
     flawed = len(cases) - sound
@@ -100,6 +141,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="cap each subset to N rows, sampled on row_id so a row's "
                              "items travel together")
     parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--concat", action="store_true",
+                        help="also write <data-root>/cases/ftf-all.jsonl: every "
+                             "subset's cases in one bundle, subsets in sorted order, "
+                             "which is what a sweep spec's `cases` points at. Requires "
+                             "--subset all, since a file called ftf-all that held one "
+                             "subset would be a trap")
     parser.add_argument("--pilot", type=int, default=None, metavar="N",
                         help="also write a pilot bundle (see --pilot-out) with N "
                              "flawed and "
@@ -154,6 +201,13 @@ def main(argv: list[str] | None = None) -> int:
         prov.write_text(json.dumps(record, indent=2), encoding="utf-8")
         summaries.append(summarise(key, cases))
         print(f"wrote {len(cases):5d} cases to {bundle}  sha256={record['sha256'][:12]}")
+
+    if args.concat:
+        if args.subset != "all":
+            parser.error("--concat writes the whole-corpus bundle, so it needs "
+                         "--subset all")
+        bundle, count, digest = concat_bundles(args.data_root, keys)
+        print(f"\nwrote {count} cases to {bundle}  sha256={digest[:12]}")
 
     if args.pilot:
         pilot_keys = ([k.strip() for k in args.pilot_subsets.split(",") if k.strip()]

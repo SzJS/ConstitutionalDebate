@@ -1,3 +1,12 @@
+# Start here
+
+If you are new to this experiment, read [`HANDOFF.md`](HANDOFF.md) first. It is written
+for an agent with no memory of this project on a machine holding nothing but this
+repository: what has been run and what it cost, the ground rules that are not written
+down anywhere else, how to rebuild `outputs/` and `data/` from scratch, exactly what the
+first full sweep runs, and what must not be changed. It replaces a plan file that lived
+outside the repo and was lost with the pod it was on.
+
 # Purpose
 
 This experiment tests whether a **weak stakeholder can detect, contest and correct a

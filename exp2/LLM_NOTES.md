@@ -1713,9 +1713,13 @@ promised cost-per-item and measured-latency figures impossible), and it screened
 
 ## 7. State of the build, and how to run it
 
-**311 tests pass** (`uv run pytest`) as of pilot 3's three changes (§3n); 284 was the
-count after the shape-aware repair, 272 at pilot 2, and the 240 below was the count when
-this section was written. Two probe runs have been paid for; the pilot has
+**325 tests pass** (`uv run pytest`) as of the critique-truncation fix (§3o); 311 was
+the count at pilot 3's three changes (§3n), 284 after the shape-aware repair, 272 at
+pilot 2, and the 240 below was the count when this section was first written.
+
+**Read `HANDOFF.md` first if you are new here.** It carries the state of the build for
+an agent with no memory of the project, and it is the document that replaced the plan
+file this work used to be steered by. This section is the working history behind it. Two probe runs have been paid for; the pilot has
 not been run and nothing exists under `outputs/experiments/pilot/`. The harness has been
 exercised end to end against a fake client over the **real** dataset: 84 cells decided,
 contested and graded, all seven subsets and all three label bases flowing through.
@@ -2203,3 +2207,34 @@ report. The outcome against the pre-registered expectations, and the five things
 found, are in §3n.
 
 Experiment total to date: **$6.670**.
+
+
+### Sweep 1 (2026-08-25 22:36:54–22:47:03) — ABANDONED, ENOSPC
+
+The first sweep slice: 241 items and 723 cells drawn by `scripts/make_slice.py`, spec
+`experiments/sweep-1.toml`, nothing in the decision path changed from pilot 3 except the
+corpus and a 16/8 → 24/12 concurrency raise. It **never finished `decide`**.
+
+```
+decide: completed=80  error=633  failed=10
+OSError: [Errno 28] No space left on device
+```
+
+The pod's disk was **5 GB**. `outputs/` costs **0.616 MB per cell** measured on pilot 3,
+so a 723-cell slice needs ~0.45 GB and the full 6,330-cell sweep ~3.9 GB — but the disk
+already held pilot 1–3 (66 + 94 + 128 MB), the probe (90 MB), a 282 MB venv and a 31 MB
+`data/`, and it ran out 80 cells in. 145 of the log's lines are `[Errno 28]`; the
+stage did not crash so much as fail every remaining cell in turn, and the harness's own
+error printer died on the same errno at the end.
+
+**Nothing is salvaged from it and nothing rests on it.** The 80 completed cells were
+decided at 24/12 with no contest, agreement or grade stage behind them, so they are not
+a measurement of anything; they were left where they fell and went with the pod. The
+concurrency raise was never evaluated, which is why `experiments/sweep.toml` returns to
+the 16/8 that pilot 3 proved rather than carrying 24/12 forward on a projection.
+
+**Two things to take from it.** A run's disk budget is a hyperparameter and belongs in
+the dry-run conversation beside its cost and its wall-clock — this one was estimated
+(`records/logs/sweep-1-estimate.txt` projects cost and clock, and never mentions bytes).
+And a crashed stage leaves `run.json` at `"running"`, which §3o pins as *not a decision*:
+those cells are retried into fresh run directories rather than skipped or written over.

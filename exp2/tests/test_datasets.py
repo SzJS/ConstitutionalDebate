@@ -378,3 +378,61 @@ def test_the_pilot_bundle_is_written_where_pilot_out_says(tmp_path, monkeypatch,
     from exp2.types import load_cases
 
     assert len(load_cases(out)) == 2   # one flawed, one sound
+
+
+# --- the whole-corpus bundle -----------------------------------------------------
+
+
+def _get_tasks():
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import get_tasks
+
+    return get_tasks
+
+
+def _fake_bundle(root, subset: str, item_ids: list[str]) -> None:
+    path = root / "cases" / f"ftf-{subset}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cases = [{"item": {"item_id": i, "row_id": f"{subset}:{i}", "subset": subset,
+                       "problem": f"problem {i}", "solution": f"solution {i}",
+                       "gold_flawed": False, "label_basis": "injected_pair"}}
+             for i in item_ids]
+    path.write_text("\n".join(json.dumps(c) for c in cases) + "\n", encoding="utf-8")
+
+
+def test_the_concatenated_corpus_is_in_a_fixed_order_and_byte_stable(tmp_path):
+    """The sweep spec takes one `cases` path, so the seven bundles become one file.
+    Its order decides which cells a killed stage has already done, so it is pinned:
+    subsets in sorted order, each bundle's own order within."""
+    get_tasks = _get_tasks()
+    _fake_bundle(tmp_path, "theoremqa", ["t2", "t1"])
+    _fake_bundle(tmp_path, "gpqa", ["g1", "g2"])
+
+    bundle, count, digest = get_tasks.concat_bundles(tmp_path, ["gpqa", "theoremqa"])
+    assert count == 4
+    from exp2.types import load_cases
+
+    assert [c.item.item_id for c in load_cases(bundle)] == ["g1", "g2", "t2", "t1"]
+
+    again = get_tasks.concat_bundles(tmp_path, ["gpqa", "theoremqa"])
+    assert again[2] == digest, "rebuilding the corpus must give the same bytes"
+
+
+def test_the_concatenated_corpus_refuses_a_duplicate_item_id(tmp_path):
+    """An item id is also a cell directory name. `build_grid` would refuse the grid,
+    but only after the corpus had been fixed and the spec written."""
+    get_tasks = _get_tasks()
+    _fake_bundle(tmp_path, "gpqa", ["shared"])
+    _fake_bundle(tmp_path, "theoremqa", ["shared"])
+    with pytest.raises(SystemExit, match="duplicate item_id"):
+        get_tasks.concat_bundles(tmp_path, ["gpqa", "theoremqa"])
+
+
+def test_concat_refuses_to_write_a_whole_corpus_name_over_one_subset(tmp_path):
+    get_tasks = _get_tasks()
+    with pytest.raises(SystemExit):
+        get_tasks.main(["--subset", "gpqa", "--data-root", str(tmp_path), "--concat"])
+    assert not (tmp_path / "cases" / "ftf-all.jsonl").is_file()
