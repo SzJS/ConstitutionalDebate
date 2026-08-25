@@ -60,9 +60,14 @@ command from `exp2/`). These are the rules that are *not* written down anywhere 
 5. **Every model output and every terminal output is saved under `outputs/`.** A
    generation that exists only in scrollback did not happen. `nohup … > outputs/x.log`
    or `… 2>&1 | tee outputs/x.log`.
-6. **Stages run sequentially, each waited on its own PID** (`until ! ps -p $PID`).
-   Never `pgrep -f <script>` — that matches the waiting shell's own command line and the
-   loop never exits. Never run two paid stages concurrently.
+6. **Stages run sequentially; never two paid stages at once.** If you are an agent, you
+   cannot sit in a foreground `until … sleep` loop — the harness caps a shell call at
+   minutes and blocks `sleep`. Use the driver: `nohup scripts/run_sweep.sh
+   experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &` runs the five stages in
+   order under one process, halts at the first failing stage (writing `STOP.md`), and
+   writes `DONE.md` at the end. Poll it from a *background* shell (`run_in_background`)
+   or by reading the logs; never `pgrep -f <script>` — that matches the polling shell's
+   own command line and the loop never exits.
 7. **No parser leak rule is ever loosened.** Text a model marked private must never
    reach the judge, the challenger or a published record. This has failed three times in
    this experiment's history (`LLM_NOTES.md` §3d, §3i, §7) and the standing answer is
@@ -75,7 +80,10 @@ command from `exp2/`). These are the rules that are *not* written down anywhere 
 10. **Stop triggers are catastrophic-only, by the user's standing instruction.** Runs are
     launched unattended overnight. A high repair rate, phantom contests, an ugly number
     or a dead cell or two are **reported, never stopped for**. Section 5 lists the four
-    things that do stop a run.
+    things that do stop a run. "Stop and wake the user" means, for an agent: kill the
+    driver, write what happened to `outputs/experiments/<name>/STOP.md`, and end your
+    turn with the finding — you cannot wake anyone. The only confirmation a run needs is
+    the one before it starts (rule 4); nothing mid-run waits on the user.
 11. **Nothing may reach across into `../exp1/`** — no import, no symlink, no path. exp2
     was ported from exp1 at `f5fc3c9` and has diverged; reading exp1 to see how it did
     something is fine, depending on it is not.
@@ -90,7 +98,10 @@ from `LLM_NOTES.md` §4.
 **Size the disk first.** A full sweep writes **~3.9 GB** under `outputs/`
 (0.616 MB per cell measured on pilot 3 × 6,330 cells), the venvs are ~0.6 GB and the
 image ~3.6 GB. The previous pod had **5 GB and the first sweep died on ENOSPC 80 cells
-in** (`LLM_NOTES.md` §7). Ask for **20 GB or more**.
+in** (`LLM_NOTES.md` §7). Ask for **20 GB or more**; the floor below which do not start
+is **12 GB free** after `uv sync` (3.9 GB of outputs, plus resume slack for abandoned
+`running` cells, plus room to breathe). Also confirm with the user that the OpenRouter
+account holds **≥ $44** of credit before the first paid stage.
 
 ```bash
 git clone https://github.com/SzJS/ConstitutionalDebate.git
@@ -106,20 +117,25 @@ EOF
 
 cd exp2                       # every command below runs from here, never from the root
 uv sync                       # the dev group carries pyzipper, pandas and statsmodels
-uv run pytest                 # expect: 325 passed, in about 4 seconds
 ```
 
-Then rebuild the corpus. Nothing upstream is vendored; the archive is fetched into
-`data/` (git-ignored) and only its provenance is recorded.
+(The `.env` heredoc above is the one command that runs at the repo root; everything after
+`cd exp2` runs from `exp2/`.) Rebuild the corpus **before** running the tests — one test
+skips while the archive is not cached, and "337 passed" is the count *with* it. Nothing
+upstream is vendored; the archive is fetched into `data/` (git-ignored) and only its
+provenance is recorded.
 
 ```bash
 uv run python scripts/get_tasks.py --subset all --concat \
     2>&1 | tee outputs/get-tasks-all-concat.log
 ```
 
-Expected output — if these counts differ, **stop and find out why before spending**:
+Expected output (`records/logs/get-tasks-all-concat.log` is this exact command's
+output) — if these counts or the sha differ, **stop and find out why before spending**:
 
 ```
+wrote 2110 cases to data/cases/ftf-all.jsonl  sha256=9e479a5edbe8
+
 subset         rows   items   sound  flawed  gradable
 -----------------------------------------------------
 gpqa            191     382     191     191         0
@@ -131,9 +147,10 @@ surgery         212     212     137      75        75
 theoremqa        91     182      91      91        91
 -----------------------------------------------------
 TOTAL          1509    2110     861    1249      1058
-
-wrote 2110 cases to data/cases/ftf-all.jsonl  sha256=9e479a5edbe8
 ```
+
+Now the tests: `uv run pytest` — expect **337 passed** in about 4 seconds (336 passed,
+1 skipped means the archive is not where `get_tasks.py` put it).
 
 `--concat` is what writes `data/cases/ftf-all.jsonl`, the whole-corpus bundle the sweep
 spec points at: the seven per-subset bundles joined in sorted-subset order, each case
@@ -184,6 +201,15 @@ surviving pre-registered rule selected `llama-3.1-8b`, and the user overrode it 
 nano on latency (9.5 s judge p95 against llama's 27.1 s) and on verdict skew: eight of
 the nine models over-call FLAWED at 63–87% on a 46%-flawed fixture, and nano is the only
 one that does not (51% SOUND). All seven subsets survive the screen.
+
+**A precedence wrinkle you will notice, resolved here so you do not stall on it.**
+`DESIGN.md` still names Qwen3-8b/14b/32b as the weak models, and `LLM_NOTES.md` says
+`DESIGN.md` wins where they disagree. The user chose `gpt-4.1-nano` in conversation on
+2026-08-25 after seeing the probe (`records/pick-weak/DECISION.md`), which under ground
+rule 2 counts as a settled decision that has not yet been written into `DESIGN.md` — it
+is the third unapplied `DESIGN.md` edit, alongside §3k and §3l's. Run with nano; put "the
+weak model is gpt-4.1-nano — shall I note that in DESIGN.md's Weak models section for
+you?" in your first questionnaire; do not change the model.
 
 **A provider attribution that was published wrong and then corrected.** Pilot 2's first
 per-provider table charged each format repair to the provider that served the *repair*,
@@ -309,6 +335,11 @@ decision path differs from the run its budget comes from.**
 | disk | **~3.9 GB** under `outputs/` |
 | expected loss | ≤ 14.5% of cells to truncation (~900), the accepted price of the caps |
 
+Cost basis: `$0.00537` is per *decided* cell in pilot 3, applied here to all 6,330
+*attempted* cells, so it already includes the ~14% that will die — a deliberately
+conservative figure (`records/logs/sweep-1-estimate.txt` shows the per-attempted-cell
+alternative, ~$29).
+
 `max_concurrency = 16` / `max_runs_in_flight = 8` is what pilot 3 **proved** — 207 cells
 in 26 min with 0 non-200 responses in 1,679 attempts. `sweep-1.toml` raised it to 24/12
 on a projection and died of a full disk before that could be evaluated, so 24/12 remains
@@ -316,7 +347,8 @@ unproven and is not used.
 
 ### Run order
 
-Sequentially. Each stage `nohup … &`, waited on `$!`, teed under `outputs/`.
+Sequentially — one process, five stages, the driver script. The dry-run and the provider
+check come first and are the two places to stop for the user.
 
 ```bash
 cd exp2
@@ -334,26 +366,40 @@ experiment: sweep   stage: decide   outputs: outputs/experiments/sweep
 cells: 6330  debate=2110  self_critique=2110  single=2110
 estimated calls: decision 31650, contest 12660, ruling <= 6330, agreement <= 6330,
                  grading <= 3174  => up to 60144
-retries are on top: max_decision_attempts=2, plus at most one format repair per generation
+one attempt per cell per invocation; re-run the stage to retry cells with no completed record. Client transport retries and at most one format repair per generation are on top.
 ```
 
 ```bash
-# 2. VERIFY THE PROVIDER SLUGS with one real pinned call. This is not optional and no
-#    dry-run can replace it: `order` takes OpenRouter provider slugs while calls.jsonl
-#    records display names, the endpoints API path takes the model id with the slash
-#    UNESCAPED, and an unknown slug with allow_fallbacks=false returns
-#    "No endpoints found for …" — which contains "no endpoints", so client.py reads it
-#    as a RETRYABLE 404 and every cell of a 13-hour stage would die slowly instead of
-#    fast. records/derivations/sweep-1-provider-check.py is the script that does this
-#    check (it reads OPENROUTER_KEY from .env); records/logs/pilot-3-provider-check.log
-#    is what its output looks like when the slugs are right.
+# 2. VERIFY THE PROVIDER SLUGS with one real pinned call (~$0.00001). Not optional; no
+#    dry-run can replace it. `order` takes OpenRouter provider *slugs* while calls.jsonl
+#    records display names, and the endpoints API path takes the model id with the
+#    slash UNESCAPED. client.py retries a 404 whose message says "no endpoints
+#    available" OR "no endpoints found" — so a momentary GMICloud absence is retried,
+#    which a 13-hour run needs — and the price of that is that a MISCONFIGURED slug is
+#    also retried, slowly, until max_attempts is spent on every cell. This one call is
+#    the guard against that.
+uv run python records/derivations/sweep-1-provider-check.py \
+    2>&1 | tee outputs/sweep-provider-check.log
+#    Expected: a line "SERVED BY: <provider>" naming a pinned provider, non-empty
+#    content, and "VERDICT: PASS". records/logs/sweep-provider-check.log is a passing
+#    run. On FAIL, or if GMICloud is absent: wait up to an hour and retry once; if it
+#    still fails, stop and put it to the user. Do not run on CoreWeave alone (n=20, no
+#    signal) and do not add fallbacks.
 
-# 3. the five paid stages, in this order, each waited on its own PID
-nohup uv run exp2-experiment --spec experiments/sweep.toml --stage decide \
-    > outputs/sweep-decide.log 2>&1 &
-PID=$!; until ! ps -p $PID > /dev/null; do sleep 60; done
-#   … then --stage contest, --stage agreement, --stage grade, --stage analyse
+# 3. the five stages (four paid; `analyse` makes no calls), sequentially, one driver:
+nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &
+#    Per-stage logs land in outputs/sweep-<stage>.log. The driver halts at the first
+#    stage that exits non-zero and writes outputs/experiments/sweep/STOP.md; on success
+#    it writes DONE.md. Poll from a background shell; expect ~15 h.
 ```
+
+**Measuring the stop triggers while it runs** — from a background shell, hourly:
+provider failures are the non-`200 OK` lines in `outputs/sweep-decide.log` against the
+total (trigger 1); wall-clock is the log's first and last timestamps against the 13 h
+projection (trigger 2); a crash is `STOP.md` appearing (trigger 3); verdict skew is
+read straight from the `verdict.json` files under `outputs/experiments/sweep/cells/`
+(trigger 4) — check it once ~200 cells are in, and again at ~1,000. Report the numbers
+each time; act only on the four triggers.
 
 Every stage resumes on its own artifacts, so a re-run after a crash spends nothing on
 what already succeeded. A cell killed mid-decide leaves `run.json` at `"running"`, which
@@ -374,7 +420,9 @@ truncated cells — is **reported with its number, not stopped for**.
 ### After the run
 
 - The **ten-row checklist**, re-derived from disk with a script saved beside its log, in
-  the shape of `records/experiments/pilot-3/CHECKLIST.md`.
+  the shape of `records/experiments/pilot-3/CHECKLIST.md`
+  (`records/derivations/pilot-3-checks.py` is the template; point it at
+  `outputs/experiments/sweep`).
 - The **20-reply line-vs-prose hand check**, stratified by stance × parent verdict, as
   the audit of the `agreement` stage.
 - **Every graded row hand-checked** against its `flaw.json`. Pilot 3 had 2; a full sweep
@@ -434,11 +482,17 @@ truncated cells — is **reported with its number, not stopped for**.
 
 **`records/`** — the small evidence, kept in git because `outputs/` was wiped. See
 [`records/README.md`](records/README.md) for what each file backs. Nothing reads it.
+Two vocabulary notes: "Step A/B/G", "D1" and the like in `GATE.md`, `LLM_NOTES.md` and
+`sweep-1-estimate.txt` refer to a plan file on the wiped pod — this file replaces it;
+and `GATE.md`'s thresholds were the gate *between pilot 3 and the abandoned slice*,
+stricter than the sweep's four stop triggers, which are the ones that apply now.
 
 **Scripts.** `scripts/get_tasks.py` (corpus), `scripts/pick_weak.py` (the probe),
 `scripts/render_probe.py` (probe transcripts for a human), `scripts/make_slice.py` (a
 read-only stratified draw, used for the abandoned `sweep-1`), `scripts/e2e_offline.py`
-(the whole harness against a fake client, over real items).
+(the whole harness against a fake client, over real items), `scripts/run_sweep.sh` (the
+five-stage driver: one `nohup`, sequential stages, `STOP.md`/`DONE.md`; tested by
+`tests/test_run_sweep.py`).
 
 **Specs.** `experiments/{pilot,pilot-2,pilot-3}.toml` are what those runs were made with
 and must not be edited. `experiments/sweep-1.toml` is the abandoned slice.
