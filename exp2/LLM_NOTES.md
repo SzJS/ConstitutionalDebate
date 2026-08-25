@@ -784,3 +784,120 @@ transcript.
 3. The decline rate is strictly between 0% and 100%.
 4. `decision_record_words` per condition, to see how far the three are from matched.
 5. Three `transcript.md` files read by hand, one per condition, with their contests.
+
+### The pilot, as run (2026-08-25)
+
+Step D of the plan. Commands, in order; every one teed under `outputs/`.
+
+```bash
+# decide, killed on purpose partway through (checklist row 8's resume test)
+nohup uv run exp2-experiment --spec experiments/pilot.toml --stage decide \
+    > outputs/pilot-decide.killed-run.log 2>&1 &   # killed at 13:42, 11 cells done
+nohup uv run exp2-experiment --spec experiments/pilot.toml --stage decide \
+    > outputs/pilot-decide.log 2>&1 &              # 13:43-15:12  98 done, 17 failed
+# --- max_tokens 8192 -> 16384 in experiments/pilot.toml (the plan's ONE raise) ---
+uv run exp2-experiment --spec experiments/pilot.toml --stage decide --dry-run \
+    > outputs/pilot-dryrun-2.log 2>&1
+nohup uv run exp2-experiment --spec experiments/pilot.toml --stage decide \
+    > outputs/pilot-decide-2.log 2>&1 &            # 15:19-15:51  11 recovered, 6 failed
+nohup uv run exp2-experiment --spec experiments/pilot.toml --stage contest \
+    > outputs/pilot-contest.log 2>&1 &             # 15:52-15:55  120 completed, 0 failed
+uv run exp2-experiment --spec experiments/pilot.toml --stage grade   > outputs/pilot-grade.log 2>&1
+uv run exp2-experiment --spec experiments/pilot.toml --stage analyse > outputs/pilot-analyse.log 2>&1
+```
+
+Waiting was done on the process id (`until ! ps -p $PID`), never on `pgrep -f`.
+
+| stage | outcome | wall-clock | spend |
+|---|---|---|---|
+| decide (killed run) | 11 completed, 2 failed, 4 abandoned | 12 min | — |
+| decide (re-run) | 98 completed, 17 failed, 11 skipped | 89 min | — |
+| decide (after the raise) | 11 completed, 6 failed, 109 skipped | 32 min | — |
+| **decide total** | **120 of 126 cells** | **133 min** | **$0.2545** |
+| contest | 120 completed, 6 skipped (no decision) | 4 min | $0.0805 |
+| grade | **126 skipped, 0 graded** | instant | $0.0000 |
+| analyse | 120 rows indexed | instant | $0.0000 |
+| | | | **$0.3350** |
+
+Read with `exp2.accounting.aggregate_tree` over `outputs/experiments/pilot`, which skips
+`parent/` copies. Running total for the experiment: $4.899 (probes) + $0.335 = **$5.234**.
+
+`outputs/experiments/pilot/CHECKLIST.md` carries all nine rows with numbers. Summary:
+rows 3 (verdicts non-degenerate) and 4 (declines) PASS; rows 1 (parse), 2 (repair),
+5 (containment) and 6 (grader) FAIL; row 7 reports debate:single = **13.6 : 1**;
+row 8 passes on cost and on the resume check and fails on projected wall-clock;
+row 9 is with the user.
+
+**Four things the pilot found that no synthetic test could.**
+
+1. **Truncation is a runaway `Thinking:` block, not a long input.** All 16 truncated
+   calls were the strong model's own private deliberation, 23k–64k characters, never
+   reaching `Argument:`. One of them is on a 768-character item. Three shapes:
+   a repetition loop ("I'll write. I'll now output. I'll do it." ×N), a content loop
+   after a complete argument, and — commonest — a debater assigned the *pro-flaw* side
+   of a *sound* item deliberating for ever because it cannot find an honest flaw.
+   Doubling `max_tokens` recovered 8 of 11 and left 3. `frequency_penalty` is the knob
+   the config's own `WHY` line points at, and it was not touched: the plan authorised
+   one raise, not two changes.
+2. **Malformed-after-repair is one omitted label.** Three cells failed twice, each
+   because `deepseek` wrote `Thinking:` and then ran straight into the public answer
+   with no `Argument:` label. The parser refuses this by design (the boundary is
+   unknown) and was not loosened. Two near-misses in the first pass are worth knowing:
+   a bare `Argument` with no colon, and `"...under 400 words.Argument:"` — mid-line, so
+   the line-anchored `_LABEL_RE` cannot see it.
+3. **A third `Thinking:` leak, again on the solo path, again found by grep.** One of
+   120 challenger-visible records carried `Verdict: FLAWEDThinking: <private>`.
+   `_ANY_THINKING_RE`'s lookbehind is `(?<=[a-z])Thinking` — lower-case only — so
+   `DThinking` passes both guards. Same class as §3d and §3i; the tests still do not
+   catch it.
+4. **The contest is one-directional, and that empties the grading cell.** The
+   challenger objected to **51 of 65 FLAWED verdicts and 0 of 55 SOUND verdicts**.
+   So it never says "you missed a flaw": objection-given-false-negative is **0 of 12**
+   across all three conditions. Grading needs *flawed item ∧ wrong decision ∧ objection*,
+   so **zero** objections were gradable and `valid_objection` has an empty denominator
+   in every condition. `revised_given_incorrect` is **0/29** pooled;
+   `revised_given_correct` is **3/91**, all in debate, all turning a right decision
+   wrong (final accuracy 23/37 → 20/37). `CHALLENGER_SYSTEM` is symmetric, so the
+   likely cause is the record: a FLAWED verdict names a flaw the challenger need only
+   doubt, while a SOUND verdict asserts a negative that can only be attacked by finding
+   a flaw the decider missed.
+
+**The pre-registered stop trigger did not fire, and its mirror image did.** The trigger
+reads "challenger declines on every debate false positive"; the challenger objected to
+6 of 8 debate false positives. It declined on every false *negative* instead. Point 4
+is the finding the trigger was written to catch, arriving through a door it did not
+cover, and the informed-judge question DESIGN.md left open should go back to the user
+on these grounds rather than on the ones the trigger names.
+
+**The flaw definition (§3j) did not visibly change the weak judge.** The pilot is the
+first measurement under the definition, as `DECISION.md` §7 promised. Comparing like
+with like — nano judging a debate transcript:
+
+| | n | FLAWED rate | gold base | skew | accuracy |
+|---|---|---|---|---|---|
+| probe 2, undefined standard | 71 | 0.49 | 0.46 | +3 pp | 0.58 |
+| pilot, definition in every prompt | 37 | 0.57 | 0.51 | +5 pp | 0.62 |
+
+Both differences are well inside the interval at n=37. Note for the record: nano was
+never one of the FLAWED-skewed candidates — the 63–87% over-call in `DECISION.md` §2
+belongs to the other eight models, and nano's balanced profile is why it was chosen.
+Nothing here says the definition helped or hurt; it says the pilot cannot tell.
+
+**Ops.** Realised **$0.00279 per decided cell**. Projected sweep at 2110 items × 3
+conditions = 6330 cells: **$17.67**, or **$22.97** with 1.3× headroom — within a percent
+of the pre-run estimate. Wall-clock is the problem: at the pilot's
+`max_runs_in_flight = 4` / `max_concurrency = 8` the sweep projects to **82–110 hours**,
+essentially all of it in `decide` (47–63 s per cell; `contest` runs 120 cells in under
+four minutes). The longest completed decision run took **1306 s** against
+`run_timeout_s = 1800`, so raising concurrency eats into that margin as well. A
+concurrency decision is needed before the sweep.
+
+**A data-quality note found while reading the hand-read transcripts.** Some items carry
+**literal `\n` and `\uXXXX` escapes** in the text under review rather than decoded
+newlines and characters — the debaters, judge and challenger read them that way, and so
+does anyone reading `transcript.md`. Across the corpus this is **78 of 2110 items
+(3.7%)**: python800 66/952, gpqa 8/382, theoremqa 4/182; law, lojban, medqa and surgery
+are clean. One of them, `theoremqa-solutions-angular_momentum-txt-sound`, is in the
+pilot's hand-read set. Cosmetic, but it is in the document the transparency claim is
+about, so it should be fixed in `datasets.py` before the sweep rather than explained
+away in the write-up.

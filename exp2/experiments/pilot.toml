@@ -14,8 +14,18 @@ repeats = 1
 # Leaving judge_model equal to debater_model would make the pilot measure a strong-judge
 # debate, which is not the experiment.
 debater_model    = "deepseek/deepseek-v4-flash-0731"
+
 judge_model      = "openai/gpt-4.1-nano"
 challenger_model = "openai/gpt-4.1-nano"
+
+# RAISED 8192 -> 16384 on 2026-08-25, after the first `decide` pass truncated 11 of 126
+# cells. The plan (eager-exploring-island.md, checklist row 1) allows exactly one raise.
+# Diagnosis: every truncation was the *debater's own private `Thinking:` block* running
+# 23k-34k characters without ever reaching `Argument:` — three of them in an outright
+# repetition loop ("I'll write. I'll now output. I'll do it."). Input length is only
+# weakly implicated: one truncating item is 768 characters long. A cell still truncating
+# at 16384 is a redesign question for that subset, not another retry.
+max_tokens = 16384
 # recourse_judge_model defaults to judge_model, comprehension_model to challenger_model.
 # Both are deliberately left unset: the design says the debate recourse judge is the
 # weak judge, and the comprehension probe is asked inside the challenger's own
