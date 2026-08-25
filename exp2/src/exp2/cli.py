@@ -101,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\nverdict: {result.verdict.verdict} "
                   f"(correct={result.verdict.correct})")
             print(f"record: {writer.dir / 'transcript.md'}")
+            print(f"verbatim: {writer.dir / 'transcript_full.md'}")
 
             if args.contest:
                 record = load_run_record(writer.dir)
@@ -119,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
                           f"-> {outcome.ruling.verdict} "
                           f"(changed={outcome.ruling.changed_the_decision})")
                 print(f"contest record: {contest_writer.dir / 'transcript.md'}")
+                print(f"verbatim: {contest_writer.dir / 'transcript_full.md'}")
         return 0
 
     return asyncio.run(go())
