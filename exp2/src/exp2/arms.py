@@ -20,9 +20,8 @@ from typing import Any, Awaitable, Callable
 
 from .client import ChatClient
 from .config import DebateConfig
-from .engine import _complete, _complete_with_repair
+from .engine import _complete_with_repair
 from .prompts import (
-    MalformedOutputError,
     build_solo_opening,
     parse_debater_output,
     parse_verdict_output,
@@ -82,22 +81,18 @@ def _parse_solo(text: str) -> tuple[str, str, str, str]:
     return thinking, reasoning, verdict, parse_mode
 
 
-def _parse_critique(text: str) -> tuple[str, str, str]:
-    """``(thinking, public, parse_mode)`` for the critique stage.
+def _withhold_critique(text: str) -> tuple[str, str, str]:
+    """``(thinking, public, parse_mode)`` for a critique still unsplittable after repair.
 
-    A critique has no decision line, so it spends no repair attempt — but it still has a
-    private section, and the critique **is** published to the challenger as part of a
+    A critique has a private section and **is** published to the challenger as part of a
     self_critique record. Storing the raw generation would publish the model's own
-    ``Thinking:`` block, which is precisely the leak the protocol exists to prevent.
-
-    So the split is attempted, and when it cannot be made the public text is withheld
-    rather than guessed. Publishing everything would leak; publishing nothing loses a
-    step of the record; guessing where the private part ends would be worse than either.
+    ``Thinking:`` block, which is precisely the leak the protocol exists to prevent — so
+    when the split cannot be made the public text is withheld rather than guessed.
+    Publishing everything would leak; guessing where the private part ends is worse than
+    either. Unlike a verdict, a missing critique does not stop the run, so this is the
+    last resort in place of the failure the deciding stages raise.
     """
-    try:
-        return _split_solo(text)
-    except MalformedOutputError:
-        return "", WITHHELD, "unparsed_withheld"
+    return "", WITHHELD, "unparsed_withheld"
 
 
 async def _run_solo(
@@ -121,16 +116,20 @@ async def _run_solo(
                         {"role": "user", "content": solo_stage_instruction(stage, sides)}]
 
         if stage == "critique":
-            # No parse contract and no repair attempt spent: a critique has no decision
-            # line to get wrong, and the one repair belongs to the stages that do.
-            completion = await _complete(
-                client, model=config.critic_model_for(), messages=messages,
-                temperature=config.debater_temperature, config=config,
-                meta={"role": "critic", "speaker": None, "round": None,
-                      "purpose": stage},
+            # A critique has no decision line, but it does have a published section, and
+            # a model that files the whole critique under ``Thinking:`` leaves the record
+            # with a placeholder. So it gets the same one repair the deciding stages get,
+            # and withholding is what happens only after that repair also fails.
+            (thinking, text, parse_mode), completion, repairs, sent = (
+                await _complete_with_repair(
+                    client, model=config.critic_model_for(), messages=messages,
+                    temperature=config.debater_temperature, config=config,
+                    meta={"role": "critic", "speaker": None, "round": None,
+                          "purpose": stage},
+                    parse=_split_solo, role="critic", word_limit=config.word_limit,
+                    unrepaired=_withhold_critique,
+                )
             )
-            thinking, text, parse_mode = _parse_critique(completion.content)
-            repairs = 0
         else:
             (thinking, text, verdict_word, parse_mode), completion, repairs, sent = (
                 await _complete_with_repair(
@@ -142,10 +141,10 @@ async def _run_solo(
                 )
             )
             last_verdict = verdict_word
-            # ``sent`` differs from ``messages`` exactly when a repair happened: it
-            # carries the malformed reply and the correction. Taking it rather than
-            # ``messages`` is what keeps the conversation a true record.
-            messages = sent
+        # ``sent`` differs from ``messages`` exactly when a repair happened: it carries
+        # the malformed reply and the correction. Taking it rather than ``messages`` is
+        # what keeps the conversation a true record.
+        messages = sent
 
         messages = [*messages, {"role": "assistant", "content": completion.content}]
         last = Step(

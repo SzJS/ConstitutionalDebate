@@ -16,7 +16,7 @@ through here rather than reaching for ``client.complete`` directly.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from .client import ChatClient, Completion
 from .config import DebateConfig
@@ -51,6 +51,7 @@ async def _complete_with_repair(
     role: str,
     word_limit: int,
     reasoning_effort: str | None = None,
+    unrepaired: Callable[[str], Any] | None = None,
 ) -> tuple[Any, Completion, int, list[dict[str, str]]]:
     """Call the model, and on a format failure spend exactly one repair attempt.
 
@@ -61,6 +62,10 @@ async def _complete_with_repair(
     need this — it rebuilt every prompt from scratch. exp2's solo conditions hold a
     real conversation that a contest later replays, so a repair's two extra turns
     have to be part of it or the replay is of a conversation that never happened.
+
+    ``unrepaired`` parses a reply that is still malformed after the repair, for the
+    roles whose output does not decide anything: a critique has no decision line, so
+    the last resort there is withholding its public section, not failing the run.
     """
     completion = await _complete(
         client, model=model, messages=messages, temperature=temperature,
@@ -82,6 +87,8 @@ async def _complete_with_repair(
     try:
         return parse(repaired.content), repaired, 1, repair_messages
     except MalformedOutputError as error:
+        if unrepaired is not None:
+            return unrepaired(repaired.content), repaired, 1, repair_messages
         raise DebateFailure(
             f"{role} output still malformed after one repair attempt: {error}"
         ) from error

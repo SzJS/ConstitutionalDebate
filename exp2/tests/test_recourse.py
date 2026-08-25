@@ -4,41 +4,12 @@ from __future__ import annotations
 
 import pytest
 from conftest import SOLO_THINKING, FakeClient
-from helpers import make_config, make_item, make_sides
+from helpers import make_config
+from recording import contest, decided
 
 from exp2.arms import DECIDERS
-from exp2.config import ClientConfig
-from exp2.persistence import RunWriter, load_run_record
 from exp2.recourse import RECOURSERS, run_recourse
 from exp2.types import FLAWED, SOUND
-
-
-def client_config():
-    return ClientConfig(base_url="https://x/api", max_concurrency=4, max_attempts=3,
-                        backoff_base_s=1.0, backoff_cap_s=5.0, connect_timeout_s=5.0,
-                        read_timeout_s=30.0, run_timeout_s=300.0)
-
-
-async def decided(tmp_path, condition, *, client=None):
-    """A completed decision on disk, ready to be contested."""
-    item, config, sides = make_item(), make_config(), make_sides()
-    writer = RunWriter.create(root=tmp_path / "d", item=item, sides=sides, config=config,
-                              client_config=client_config(), condition=condition)
-    await DECIDERS[condition](item, config, sides, client or FakeClient(), writer=writer)
-    writer.finish("completed")
-    return load_run_record(writer.dir)
-
-
-async def contest(tmp_path, condition, *, client=None, rule=True):
-    record = await decided(tmp_path, condition)
-    client = client or FakeClient()
-    writer = RunWriter.create_recourse(
-        root=tmp_path / "c", parent_dir=record.directory, item=record.item,
-        sides=record.sides, config=record.config, client_config=client_config(),
-        condition=condition)
-    outcome = await run_recourse(record, make_config(), client, rule=rule, writer=writer)
-    writer.finish("completed")
-    return outcome, client, writer, record
 
 
 # --- the two mechanisms --------------------------------------------------------------
@@ -78,6 +49,15 @@ async def test_a_solo_contest_replays_the_recorded_conversation(tmp_path):
     assert sent[: len(record.messages)] == record.messages
     assert len(sent) == len(record.messages) + 1
     assert sent[-1]["role"] == "user"
+
+
+async def test_a_solo_rulings_grounds_exclude_the_deciders_private_thinking(tmp_path):
+    """The ruling is a solo-format reply, so everything before the verdict line is the
+    Thinking block as well as the reasoning. Publishing that as "Grounds given" would
+    leak exactly what the two-section protocol exists to contain."""
+    outcome, _, writer, _ = await contest(tmp_path, "single")
+    assert outcome.ruling.reasoning == "I was wrong."
+    assert "reconsidering" not in (writer.dir / "transcript.md").read_text()
 
 
 async def test_a_solo_contest_without_a_conversation_is_refused(tmp_path):
@@ -166,6 +146,18 @@ async def test_the_contest_document_names_which_mechanism_ruled(tmp_path):
     solo_doc = (solo_writer.dir / "transcript.md").read_text()
     assert "judge who did not make the original decision" in debate_doc
     assert "same reviewer that made the decision, in the same conversation" in solo_doc
+
+
+async def test_the_contest_document_ends_with_the_ground_truth(tmp_path):
+    """Same rule as a decision record: the answer is last, and nowhere above it."""
+    _, _, writer, record = await contest(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    head, marker, tail = document.rpartition("\n## Ground truth")
+    assert marker
+    assert "\n## " not in tail
+    for leak in ("gold", "ground truth", "label_basis"):
+        assert leak not in head.lower()
+    assert record.item.gold_verdict in tail
 
 
 async def test_the_contest_record_carries_a_hash_of_the_decision_it_contests(tmp_path):

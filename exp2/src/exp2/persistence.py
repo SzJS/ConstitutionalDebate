@@ -5,10 +5,11 @@ crashes half way through has still cost money and its generations are still data
 wire log is appended under a lock, since simultaneous debate rounds finish at the same
 moment with multi-kilobyte bodies.
 
-The published document is ``transcript.md``. Everything else in a run directory exists
-so that document can be checked: ``config.json`` says what settings produced it,
-``calls.jsonl`` says what was actually sent and received, and ``item.json`` says what
-was being decided. ``flaw.json`` is written but deliberately **never** read by
+Two documents are published. ``transcript.md`` is the readable one; its sibling
+``transcript_full.md`` is the same run verbatim — every prompt and every reply as they
+went over the wire. Everything else in a run directory exists so those can be checked:
+``config.json`` says what settings produced them, ``calls.jsonl`` says what was
+actually sent and received, and ``item.json`` says what was being decided. ``flaw.json`` is written but deliberately **never** read by
 ``load_run_record`` — only ``grading`` opens it, so no decision-path code can reach the
 ground truth by accident.
 """
@@ -27,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import render_recourse_record, render_run_record
+from .artifacts_full import render_full_recourse_record, render_full_run_record
 from .config import ClientConfig, DebateConfig
 from .types import (
     Challenge,
@@ -207,6 +209,7 @@ class RunWriter:
 
     def record_comprehension(self, comprehension: Comprehension) -> None:
         _write_json(self.dir / "comprehension.json", comprehension.to_dict())
+        self._render()
 
     def finish(self, status: str, *, error: str | None = None,
                totals: dict[str, Any] | None = None) -> None:
@@ -216,12 +219,23 @@ class RunWriter:
     # --- the published document -----------------------------------------------------
 
     def _render(self) -> None:
+        """Rewrite both documents. Independently, so neither can take the other down.
+
+        A bug in the verbatim renderer must not cost a run its readable record, and a
+        bug in the readable one must not cost it the wire-faithful record either.
+        """
         try:
             document = (render_recourse_record(self.dir) if self._parent is not None
                         else render_run_record(self.dir))
+            _write_atomic(self.dir / "transcript.md", document)
         except Exception:  # a partial run must not lose its data to a render bug
-            return
-        _write_atomic(self.dir / "transcript.md", document)
+            pass
+        try:
+            full = (render_full_recourse_record(self.dir) if self._parent is not None
+                    else render_full_run_record(self.dir))
+            _write_atomic(self.dir / "transcript_full.md", full)
+        except Exception:
+            pass
 
 
 # --------------------------------------------------------------------------- #

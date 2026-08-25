@@ -13,6 +13,14 @@ names Alice or Bob. exp1 shipped the opposite and it took a bug report to notice
 **Never quietly edit what a model wrote.** Model text is defanged so it cannot forge
 document structure, but it is never trimmed, summarised or corrected. The record is
 what was said.
+
+Defanging is a rule about *this* document, which is meant to be read. Its sibling
+``transcript_full.md`` (``artifacts_full``) is meant to be checked, and prints every
+byte that went over the wire without touching it.
+
+The ground truth is published here, last and nowhere else, so that a reader meets the
+record the way the participants did. Nothing on the decision or contest path may read
+this document — a test enforces that — because the answer is in it.
 """
 
 from __future__ import annotations
@@ -21,6 +29,8 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+
+from .types import verdict_for
 
 _MARKDOWN_STRUCTURE_RE = re.compile(r"(?m)^(#{1,6}[ \t]|-{3,}[ \t]*$|={3,}[ \t]*$)")
 
@@ -111,22 +121,55 @@ def _steps_section(steps: list[dict[str, Any]], condition: str) -> str:
     return "\n".join(lines)
 
 
-def _private_section(bodies: list[tuple[str, str]]) -> str:
-    """Private reasoning, published *after* the decision it did not reach.
+# Private reasoning still has to end up somewhere a reader can reach — the claim is
+# that every channel which moved the decision is published. It is no longer printed
+# *here* because this document is the one meant to be read straight through, and a
+# reviewer's ``Thinking:`` block is not part of what the participants saw.
+_PRIVATE_POINTER = (
+    "*Private reasoning — each participant's `Thinking:` section, and any native "
+    "reasoning the provider returned — is not reproduced in this document. Nobody saw "
+    "it while the decision was being made. Every prompt and every reply, verbatim, is "
+    "in `transcript_full.md` beside this file.*\n"
+)
 
-    It was invisible to the judge, the opponent and the challenger while the decision
-    was being made. It is printed here because the claim is that every channel which
-    moved the decision ends up somewhere a reader can see — not that a reader sees it
-    at the same time the participants did.
+
+def ground_truth_section(item: dict[str, Any], flaw: dict[str, Any] | None) -> str:
+    """The hidden answer, published at the very bottom and nowhere else.
+
+    Shared with ``artifacts_full`` so the two documents cannot disagree about what the
+    answer was. Placement is the whole design: a reader who knows the label before
+    reading the arguments can only tell whether they agree with the decision, not
+    whether the record was legible enough to check it. So no verdict, ruling or step
+    anywhere above is marked correct or incorrect — the reader decides first, then
+    scrolls.
     """
-    if not any(body.strip() for _, body in bodies):
-        return ""
-    lines = ["## Private reasoning", "",
-             "*Not shown to anyone during the decision — neither the judge, the other "
-             "participant, nor the challenger. Published afterwards.*", ""]
-    for label, body in bodies:
-        if body.strip():
-            lines += [f"**{label}:**", "", _quote(body), ""]
+    label = verdict_for(item["gold_flawed"])
+    lines = [
+        "## Ground truth", "",
+        "*Shown to nobody who took part — not a debater, a reviewer, the judge or the "
+        "challenger — and deliberately placed last, appearing nowhere else above, so "
+        "that this record can be read the way they read it. Decide first, then look.*",
+        "",
+        f"- **Gold label:** {label} — {_VERDICT_PHRASE.get(label, label)}.",
+        f"- **`label_basis`:** {item.get('label_basis', 'unrecorded')}",
+        f"- **`label_reliable`:** "
+        f"{'yes' if item.get('label_reliable', True) else 'no'}",
+    ]
+    if flaw is None:
+        lines += ["", "*No flaw annotation accompanies this record.*", ""]
+        return "\n".join(lines)
+
+    lines += [
+        f"- **Flaw location:** {flaw.get('flaw_location') or '(none given)'}",
+        f"- **Annotation quality:** {flaw.get('annotation_quality', 'none')}",
+        f"- **Origin:** {flaw.get('origin', 'unrecorded')}",
+        "",
+    ]
+    annotation = (flaw.get("annotation") or "").strip()
+    if annotation:
+        lines += ["**What the dataset says is wrong:**", "", _quote(annotation), ""]
+    else:
+        lines += ["*The dataset described no flaw beyond its location.*", ""]
     return "\n".join(lines)
 
 
@@ -158,16 +201,8 @@ def render_run_record(directory: Path) -> str:
     else:
         parts.append("## The decision\n\n*No verdict was reached.*\n")
 
-    private: list[tuple[str, str]] = []
-    if transcript is not None:
-        private = [(f"{t['speaker']}, round {t['round']}", t.get("thinking", ""))
-                   for t in transcript.get("turns", [])]
-    elif trace is not None:
-        private = [(f"Step {s['index']} ({s['stage']})", s.get("thinking", ""))
-                   for s in trace.get("steps", [])]
-    section = _private_section(private)
-    if section:
-        parts.append(section)
+    parts.append(_PRIVATE_POINTER)
+    parts.append(ground_truth_section(item, _read(directory, "flaw.json")))
     return "\n".join(parts).rstrip() + "\n"
 
 
@@ -230,5 +265,14 @@ def render_recourse_record(directory: Path) -> str:
                   _quote(comprehension.get("justification", "")), "",
                   "*Self-reported, and a weak proxy: it measures willingness to claim "
                   "comprehension as much as comprehension itself.*", ""]
+
+    parts.append(_PRIVATE_POINTER)
+    # The annotation lives with the decision, not with the contest, so it is read out
+    # of the copied parent — and its absence is stated rather than left to look like
+    # an item that simply had none.
+    parts.append(ground_truth_section(item, _read(directory, "parent/flaw.json")))
+    if not (directory / "parent").is_dir():
+        parts.append("*The decision's own directory was not copied into this contest, "
+                     "so any flaw annotation it carried is not reproduced here.*\n")
 
     return "\n".join(parts).rstrip() + "\n"

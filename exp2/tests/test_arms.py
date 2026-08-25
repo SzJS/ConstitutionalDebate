@@ -74,20 +74,41 @@ async def test_the_conversation_grows_rather_than_being_rebuilt():
         assert later[: len(earlier)] == earlier
 
 
-async def test_the_critique_stage_spends_no_repair_attempt():
-    """It has no decision line to get wrong, and the one repair belongs to stages that
-    do. A critique whose public section cannot be located is withheld, not published."""
+async def test_a_critique_gets_one_repair_and_is_withheld_only_after_it():
+    """Withholding loses a step of the published record, so it is the last resort and
+    not the first: the critique spends the same one repair a deciding stage spends."""
     from exp2.arms import WITHHELD
 
-    client = FakeClient(replies={("critic", "critique"): "no labels at all"})
+    clean, _ = await decide("self_critique")
+    client = FakeClient(replies={("critic", "critique"): "no labels at all",
+                                 ("critic", "repair"): "no labels this time either"})
     result, _ = await decide("self_critique", client=client)
     critique_steps = [s for s in result.trace.all_steps() if s.stage == "critique"]
     assert critique_steps
     assert all(s.parse_mode == "unparsed_withheld" for s in critique_steps)
-    assert all(s.repair_attempts == 0 for s in critique_steps)
+    assert all(s.repair_attempts == 1 for s in critique_steps)
     assert all(s.text == WITHHELD for s in critique_steps)
     # the generation itself is not lost — it is still in the record
-    assert all("no labels at all" in s.raw for s in critique_steps)
+    assert all("no labels this time either" in s.raw for s in critique_steps)
+    # and the repair's two extra turns are in the conversation, as for any repair
+    assert len(result.messages) == len(clean.messages) + 2 * len(critique_steps)
+
+
+async def test_a_critique_that_wrote_only_a_thinking_block_is_repaired_into_the_record():
+    """The pilot's real failure: every critique came back as one ``Thinking:`` block
+    with no ``Reasoning:`` label, so every self_critique record showed a placeholder
+    where the criticism should be."""
+    client = FakeClient(replies={
+        ("critic", "critique"): "Thinking: the draft trusted step 2 without checking it.",
+        ("critic", "repair"): ("Thinking: rewriting as asked.\n"
+                               "Reasoning: my draft took step 2 on trust."),
+    })
+    result, _ = await decide("self_critique", client=client)
+    critique_steps = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert critique_steps
+    assert all(s.text == "my draft took step 2 on trust." for s in critique_steps)
+    assert all(s.repair_attempts == 1 for s in critique_steps)
+    assert "repair" in client.purposes("critic")
 
 
 async def test_a_critiques_private_thinking_is_never_published():

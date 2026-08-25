@@ -32,6 +32,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from .arms import _split_solo
 from .client import ChatClient
 from .config import DebateConfig
 from .engine import _complete_with_repair
@@ -182,6 +183,20 @@ async def _rule_by_judge(
     )
 
 
+def _parse_solo_ruling(text: str) -> tuple[str, str, str]:
+    """``(verdict, grounds, parse_mode)`` for a re-decision made in the conversation.
+
+    The reply is in the solo two-section format, so it is split like any other solo
+    step: ``parse_verdict_output`` alone would take everything before the verdict line
+    as the grounds, ``Thinking:`` block included, and the readable record publishes the
+    grounds. The verdict line is then taken off the grounds the way the recourse
+    judge's ruling line is, so both forms' grounds are the same kind of text.
+    """
+    _, reasoning, parse_mode = _split_solo(text)
+    word, grounds, _ = parse_verdict_output(reasoning)
+    return word, grounds, parse_mode
+
+
 async def _rule_in_conversation(
     record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient
 ) -> Ruling:
@@ -204,7 +219,7 @@ async def _rule_in_conversation(
             temperature=config.debater_temperature, config=config,
             meta={"role": "recourse_solo", "speaker": None, "round": None,
                   "purpose": "rule"},
-            parse=parse_verdict_output, role="recourse_solo",
+            parse=_parse_solo_ruling, role="recourse_solo",
             word_limit=config.word_limit,
         )
     )
