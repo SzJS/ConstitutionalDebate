@@ -290,7 +290,7 @@ Thinking:
 <your private working; not published>
 
 Reasoning:
-<your published reasoning, ending with the verdict line when one is asked for>
+<the part of your response that is published; every response has one>
 """)
 
 SOLO_USER = """\
@@ -323,8 +323,9 @@ FLAWED means the text under review contains a flaw. SOUND means it does not."""
 
 SOLO_CRITIQUE_INSTRUCTION = """\
 Now criticise your own assessment above. Where might it be wrong? What did it fail to \
-check, misread, or take on trust? Be concrete and quote what you are criticising. Do \
-not give a verdict in this response."""
+check, misread, or take on trust? Be concrete and quote what you are criticising. Under \
+Reasoning, give the criticism itself; it is published as part of the record. Do not \
+give a verdict in this response."""
 
 SOLO_REVISION_INSTRUCTION = """\
 Now revise your assessment in light of that criticism. Keep what survived it and change \
@@ -342,6 +343,18 @@ Thinking:
 
 Reasoning:
 <your published reasoning, ending with the verdict line>"""
+
+SOLO_CRITIQUE_REPAIR = """\
+Your previous response could not be parsed. Reply again with exactly two labelled \
+sections, putting the criticism itself under Reasoning:
+
+Thinking:
+<your private working>
+
+Reasoning:
+<the criticism, which is published>
+
+Do not give a verdict in this response."""
 
 
 # --------------------------------------------------------------------------- #
@@ -912,6 +925,7 @@ REPAIR_INSTRUCTIONS = {
     "recourse_judge": RECOURSE_JUDGE_REPAIR,
     "solo": SOLO_REPAIR,
     "recourse_solo": SOLO_REPAIR,
+    "critic": SOLO_CRITIQUE_REPAIR,
     "challenger": CHALLENGER_REPAIR,
     "comprehension": COMPREHENSION_REPAIR,
     "grader": GRADER_REPAIR,

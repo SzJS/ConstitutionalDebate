@@ -14,6 +14,7 @@ from helpers import SECRET_THINKING, full_transcript, make_config, make_item, ma
 from exp2.prompts import (
     FLAW_DEFINITION,
     FLAW_PHRASE,
+    SOLO_CRITIQUE_INSTRUCTION,
     SOUND_PHRASE,
     MalformedOutputError,
     build_challenger_messages,
@@ -495,6 +496,15 @@ def test_each_role_gets_its_own_repair_instruction():
     assert "Comprehension:" in repair_instruction_for("comprehension", 400)
     with pytest.raises(ValueError):
         repair_instruction_for("nobody", 400)
+
+
+def test_a_critique_is_repaired_towards_reasoning_and_away_from_a_verdict():
+    """A critique repaired with the solo instruction would be asked for the verdict line
+    its own instruction forbids, burning the one attempt on a contradiction."""
+    instruction = repair_instruction_for("critic", 400)
+    assert "Reasoning:" in instruction
+    assert "Verdict" not in instruction
+    assert "Under Reasoning, give the criticism itself" in SOLO_CRITIQUE_INSTRUCTION
 
 
 def test_repair_messages_replay_the_bad_output_so_the_model_can_see_it():
