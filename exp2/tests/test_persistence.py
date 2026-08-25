@@ -8,32 +8,10 @@ import json
 import pytest
 from conftest import SOLO_THINKING, FakeClient
 from helpers import SECRET_THINKING, make_config, make_item, make_sides
+from recording import client_config, recorded
 
-from exp2.arms import DECIDERS
-from exp2.config import ClientConfig
 from exp2.persistence import RunWriter, load_flaw, load_run_record, tree_sha256
 from exp2.types import FLAWED, FlawAnnotation
-
-
-def client_config(**kw) -> ClientConfig:
-    base = dict(base_url="https://x/api", max_concurrency=4, max_attempts=3,
-                backoff_base_s=1.0, backoff_cap_s=5.0, connect_timeout_s=5.0,
-                read_timeout_s=30.0, run_timeout_s=300.0)
-    base.update(kw)
-    return ClientConfig(**base)
-
-
-async def recorded(tmp_path, condition, *, client=None, item=None, flaw=None):
-    item = item or make_item()
-    writer = RunWriter.create(
-        root=tmp_path, item=item, sides=make_sides(), config=make_config(),
-        client_config=client_config(), condition=condition, flaw=flaw,
-    )
-    result = await DECIDERS[condition](
-        item, make_config(), make_sides(), client or FakeClient(), writer=writer
-    )
-    writer.finish("completed")
-    return writer, result
 
 
 # --- layout --------------------------------------------------------------------------

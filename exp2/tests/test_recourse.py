@@ -4,41 +4,12 @@ from __future__ import annotations
 
 import pytest
 from conftest import SOLO_THINKING, FakeClient
-from helpers import make_config, make_item, make_sides
+from helpers import make_config
+from recording import contest, decided
 
 from exp2.arms import DECIDERS
-from exp2.config import ClientConfig
-from exp2.persistence import RunWriter, load_run_record
 from exp2.recourse import RECOURSERS, run_recourse
 from exp2.types import FLAWED, SOUND
-
-
-def client_config():
-    return ClientConfig(base_url="https://x/api", max_concurrency=4, max_attempts=3,
-                        backoff_base_s=1.0, backoff_cap_s=5.0, connect_timeout_s=5.0,
-                        read_timeout_s=30.0, run_timeout_s=300.0)
-
-
-async def decided(tmp_path, condition, *, client=None):
-    """A completed decision on disk, ready to be contested."""
-    item, config, sides = make_item(), make_config(), make_sides()
-    writer = RunWriter.create(root=tmp_path / "d", item=item, sides=sides, config=config,
-                              client_config=client_config(), condition=condition)
-    await DECIDERS[condition](item, config, sides, client or FakeClient(), writer=writer)
-    writer.finish("completed")
-    return load_run_record(writer.dir)
-
-
-async def contest(tmp_path, condition, *, client=None, rule=True):
-    record = await decided(tmp_path, condition)
-    client = client or FakeClient()
-    writer = RunWriter.create_recourse(
-        root=tmp_path / "c", parent_dir=record.directory, item=record.item,
-        sides=record.sides, config=record.config, client_config=client_config(),
-        condition=condition)
-    outcome = await run_recourse(record, make_config(), client, rule=rule, writer=writer)
-    writer.finish("completed")
-    return outcome, client, writer, record
 
 
 # --- the two mechanisms --------------------------------------------------------------

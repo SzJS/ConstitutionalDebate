@@ -56,10 +56,12 @@ class FakeClient:
     """A ``ChatClient`` that answers from a script instead of the network."""
 
     def __init__(self, *, replies: dict[Any, str] | None = None,
-                 fail_on: dict[Any, str] | None = None, sink=None):
+                 fail_on: dict[Any, str] | None = None, sink=None,
+                 native_reasoning: str = ""):
         self.replies = dict(replies or {})
         self.fail_on = dict(fail_on or {})
         self.sink = sink
+        self.native_reasoning = native_reasoning
         self.calls: list[dict[str, Any]] = []
         self.in_flight = 0
         self.max_in_flight = 0
@@ -96,6 +98,11 @@ class FakeClient:
             self.calls.append({"model": model, "messages": messages, "meta": dict(meta)})
             key = self.key(meta)
             failure = self.fail_on.get(key)
+            request = self._request_body(
+                model=model, messages=messages, temperature=temperature,
+                max_tokens=max_tokens, reasoning_effort=reasoning_effort,
+                frequency_penalty=frequency_penalty,
+            )
             # A repair must be able to succeed, or the repair path cannot be tested.
             if failure and meta.get("purpose") != "repair":
                 if failure == "http_error":
@@ -103,24 +110,68 @@ class FakeClient:
                 if failure == "fatal":
                     raise FatalError("injected", status=400)
                 if failure == "truncated":
-                    return self._completion("cut off mid-sen", finish_reason="length")
+                    return await self._deliver("cut off mid-sen", request, meta,
+                                               finish_reason="length")
                 if failure == "malformed":
-                    return self._completion("no labels here at all")
-            completion = self._completion(self.reply_for(meta))
-            if self.sink is not None:
-                await self.sink({"call_id": completion.call_id, "attempt": 1,
-                                 "status": 200, "request_body": {"model": model},
-                                 "response_body": {}, "usage": {"cost": 0.0},
-                                 **meta})
-            return completion
+                    return await self._deliver("no labels here at all", request, meta)
+            return await self._deliver(self.reply_for(meta), request, meta)
         finally:
             self.in_flight -= 1
+
+    @staticmethod
+    def _request_body(*, model: str, messages: list[dict[str, str]],
+                      temperature: float, max_tokens: int, reasoning_effort: str,
+                      frequency_penalty: float) -> dict[str, Any]:
+        """The body ``OpenRouterClient._build_body`` would have put on the wire.
+
+        A renderer that reads ``calls.jsonl`` reads the request, so the fake's log
+        has to carry the same fields — including the zero ``frequency_penalty``
+        that the real client deliberately omits.
+        """
+        body: dict[str, Any] = {
+            "model": model, "messages": messages, "temperature": temperature,
+            "max_tokens": max_tokens, "usage": {"include": True},
+        }
+        if frequency_penalty:
+            body["frequency_penalty"] = frequency_penalty
+        body["reasoning"] = ({"enabled": False} if reasoning_effort == "off"
+                             else {"effort": reasoning_effort})
+        return body
+
+    async def _deliver(self, content: str, request: dict[str, Any],
+                       meta: dict[str, Any], *,
+                       finish_reason: str = "stop") -> Completion:
+        """Return a completion, logging it as the real client logs an attempt.
+
+        Malformed and truncated replies are logged too: they are generations that
+        a run paid for, and the wire log is where they have to be findable.
+        """
+        completion = self._completion(content, finish_reason=finish_reason)
+        if self.sink is not None:
+            await self.sink({
+                "call_id": completion.call_id, "attempt": 1, "status": 200,
+                "request_body": request,
+                "latency_ms": 0,
+                "response_body": {
+                    "model": completion.model, "provider": completion.provider,
+                    "choices": [{
+                        "finish_reason": finish_reason,
+                        "message": {"role": "assistant", "content": content,
+                                    "reasoning": completion.reasoning or None},
+                    }],
+                },
+                "finish_reason": finish_reason,
+                "has_native_reasoning": completion.has_native_reasoning,
+                "usage": {"cost": 0.0},
+                **meta,
+            })
+        return completion
 
     def _completion(self, content: str, *, finish_reason: str = "stop") -> Completion:
         return Completion(
             call_id=f"call-{len(self.calls)}", content=content,
             finish_reason=finish_reason, model="fake/model", provider="fake",
-            reasoning="", usage={"cost": 0.0},
+            reasoning=self.native_reasoning, usage={"cost": 0.0},
         )
 
     # --- assertions tests reach for -------------------------------------------------
