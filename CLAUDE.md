@@ -39,7 +39,11 @@ Do NOT modify DESIGN.md on your own. Use LLM_NOTES.md instead. However, when you
 **Test every step.**
 - Where applicable, whenever you implement a new feature, test it immmediately - do not wait until
   you have finished unrelated follow-up steps.
-  - A part of testing (when appropriate) is to have me - the user - verify the transcripts.  
+  - A part of testing (when appropriate) is to have me - the user - verify the transcripts.
+**Have Opus do the implementation.**
+- My workflow is to use Fable, an expensive model, for planning and Opus, a cheaper, but still
+  capable model for executing the plans. Therefore, all plans should spawn an Opus subagent to
+  execute the plan.
 
 # Choosing models
 
