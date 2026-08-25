@@ -51,6 +51,15 @@ async def test_a_solo_contest_replays_the_recorded_conversation(tmp_path):
     assert sent[-1]["role"] == "user"
 
 
+async def test_a_solo_rulings_grounds_exclude_the_deciders_private_thinking(tmp_path):
+    """The ruling is a solo-format reply, so everything before the verdict line is the
+    Thinking block as well as the reasoning. Publishing that as "Grounds given" would
+    leak exactly what the two-section protocol exists to contain."""
+    outcome, _, writer, _ = await contest(tmp_path, "single")
+    assert outcome.ruling.reasoning == "I was wrong."
+    assert "reconsidering" not in (writer.dir / "transcript.md").read_text()
+
+
 async def test_a_solo_contest_without_a_conversation_is_refused(tmp_path):
     record = await decided(tmp_path, "single")
     stripped = type(record)(**{**record.__dict__, "messages": None})
