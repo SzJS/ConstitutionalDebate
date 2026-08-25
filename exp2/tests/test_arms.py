@@ -158,6 +158,82 @@ THINKING_ONLY_SOLO = (
 )
 # What the aimed instruction asks for, and what the parser accepts from it.
 PUBLIC_ONLY_SOLO = "Reasoning: The sentence misstates the rule.\n\nVerdict: FLAWED"
+
+
+# --- the scar a repair used to leave ---------------------------------------------------
+#
+# "Do not write a Thinking section" stayed in a solo conversation and the model kept
+# obeying it: `salvaged_no_thinking` ran at 4.8% across pilot 2's original decisions and
+# 51.0% in its retry pass. Not a leak — nothing marked private was published, because
+# nothing was marked private — but those cells' records are a different kind of document
+# from the rest, and it is a confound between the retried cells and the others. Two
+# things fix it: the instruction scopes itself, and the next turn restates the format.
+
+
+async def test_the_aimed_repair_scopes_itself_to_the_one_reply():
+    client = FakeClient(fail_on={("solo", "draft"): "malformed"},
+                        malformed_content=THINKING_ONLY_SOLO)
+    await decide("self_critique", client=client)
+    repair = client.calls[1]["messages"][-1]["content"]
+    assert repair.startswith("For this reply only, do not write a Thinking section.")
+
+
+async def test_the_next_stage_restates_the_format_only_after_a_repair():
+    """Conditional, so an unrepaired run's prompts are byte-identical to what they
+    were: an unconditional reminder would change every solo conversation in the
+    experiment to fix something that happens in a fifth of them."""
+    from exp2.prompts import REPAIR_CARRYOVER_PREFIX
+
+    clean = FakeClient()
+    await decide("self_critique", client=clean)
+    assert not any(REPAIR_CARRYOVER_PREFIX in m["content"]
+                   for call in clean.calls for m in call["messages"])
+
+    client = FakeClient(fail_on={("solo", "draft"): "malformed"},
+                        malformed_content=THINKING_ONLY_SOLO)
+    await decide("self_critique", client=client)
+    critique = client.sent_to("critic")[-1]["content"]
+    assert critique.startswith(REPAIR_CARRYOVER_PREFIX)
+    # and it must not fight the critique instruction, which forbids a verdict
+    assert "Do not give a verdict in this response." in critique
+    assert "Verdict:" not in REPAIR_CARRYOVER_PREFIX
+
+
+async def test_a_conversation_that_spent_a_repair_is_detectable_from_its_messages():
+    """The contest replays `conversation.json` and that file is the only record of what
+    was said, so the detector reads the messages rather than a counter."""
+    from exp2.prompts import conversation_spent_a_repair
+
+    clean, _ = await decide("single")
+    assert conversation_spent_a_repair(clean.messages) is False
+
+    client = FakeClient(fail_on={("solo", "answer"): "malformed"},
+                        malformed_content=THINKING_ONLY_SOLO)
+    repaired, _ = await decide("single", client=client)
+    assert conversation_spent_a_repair(repaired.messages) is True
+
+
+def test_every_repair_template_is_detected_by_the_carryover_check():
+    """If a template were added without a marker the recourse replay would silently
+    stop restating the format on the runs that need it most."""
+    from exp2.prompts import (
+        REPAIR_INSTRUCTIONS,
+        budget_repair_instruction,
+        conversation_spent_a_repair,
+        repair_instruction_for,
+    )
+
+    texts = [repair_instruction_for(role, 400) for role in REPAIR_INSTRUCTIONS]
+    texts += [repair_instruction_for(role, 400, kind)
+              for role in ("solo", "critic", "debater", "challenger", "recourse_solo")
+              for kind in ("no_public_label", "label_not_at_line_start",
+                           "private_label_in_public", "xml_tag")]
+    texts.append(budget_repair_instruction("Reasoning", 400))
+    for text in texts:
+        assert conversation_spent_a_repair([{"role": "user", "content": text}]), text
+    # and it does not fire on an ordinary turn
+    assert not conversation_spent_a_repair(
+        [{"role": "user", "content": "Now criticise your own assessment above."}])
 PUBLIC_ONLY_ARGUMENT = "Argument: Alice argues the step is wrong."
 
 

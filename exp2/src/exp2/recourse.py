@@ -42,6 +42,7 @@ from .prompts import (
     build_comprehension_messages,
     build_recourse_judge_messages,
     build_solo_recourse_message,
+    conversation_spent_a_repair,
     marks_private_text,
     parse_agreement_output,
     parse_comprehension_output,
@@ -324,7 +325,18 @@ async def _rule_in_conversation(
             f"{record.directory.name}: no conversation.json to contest; the solo "
             "contest replays the conversation that produced the decision"
         )
-    messages = [*record.messages, build_solo_recourse_message(record.sides, challenge.text)]
+    # The conversation is replayed verbatim, so a repair's correction is still in
+    # context. `conversation_spent_a_repair` reads that off the messages themselves,
+    # which is the only record of what was said, and the appended turn then restates the
+    # two-section format. This call is the one that produces `changed_the_decision`, and
+    # `single` has one stage, so nothing else can reach it.
+    messages = [
+        *record.messages,
+        build_solo_recourse_message(
+            record.sides, challenge.text,
+            after_repair=conversation_spent_a_repair(record.messages),
+        ),
+    ]
     (word, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=config.debater_model, messages=messages,

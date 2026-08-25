@@ -51,6 +51,35 @@ async def test_a_solo_contest_replays_the_recorded_conversation(tmp_path):
     assert sent[-1]["role"] == "user"
 
 
+async def test_the_recourse_replay_restates_the_format_after_a_repaired_decision(tmp_path):
+    """The path where the scar mattered most. `_rule_in_conversation` replays the
+    conversation verbatim, so a repair's "do not write a Thinking section" is still in
+    context — and this call is the one that produces `changed_the_decision`. `single`
+    has one stage, so no next-stage reminder can ever reach it."""
+    from exp2.prompts import REPAIR_CARRYOVER_PREFIX
+
+    decider = FakeClient(
+        fail_on={("solo", "answer"): "malformed"},
+        malformed_content=("Thinking:\nEverything filed here, verdict and all.\n\n"
+                           "Verdict: FLAWED"),
+    )
+    _, client, _, _ = await contest(tmp_path, "single", decider=decider)
+    appended = client.sent_to("recourse_solo")[-1]["content"]
+    assert appended.startswith(REPAIR_CARRYOVER_PREFIX)
+    assert "A stakeholder has read your published reasoning" in appended
+
+
+async def test_the_recourse_replay_is_byte_identical_when_no_repair_happened(tmp_path):
+    """Conditional, or every solo contest in the experiment changes to fix a thing that
+    happens in a fifth of them."""
+    from exp2.prompts import REPAIR_CARRYOVER_PREFIX
+
+    _, client, _, _ = await contest(tmp_path, "single")
+    appended = client.sent_to("recourse_solo")[-1]["content"]
+    assert REPAIR_CARRYOVER_PREFIX not in appended
+    assert appended.startswith("A stakeholder has read your published reasoning")
+
+
 async def test_a_solo_rulings_grounds_exclude_the_deciders_private_thinking(tmp_path):
     """The ruling is a solo-format reply, so everything before the verdict line is the
     Thinking block as well as the reasoning. Publishing that as "Grounds given" would

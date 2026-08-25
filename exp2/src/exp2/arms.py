@@ -22,6 +22,7 @@ from .client import ChatClient
 from .config import DebateConfig
 from .engine import _complete_with_repair
 from .prompts import (
+    REPAIR_CARRYOVER_PREFIX,
     build_solo_opening,
     parse_debater_output,
     parse_verdict_output,
@@ -109,11 +110,21 @@ async def _run_solo(
     trace = Trace()
     last_verdict: str | None = None
     last: Step | None = None
+    # Whether any earlier stage of THIS conversation spent a repair. A repair's
+    # correction stays in context — the conversation carries every turn forward — and
+    # pilot 2 measured the model obeying "do not write a Thinking section" for the rest
+    # of the run: `salvaged_no_thinking` at 4.8% in the original pass and 51.0% in the
+    # retry pass. The instruction now scopes itself ("For this reply only"); this is the
+    # belt to that brace, and it is conditional so that an unrepaired run's prompts are
+    # byte-identical to what they were.
+    spent_a_repair = False
 
     for index, stage in enumerate(stages, start=1):
         if index > 1:
+            prefix = REPAIR_CARRYOVER_PREFIX if spent_a_repair else ""
             messages = [*messages,
-                        {"role": "user", "content": solo_stage_instruction(stage, sides)}]
+                        {"role": "user",
+                         "content": prefix + solo_stage_instruction(stage, sides)}]
 
         if stage == "critique":
             # A critique has no decision line, but it does have a published section, and
@@ -148,6 +159,7 @@ async def _run_solo(
         # the malformed reply and the correction. Taking it rather than ``messages`` is
         # what keeps the conversation a true record.
         messages = sent
+        spent_a_repair = spent_a_repair or repairs > 0
 
         messages = [*messages, {"role": "assistant", "content": completion.content}]
         last = Step(

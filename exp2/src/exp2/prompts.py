@@ -1006,11 +1006,21 @@ def build_recourse_judge_messages(
     ]
 
 
-def build_solo_recourse_message(sides: Sides, objection: str) -> dict[str, str]:
-    """The one user turn appended to a solo condition's own conversation."""
+def build_solo_recourse_message(
+    sides: Sides, objection: str, *, after_repair: bool = False
+) -> dict[str, str]:
+    """The one user turn appended to a solo condition's own conversation.
+
+    ``after_repair`` restates the two-section format, and this is the turn that most
+    needs it: the conversation is replayed verbatim, so a repair's "do not write a
+    Thinking section" is still in context, and this call is the one that produces
+    `changed_the_decision`. Conditional, so an unrepaired conversation gets exactly the
+    turn it got before.
+    """
+    prefix = REPAIR_CARRYOVER_PREFIX if after_repair else ""
     return {
         "role": "user",
-        "content": SOLO_RECOURSE_USER.format(
+        "content": prefix + SOLO_RECOURSE_USER.format(
             objection=neutralise_tags(objection),
             first=sides.verdict_order[0],
             second=sides.verdict_order[1],
@@ -1110,15 +1120,70 @@ REPAIR_CLOSINGS = {
     "critic": "Do not give a verdict in this response.",
 }
 
+# Both begin "For this reply only", and that clause is load-bearing rather than
+# decorative. The solo conditions hold a real conversation, so a repair's correction
+# stays in context for every later turn — and pilot 2 measured the model obeying it:
+# `salvaged_no_thinking` ran at 4.8% across the original decisions and **51.0%** in the
+# retry pass, i.e. every solo run that spent a repair returned no Thinking section for
+# the rest of its life. That is not a leak (nothing marked private was published,
+# because nothing was marked private), but those cells' records are a different kind of
+# document from the rest, and the path where it matters most is the recourse replay:
+# `_rule_in_conversation` replays the conversation verbatim and appends one turn, and
+# that call is what produces `changed_the_decision`. `single` has one stage, so no
+# "next stage" reminder can ever reach it. Scoping the request at the source is the fix
+# that reaches all three.
 NO_PUBLIC_LABEL_REPAIR = """\
-Your previous response had only a Thinking section, so none of it can be published. \
-Reply now with **only** the {label} section: begin your reply with the line \
-`{label}:` and do not write a Thinking section. {closing}"""
+For this reply only, do not write a Thinking section. Your previous response had only \
+a Thinking section, so none of it can be published. Reply now with **only** the \
+{label} section: begin your reply with the line `{label}:`. {closing}"""
 
 MISPLACED_LABEL_REPAIR = """\
-Your previous response could not be parsed: the {label} section must begin on its own \
-line with `{label}:` and must not contain the word `Thinking:` anywhere after it. \
-Reply now with **only** the {label} section. {closing}"""
+For this reply only, do not write a Thinking section. Your previous response could not \
+be parsed: the {label} section must begin on its own line with `{label}:` and must not \
+contain the word `Thinking:` anywhere after it. Reply now with **only** the {label} \
+section. {closing}"""
+
+# Belt to those braces, for the conversations that already carry a repair turn. The
+# reworded instruction scopes itself, but a model that has just been told to write one
+# section may keep writing one anyway, so the next turn says plainly what the format is.
+# Applied **only** after a repair, so an unrepaired run's prompts are byte-identical to
+# what they were: an unconditional reminder would change every solo conversation in the
+# experiment to fix a thing that happens in a fifth of them.
+#
+# Deliberately verdict-neutral. It is prefixed to `SOLO_CRITIQUE_INSTRUCTION` among
+# others, which ends "Do not give a verdict in this response", and a reminder that
+# mentioned the verdict line would contradict it.
+REPAIR_CARRYOVER_PREFIX = (
+    "Write both sections again for this response — `Thinking:` first, then "
+    "`Reasoning:`.\n\n"
+)
+
+# The user turns a repair adds, by their opening words. Used to detect a repair in a
+# conversation replayed from disk, where the repair count is not recorded turn by turn —
+# only the messages are, which is the point of `conversation.json` being what actually
+# happened.
+_REPAIR_TURN_MARKERS: tuple[str, ...] = (
+    "For this reply only, do not write a Thinking section.",
+    "Your previous response could not be parsed",
+    "Your previous response had only a Thinking section",
+    "You ran out of budget before writing",
+)
+
+
+def conversation_spent_a_repair(messages: Sequence[dict[str, str]]) -> bool:
+    """Whether a recorded conversation contains a format or budget repair turn.
+
+    Read off the messages rather than off a counter because the contest replays
+    `conversation.json` and that file is the only record of what was said. Matching on
+    the instruction's own opening words keeps the detector and the instruction in one
+    module; a test asserts every repair template is detected by it.
+    """
+    return any(
+        message.get("role") == "user"
+        and any(marker in (message.get("content") or "")
+                for marker in _REPAIR_TURN_MARKERS)
+        for message in messages
+    )
 
 # Shapes with no aimed instruction fall through to the role's own template, which is
 # what was sent before this existed. `empty_public`, `no_labels_at_all` and

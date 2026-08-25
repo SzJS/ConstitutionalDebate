@@ -48,19 +48,25 @@ async def recorded(tmp_path, condition, *, client=None, item=None, flaw=None):
     return writer, result
 
 
-async def decided(tmp_path, condition, *, client=None):
-    """A completed decision on disk, ready to be contested."""
+async def decided(tmp_path, condition, *, client=None, decider=None):
+    """A completed decision on disk, ready to be contested.
+
+    ``decider`` is a separate client from the one the contest will use, so a test can
+    make the DECISION spend a repair and then watch what the contest does with the
+    conversation that repair left behind.
+    """
     item, config, sides = make_item(), make_config(), make_sides()
     writer = RunWriter.create(root=tmp_path / "d", item=item, sides=sides, config=config,
                               client_config=client_config(), condition=condition)
-    client = _sink_into(client or FakeClient(), writer)
+    client = _sink_into(decider or client or FakeClient(), writer)
     await DECIDERS[condition](item, config, sides, client, writer=writer)
     writer.finish("completed")
     return load_run_record(writer.dir)
 
 
-async def contest(tmp_path, condition, *, client=None, rule=True, config=None):
-    record = await decided(tmp_path, condition)
+async def contest(tmp_path, condition, *, client=None, rule=True, config=None,
+                  decider=None):
+    record = await decided(tmp_path, condition, decider=decider)
     writer = RunWriter.create_recourse(
         root=tmp_path / "c", parent_dir=record.directory, item=record.item,
         sides=record.sides, config=record.config, client_config=client_config(),
