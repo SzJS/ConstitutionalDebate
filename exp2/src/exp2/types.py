@@ -41,9 +41,11 @@ EMPTY_TRANSCRIPT = "[This is the first round; no arguments have been made yet.]"
 # both, because they are the same proposition: a debater argues for a verdict.
 #
 # The words are FLAWED/SOUND rather than YES/NO deliberately. The challenger's decision
-# line is "Objection: RAISED|NONE" and a transcript quotes both; if the judge's line
+# line is "Decision: STANDS|REVERSE" and a transcript quotes both; if the judge's line
 # were "Verdict: YES|NO" a reader scanning the document would meet two unrelated
-# yes/no decisions, and a mis-parse of one would look exactly like the other.
+# yes/no decisions, and a mis-parse of one would look exactly like the other. The same
+# reasoning is why the challenger's line shares no word with the verdict's: it did until
+# 2026-08-25, and the challenger used SOUND for both propositions (LLM_NOTES §3n).
 FLAWED = "FLAWED"
 SOUND = "SOUND"
 VERDICTS: tuple[str, ...] = (FLAWED, SOUND)
@@ -788,44 +790,66 @@ class DebateResult:
 # recourse
 # --------------------------------------------------------------------------- #
 #
-# What a challenger did, in four kinds. ``Challenge.raised`` keeps its literal meaning —
-# the model wrote the word RAISED — and every *gate* in the pipeline reads ``stance``
-# instead, because the pilot proved that the word alone does not say which way the
-# challenger went.
+# What a challenger did, in three kinds. ``Challenge.raised`` keeps its literal
+# meaning — the model asked for the decision to be reversed — and every *gate* in the
+# pipeline reads ``stance``, because two earlier instructions proved that a word alone
+# does not say which way the challenger went.
 #
-#   contests   RAISED, and the verdict it says the decision should have reached is not
-#              the verdict the decision reached. The only stance that seeks a ruling.
-#   agrees     RAISED, but the verdict it names is the one already given. The pilot's
-#              modal outcome (roughly 46 of its 51 raised objections): under the old
-#              instruction, "the decision rests on an error" was true of every FLAWED
-#              verdict, so agreeing and raising were the same act. No ruling is sought;
-#              a recourse judge asked to rule on an objection that agrees with the
-#              decision is being asked nothing.
-#   declined   NONE. A recorded judgement that the decision looks sound.
-#   unclear    RAISED with no parsable claimed verdict, after the one repair. Its own
-#              column: excluded from the rates, counted in coverage. It is NOT malformed
-#              — making it so would let the experiment's own subject role lose an entire
-#              contest to a DebateFailure, and the challenger's measured repair rate is
-#              0%.
+#   contests   `Decision: REVERSE`. The challenger says the verdict is wrong. The only
+#              stance that seeks a ruling.
+#   declined   `Decision: STANDS`. A recorded judgement that the decision looks sound.
+#   unclear    no parsable line, after the one repair. Its own column: excluded from the
+#              rates, counted in coverage. It is NOT malformed — making it so would let
+#              the experiment's own subject role lose an entire contest to a
+#              DebateFailure, and the challenger's measured repair rate is 0%.
+#
+# ``agrees`` is kept in the vocabulary and is now **unreachable**. It was the fourth
+# kind under the two-line instruction — RAISED beside a claimed verdict equal to the one
+# already given — and the single relative line cannot express it: a reply cannot both
+# ask for a reversal and name the verdict it is reversing to. The name survives so that
+# `challenge_agreed` stays a column that reads 0 rather than disappearing, which is a
+# different claim from a column that was never written. What replaced the detection is
+# the `agreement` stage, which reads the prose independently of the line.
 CHALLENGE_STANCES: tuple[str, ...] = ("contests", "agrees", "declined", "unclear")
 
+# The challenger's two words, stated relative to the decision.
+STANDS = "STANDS"
+REVERSE = "REVERSE"
+DECISION_WORDS: tuple[str, ...] = (STANDS, REVERSE)
 
-def challenge_stance(
-    *, raised: bool, claimed_verdict: str | None, decision_verdict: str
-) -> str:
-    """The stance, from the objection line and the verdict the challenger named.
 
-    A NONE that nonetheless names the *contrary* verdict is scored ``declined``: the
-    challenger was asked one question and answered it, and reading a contest into a
-    reply that says there is none would manufacture objections nobody made. The
-    contradiction is recorded on the challenge (``contradictory``) rather than resolved
-    here.
+def challenge_stance(word: str | None) -> str:
+    """The stance, from the one decision line.
+
+    ``None`` — no parsable line after the repair — is ``unclear``, which seeks no ruling
+    and is excluded from the rates rather than counted either way.
     """
-    if not raised:
-        return "declined"
-    if claimed_verdict is None:
+    if word is None:
         return "unclear"
-    return "agrees" if claimed_verdict == decision_verdict else "contests"
+    if word not in DECISION_WORDS:
+        raise ValueError(f"decision word must be one of {DECISION_WORDS}, got {word!r}")
+    return "contests" if word == REVERSE else "declined"
+
+
+def claimed_verdict_for(word: str | None, decision_verdict: str) -> str | None:
+    """The verdict the challenger is asking for, derived rather than stated.
+
+    Under the two-line instruction the challenger named this verdict itself, and named
+    it wrongly often enough to be the reason the instruction changed: SOUND meant "the
+    text is sound" and "the verdict is sound" in the same reply. REVERSE means the
+    complement of what was decided and STANDS means what was decided, with no word in
+    common between the two vocabularies and nothing for the challenger to translate.
+
+    ``None`` for ``unclear``: a reply whose direction could not be read is not asking
+    for either verdict, and defaulting it to one would manufacture a claim.
+    """
+    if word is None:
+        return None
+    if decision_verdict not in VERDICTS:
+        raise ValueError(
+            f"decision_verdict must be one of {VERDICTS}, got {decision_verdict!r}"
+        )
+    return complement(decision_verdict) if word == REVERSE else decision_verdict
 
 
 @dataclass(frozen=True)
@@ -851,16 +875,17 @@ class Challenge:
     # that a challenge written before this existed, and every supplied one,
     # loads as raised.
     raised: bool = True
-    # The verdict the challenger says the decision should have reached, and the stance
-    # that follows from comparing it with the verdict the decision did reach. ``raised``
-    # is the word the model wrote; ``stance`` is what the pipeline gates on. Empty means
-    # "derive from ``raised``", which is what a challenge written before this existed —
-    # or supplied from a file — loads as.
+    # The verdict the challenger is asking for, DERIVED from its decision line and the
+    # verdict under review (``claimed_verdict_for``) rather than stated by the model.
+    # ``raised`` is the direction it asked for; ``stance`` is what the pipeline gates on.
+    # Empty means "derive from ``raised``", which is what a challenge written before this
+    # existed — or supplied from a file — loads as.
     claimed_verdict: str | None = None
     stance: str = ""
-    # A reply that declined and yet named the contrary verdict. Scored ``declined``,
-    # recorded here, and worth counting: it is the shape that would show the two lines
-    # being answered independently of each other.
+    # A reply that declined and yet named the contrary verdict. Unreachable since
+    # 2026-08-25: there is one line and it cannot disagree with itself. The field stays
+    # so that the column reads 0 rather than vanishing, and so that pilot-2's records
+    # remain loadable.
     contradictory: bool = False
     source: str | None = None  # the path, when origin == "file"
     arm: str | None = None  # "grounded" | "specious" | "neutral" | "stakeholder"
@@ -890,7 +915,14 @@ class Challenge:
             raise ValueError(
                 f"stance must be one of {CHALLENGE_STANCES}, got {self.stance!r}"
             )
-        if self.raised != (self.stance in ("contests", "agrees", "unclear")):
+        # ``raised`` means exactly ``contests`` now. Under the two-line instruction it
+        # meant "the model wrote RAISED", which was also true of ``agrees`` and of
+        # ``unclear``; with one relative line there is no such reply — a challenge that
+        # could not be read is not a request for anything, so ``unclear`` carries
+        # raised=False. The consequence to know about: a challenge.json written before
+        # 2026-08-25 with stance "agrees" or "unclear" no longer loads, which is correct
+        # — those stances were recorded under an instrument this one does not implement.
+        if self.raised != (self.stance == "contests"):
             raise ValueError(
                 f"stance {self.stance!r} disagrees with raised={self.raised}"
             )
@@ -1041,6 +1073,86 @@ class RecourseResult:
     # Asked even on a decline: it is a question about the record's readability, not
     # about the objection.
     comprehension: "Comprehension | None" = None
+
+
+# --------------------------------------------------------------------------- #
+# the line-vs-prose instrument
+# --------------------------------------------------------------------------- #
+#
+# What a reader of the objection's PROSE says it argues, independently of the label the
+# challenger put at the top of it. The three values are the grader's, not the
+# challenger's: RIGHT / WRONG / NEITHER about the verdict under review.
+PROSE_STANCES: tuple[str, ...] = ("RIGHT", "WRONG", "NEITHER")
+
+# Which prose stance each decision word implies, so the agreement test is a table rather
+# than an inline comparison that can be inverted by a typo.
+_IMPLIED_PROSE = {REVERSE: "WRONG", STANDS: "RIGHT"}
+
+
+def line_prose_agree(word: str | None, prose_stance: str) -> bool | None:
+    """Whether the challenger's line and its own prose point the same way.
+
+    ``None`` when there is nothing to compare — an unreadable line, or prose that takes
+    no side. NEITHER is deliberately not folded into "disagrees": a response that raises
+    a doubt without arguing either way has not contradicted its label, it has failed to
+    support it, and those are different findings.
+    """
+    if word is None or prose_stance == "NEITHER":
+        return None
+    return _IMPLIED_PROSE[word] == prose_stance
+
+
+@dataclass(frozen=True)
+class Agreement:
+    """One grader reading of one objection's prose. Off the decision path, always.
+
+    Its whole reason for existing is that the challenger's line is a single relative
+    token and nothing mechanical can check it against what the challenger then wrote.
+    ``phantom_contest`` is the failure it was built to count: REVERSE at the top of a
+    response that goes on to argue the verdict was right.
+    """
+
+    prose_stance: str  # one of PROSE_STANCES
+    line_word: str | None  # the challenger's own word, copied for the cross-tab
+    reasoning: str
+    model: str
+    parse_mode: str
+    raw: str
+    call_id: str
+    finish_reason: str | None
+    repair_attempts: int = 0
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
+
+    def __post_init__(self) -> None:
+        if self.prose_stance not in PROSE_STANCES:
+            raise ValueError(
+                f"prose_stance must be one of {PROSE_STANCES}, "
+                f"got {self.prose_stance!r}"
+            )
+        if self.line_word is not None and self.line_word not in DECISION_WORDS:
+            raise ValueError(
+                f"line_word must be one of {DECISION_WORDS} or None, "
+                f"got {self.line_word!r}"
+            )
+
+    @property
+    def agrees(self) -> bool | None:
+        return line_prose_agree(self.line_word, self.prose_stance)
+
+    @property
+    def phantom_contest(self) -> bool:
+        """A contest in the label and an endorsement in the prose."""
+        return self.line_word == REVERSE and self.prose_stance == "RIGHT"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**asdict(self), "agrees": self.agrees,
+                "phantom_contest": self.phantom_contest}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Agreement":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 # Identifies the anchor text a score was given against, so a rating recorded today is

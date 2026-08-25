@@ -135,7 +135,11 @@ def test_grading_is_kept_off_the_decision_path_total(tmp_path):
     # outcome control) and adds the comprehension probe, which runs on the
     # challenger's model and would otherwise be counted as challenger spend.
     assert "grader" in OFF_PATH_ROLES and "comprehension" in OFF_PATH_ROLES
+    # the line-vs-prose probe, for the same reason: an instrument costed against the
+    # condition it measures becomes part of what it is measuring
+    assert "agreement" in OFF_PATH_ROLES
     assert "validator" not in OFF_PATH_ROLES
+    assert "challenger" not in OFF_PATH_ROLES
     # and the two must partition the spend exactly, with no rounding in between
     decision, off = split_calls(log)
     assert decision.cost_usd + off.cost_usd == 4 * 0.0005643736

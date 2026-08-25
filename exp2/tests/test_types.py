@@ -71,15 +71,26 @@ def test_complement_and_verdict_for_agree():
         complement("YES")
 
 
-def test_the_verdict_words_do_not_collide_with_the_objection_words():
+def test_the_verdict_words_do_not_collide_with_any_other_decision_words():
     """FLAWED/SOUND rather than YES/NO, so a transcript has one yes/no decision.
 
-    The challenger's line is "Objection: RAISED|NONE"; if the verdict were YES/NO a
+    The challenger's line is "Decision: STANDS|REVERSE"; if the verdict were YES/NO a
     reader scanning the document would meet two unrelated binary decisions, and a
     mis-parse of one would be indistinguishable from the other.
+
+    The stronger form of the same rule, and the reason the challenger's line was
+    rewritten a third time: the challenger's vocabulary must share no word with the
+    verdict's, because pilot 2 measured it using SOUND to mean "the verdict is sound"
+    as often as "the text is sound".
     """
+    from exp2.types import DECISION_WORDS, PROSE_STANCES
+
     assert set(VERDICTS).isdisjoint({"YES", "NO", "RAISED", "NONE"})
     assert set(VERDICTS).isdisjoint(set(RULINGS))
+    assert set(VERDICTS).isdisjoint(set(DECISION_WORDS))
+    assert set(VERDICTS).isdisjoint(set(PROSE_STANCES))
+    assert set(DECISION_WORDS).isdisjoint(set(RULINGS))
+    assert set(DECISION_WORDS).isdisjoint(set(PROSE_STANCES))
 
 
 # --- Item ---------------------------------------------------------------------------
@@ -298,27 +309,74 @@ def test_the_two_forms_are_named_because_they_ask_different_questions():
         ruling(form="whatever")
 
 
-# --- Challenge: four stances, one of which seeks a ruling -----------------------------
+# --- Challenge: three stances, one of which seeks a ruling ----------------------------
 
 
-def test_the_stance_is_the_pair_of_lines_not_the_objection_word_alone():
-    """The pilot's defect in one function. Its instruction made RAISED true of every
-    FLAWED verdict, so roughly 46 of its 51 raised objections agreed with the decision
-    they objected to, and the recourse judges upheld them — which read as
-    contestability."""
-    assert challenge_stance(raised=True, claimed_verdict=SOUND,
-                            decision_verdict=FLAWED) == "contests"
-    assert challenge_stance(raised=True, claimed_verdict=FLAWED,
-                            decision_verdict=FLAWED) == "agrees"
-    assert challenge_stance(raised=True, claimed_verdict=None,
-                            decision_verdict=FLAWED) == "unclear"
-    assert challenge_stance(raised=False, claimed_verdict=None,
-                            decision_verdict=FLAWED) == "declined"
-    # a decline that names the contrary verdict is still a decline: it was asked
-    # whether to object and it answered
-    assert challenge_stance(raised=False, claimed_verdict=SOUND,
-                            decision_verdict=FLAWED) == "declined"
+def test_the_stance_is_the_one_relative_line():
+    """Two earlier instructions are compressed into this function. Pilot 1's made
+    RAISED true of every FLAWED verdict; pilot 2's asked for a claimed verdict beside it
+    and the challenger reused the verdict's own words for two different claims. One
+    relative token leaves nothing to translate and nothing to answer independently."""
+    from exp2.types import claimed_verdict_for
+
+    assert challenge_stance("REVERSE") == "contests"
+    assert challenge_stance("STANDS") == "declined"
+    assert challenge_stance(None) == "unclear"
+    with pytest.raises(ValueError):
+        challenge_stance("MAYBE")
     assert set(CHALLENGE_STANCES) == {"contests", "agrees", "declined", "unclear"}
+
+
+def test_the_claimed_verdict_is_derived_from_the_line_not_named_by_the_model():
+    from exp2.types import claimed_verdict_for
+
+    assert claimed_verdict_for("REVERSE", FLAWED) == SOUND
+    assert claimed_verdict_for("REVERSE", SOUND) == FLAWED
+    assert claimed_verdict_for("STANDS", FLAWED) == FLAWED
+    assert claimed_verdict_for("STANDS", SOUND) == SOUND
+    # an unreadable line is not asking for either verdict, and defaulting it to one
+    # would manufacture a claim
+    assert claimed_verdict_for(None, FLAWED) is None
+
+
+def test_raised_now_means_exactly_contests():
+    """It meant "the model wrote RAISED" under the two-line instruction, which was also
+    true of `agrees` and of `unclear`. With one line there is no such reply."""
+    assert Challenge(text="t", origin="generated", raised=True,
+                     stance="contests").raised is True
+    assert Challenge(text="t", origin="generated", raised=False,
+                     stance="unclear").raised is False
+    with pytest.raises(ValueError, match="disagrees with raised"):
+        Challenge(text="t", origin="generated", raised=True, stance="unclear")
+    with pytest.raises(ValueError, match="disagrees with raised"):
+        Challenge(text="t", origin="generated", raised=False, stance="contests")
+
+
+def test_line_and_prose_are_compared_through_one_table():
+    """The instrument that keeps `contests` falsifiable. NEITHER is not folded into
+    disagreement: prose that takes no side has not contradicted its label, it has failed
+    to support it, and those are different findings."""
+    from exp2.types import Agreement, line_prose_agree
+
+    assert line_prose_agree("REVERSE", "WRONG") is True
+    assert line_prose_agree("STANDS", "RIGHT") is True
+    assert line_prose_agree("REVERSE", "RIGHT") is False
+    assert line_prose_agree("STANDS", "WRONG") is False
+    assert line_prose_agree("REVERSE", "NEITHER") is None
+    assert line_prose_agree(None, "WRONG") is None
+
+    phantom = Agreement(prose_stance="RIGHT", line_word="REVERSE", reasoning="r",
+                        model="m", parse_mode="strict", raw="x", call_id="c",
+                        finish_reason="stop")
+    assert phantom.phantom_contest is True and phantom.agrees is False
+    assert phantom.to_dict()["phantom_contest"] is True
+    honest = Agreement(prose_stance="WRONG", line_word="REVERSE", reasoning="r",
+                       model="m", parse_mode="strict", raw="x", call_id="c",
+                       finish_reason="stop")
+    assert honest.phantom_contest is False and honest.agrees is True
+    with pytest.raises(ValueError):
+        Agreement(prose_stance="MAYBE", line_word="REVERSE", reasoning="r", model="m",
+                  parse_mode="strict", raw="x", call_id="c", finish_reason="stop")
 
 
 def test_a_challenge_written_before_stances_existed_still_loads():

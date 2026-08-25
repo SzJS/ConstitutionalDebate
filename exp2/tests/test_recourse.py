@@ -70,7 +70,7 @@ async def test_a_solo_contest_without_a_conversation_is_refused(tmp_path):
 # --- declining -----------------------------------------------------------------------
 
 
-DECLINE = "Thinking: I read it.\nArgument: Objection: NONE\nThe grounds check out."
+DECLINE = "Thinking: I read it.\nArgument: Decision: STANDS\nThe grounds check out."
 
 
 async def test_a_decline_seeks_no_ruling_and_writes_no_ruling_file(tmp_path):
@@ -93,20 +93,22 @@ async def test_comprehension_is_still_asked_after_a_decline(tmp_path):
     assert (writer.dir / "comprehension.json").is_file()
 
 
-# --- the four stances ----------------------------------------------------------------
+# --- the three stances ---------------------------------------------------------------
 #
-# The pilot's replies, in their measured shapes. Its instruction — "RAISED if the
-# decision rests on an error" — was satisfied by agreeing with a FLAWED verdict, and the
-# challenger duly raised 51 objections of which roughly 46 agreed with the decision they
-# objected to. `raised` alone therefore says nothing; `stance` is what gates.
+# The challenger's replies, in their measured shapes. Pilot 1's instruction — "RAISED if
+# the decision rests on an error" — was satisfied by agreeing with a FLAWED verdict.
+# Pilot 2 added a claimed verdict beside it and that word collided with the challenger's
+# own vocabulary. The line is now one token stated relative to the decision, so
+# `raised`, `stance` and the verdict being asked for are all one answer — and the
+# `agrees` stance it used to detect is unreachable, which is why the `agreement` stage
+# exists.
 
 # The measured shape: no Thinking:/Argument: labels anywhere (118 of 120 pilot replies).
-AGREES = ("Objection: RAISED\nVerdict should be: FLAWED\n"
-          "The decision correctly identifies the error in step 2.")
-CONTESTS = ("Objection: RAISED\nVerdict should be: SOUND\n"
+CONTESTS = ("Decision: REVERSE\n"
             "The claimed flaw in step 2 is not one; the identity holds.")
-UNCLEAR = "Objection: RAISED\nSomething about this decision is off."
-CONTRADICTORY = "Objection: NONE\nVerdict should be: SOUND\nThe grounds check out."
+DECLINES = ("Decision: STANDS\n"
+            "The decision correctly identifies the error in step 2.")
+UNCLEAR = "I have several concerns about how this decision was reached."
 
 
 async def test_a_contesting_objection_is_the_only_stance_that_seeks_a_ruling(tmp_path):
@@ -119,19 +121,20 @@ async def test_a_contesting_objection_is_the_only_stance_that_seeks_a_ruling(tmp
     assert (writer.dir / "ruling.json").is_file()
     assert "recourse_judge" in client.roles()
     # the claimed-verdict line is not in the text handed to the recourse judge
-    assert "Verdict should be" not in outcome.challenge.text
-    assert "Verdict should be" not in "".join(
+    assert "Decision: REVERSE" not in outcome.challenge.text
+    assert "Decision: REVERSE" not in "".join(
         m["content"] for m in client.sent_to("recourse_judge"))
 
 
-async def test_an_agreeing_objection_seeks_no_ruling(tmp_path):
-    """RAISED, and the verdict it names is the one already given. The pilot ran 51 such
-    rulings and read the judges' upholding of them as contestability."""
-    client = FakeClient(replies={"challenger": AGREES})
+async def test_a_stands_reply_declines_and_seeks_no_ruling(tmp_path):
+    """The verdict it is asking for is DERIVED from the line, not named by the model.
+    Naming it is what pilot 2 did, and the challenger reused the word SOUND for two
+    different propositions."""
+    client = FakeClient(replies={"challenger": DECLINES})
     outcome, client, writer, _ = await contest(tmp_path, "debate", client=client)
-    assert outcome.challenge.raised is True          # the literal word it wrote
-    assert outcome.challenge.stance == "agrees"      # what the pipeline gates on
-    assert outcome.challenge.claimed_verdict == FLAWED
+    assert outcome.challenge.raised is False
+    assert outcome.challenge.stance == "declined"
+    assert outcome.challenge.claimed_verdict == FLAWED  # the fake judge decided FLAWED
     assert outcome.ruling is None
     assert not (writer.dir / "ruling.json").is_file()
     assert "recourse_judge" not in client.roles()
@@ -147,15 +150,16 @@ async def test_an_unclear_objection_seeks_no_ruling_and_is_not_fatal(tmp_path):
     assert "recourse_judge" not in client.roles()
 
 
-async def test_a_decline_that_names_the_contrary_verdict_is_still_a_decline(tmp_path):
-    """It was asked whether to object and it answered. Reading a contest into a reply
-    that says there is none would manufacture objections nobody made."""
-    client = FakeClient(replies={"challenger": CONTRADICTORY})
-    outcome, client, _, _ = await contest(tmp_path, "debate", client=client)
-    assert outcome.challenge.stance == "declined"
-    assert outcome.challenge.contradictory is True
-    assert outcome.ruling is None
-    assert "recourse_judge" not in client.roles()
+async def test_the_agreeing_stance_is_unreachable_and_says_so(tmp_path):
+    """One relative line cannot both ask for a reversal and name the verdict it is
+    reversing to, so `agrees` and `contradictory` can no longer occur. They are recorded
+    as False rather than dropped: a column that reads 0 says the shape did not happen,
+    a column that is absent says nobody looked."""
+    for reply in (CONTESTS, DECLINES):
+        client = FakeClient(replies={"challenger": reply})
+        outcome, _, _, _ = await contest(tmp_path / reply[:16], "debate", client=client)
+        assert outcome.challenge.stance in ("contests", "declined")
+        assert outcome.challenge.contradictory is False
 
 
 async def test_a_challenger_reply_unparsable_after_repair_is_unclear_not_fatal(tmp_path):
@@ -172,12 +176,12 @@ async def test_a_challenger_reply_unparsable_after_repair_is_unclear_not_fatal(t
     assert outcome.ruling is None
 
 
-async def test_the_contest_document_says_when_an_objection_agreed(tmp_path):
-    client = FakeClient(replies={"challenger": AGREES})
+async def test_the_contest_document_says_when_the_line_could_not_be_read(tmp_path):
+    client = FakeClient(replies={"challenger": UNCLEAR})
     _, _, writer, _ = await contest(tmp_path, "debate", client=client)
     document = (writer.dir / "transcript.md").read_text()
-    assert "agreed with the verdict" in document
-    assert "no ruling was sought" in document
+    assert "without saying which verdict" in document
+    assert "excluded from the rates" in document
 
 
 async def test_the_challenger_runs_at_its_own_temperature(tmp_path):

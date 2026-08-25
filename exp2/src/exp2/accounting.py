@@ -26,7 +26,14 @@ from typing import Any, Iterable
 # tokens look like challenger tokens. But it asks the challenger about the record
 # rather than contributing to the contest, and the token balance it would otherwise
 # inflate is the "debate only wins because it generates more text" check.
-OFF_PATH_ROLES: frozenset[str] = frozenset({"grader", "comprehension"})
+#
+# "agreement" is the line-vs-prose probe (LLM_NOTES §3n): a grader-model read of what an
+# objection's prose argues, made after the contest is finished and over its recorded
+# text. It cannot change any decision and must not be able to; costing it against the
+# condition it measures would make the instrument part of what it is measuring.
+OFF_PATH_ROLES: frozenset[str] = frozenset(
+    {"grader", "comprehension", "agreement"}
+)
 
 
 @dataclass(frozen=True)

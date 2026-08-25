@@ -19,6 +19,7 @@ from exp2.experiment import (
     build_grid,
     build_index,
     existing_decision,
+    run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
@@ -79,12 +80,12 @@ def make_decisions_wrong(client) -> None:
         ("solo", "answer"): "Thinking: t\nReasoning: it holds up.\nVerdict: SOUND",
         ("solo", "draft"): "Thinking: t\nReasoning: it holds up.\nVerdict: SOUND",
         ("solo", "revision"): "Thinking: t\nReasoning: it still holds.\nVerdict: SOUND",
-        # The challenger's claimed verdict has to disagree with the decision for the
-        # stance to be `contests` and a ruling to be sought. The default fixture claims
-        # SOUND against the default FLAWED; here the decision is SOUND, so it claims
-        # FLAWED. A fixture that says RAISED without saying which way is `unclear`.
+        # The line is relative to whatever the decision was, so the same REVERSE reply
+        # contests a SOUND decision here and a FLAWED one in the default fixture — which
+        # is the whole point of the third rewrite. A reply with no parsable line is
+        # `unclear` and seeks no ruling.
         "challenger": ("Thinking: I read the record.\n"
-                       "Argument: Objection: RAISED\nVerdict should be: FLAWED\n"
+                       "Argument: Decision: REVERSE\n"
                        "Step 2 divides by zero and the decision missed it."),
     })
 
@@ -162,6 +163,12 @@ async def grade(tmp_path, grid):
                                  api_key="k")
 
 
+async def agreement(tmp_path, grid):
+    return await run_stage_agreement(grid, root=tmp_path, config=make_config(),
+                                     grading=GradingConfig(),
+                                     client_config=client_config(), api_key="k")
+
+
 async def test_contest_needs_a_decision_first(tmp_path):
     grid = build_grid(cases(2), ["debate"])
     results = await contest(tmp_path, grid)
@@ -173,9 +180,10 @@ async def test_the_full_pipeline_runs_and_resumes_at_every_stage(tmp_path, no_ne
     grid = build_grid(cases(2), ["debate", "single"])
     assert all(r["status"] == "completed" for r in await decide(tmp_path, grid))
     assert all(r["status"] == "completed" for r in await contest(tmp_path, grid))
+    assert all(r["status"] == "completed" for r in await agreement(tmp_path, grid))
     assert all(r["status"] == "completed" for r in await grade(tmp_path, grid))
     before = len(no_network.calls)
-    for stage in (decide, contest, grade):
+    for stage in (decide, contest, agreement, grade):
         assert all(r["status"] == "skipped" for r in await stage(tmp_path, grid))
     assert len(no_network.calls) == before
 
@@ -187,6 +195,9 @@ async def test_grade_and_contest_are_concurrent(tmp_path, no_network):
     await decide(tmp_path, grid)
     no_network.max_in_flight = 0
     await contest(tmp_path, grid)
+    assert no_network.max_in_flight > 1
+    no_network.max_in_flight = 0
+    await agreement(tmp_path, grid)
     assert no_network.max_in_flight > 1
     no_network.max_in_flight = 0
     await grade(tmp_path, grid)
@@ -239,7 +250,7 @@ async def test_a_correctly_decided_item_is_not_graded(tmp_path, no_network):
 
 async def test_a_declined_objection_is_not_graded(tmp_path, no_network):
     no_network.replies = {"challenger":
-                          "Thinking: t\nArgument: Objection: NONE\nLooks sound."}
+                          "Thinking: t\nArgument: Decision: STANDS\nLooks sound."}
     grid = build_grid(cases(2), ["debate"])
     await decide(tmp_path, grid)
     await contest(tmp_path, grid)
@@ -247,35 +258,106 @@ async def test_a_declined_objection_is_not_graded(tmp_path, no_network):
                for r in await grade(tmp_path, grid))
 
 
-async def test_an_objection_that_agrees_with_the_verdict_is_not_graded(tmp_path, no_network):
-    """The pilot's modal contest. RAISED, and the verdict it names is the one already
-    given — nothing was contested, so there is nothing to grade and no ruling to seek."""
-    no_network.replies = {"challenger": ("Objection: RAISED\nVerdict should be: FLAWED\n"
+async def test_a_decline_indexes_its_derived_verdict_and_is_not_graded(tmp_path, no_network):
+    """`Decision: STANDS` against a FLAWED verdict derives a claimed FLAWED — the
+    challenger no longer names it, so it cannot name it wrongly."""
+    no_network.replies = {"challenger": ("Decision: STANDS\n"
                                          "The decision correctly identifies the error.")}
     grid = build_grid(cases(2), ["debate"])
     await decide(tmp_path, grid)
     results = await contest(tmp_path, grid)
-    assert all(r["stance"] == "agrees" for r in results)
-    assert all(r["reason"] == "stance is agrees, not contests"
-               for r in await grade(tmp_path, grid))
+    assert all(r["stance"] == "declined" for r in results)
     row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
-    assert row["challenge_raised"] is False and row["challenge_agreed"] is True
-    assert row["challenge_declined"] is False and row["challenge_unclear"] is False
-    assert row["challenge_stance"] == "agrees"
+    assert row["challenge_raised"] is False and row["challenge_declined"] is True
+    assert row["challenge_agreed"] is False and row["challenge_unclear"] is False
     assert row["challenge_claimed_verdict"] == "FLAWED"
+    assert row["challenge_contradictory"] is False
     assert "ruling_form" not in row
 
 
-async def test_a_raised_objection_with_no_claimed_verdict_is_unclear(tmp_path, no_network):
+async def test_an_unreadable_challenger_reply_is_unclear(tmp_path, no_network):
     """Not malformed: making it so would let the experiment's own subject role lose a
     whole contest to a DebateFailure, and the challenger's measured repair rate is 0%."""
-    no_network.replies = {"challenger": "Objection: RAISED\nSomething about this is off."}
+    no_network.replies = {"challenger": "Something about this decision is off."}
     grid = build_grid(cases(1), ["debate"])
     await decide(tmp_path, grid)
     assert (await contest(tmp_path, grid))[0]["stance"] == "unclear"
     row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
     assert row["challenge_unclear"] is True and row["challenge_raised"] is False
+    assert row["challenge_claimed_verdict"] is None
     assert "ruling_form" not in row
+    # and the agreement stage has no line to compare against, so it does not spend a call
+    assert (await agreement(tmp_path, grid))[0]["reason"].startswith("stance is unclear")
+
+
+# --- the line-vs-prose instrument ----------------------------------------------------
+
+
+async def test_the_agreement_stage_catches_a_phantom_contest(tmp_path, no_network):
+    """REVERSE at the top of a response that then argues the verdict was right. With one
+    relative line nothing mechanical can catch this, which is why the stage exists."""
+    no_network.replies = {
+        "challenger": ("Decision: REVERSE\n"
+                       "The decision correctly identified the flaw in step 2."),
+        "agreement": "It endorses the verdict throughout.\nProse: RIGHT",
+    }
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid)
+    result = (await agreement(tmp_path, grid))[0]
+    assert result["status"] == "completed"
+    assert result["line"] == "REVERSE" and result["prose"] == "RIGHT"
+    assert result["agrees"] is False and result["phantom"] is True
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["challenge_raised"] is True     # the label still says it contested
+    assert row["phantom_contest"] is True      # and the prose says it did not
+
+
+async def test_the_agreement_reader_is_never_shown_the_challengers_own_line(tmp_path,
+                                                                            no_network):
+    """The reading has to be independent of the label it is checking. The line was
+    stripped out of ``challenge.text`` when the challenge was recorded, which is what
+    makes that structural rather than a promise."""
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid)
+    await agreement(tmp_path, grid)
+    sent = "".join(m["content"] for m in no_network.sent_to("agreement"))
+    assert "Decision: REVERSE" not in sent and "Decision: STANDS" not in sent
+    assert "Step 2 does not divide by zero" in sent   # but the prose is there
+
+
+async def test_a_decline_is_measured_too_not_only_a_contest(tmp_path, no_network):
+    """Measuring one direction would make the instrument agree with the column it is
+    checking: a decline whose prose argues for reversal is as much a mismatch as a
+    contest whose prose endorses the verdict."""
+    no_network.replies = {
+        "challenger": "Decision: STANDS\nThough step 2 does look wrong to me.",
+        "agreement": "It argues the verdict got it wrong.\nProse: WRONG",
+    }
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid)
+    result = (await agreement(tmp_path, grid))[0]
+    assert result["line"] == "STANDS" and result["prose"] == "WRONG"
+    assert result["agrees"] is False and result["phantom"] is False
+
+
+async def test_the_agreement_stage_is_off_the_decision_path(tmp_path, no_network):
+    """Costing the instrument against the condition it measures would make it part of
+    what it is measuring — and would disturb the token-balance check that guards against
+    "debate only won because it generated more text"."""
+    from exp2.accounting import aggregate_calls
+
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid)
+    await agreement(tmp_path, grid)
+    contest_calls = next((tmp_path / "cells").rglob("contests/**/calls.jsonl"))
+    totals = aggregate_calls(contest_calls)
+    assert "agreement" in totals["by_role"]
+    assert totals["by_role"]["agreement"]["calls"] == 1
+    assert totals["off_path"]["calls"] >= 1
 
 
 # --- the index -----------------------------------------------------------------------
@@ -295,9 +377,17 @@ async def test_the_index_joins_every_stage_and_leaves_nulls_for_missing_ones(tmp
     assert rows[0]["decision_record_words"] > 0
 
     await contest(tmp_path, grid)
+    # "not measured" and "measured and agreed" are different facts, so the agreement
+    # columns are absent until the stage has run
+    rows = build_index(grid, root=tmp_path, challenger_model="strong/model")
+    assert "prose_stance" not in rows[0]
+    await agreement(tmp_path, grid)
     await grade(tmp_path, grid)
     rows = build_index(grid, root=tmp_path, challenger_model="strong/model")
     assert rows[0]["challenge_raised"] is True
+    assert rows[0]["prose_stance"] == "WRONG"
+    assert rows[0]["line_prose_agree"] is True
+    assert rows[0]["phantom_contest"] is False
     assert rows[0]["grade_valid"] is True
     assert rows[0]["comprehension"] == 4
     assert rows[0]["ruling_form"] == "uphold_overturn"
@@ -306,7 +396,7 @@ async def test_the_index_joins_every_stage_and_leaves_nulls_for_missing_ones(tmp
 
 async def test_a_decline_indexes_as_not_revised_but_keeps_the_distinction(tmp_path, no_network):
     no_network.replies = {"challenger":
-                          "Thinking: t\nArgument: Objection: NONE\nLooks sound."}
+                          "Thinking: t\nArgument: Decision: STANDS\nLooks sound."}
     grid = build_grid(cases(1), ["debate"])
     await decide(tmp_path, grid)
     await contest(tmp_path, grid)

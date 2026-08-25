@@ -276,21 +276,26 @@ def test_the_challenger_may_always_decline():
     messages = build_challenger_messages(
         make_item(), make_config(), DecisionRecord.for_solo_body("b"), sides=make_sides(),
         decision_verdict=SOUND, decision_grounds="g")
-    assert "Objection: RAISED" in messages[1]["content"]
-    assert "Objection: NONE" in messages[1]["content"]
+    assert "Decision: STANDS" in messages[1]["content"]
+    assert "Decision: REVERSE" in messages[1]["content"]
 
 
-def test_the_challenger_is_asked_about_the_verdict_not_about_the_text():
-    """The pilot's instruction was literally satisfiable by agreeing with the verdict:
-    "RAISED if the decision rests on an error" is true of every FLAWED verdict, and the
-    challenger duly raised objections that agreed with the decisions they objected to.
-    The question asked is now the verdict, and a claimed verdict comes with it."""
+def test_the_challenger_answers_one_line_stated_relative_to_the_decision():
+    """Pilot 1's instruction was satisfiable by agreeing ("RAISED if the decision rests
+    on an error" is true of every FLAWED verdict). Pilot 2's pair of lines fixed that and
+    collided with the challenger's own vocabulary: it wrote SOUND for "the text is sound"
+    and for "the verdict is sound" in the same reply, 93 times in 108. This shape asks
+    one question, in words the verdict does not use."""
     messages = build_challenger_messages(
         make_item(), make_config(), DecisionRecord.for_solo_body("b"), sides=make_sides(),
         decision_verdict=FLAWED, decision_grounds="g")
     instruction = messages[1]["content"]
-    assert "whether the **verdict** above is right" in instruction
-    assert "Verdict should be:" in instruction
+    assert "whether the **verdict** above should stand" in instruction
+    # neither verdict word appears in the instruction the challenger answers with, so
+    # there is nothing to translate and nothing to collide
+    tail = instruction[instruction.index("You are deciding whether"):]
+    assert "FLAWED" not in tail and "SOUND" not in tail
+    assert "Verdict should be:" not in instruction
     assert "rests on an error" not in instruction
     # and it must not presuppose a section the challenger does not write: 118 of the
     # pilot's 120 replies carried no Thinking:/Argument: labels at all.
@@ -427,71 +432,87 @@ def test_an_inline_thinking_label_anywhere_in_the_argument_is_refused():
     # leaks of this class happened
     with pytest.raises(MalformedOutputError):
         parse_objection_output(
-            "Objection: NONE\nThe grounds hold.\nVerdict: SOUNDThinking: privately, no.")
+            "Decision: STANDS\nThe grounds hold.\nVerdict: SOUNDThinking: privately, no.")
 
 
 def test_the_objection_parser_layers_on_the_debater_parser():
-    thinking, raised, body, _, claimed = parse_objection_output(
-        "Thinking: private\nArgument: Objection: RAISED\nStep 2 divides by zero.")
-    assert thinking == "private" and raised is True
+    thinking, word, body, _ = parse_objection_output(
+        "Thinking: private\nArgument: Decision: REVERSE\nStep 2 divides by zero.")
+    assert thinking == "private" and word == "REVERSE"
     assert body == "Step 2 divides by zero."
-    assert claimed is None
 
 
 def test_a_decline_keeps_its_body_as_evidence():
     """The text after a decline is the only evidence for whether the challenger
     declined having understood the record or having skimmed it."""
-    _, raised, body, _, _ = parse_objection_output(
-        "Thinking: t\nArgument: Objection: NONE\nThe judge checked the algebra.")
-    assert raised is False and body == "The judge checked the algebra."
+    _, word, body, _ = parse_objection_output(
+        "Thinking: t\nArgument: Decision: STANDS\nThe judge checked the algebra.")
+    assert word == "STANDS" and body == "The judge checked the algebra."
 
 
-def test_the_claimed_verdict_is_parsed_and_taken_out_of_the_body():
-    """Both decision lines leave the body. It becomes ``Challenge.text``, which is handed
-    to the recourse judge — a challenge opening "Verdict should be: FLAWED" would be an
-    instruction to the judge about what to answer rather than an argument for it."""
-    _, raised, body, mode, claimed = parse_objection_output(
-        "Objection: RAISED\nVerdict should be: SOUND\n"
+def test_the_decision_line_is_taken_out_of_the_body():
+    """The body becomes ``Challenge.text``, which is handed to the recourse judge — a
+    challenge opening "Decision: REVERSE" would be an instruction to the judge about
+    what to answer rather than an argument for it."""
+    _, word, body, mode = parse_objection_output(
+        "Decision: REVERSE\n"
         "The claimed flaw in step 2 is not one: the identity holds for all real x.")
-    assert raised is True and claimed == "SOUND" and mode == "salvaged_no_labels"
+    assert word == "REVERSE" and mode == "salvaged_no_labels"
     assert body == (
         "The claimed flaw in step 2 is not one: the identity holds for all real x.")
-    assert "Verdict should be" not in body and "Objection" not in body
+    assert "Decision" not in body
 
 
-def test_the_claimed_verdict_line_does_not_collide_with_the_verdict_line():
-    """`_VERDICT_RE` wants the colon straight after "verdict"; "should be" sits between
-    them here. Two vocabularies, as everywhere else in this module."""
-    from exp2.prompts import _CLAIMED_VERDICT_RE, _VERDICT_RE
+def test_the_first_decision_line_wins_not_the_last():
+    """The opposite of every other matcher in this module, and deliberately so: this
+    line is required at the HEAD of the reply, so a later one is the model restating or
+    reconsidering aloud rather than deciding again. Only the decisive line is stripped;
+    a restatement stays in the body where a reader can see it."""
+    _, word, body, _ = parse_objection_output(
+        "Decision: REVERSE\nThe judge misread step 2.\nDecision: STANDS")
+    assert word == "REVERSE"
+    assert body == "The judge misread step 2.\nDecision: STANDS"
 
-    assert _VERDICT_RE.search("Verdict should be: FLAWED") is None
-    assert _CLAIMED_VERDICT_RE.search("Verdict: FLAWED") is None
-    # a restated template is refused by both, in either randomised order
-    assert _CLAIMED_VERDICT_RE.search("Verdict should be: <FLAWED|SOUND>") is None
-    assert _CLAIMED_VERDICT_RE.search("Verdict should be: <SOUND|FLAWED>") is None
+
+def test_the_decision_line_does_not_match_the_comprehension_prompts_sentence():
+    """The near-miss that is actually on the wire: the comprehension probe asks
+    "Setting aside whether you agree with the decision: how well could you follow the
+    reasoning behind it?" — 126 occurrences in pilot 2's prompts, and the colon lands
+    exactly where the pattern looks. It is saved by requiring STANDS or REVERSE
+    immediately after."""
+    from exp2.prompts import COMPREHENSION_USER, _DECISION_RE
+
+    assert _DECISION_RE.search(COMPREHENSION_USER) is None
+    assert _DECISION_RE.search(
+        "Setting aside whether you agree with the decision: how well could you follow "
+        "the reasoning behind it?") is None
+    # and the challenger's own user turn, which states the decision as a phrase
+    assert _DECISION_RE.search(
+        "The decision reached was: the text under review contains a flaw") is None
+    # a restated template is refused in either randomised order
+    assert _DECISION_RE.search("Decision: <STANDS|REVERSE>") is None
+    assert _DECISION_RE.search("Decision: <REVERSE|STANDS>") is None
     # markdown wrappers, as the other matchers tolerate them
-    assert _CLAIMED_VERDICT_RE.search(
-        "**Verdict should be:** SOUND").group(1) == "SOUND"
+    assert _DECISION_RE.search("**Decision:** REVERSE").group(1) == "REVERSE"
 
 
-def test_the_two_line_reply_the_challenger_actually_writes_still_salvages():
-    """The measured shape: no Thinking:/Argument: labels anywhere, the two decision
-    lines, then prose. 118 of the pilot's 120 replies parsed this way."""
-    thinking, raised, body, mode, claimed = parse_objection_output(
-        "Objection: NONE\nVerdict should be: FLAWED\n"
-        "The decision correctly identifies the error in step 4.")
+def test_the_one_line_reply_the_challenger_actually_writes_still_salvages():
+    """The measured shape: no Thinking:/Argument: labels anywhere, the decision line,
+    then prose. 118 of pilot 1's 120 replies and all 108 of pilot 2's parsed this way."""
+    thinking, word, body, mode = parse_objection_output(
+        "Decision: STANDS\nThe decision correctly identifies the error in step 4.")
     assert mode == "salvaged_no_labels" and thinking == ""
-    assert raised is False and claimed == "FLAWED"
+    assert word == "STANDS"
     assert body == "The decision correctly identifies the error in step 4."
 
 
-def test_a_raised_objection_with_no_body_is_refused():
-    with pytest.raises(MalformedOutputError, match="no objection after it"):
-        parse_objection_output("Thinking: t\nArgument: Objection: RAISED")
+def test_a_reversal_with_no_body_is_refused():
+    with pytest.raises(MalformedOutputError, match="no argument after it"):
+        parse_objection_output("Thinking: t\nArgument: Decision: REVERSE")
 
 
-def test_a_missing_objection_line_is_refused_rather_than_guessed():
-    with pytest.raises(MalformedOutputError, match="Objection"):
+def test_a_missing_decision_line_is_refused_rather_than_guessed():
+    with pytest.raises(MalformedOutputError, match="Decision"):
         parse_objection_output("Thinking: t\nArgument: This decision seems wrong.")
 
 
@@ -499,34 +520,34 @@ def test_a_label_less_challenger_reply_is_salvaged():
     """The shape the first probe measured 70/70 times on ling-3.0-flash: the decision
     line, then the reasoning, and no Thinking/Argument wrapper at all. Nothing was
     marked private, so nothing can leak by publishing all of it."""
-    thinking, raised, body, mode, _ = parse_objection_output(
-        "Objection: NONE\nThe decision is sound because the derivation is complete.")
-    assert raised is False
+    thinking, word, body, mode = parse_objection_output(
+        "Decision: STANDS\nThe decision is sound because the derivation is complete.")
+    assert word == "STANDS"
     assert thinking == ""
     assert body == "The decision is sound because the derivation is complete."
     assert mode == "salvaged_no_labels"
 
-    _, raised, body, mode, _ = parse_objection_output(
-        "Objection: RAISED\nSentence 8 assumes the contract was fulfilled.")
-    assert raised is True and mode == "salvaged_no_labels"
+    _, word, body, mode = parse_objection_output(
+        "Decision: REVERSE\nSentence 8 assumes the contract was fulfilled.")
+    assert word == "REVERSE" and mode == "salvaged_no_labels"
     assert body == "Sentence 8 assumes the contract was fulfilled."
 
 
 def test_the_salvage_refuses_anything_that_marked_text_private():
     # a Thinking: label with no Argument: label — the boundary is unknown
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Thinking: private\nObjection: NONE\nlooks fine")
+        parse_objection_output("Thinking: private\nDecision: STANDS\nlooks fine")
     # ... including one that is not at the head of a line
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Objection: NONE it is fine. Thinking: but actually no")
+        parse_objection_output("Decision: STANDS it is fine. Thinking: but actually no")
     # a one-line "Argument: Thinking:" is still refused by the debater parser
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Argument: Thinking: private\nObjection: NONE\nfine")
+        parse_objection_output("Argument: Thinking: private\nDecision: STANDS\nfine")
     # the salvage does not weaken the other rules
-    with pytest.raises(MalformedOutputError, match="no objection after it"):
-        parse_objection_output("Objection: RAISED")
-    with pytest.raises(MalformedOutputError, match="Objection"):
-        parse_objection_output("Objection: <RAISED|NONE>\nsomething is wrong")
+    with pytest.raises(MalformedOutputError, match="no argument after it"):
+        parse_objection_output("Decision: REVERSE")
+    with pytest.raises(MalformedOutputError, match="Decision"):
+        parse_objection_output("Decision: <STANDS|REVERSE>\nsomething is wrong")
     with pytest.raises(MalformedOutputError):
         parse_objection_output("This decision seems wrong but I cannot say why.")
 
@@ -569,7 +590,7 @@ def test_a_grader_response_missing_a_line_names_what_is_missing():
 def test_each_role_gets_its_own_repair_instruction():
     """A challenger repaired with the debater's instruction would be asked for a
     response the challenger parser then refuses, burning the one attempt."""
-    assert "Objection:" in repair_instruction_for("challenger", 400)
+    assert "Decision: <STANDS|REVERSE>" in repair_instruction_for("challenger", 400)
     assert "Verdict:" in repair_instruction_for("judge", 400)
     assert "Ruling:" in repair_instruction_for("recourse_judge", 400)
     assert "Comprehension:" in repair_instruction_for("comprehension", 400)
@@ -689,8 +710,12 @@ def test_each_aimed_repair_still_asks_for_the_line_the_role_owes():
     another: a solo reply with no `Verdict:` line is refused just as surely."""
     assert "Verdict: FLAWED" in repair_instruction_for("solo", 400, "no_public_label")
     assert "Verdict: FLAWED" in repair_instruction_for("recourse_solo", 400, "xml_tag")
-    assert "Objection: <RAISED|NONE>" in repair_instruction_for(
+    # And it must be the SAME format CHALLENGER_REPAIR asks for. It was not until
+    # 2026-08-25: this table fed the aimed repair while CHALLENGER_REPAIR fed the
+    # unaimed one, so the two could drift and did.
+    assert "Decision: <STANDS|REVERSE>" in repair_instruction_for(
         "challenger", 400, "no_public_label")
+    assert "Decision: <STANDS|REVERSE>" in repair_instruction_for("challenger", 400)
     assert "within the stated word limit" in repair_instruction_for(
         "debater", 400, "no_public_label")
     assert "concisely" in repair_instruction_for("debater", 0, "no_public_label")

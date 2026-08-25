@@ -2,7 +2,7 @@
 
     uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline-2.log
 
-Every stage of ``exp2-experiment`` — decide, contest, grade, analyse — is run over a
+Every stage of ``exp2-experiment`` — decide, contest, agreement, grade, analyse — is run over a
 handful of **real** cases from ``data/cases/pilot.jsonl``, with
 ``experiment.OpenRouterClient`` replaced by ``tests.conftest.FakeClient``. Nothing
 reaches the network and nothing reads the API key: the key is removed from the
@@ -41,6 +41,7 @@ from exp2.config import load_config, load_grading_config  # noqa: E402
 from exp2.experiment import (  # noqa: E402
     build_grid,
     build_index,
+    run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
@@ -74,12 +75,15 @@ DECIDER_REPLIES = {
     ("solo", "revision"): ("Thinking: SECRET-SOLO-THINKING-never-published\n"
                            "Reasoning: the criticism does not land.\nVerdict: SOUND"),
     # The challenger has to CONTEST for a ruling to be sought and for the grade stage to
-    # have anything to run on: since 2026-08-25 a raised objection whose claimed verdict
-    # matches the decision is the `agrees` stance, which seeks no ruling. The decisions
-    # above are all SOUND, so a contest claims FLAWED. Written in the shape the weak
-    # model actually produces — no Thinking:/Argument: labels at all.
-    "challenger": ("Objection: RAISED\nVerdict should be: FLAWED\n"
+    # have anything to run on. The line is one relative token, so REVERSE contests
+    # whatever the decision was — the decisions above are all SOUND, so this asks for
+    # FLAWED. Written in the shape the weak model actually produces: no
+    # Thinking:/Argument: labels at all.
+    "challenger": ("Decision: REVERSE\n"
                    "Step 2 does not follow from step 1; the decision took it on trust."),
+    # The line-vs-prose instrument. WRONG matches the REVERSE line above, so the offline
+    # run exercises the agreeing branch end to end.
+    "agreement": "It argues the verdict was mistaken.\nProse: WRONG",
 }
 
 
@@ -135,6 +139,9 @@ async def main() -> int:
             grid, root=ROOT, config=config, client_config=client_config, api_key="fake"),
         "contest": lambda: run_stage_contest(
             grid, root=ROOT, config=config, client_config=client_config, api_key="fake"),
+        "agreement": lambda: run_stage_agreement(
+            grid, root=ROOT, config=config, grading=grading,
+            client_config=client_config, api_key="fake"),
         "grade": lambda: run_stage_grade(
             grid, root=ROOT, config=config, grading=grading,
             client_config=client_config, api_key="fake"),

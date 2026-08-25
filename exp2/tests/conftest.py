@@ -24,23 +24,28 @@ from exp2.client import Completion, FatalError, RetryableError
 
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
-                   "recourse_solo"}
+                   "recourse_solo", "agreement"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
 DEFAULT_REPLIES: dict[str, str] = {
     "judge": "The flawed side quoted the text; the sound side did not.\nVerdict: FLAWED",
     "recourse_judge": "The objection identifies a real error.\nRuling: OVERTURN",
-    # Contests: RAISED *and* a claimed verdict that differs from the default judge's
-    # FLAWED. Both lines are needed — RAISED alone is the `unclear` stance now, which
-    # seeks no ruling, and every recourse test would silently stop exercising one.
+    # Contests: one line, REVERSE, which against the default judge's FLAWED verdict
+    # derives a claimed SOUND. A reply with no parsable line is the `unclear` stance,
+    # which seeks no ruling — so every recourse test would silently stop exercising the
+    # ruling path if this default lost its line.
     "challenger": ("Thinking: I read the record.\n"
-                   "Argument: Objection: RAISED\nVerdict should be: SOUND\n"
+                   "Argument: Decision: REVERSE\n"
                    "Step 2 does not divide by zero; the decision misread it."),
     "comprehension": "I followed most of it.\nComprehension: 4",
     "recourse_solo": "Thinking: reconsidering.\nReasoning: I was wrong.\nVerdict: SOUND",
     "grader": ("It points at the right step and says what is wrong.\n"
                "Identified the flaw: YES\nCharacterised the flaw: YES"),
+    # The line-vs-prose probe. WRONG matches the default challenger's REVERSE line, so
+    # the default run measures agreement rather than a phantom contest; tests that want
+    # the mismatch ask for it.
+    "agreement": "It argues the verdict got it wrong.\nProse: WRONG",
 }
 
 

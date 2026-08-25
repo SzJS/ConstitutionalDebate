@@ -34,14 +34,16 @@ from typing import Any
 
 from .arms import _split_solo
 from .client import ChatClient
-from .config import DebateConfig
+from .config import DebateConfig, GradingConfig
 from .engine import _complete_with_repair
 from .prompts import (
+    build_agreement_messages,
     build_challenger_messages,
     build_comprehension_messages,
     build_recourse_judge_messages,
     build_solo_recourse_message,
     marks_private_text,
+    parse_agreement_output,
     parse_comprehension_output,
     parse_objection_output,
     parse_verdict_output,
@@ -49,12 +51,16 @@ from .prompts import (
 )
 from .types import (
     COMPREHENSION_SCALE_ID,
+    REVERSE,
+    STANDS,
+    Agreement,
     Challenge,
     Comprehension,
     Item,
     Ruling,
     Sides,
     challenge_stance,
+    claimed_verdict_for,
     count_words,
     resolve_ruling,
 )
@@ -68,6 +74,11 @@ log = logging.getLogger(__name__)
 # challenger beside it deliberately runs hot (config.challenger_temperature).
 COMPREHENSION_TEMPERATURE = 0.0
 
+# Same rule for the line-vs-prose probe, and for the same reason: a classification that
+# moved between two readings of one text would be noise in the number that decides
+# whether the `contests` column means anything.
+AGREEMENT_TEMPERATURE = 0.0
+
 # Published in place of an objection whose public section could not be located, on the
 # same rule as arms.WITHHELD: the reply marked a boundary, the repair did not fix it,
 # and guessing where the private half ends is worse than losing the text. The raw
@@ -77,7 +88,7 @@ WITHHELD_OBJECTION = (
 )
 
 
-def _unparsed_objection(text: str) -> tuple[str, bool, str, str, str | None]:
+def _unparsed_objection(text: str) -> tuple[str, str | None, str, str]:
     """Last resort for a challenger reply still unparsable after its one repair.
 
     Routed to the ``unclear`` stance rather than raising. The challenger is the
@@ -87,13 +98,16 @@ def _unparsed_objection(text: str) -> tuple[str, bool, str, str, str | None]:
     rates and is counted in coverage, which is the honest reading of "it answered and I
     could not tell what it said".
 
-    ``raised`` is recorded True because ``unclear`` is defined as a raised objection
-    whose direction is unknown, and every gate downstream reads ``stance``. What the
-    model actually wrote is in ``raw`` either way.
+    The decision word is ``None``, which is what ``unclear`` *is*: a reply whose
+    direction could not be read. It used to be recorded as ``raised=True`` on the
+    grounds that the challenger had written the word RAISED; under one relative line
+    there is no word to have written, so ``raised`` follows the stance and is False.
+    Every gate downstream reads ``stance`` either way, and what the model actually wrote
+    is in ``raw``.
     """
     if marks_private_text(text):
-        return "", True, WITHHELD_OBJECTION, "unparsed_unclear_withheld", None
-    return "", True, text.strip(), "unparsed_unclear", None
+        return "", None, WITHHELD_OBJECTION, "unparsed_unclear_withheld"
+    return "", None, text.strip(), "unparsed_unclear"
 
 
 @dataclass
@@ -124,7 +138,7 @@ async def generate_challenge(
         decision_grounds=record.decision_grounds,
     )
     model = config.challenger_model_for()
-    (thinking, raised, text, parse_mode, claimed), completion, repairs, sent, _ = (
+    (thinking, word, text, parse_mode), completion, repairs, sent, _ = (
         await _complete_with_repair(
             client, model=model, messages=messages,
             temperature=config.challenger_temperature, config=config,
@@ -141,13 +155,15 @@ async def generate_challenge(
         log.warning("challenger wrote %d words over a %d-word limit",
                     count_words(text), limit)
     decision = record.verdict.verdict
-    stance = challenge_stance(
-        raised=raised, claimed_verdict=claimed, decision_verdict=decision
-    )
+    stance = challenge_stance(word)
+    claimed = claimed_verdict_for(word, decision)
     challenge = Challenge(
-        text=text, origin="generated", raised=raised, arm="neutral",
+        text=text, origin="generated", raised=(stance == "contests"), arm="neutral",
         claimed_verdict=claimed, stance=stance,
-        contradictory=(not raised and claimed is not None and claimed != decision),
+        # Unreachable with one line, and recorded as False rather than dropped: a
+        # column that reads 0 says the shape did not occur, a column that is absent
+        # says nobody looked.
+        contradictory=False,
         visibility="public", model=model, call_id=completion.call_id,
         finish_reason=completion.finish_reason, parse_mode=parse_mode,
         repair_attempts=repairs, thinking=thinking, raw=completion.content,
@@ -155,8 +171,8 @@ async def generate_challenge(
         reasoning_withheld=completion.reasoning_withheld,
     )
     if stance != "contests":
-        log.info("challenger stance %s (claimed %s against a %s decision)",
-                 stance, claimed, decision)
+        log.info("challenger stance %s (line %s against a %s decision)",
+                 stance, word, decision)
     if writer is not None:
         writer.record_challenge(challenge)
     return challenge, sent
@@ -199,6 +215,54 @@ async def ask_comprehension(
     if writer is not None:
         writer.record_comprehension(comprehension)
     return comprehension
+
+
+async def judge_prose_stance(
+    challenge: Challenge,
+    *,
+    decision_verdict: str,
+    config: DebateConfig,
+    grading: GradingConfig,
+    client: ChatClient,
+) -> Agreement:
+    """Read one objection's prose and say which way it argues. Off the decision path.
+
+    Run as its own stage after every contest, never inside one: it must not be able to
+    change what the challenger wrote or what a recourse judge was handed, and keeping it
+    in a separate pass makes that structural rather than a promise. It is also
+    re-runnable over finished contest directories for nothing but the grader's cents.
+
+    Temperature 0, for the same reason the comprehension probe is at 0 — this is a
+    measurement, and the same text read twice should be read the same way. The cap is
+    ``grading.max_tokens`` rather than the run's: the answer is one line and a sentence,
+    and a 16k ceiling on a probe that costs cents only buys a runaway.
+
+    ``line_word`` is taken from the recorded stance rather than re-parsed, because the
+    line was stripped out of ``challenge.text`` before it was written — which is also
+    why the reader cannot see it and the reading is independent of it.
+    """
+    messages = build_agreement_messages(
+        challenge.text, decision_verdict=decision_verdict
+    )
+    (prose, reasoning, parse_mode), completion, repairs, _, _ = (
+        await _complete_with_repair(
+            client, model=grading.grader_model, messages=messages,
+            temperature=AGREEMENT_TEMPERATURE, config=config,
+            meta={"role": "agreement", "speaker": None, "round": None,
+                  "purpose": "agreement"},
+            parse=parse_agreement_output, role="agreement", word_limit=0,
+            max_tokens=grading.max_tokens,
+        )
+    )
+    word = {"contests": REVERSE, "declined": STANDS}.get(challenge.stance)
+    return Agreement(
+        prose_stance=prose, line_word=word, reasoning=reasoning,
+        model=grading.grader_model,
+        parse_mode=parse_mode, raw=completion.content, call_id=completion.call_id,
+        finish_reason=completion.finish_reason, repair_attempts=repairs,
+        native_reasoning=completion.reasoning,
+        reasoning_withheld=completion.reasoning_withheld,
+    )
 
 
 async def _rule_by_judge(

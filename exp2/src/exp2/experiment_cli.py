@@ -41,6 +41,7 @@ from .experiment import (
     STAGES,
     build_grid,
     build_index,
+    run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
@@ -106,12 +107,15 @@ def print_estimate(grid, config: DebateConfig) -> None:
     # grading only on flawed items whose subset records what the flaw was.
     contest = 2 * len(grid)
     ruling = len(grid)
+    # One short grader call per contest whose decision line parsed — the line-vs-prose
+    # instrument. Bounded by the grid because every cell can produce at most one.
+    agreement = len(grid)
     gradable = sum(1 for cell in grid if cell.case.gradable)
     print(f"\ncells: {len(grid)}  " +
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
     print(f"estimated calls: decision {decision}, contest {contest}, "
-          f"ruling <= {ruling}, grading <= {gradable}  "
-          f"=> up to {decision + contest + ruling + gradable}")
+          f"ruling <= {ruling}, agreement <= {agreement}, grading <= {gradable}  "
+          f"=> up to {decision + contest + ruling + agreement + gradable}")
     print(f"retries are on top: max_decision_attempts={config.max_decision_attempts}, "
           "plus at most one format repair per generation")
 
@@ -183,6 +187,9 @@ def main(argv: list[str] | None = None) -> int:
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key),
+        "agreement": lambda: run_stage_agreement(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key=api_key),
         "grade": lambda: run_stage_grade(
             grid, root=root, config=config, grading=grading,
             client_config=client_config, api_key=api_key),

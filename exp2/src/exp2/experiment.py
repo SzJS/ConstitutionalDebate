@@ -1,6 +1,6 @@
 """The staged batch harness.
 
-Stages: ``decide`` → ``contest`` → ``grade`` → ``analyse``.
+Stages: ``decide`` → ``contest`` → ``agreement`` → ``grade`` → ``analyse``.
 
 The plan named ``challenge``, ``rule`` and ``comprehend`` as separate stages; they are
 one stage here, and the reason is the comprehension probe. It is asked inside the
@@ -35,12 +35,16 @@ from .client import OpenRouterClient
 from .config import ClientConfig, DebateConfig, GradingConfig
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
-from .recourse import run_recourse
+from .recourse import judge_prose_stance, run_recourse
 from .types import Case, Challenge, Item, make_sides
 
 log = logging.getLogger(__name__)
 
-STAGES: tuple[str, ...] = ("decide", "contest", "grade", "analyse")
+# ``agreement`` sits between ``contest`` and ``grade`` because it reads what the contest
+# wrote and because the grade stage's own gate — stance == "contests" — is the column it
+# exists to audit. It resumes on ``agreement.json`` like every other stage resumes on
+# its own artifact.
+STAGES: tuple[str, ...] = ("decide", "contest", "agreement", "grade", "analyse")
 
 
 @dataclass(frozen=True)
@@ -217,6 +221,62 @@ async def run_stage_contest(
                           client_config.max_runs_in_flight)
 
 
+async def run_stage_agreement(
+    cells: Sequence[Cell], *, root: Path, config: DebateConfig,
+    grading: GradingConfig, client_config: ClientConfig, api_key: str,
+) -> list[dict[str, Any]]:
+    """The line-vs-prose instrument, one grader call per readable contest.
+
+    Every contest whose decision line parsed, contesting **and** declining alike: a
+    decline whose prose argues the verdict was wrong is as much a mismatch as a contest
+    whose prose agrees with it, and measuring only one direction would make the
+    instrument agree with the column it is checking. ``unclear`` contests are skipped
+    because there is no line to compare the prose against.
+
+    The calls carry ``role="agreement"``, which ``accounting.OFF_PATH_ROLES`` keeps out
+    of every decision-path total.
+    """
+    challenger = config.challenger_model_for()
+    semaphore = asyncio.Semaphore(client_config.max_concurrency)
+
+    async def measure(cell: Cell) -> dict[str, Any]:
+        directory = existing_contest(root, cell, challenger)
+        if directory is None:
+            return {"cell_id": cell.cell_id, "status": "skipped", "reason": "no contest"}
+        if (directory / "agreement.json").is_file():
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already measured"}
+        challenge = Challenge.from_dict(
+            json.loads((directory / "challenge.json").read_text()))
+        if challenge.stance not in ("contests", "declined"):
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": f"stance is {challenge.stance}; no line to compare"}
+        record = existing_decision(root, cell)
+        if record is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no decision"}
+        try:
+            async with OpenRouterClient(api_key, client_config,
+                                        sink=_sink_to(directory / "calls.jsonl"),
+                                        semaphore=semaphore) as client:
+                agreement = await judge_prose_stance(
+                    challenge, decision_verdict=record.verdict.verdict,
+                    config=config, grading=grading, client=client,
+                )
+        except Exception as error:
+            return {"cell_id": cell.cell_id, "status": "failed",
+                    "error": f"{type(error).__name__}: {error}"}
+        (directory / "agreement.json").write_text(
+            json.dumps(agreement.to_dict(), indent=2), encoding="utf-8")
+        return {"cell_id": cell.cell_id, "status": "completed",
+                "line": agreement.line_word, "prose": agreement.prose_stance,
+                "agrees": agreement.agrees,
+                "phantom": agreement.phantom_contest}
+
+    return await _bounded([lambda c=c: measure(c) for c in cells],
+                          client_config.max_concurrency)
+
+
 async def run_stage_grade(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     grading: GradingConfig, client_config: ClientConfig, api_key: str,
@@ -359,6 +419,16 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             row["challenge_unclear"] = challenge.stance == "unclear"
             row["challenge_claimed_verdict"] = challenge.claimed_verdict
             row["challenge_contradictory"] = challenge.contradictory
+            agreement_path = contest / "agreement.json"
+            if agreement_path.is_file():
+                # The instrument that keeps `challenge_raised` falsifiable. Absent
+                # rather than False when the stage has not run, so "not measured" and
+                # "measured and agreed" stay different facts — the same rule the graded
+                # columns follow.
+                agreement = json.loads(agreement_path.read_text())
+                row["prose_stance"] = agreement["prose_stance"]
+                row["line_prose_agree"] = agreement["agrees"]
+                row["phantom_contest"] = agreement["phantom_contest"]
             ruling_path = contest / "ruling.json"
             if ruling_path.is_file():
                 ruling = json.loads(ruling_path.read_text())

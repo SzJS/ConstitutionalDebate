@@ -143,10 +143,12 @@ def test_detection_and_validity_have_different_denominators():
     assert summary["rates"]["revised_given_false_positive"]["n"] == 1
 
 
-def test_the_four_stances_partition_the_contests_and_never_double_count():
-    """`challenge_raised` is the CONTESTING stance now, not the word the model wrote.
-    Reported beside `agreed_with_decision` so the pilot's shape — 51 objections of which
-    roughly 46 agreed with the verdict — cannot hide inside a detection rate again."""
+def test_the_stances_partition_the_contests_and_never_double_count():
+    """`challenge_raised` is the CONTESTING stance, not the word the model wrote.
+    `agreed_with_decision` is structurally 0 since the challenger's line became one
+    relative token, and it is still reported: a column that reads 0 says the shape did
+    not occur, a column that is absent says nobody looked. A synthetic `agrees` row is
+    used here precisely because the live pipeline can no longer produce one."""
     rows = [stance_row("contests", item_id="a"), stance_row("agrees", item_id="b"),
             stance_row("declined", item_id="c"), stance_row("unclear", item_id="d")]
     summary = funnel(rows)
@@ -162,6 +164,47 @@ def test_the_four_stances_partition_the_contests_and_never_double_count():
     # they add up to the four rows, with nothing counted twice
     assert (rates["objection_raised_given_incorrect"]["k"] + rates["agreed_with_decision"]["k"]
             + rates["declined"]["k"] + rates["unclear_stance"]["k"]) == 4
+
+
+def test_the_line_and_the_prose_are_tabulated_against_each_other():
+    """The instrument that keeps `contests` falsifiable. With one relative line there is
+    no second answer for a reply to contradict, so nothing mechanical stops a challenger
+    writing REVERSE and then agreeing with the verdict in prose — the phantom contest."""
+    rows = [
+        stance_row("contests", item_id="a", prose_stance="WRONG",
+                   line_prose_agree=True, phantom_contest=False),
+        stance_row("contests", item_id="b", prose_stance="RIGHT",
+                   line_prose_agree=False, phantom_contest=True),
+        stance_row("contests", item_id="c", prose_stance="NEITHER",
+                   line_prose_agree=None, phantom_contest=False),
+        stance_row("declined", item_id="d", prose_stance="RIGHT",
+                   line_prose_agree=True, phantom_contest=False),
+        stance_row("declined", item_id="e", prose_stance="WRONG",
+                   line_prose_agree=False, phantom_contest=False),
+        # contested but never measured: it must not be counted as agreement
+        stance_row("contests", item_id="f"),
+    ]
+    table = funnel(rows)["line_vs_prose"]
+    assert table["measured"] == 5 and table["eligible"] == 6
+    assert table["table"]["REVERSE"] == {"RIGHT": 1, "WRONG": 1, "NEITHER": 1}
+    assert table["table"]["STANDS"] == {"RIGHT": 1, "WRONG": 1, "NEITHER": 0}
+    assert table["agree"] == 2 and table["disagree"] == 2
+    # NEITHER is its own column: prose that takes no side has not contradicted its
+    # label, it has failed to support it
+    assert table["no_direction"] == 1
+    assert table["phantom_contests"] == 1 and table["n_contests_measured"] == 3
+    assert table["declines_arguing_for_reversal"] == 1
+    # and the headline rate is over the contests that were actually read
+    phantom = funnel(rows)["rates"]["phantom_contest"]
+    assert phantom["k"] == 1 and phantom["n"] == 3
+
+
+def test_an_unmeasured_contest_is_absent_from_the_cross_tab_not_counted_as_agreeing():
+    """The same rule the graded columns follow: "not measured" and "measured and
+    agreed" are different facts, and exp1 shipped the bug of conflating them."""
+    table = funnel([stance_row("contests", item_id="a")])["line_vs_prose"]
+    assert table["measured"] == 0 and table["eligible"] == 1
+    assert table["agree"] == 0 and table["disagree"] == 0
 
 
 def test_the_false_alarm_rate_is_split_by_gold_label():
@@ -235,6 +278,9 @@ def test_the_caveats_name_every_accepted_limitation():
     assert "specious" in text
     assert "label_basis" in text
     assert "understates debate" in text
+    # the instrument that replaced the `agrees` stance has to be named where the rate
+    # it replaced is reported, or a reader meets a structural 0 and reads it as a result
+    assert "agreed_with_decision" in text and "phantom_contest" in text
 
 
 def test_analyse_puts_the_caveats_and_the_overlaps_in_the_output(tmp_path):
