@@ -357,6 +357,23 @@ The pilot's `self_critique` cells were decided before all of this. They cannot b
 repaired by re-rendering: the critique text was never in the record. They have to be
 **re-decided** before any cross-condition comparison rests on them.
 
+**Verified on real output (2026-08-25, `outputs/verify-critique/`, $0.0066).** One
+`self_critique --contest` run of `gpqa-123-flawed` under the pilot's models at
+`max_tokens = 8192`. The first attempt died in the first critique: after ~10k characters
+of `Thinking:` the model wrote "Let me write the response", emitted a spurious
+`</parameter> <assistant> <thinking>` and restarted itself 56 times until the token cap,
+never reaching a `Reasoning:` label — the pilot checklist's "deliberation loop", now seen
+at the Thinking→Reasoning boundary of a critique. The retry at identical settings
+completed: critique 1 was `Thinking:`-only and the repair produced a public critique;
+critiques 2 and 3 parsed as written. So the fix works, and the loop is the model's, not
+the prompt's — but it is the same model failure the pilot raised `max_tokens` for, and a
+`frequency_penalty` remains the untried knob. Two things a reader of that record should
+notice, both model behaviour rather than harness faults: the second critique ends with a
+`Verdict: FLAWED` line despite being told not to give one, and the third critique is the
+previous revision restated word for word rather than a criticism of it. The solo ruling's
+grounds carry no `Thinking:`, and `transcript_full.md` re-expands byte for byte against
+`calls.jsonl` for both the run (68 request messages, 7 replies) and its contest (24, 3).
+
 ## 3e. Settled (2026-08-25): Thinking blocks are published in `transcript.md`
 
 `DESIGN.md` says "CoTs are not part of the published record in debate", in the section
