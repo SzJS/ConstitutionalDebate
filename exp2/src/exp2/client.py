@@ -101,6 +101,7 @@ class ChatClient(Protocol):
         reasoning_effort: str,
         meta: dict[str, Any],
         frequency_penalty: float = 0.0,
+        provider: dict[str, Any] | None = None,
     ) -> Completion: ...
 
 
@@ -169,6 +170,7 @@ class OpenRouterClient:
         max_tokens: int,
         reasoning_effort: str,
         frequency_penalty: float = 0.0,
+        provider: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model,
@@ -190,6 +192,13 @@ class OpenRouterClient:
             body["reasoning"] = {"enabled": False}
         else:
             body["reasoning"] = {"effort": reasoning_effort}
+        # Only for models the config actually pins. Omitted rather than sent as an
+        # empty object, for the same reason ``frequency_penalty`` is omitted at 0.0:
+        # a recorded request body is part of the published record and should carry
+        # nothing the protocol does not mean. `DebateConfig.provider_routing_for`
+        # decides; this layer only carries.
+        if provider:
+            body["provider"] = provider
         return body
 
     async def complete(
@@ -202,6 +211,7 @@ class OpenRouterClient:
         reasoning_effort: str,
         meta: dict[str, Any],
         frequency_penalty: float = 0.0,
+        provider: dict[str, Any] | None = None,
     ) -> Completion:
         body = self._build_body(
             model=model,
@@ -210,6 +220,7 @@ class OpenRouterClient:
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
             frequency_penalty=frequency_penalty,
+            provider=provider,
         )
         blank_attempts = 0
         last_error: Exception | None = None

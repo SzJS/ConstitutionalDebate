@@ -342,3 +342,39 @@ def test_a_field_that_mixes_an_escape_and_a_decoded_character_keeps_both():
     assert _clean("\\u2264 beside a real ≤") == "≤ beside a real ≤"
     # an escaped backslash stays one backslash and does not swallow the n after it
     assert _clean("pair \\\\n and escape \\n and \\u03c0") == "pair \\n and escape \n and π"
+
+
+# --- the pilot bundle's destination --------------------------------------------------
+
+
+def test_the_pilot_bundle_is_written_where_pilot_out_says(tmp_path, monkeypatch, capsys):
+    """`experiments/pilot.toml` and `pilot-2.toml` both point at `data/cases/pilot.jsonl`
+    and it has to keep meaning the 42 items those runs were made on. A new draw goes to
+    a new path, or two finished experiments start describing a corpus they never saw.
+    """
+    import shutil
+    import sys
+    from pathlib import Path
+
+    real_zip = Path(__file__).resolve().parent.parent / "data/findtheflaws/datasets.zip"
+    if not real_zip.is_file():
+        pytest.skip("the FindTheFlaws archive is not cached locally")
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import get_tasks
+
+    (tmp_path / "findtheflaws").mkdir(parents=True)
+    shutil.copy(real_zip, tmp_path / "findtheflaws" / real_zip.name)
+
+    out = tmp_path / "cases" / "pilot-elsewhere.jsonl"
+    assert get_tasks.main([
+        "--subset", "theoremqa", "--data-root", str(tmp_path),
+        "--pilot", "1", "--pilot-longest", "0", "--pilot-out", str(out),
+    ]) == 0
+    capsys.readouterr()
+    assert out.is_file()
+    # and the default name was not written beside it
+    assert not (tmp_path / "cases" / "pilot.jsonl").is_file()
+    from exp2.types import load_cases
+
+    assert len(load_cases(out)) == 2   # one flawed, one sound

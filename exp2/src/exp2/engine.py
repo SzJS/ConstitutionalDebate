@@ -188,6 +188,10 @@ async def _complete(
     # where the runaway private deliberation lives: every one of the pilot's 16
     # truncations was a debater's or reviewer's own Thinking block, and none was a judge,
     # challenger or recourse ruling.
+    #
+    # Provider routing is per model and comes from ``DebateConfig``, so a contest
+    # inherits the routing its decision was made under. Models with no entry get no
+    # ``provider`` key on the wire at all.
     cap = config.max_tokens if max_tokens is None else max_tokens
     completion = await client.complete(
         model=model,
@@ -197,6 +201,7 @@ async def _complete(
         reasoning_effort=reasoning_effort or config.reasoning_effort,
         meta=meta,
         frequency_penalty=config.frequency_penalty,
+        provider=config.provider_routing_for(model),
     )
     if completion.truncated:
         raise TruncatedOutputError(

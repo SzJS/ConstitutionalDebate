@@ -19,7 +19,7 @@ later is a real diff rather than filling a slot.
 from __future__ import annotations
 
 import tomllib
-from dataclasses import MISSING, dataclass, fields
+from dataclasses import MISSING, dataclass, field, fields
 from pathlib import Path
 from typing import Any, Literal
 
@@ -104,6 +104,44 @@ class DebateConfig:
     # Set it apart from n_rounds and the "debate only wins because it generates more
     # text" confound comes back silently.
     n_critique_rounds: int = 3
+
+    # --- provider routing -------------------------------------------------------
+    #
+    # In ``DebateConfig`` rather than ``ClientConfig``, and the distinction is the whole
+    # reason those two tables exist: routing decides **which weights generate the text**,
+    # so it can change a decision, so it belongs in the published record and must be
+    # inherited by a contest. A timeout cannot; this can.
+    #
+    # OpenRouter served `deepseek/deepseek-v4-flash-0731` from 20 providers during pilot
+    # 2, and they are not interchangeable. Attributing each format repair to the call
+    # that FAILED (166/166 paired; an earlier table charged the provider that served the
+    # repair, which was wrong for 40% of them):
+    #
+    #   provider      original calls   caused a repair   rate
+    #   GMICloud                  48                 1   2.1%  [0.4, 10.9]  p < 0.0001
+    #   Baidu                    132                20   15.2%
+    #   CoreWeave                 20                 4   20.0% [8.1, 41.6]  p = 0.79
+    #   DeepInfra                 31                 6   19.4%
+    #   Relace                   215                76   35.3%             p = 0.0001
+    #   DigitalOcean              85                30   35.3%
+    #
+    # Keyed by model id: only the models with an entry get a ``provider`` block on the
+    # wire, so nano and Haiku are routed exactly as they were. A **bare ``{}`` default
+    # would raise at import** — a mutable default on a dataclass field — hence the
+    # factory.
+    #
+    # ``order`` takes OpenRouter provider **slugs**, and `calls.jsonl` records display
+    # names. An unrecognised slug is ignored, and with ``allow_fallbacks = False`` that
+    # is a 404 on every call which no dry-run can catch. Verify against
+    # /api/v1/models/<id>/endpoints and one real pinned call before spending a stage.
+    provider_order: dict[str, list[str]] = field(default_factory=dict)
+    # False, so the pin is a pin. A silent fallback would put the measurement back where
+    # it started — a run whose repair rate is an average over whichever providers
+    # happened to be free — and it would do so invisibly, since the served provider is
+    # only in the wire log. A momentarily missing endpoint is a 404 carrying
+    # `NO_ENDPOINTS_MARKER`, which `client.py` already treats as retryable; exhausting
+    # the attempts fails the cell, and that is the thing being measured.
+    provider_allow_fallbacks: bool = False
 
     # Second debater model, for the different-families ablation. None means self-play.
     debater_model_b: str | None = None
@@ -202,6 +240,18 @@ class DebateConfig:
                 f"challenger_reasoning_effort must be one of {REASONING_EFFORTS} or "
                 f"unset, got {self.challenger_reasoning_effort!r}"
             )
+        for model, order in self.provider_order.items():
+            if not isinstance(order, (list, tuple)) or not order:
+                raise ConfigError(
+                    f"provider_order[{model!r}] must be a non-empty list of provider "
+                    f"slugs, got {order!r}. An empty list with allow_fallbacks=False "
+                    "would route nowhere."
+                )
+            if not all(isinstance(slug, str) and slug.strip() for slug in order):
+                raise ConfigError(
+                    f"provider_order[{model!r}] must contain provider slugs as "
+                    f"non-empty strings, got {order!r}"
+                )
         if not 0.0 <= self.challenger_temperature <= 2.0:
             raise ConfigError(
                 f"challenger_temperature must be in [0, 2], got "
@@ -228,6 +278,22 @@ class DebateConfig:
             if self.challenge_word_limit is None
             else self.challenge_word_limit
         )
+
+    def provider_routing_for(self, model: str) -> dict[str, Any] | None:
+        """The ``provider`` block for this model's request body, or ``None``.
+
+        ``None`` means the key is omitted entirely rather than sent as an empty object:
+        a recorded request body is part of the published record and should carry nothing
+        the protocol does not mean. It is also what keeps an unpinned model's request
+        byte-identical to what it was before pinning existed.
+        """
+        order = self.provider_order.get(model)
+        if not order:
+            return None
+        return {
+            "order": list(order),
+            "allow_fallbacks": self.provider_allow_fallbacks,
+        }
 
     @property
     def recourse_protocol(self) -> str:
@@ -259,6 +325,8 @@ WHY: dict[str, str] = {
     "frequency_penalty": "0 unless a model loops; a nonzero value changes the text and so belongs in the record.",
     "max_decision_attempts": "2 — one retry for a transient failure, without selecting for compliant outputs.",
     "n_critique_rounds": "equal to n_rounds, so self_critique and debate make the same number of generations.",
+    "provider_order": "per-model OpenRouter provider slugs, in preference order. Empty means OpenRouter routes freely, which is what pilot 2 did across 20 providers of one model whose format-repair rates ranged 2.1% (GMICloud, n=48, p<0.0001 against the 25.5% pool) to 35.3% (Relace, n=215). Routing decides which weights write the text, so it lives here and a contest inherits it.",
+    "provider_allow_fallbacks": "False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint is already a retryable 404; exhausting the retries fails the cell, which is the thing being measured.",
     "debater_model_b": "unset means self-play; setting it is the different-model-families ablation.",
     "critic_model": "unset means the debater model; a different critic would confound capability with procedure.",
     "recourse_rounds": "0 — judge-only recourse, so the contest step is identical across all three conditions.",

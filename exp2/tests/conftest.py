@@ -113,14 +113,15 @@ class FakeClient:
 
     async def complete(self, *, model: str, messages: list[dict[str, str]],
                        temperature: float, max_tokens: int, reasoning_effort: str,
-                       meta: dict[str, Any], frequency_penalty: float = 0.0):
+                       meta: dict[str, Any], frequency_penalty: float = 0.0,
+                       provider: dict[str, Any] | None = None):
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
         try:
             await asyncio.sleep(0)  # let a sibling coroutine actually overlap
             self.calls.append({"model": model, "messages": messages,
                                "meta": dict(meta), "temperature": temperature,
-                               "max_tokens": max_tokens})
+                               "max_tokens": max_tokens, "provider": provider})
             key = self.key(meta)
             # Keyed on the call's own key, falling back to the bare role name. A repair
             # carries purpose="repair", so a staged role's repair has a different key
@@ -130,7 +131,7 @@ class FakeClient:
             request = self._request_body(
                 model=model, messages=messages, temperature=temperature,
                 max_tokens=max_tokens, reasoning_effort=reasoning_effort,
-                frequency_penalty=frequency_penalty,
+                frequency_penalty=frequency_penalty, provider=provider,
             )
             # A repair must be able to succeed, or the repair path cannot be tested —
             # unless the test asked for a failure that keeps firing.
@@ -152,7 +153,8 @@ class FakeClient:
     @staticmethod
     def _request_body(*, model: str, messages: list[dict[str, str]],
                       temperature: float, max_tokens: int, reasoning_effort: str,
-                      frequency_penalty: float) -> dict[str, Any]:
+                      frequency_penalty: float,
+                      provider: dict[str, Any] | None = None) -> dict[str, Any]:
         """The body ``OpenRouterClient._build_body`` would have put on the wire.
 
         A renderer that reads ``calls.jsonl`` reads the request, so the fake's log
@@ -167,6 +169,8 @@ class FakeClient:
             body["frequency_penalty"] = frequency_penalty
         body["reasoning"] = ({"enabled": False} if reasoning_effort == "off"
                              else {"effort": reasoning_effort})
+        if provider:
+            body["provider"] = provider
         return body
 
     async def _deliver(self, content: str, request: dict[str, Any],

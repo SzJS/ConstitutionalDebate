@@ -101,6 +101,65 @@ def test_the_grader_model_is_not_a_batch_tier_id():
         assert not model.endswith(":batch"), f"{spec} would send {model}"
 
 
+# --- provider routing ---------------------------------------------------------------
+
+
+def test_provider_order_defaults_to_empty_and_routes_nothing():
+    """A bare `{}` default on a dataclass field raises at import; this must be a
+    factory, and an unpinned config must put no `provider` key on the wire at all."""
+    c = DebateConfig(**debate_kwargs())
+    assert c.provider_order == {}
+    assert c.provider_allow_fallbacks is False
+    assert c.provider_routing_for("strong/model") is None
+
+
+def test_only_the_models_with_an_entry_are_pinned():
+    """nano and Haiku have no entry and must be routed exactly as they were. Pinning a
+    model that has no measured provider table would be a routing change nothing
+    supports."""
+    c = DebateConfig(**debate_kwargs(
+        provider_order={"deepseek/deepseek-v4-flash-0731": ["gmicloud", "coreweave"]}))
+    assert c.provider_routing_for("deepseek/deepseek-v4-flash-0731") == {
+        "order": ["gmicloud", "coreweave"], "allow_fallbacks": False,
+    }
+    assert c.provider_routing_for("openai/gpt-4.1-nano") is None
+    assert c.provider_routing_for("anthropic/claude-haiku-4.5") is None
+
+
+def test_an_empty_or_malformed_provider_order_is_refused():
+    """With allow_fallbacks=False an empty list routes nowhere — a 404 on every call
+    that no dry-run can catch."""
+    with pytest.raises(ConfigError, match="non-empty list"):
+        DebateConfig(**debate_kwargs(provider_order={"m": []}))
+    with pytest.raises(ConfigError, match="non-empty strings"):
+        DebateConfig(**debate_kwargs(provider_order={"m": ["ok", ""]}))
+
+
+def test_routing_is_decision_relevant_so_a_contest_inherits_it():
+    """Routing decides which weights write the text, so it is in DebateConfig — which
+    is persisted as config.json and inherited by a contest — and not in ClientConfig,
+    which a contest deliberately does not inherit."""
+    from exp2.config import RECOURSE_ONLY_KEYS
+
+    names = {f.name for f in fields(DebateConfig)}
+    assert {"provider_order", "provider_allow_fallbacks"} <= names
+    assert not ({"provider_order", "provider_allow_fallbacks"} & RECOURSE_ONLY_KEYS)
+    assert {"provider_order", "provider_allow_fallbacks"} <= set(
+        DebateConfig(**debate_kwargs()).to_dict())
+
+
+def test_a_provider_table_loads_from_a_spec(tmp_path: Path):
+    spec = tmp_path / "s.toml"
+    spec.write_text(
+        '[debate.provider_order]\n'
+        '"deepseek/deepseek-v4-flash-0731" = ["gmicloud", "coreweave"]\n',
+        encoding="utf-8")
+    debate, _ = load_config(spec)
+    assert debate.provider_order == {
+        "deepseek/deepseek-v4-flash-0731": ["gmicloud", "coreweave"]}
+    assert debate.provider_allow_fallbacks is False
+
+
 # --- resolvers ----------------------------------------------------------------------
 
 

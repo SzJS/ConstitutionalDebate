@@ -411,3 +411,61 @@ async def test_a_genuine_404_still_fails_immediately():
     with pytest.raises(FatalError, match="retrying will not help"):
         await run(handler)
     assert len(seen) == 1, "a bad model id must not be retried"
+
+
+# --- provider routing ----------------------------------------------------------------
+
+
+async def test_a_pinned_model_carries_a_provider_block_and_an_unpinned_one_does_not():
+    """The key is omitted entirely rather than sent as an empty object, for the same
+    reason `frequency_penalty` is omitted at 0.0: a recorded request body is part of
+    the published record and should carry nothing the protocol does not mean.
+
+    The three models are the three this experiment sends. Only the strong one has a
+    measured provider table behind it; nano and Haiku must be routed exactly as they
+    were before pinning existed.
+    """
+    import json as _json
+
+    bodies: list[dict] = []
+
+    def handler(request):
+        bodies.append(_json.loads(request.content))
+        return httpx.Response(200, json=ok_body())
+
+    async with OpenRouterClient("test-key", client_config(),
+                                transport=httpx.MockTransport(handler)) as client:
+        for model, provider in (
+            ("deepseek/deepseek-v4-flash-0731",
+             {"order": ["gmicloud", "coreweave"], "allow_fallbacks": False}),
+            ("openai/gpt-4.1-nano", None),
+            ("anthropic/claude-haiku-4.5", None),
+        ):
+            await client.complete(
+                model=model, messages=MESSAGES, temperature=0.0, max_tokens=64,
+                reasoning_effort="off", meta={"role": "judge"}, provider=provider,
+            )
+
+    assert bodies[0]["provider"] == {"order": ["gmicloud", "coreweave"],
+                                     "allow_fallbacks": False}
+    assert "provider" not in bodies[1]
+    assert "provider" not in bodies[2]
+
+
+async def test_the_engine_routes_from_the_config_and_only_for_pinned_models():
+    """The routing has to come from ``DebateConfig`` so that a contest inherits the
+    routing its decision was made under."""
+    from conftest import FakeClient
+    from helpers import make_config
+
+    from exp2.engine import _complete
+
+    config = make_config(provider_order={"strong/model": ["gmicloud", "coreweave"]})
+    client = FakeClient()
+    await _complete(client, model="strong/model", messages=MESSAGES, temperature=0.7,
+                    config=config, meta={"role": "solo", "purpose": "answer"})
+    await _complete(client, model="weak/model", messages=MESSAGES, temperature=0.0,
+                    config=config, meta={"role": "judge", "purpose": "judge"})
+    assert client.calls[0]["provider"] == {"order": ["gmicloud", "coreweave"],
+                                           "allow_fallbacks": False}
+    assert client.calls[1]["provider"] is None

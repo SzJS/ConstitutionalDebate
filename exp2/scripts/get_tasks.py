@@ -101,7 +101,8 @@ def main(argv: list[str] | None = None) -> int:
                              "items travel together")
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--pilot", type=int, default=None, metavar="N",
-                        help="also write data/cases/pilot.jsonl with N flawed and "
+                        help="also write a pilot bundle (see --pilot-out) with N "
+                             "flawed and "
                              "N sound items per subset, balanced so the pilot "
                              "exercises both error types everywhere, PLUS the two "
                              "longest items in each subset (see --pilot-longest)")
@@ -110,6 +111,14 @@ def main(argv: list[str] | None = None) -> int:
                              "every subset converted. This is how the pilot is "
                              "restricted to the subsets that survived the weak-model "
                              "screen, without re-converting a different corpus")
+    parser.add_argument("--pilot-out", type=Path, default=None, metavar="PATH",
+                        help="where to write the pilot bundle. Default: "
+                             "<data-root>/cases/pilot.jsonl. Give a different path "
+                             "when the draw changes: `experiments/pilot.toml` and "
+                             "`pilot-2.toml` both point at pilot.jsonl and it has to "
+                             "keep meaning the 42 items they were run on, or two "
+                             "finished experiments start describing a corpus they "
+                             "never saw")
     parser.add_argument("--pilot-longest", type=int, default=2, metavar="N",
                         help="items per subset added on top of the balanced draw, "
                              "chosen as the longest by len(problem)+len(solution). "
@@ -180,7 +189,8 @@ def main(argv: list[str] | None = None) -> int:
                             for c in longest],
                 "flawed": sum(1 for c in chosen.values() if c.item.gold_flawed),
             })
-        bundle = args.data_root / "cases" / "pilot.jsonl"
+        bundle = args.pilot_out or (args.data_root / "cases" / "pilot.jsonl")
+        bundle.parent.mkdir(parents=True, exist_ok=True)
         bundle.write_text(
             "\n".join(json.dumps(c.to_dict()) for c in pilot) + "\n", encoding="utf-8")
         flawed_n = sum(1 for c in pilot if c.item.gold_flawed)
