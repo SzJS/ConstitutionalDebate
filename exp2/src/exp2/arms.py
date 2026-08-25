@@ -120,24 +120,27 @@ async def _run_solo(
             # a model that files the whole critique under ``Thinking:`` leaves the record
             # with a placeholder. So it gets the same one repair the deciding stages get,
             # and withholding is what happens only after that repair also fails.
-            (thinking, text, parse_mode), completion, repairs, sent = (
+            (thinking, text, parse_mode), completion, repairs, sent, repair_kind = (
                 await _complete_with_repair(
                     client, model=config.critic_model_for(), messages=messages,
                     temperature=config.debater_temperature, config=config,
                     meta={"role": "critic", "speaker": None, "round": None,
                           "purpose": stage},
                     parse=_split_solo, role="critic", word_limit=config.word_limit,
-                    unrepaired=_withhold_critique,
+                    max_tokens=config.generation_max_tokens,
+                    public_label="Reasoning", unrepaired=_withhold_critique,
                 )
             )
         else:
-            (thinking, text, verdict_word, parse_mode), completion, repairs, sent = (
+            (thinking, text, verdict_word, parse_mode), completion, repairs, sent, repair_kind = (
                 await _complete_with_repair(
                     client, model=config.debater_model, messages=messages,
                     temperature=config.debater_temperature, config=config,
                     meta={"role": "solo", "speaker": None, "round": None,
                           "purpose": stage},
                     parse=_parse_solo, role="solo", word_limit=config.word_limit,
+                    max_tokens=config.generation_max_tokens,
+                    public_label="Reasoning",
                 )
             )
             last_verdict = verdict_word
@@ -149,7 +152,11 @@ async def _run_solo(
         messages = [*messages, {"role": "assistant", "content": completion.content}]
         last = Step(
             index=index, stage=stage, thinking=thinking, text=text,
-            word_count=count_words(text), parse_mode=parse_mode,
+            word_count=count_words(text),
+            # A budget repair is marked apart from a format repair: nothing was written
+            # wrongly, the cap ran out before anything public was written at all.
+            parse_mode=(f"{parse_mode}_after_budget_repair"
+                        if repair_kind == "budget" else parse_mode),
             repair_attempts=repairs, finish_reason=completion.finish_reason,
             has_native_reasoning=completion.has_native_reasoning,
             call_id=completion.call_id, raw=completion.content,

@@ -358,7 +358,7 @@ async def solo_screen(model, cases, config, client_config, api_key, outputs) -> 
             try:
                 messages = build_solo_opening(case.item, make_sides(case.item, config.seed),
                                               cfg, stage="answer")
-                (_, _, verdict, _), completion, repairs, _ = await _complete_with_repair(
+                (_, _, verdict, _), completion, repairs, _, _ = await _complete_with_repair(
                     client, model=model, messages=messages,
                     temperature=cfg.debater_temperature, config=cfg,
                     meta={"role": "solo", "speaker": None, "round": None,
@@ -473,7 +473,7 @@ async def judge_and_challenge(model, fixture, config, client_config, api_key,
                        item_id=item.item_id, gold_flawed=item.gold_flawed)
             started = time.monotonic()
             try:
-                (verdict, reasoning, _), completion, repairs, _ = await _complete_with_repair(
+                (verdict, reasoning, _), completion, repairs, _, _ = await _complete_with_repair(
                     client, model=model,
                     messages=build_judge_messages(item, sides, cfg, transcript),
                     temperature=cfg.judge_temperature, config=cfg,
@@ -503,7 +503,7 @@ async def judge_and_challenge(model, fixture, config, client_config, api_key,
                     item, cfg, DecisionRecord.for_debate(transcript), sides=sides,
                     decision_verdict=jrow.verdict, decision_grounds=completion.content,
                 )
-                (_, raised, _, _), c2, repairs, _ = await _complete_with_repair(
+                (_, raised, _, _, _), c2, repairs, _, _ = await _complete_with_repair(
                     client, model=model, messages=messages,
                     temperature=cfg.debater_temperature, config=cfg,
                     meta={"role": "challenger", "speaker": None, "round": None,

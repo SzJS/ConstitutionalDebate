@@ -31,8 +31,12 @@ STAGED_ROLES = {"grader", "solo", "critic"}
 DEFAULT_REPLIES: dict[str, str] = {
     "judge": "The flawed side quoted the text; the sound side did not.\nVerdict: FLAWED",
     "recourse_judge": "The objection identifies a real error.\nRuling: OVERTURN",
+    # Contests: RAISED *and* a claimed verdict that differs from the default judge's
+    # FLAWED. Both lines are needed — RAISED alone is the `unclear` stance now, which
+    # seeks no ruling, and every recourse test would silently stop exercising one.
     "challenger": ("Thinking: I read the record.\n"
-                   "Argument: Objection: RAISED\nStep 2 divides by zero."),
+                   "Argument: Objection: RAISED\nVerdict should be: SOUND\n"
+                   "Step 2 does not divide by zero; the decision misread it."),
     "comprehension": "I followed most of it.\nComprehension: 4",
     "recourse_solo": "Thinking: reconsidering.\nReasoning: I was wrong.\nVerdict: SOUND",
     "grader": ("It points at the right step and says what is wrong.\n"
@@ -55,13 +59,22 @@ def _solo_reply(purpose: str) -> str:
 class FakeClient:
     """A ``ChatClient`` that answers from a script instead of the network."""
 
+    # Failure modes that keep firing on the repair attempt too. Everything else stops
+    # after the first call, so that the repair path can actually be tested.
+    ALWAYS = {"truncated_twice"}
+
     def __init__(self, *, replies: dict[Any, str] | None = None,
                  fail_on: dict[Any, str] | None = None, sink=None,
-                 native_reasoning: str = ""):
+                 native_reasoning: str = "",
+                 truncated_content: str = "cut off mid-sen"):
         self.replies = dict(replies or {})
         self.fail_on = dict(fail_on or {})
         self.sink = sink
         self.native_reasoning = native_reasoning
+        # What a truncated reply contains. The budget route reads it — whether the
+        # public label was reached decides whether the truncation cut anything — so a
+        # test has to be able to say what the model got as far as writing.
+        self.truncated_content = truncated_content
         self.calls: list[dict[str, Any]] = []
         self.in_flight = 0
         self.max_in_flight = 0
@@ -95,22 +108,30 @@ class FakeClient:
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
         try:
             await asyncio.sleep(0)  # let a sibling coroutine actually overlap
-            self.calls.append({"model": model, "messages": messages, "meta": dict(meta)})
+            self.calls.append({"model": model, "messages": messages,
+                               "meta": dict(meta), "temperature": temperature,
+                               "max_tokens": max_tokens})
             key = self.key(meta)
-            failure = self.fail_on.get(key)
+            # Keyed on the call's own key, falling back to the bare role name. A repair
+            # carries purpose="repair", so a staged role's repair has a different key
+            # from the call it is repairing; keying on the role is how a test asks for a
+            # failure that covers both.
+            failure = self.fail_on.get(key, self.fail_on.get(meta.get("role")))
             request = self._request_body(
                 model=model, messages=messages, temperature=temperature,
                 max_tokens=max_tokens, reasoning_effort=reasoning_effort,
                 frequency_penalty=frequency_penalty,
             )
-            # A repair must be able to succeed, or the repair path cannot be tested.
-            if failure and meta.get("purpose") != "repair":
+            # A repair must be able to succeed, or the repair path cannot be tested —
+            # unless the test asked for a failure that keeps firing.
+            if failure and (failure in self.ALWAYS
+                            or meta.get("purpose") != "repair"):
                 if failure == "http_error":
                     raise RetryableError("injected", status=500)
                 if failure == "fatal":
                     raise FatalError("injected", status=400)
-                if failure == "truncated":
-                    return await self._deliver("cut off mid-sen", request, meta,
+                if failure in ("truncated", "truncated_twice"):
+                    return await self._deliver(self.truncated_content, request, meta,
                                                finish_reason="length")
                 if failure == "malformed":
                     return await self._deliver("no labels here at all", request, meta)
@@ -182,6 +203,23 @@ class FakeClient:
     def purposes(self, role: str) -> list[str]:
         return [c["meta"].get("purpose") for c in self.calls
                 if c["meta"].get("role") == role]
+
+    def temperature_for(self, role: str) -> float:
+        """The temperature the first call as this role was made at."""
+        return self._first(role)["temperature"]
+
+    def max_tokens_for(self, role: str, purpose: str | None = None) -> int:
+        """The cap the first call as this role (and purpose, if given) was made at."""
+        return self._first(role, purpose)["max_tokens"]
+
+    def _first(self, role: str, purpose: str | None = None) -> dict[str, Any]:
+        for call in self.calls:
+            if call["meta"].get("role") != role:
+                continue
+            if purpose is not None and call["meta"].get("purpose") != purpose:
+                continue
+            return call
+        raise AssertionError(f"no call was made as {role!r}; roles seen: {self.roles()}")
 
     def sent_to(self, role: str) -> list[dict[str, str]]:
         """The message list of the first call made as this role."""

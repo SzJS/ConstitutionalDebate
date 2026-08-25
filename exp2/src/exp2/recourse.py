@@ -41,6 +41,7 @@ from .prompts import (
     build_comprehension_messages,
     build_recourse_judge_messages,
     build_solo_recourse_message,
+    marks_private_text,
     parse_comprehension_output,
     parse_objection_output,
     parse_verdict_output,
@@ -53,11 +54,46 @@ from .types import (
     Item,
     Ruling,
     Sides,
+    challenge_stance,
     count_words,
     resolve_ruling,
 )
 
 log = logging.getLogger(__name__)
+
+# The comprehension probe is a measurement, not a generation: the same reader shown the
+# same record should report the same rating, and sampling variation in a 1-5 Likert
+# answer is noise in a number the analysis reports as a distribution. Named rather than
+# written inline as 0.0 so that it is visibly a decision and not an omission — the
+# challenger beside it deliberately runs hot (config.challenger_temperature).
+COMPREHENSION_TEMPERATURE = 0.0
+
+# Published in place of an objection whose public section could not be located, on the
+# same rule as arms.WITHHELD: the reply marked a boundary, the repair did not fix it,
+# and guessing where the private half ends is worse than losing the text. The raw
+# generation survives in ``Challenge.raw`` and in the run's wire log.
+WITHHELD_OBJECTION = (
+    "[this objection's public section could not be identified and is withheld]"
+)
+
+
+def _unparsed_objection(text: str) -> tuple[str, bool, str, str, str | None]:
+    """Last resort for a challenger reply still unparsable after its one repair.
+
+    Routed to the ``unclear`` stance rather than raising. The challenger is the
+    experiment's *subject*: making an unreadable reply fatal would let the role whose
+    behaviour is being measured lose a whole contest to a DebateFailure, and its
+    measured repair rate is 0%. An unclear stance seeks no ruling, is excluded from the
+    rates and is counted in coverage, which is the honest reading of "it answered and I
+    could not tell what it said".
+
+    ``raised`` is recorded True because ``unclear`` is defined as a raised objection
+    whose direction is unknown, and every gate downstream reads ``stance``. What the
+    model actually wrote is in ``raw`` either way.
+    """
+    if marks_private_text(text):
+        return "", True, WITHHELD_OBJECTION, "unparsed_unclear_withheld", None
+    return "", True, text.strip(), "unparsed_unclear", None
 
 
 @dataclass
@@ -88,29 +124,39 @@ async def generate_challenge(
         decision_grounds=record.decision_grounds,
     )
     model = config.challenger_model_for()
-    (thinking, raised, text, parse_mode), completion, repairs, sent = (
+    (thinking, raised, text, parse_mode, claimed), completion, repairs, sent, _ = (
         await _complete_with_repair(
             client, model=model, messages=messages,
-            temperature=config.debater_temperature, config=config,
+            temperature=config.challenger_temperature, config=config,
             meta={"role": "challenger", "speaker": None, "round": None,
                   "purpose": "challenge"},
             parse=parse_objection_output, role="challenger",
             word_limit=config.challenge_word_limit_for(),
             reasoning_effort=config.challenger_reasoning_effort,
+            unrepaired=_unparsed_objection,
         )
     )
     limit = config.challenge_word_limit_for()
     if limit and count_words(text) > limit:
         log.warning("challenger wrote %d words over a %d-word limit",
                     count_words(text), limit)
+    decision = record.verdict.verdict
+    stance = challenge_stance(
+        raised=raised, claimed_verdict=claimed, decision_verdict=decision
+    )
     challenge = Challenge(
         text=text, origin="generated", raised=raised, arm="neutral",
+        claimed_verdict=claimed, stance=stance,
+        contradictory=(not raised and claimed is not None and claimed != decision),
         visibility="public", model=model, call_id=completion.call_id,
         finish_reason=completion.finish_reason, parse_mode=parse_mode,
         repair_attempts=repairs, thinking=thinking, raw=completion.content,
         native_reasoning=completion.reasoning,
         reasoning_withheld=completion.reasoning_withheld,
     )
+    if stance != "contests":
+        log.info("challenger stance %s (claimed %s against a %s decision)",
+                 stance, claimed, decision)
     if writer is not None:
         writer.record_challenge(challenge)
     return challenge, sent
@@ -132,9 +178,10 @@ async def ask_comprehension(
     """
     messages = build_comprehension_messages(prior, challenge.raw)
     model = config.comprehension_model_for()
-    (score, justification, parse_mode), completion, repairs, _ = (
+    (score, justification, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
-            client, model=model, messages=messages, temperature=0.0, config=config,
+            client, model=model, messages=messages,
+            temperature=COMPREHENSION_TEMPERATURE, config=config,
             meta={"role": "comprehension", "speaker": None, "round": None,
                   "purpose": "comprehension"},
             parse=parse_comprehension_output, role="comprehension", word_limit=0,
@@ -142,7 +189,8 @@ async def ask_comprehension(
     )
     comprehension = Comprehension(
         score=score, scale=COMPREHENSION_SCALE_ID, justification=justification,
-        asked_after_decline=not challenge.raised, model=model, parse_mode=parse_mode,
+        asked_after_decline=challenge.stance != "contests", model=model,
+        parse_mode=parse_mode,
         raw=completion.content, call_id=completion.call_id,
         finish_reason=completion.finish_reason, repair_attempts=repairs,
         native_reasoning=completion.reasoning,
@@ -161,7 +209,7 @@ async def _rule_by_judge(
         record.item, record.sides, record.challenger_view(),
         decision_verdict=record.verdict.verdict, objection=challenge.text,
     )
-    (word, reasoning, parse_mode), completion, repairs, _ = (
+    (word, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=config.recourse_judge_model_for(), messages=messages,
             temperature=config.judge_temperature, config=config,
@@ -213,7 +261,7 @@ async def _rule_in_conversation(
             "contest replays the conversation that produced the decision"
         )
     messages = [*record.messages, build_solo_recourse_message(record.sides, challenge.text)]
-    (word, reasoning, parse_mode), completion, repairs, _ = (
+    (word, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=config.debater_model, messages=messages,
             temperature=config.debater_temperature, config=config,
@@ -262,9 +310,14 @@ async def run_recourse(
         conversation, challenge, config, client, writer=writer
     )
 
-    if not challenge.raised or not rule:
+    if challenge.stance != "contests" or not rule:
         # No ruling.json is written, and its absence is what lets the analysis tell "the
         # decision was never objected to" from "the decision survived an objection".
+        #
+        # The gate is the STANCE, not ``raised``. An objection that agrees with the
+        # verdict it is objecting to puts nothing to a recourse judge — the pilot ran
+        # 51 such rulings and the judges correctly upheld almost all of them, which
+        # looked like a contestability result and was an artifact of the instruction.
         return RecourseOutcome(challenge=challenge, ruling=None,
                                comprehension=comprehension)
 

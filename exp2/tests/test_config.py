@@ -68,6 +68,19 @@ def test_every_decision_field_has_a_recorded_reason():
     assert stale == [], f"WHY entries for fields that no longer exist: {stale}"
 
 
+def test_the_operational_and_grading_tables_also_carry_a_reason_each():
+    """The rule is the FULL set of values with a reason each. `max_concurrency`,
+    `max_runs_in_flight` and `run_timeout_s` cannot change a decision, and they are
+    what a sweep dies on."""
+    from exp2.config import CLIENT_WHY, GRADING_WHY, ClientConfig, GradingConfig
+
+    for table, why, name in ((ClientConfig, CLIENT_WHY, "CLIENT_WHY"),
+                             (GradingConfig, GRADING_WHY, "GRADING_WHY")):
+        names = {f.name for f in fields(table)}
+        assert sorted(names - set(why)) == [], f"fields with no entry in {name}"
+        assert sorted(set(why) - names) == [], f"{name} entries for absent fields"
+
+
 # --- resolvers ----------------------------------------------------------------------
 
 

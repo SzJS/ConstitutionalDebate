@@ -296,3 +296,49 @@ def test_provenance_pins_a_commit_and_records_the_canary():
 def test_an_unknown_subset_is_refused():
     with pytest.raises(KeyError, match="unknown subset"):
         convert_subset("habermas", "")
+
+
+# --- stored escapes ------------------------------------------------------------------
+
+
+def test_a_field_stored_escaped_is_decoded_without_mojibake():
+    """The pilot's hand-read set contained one of these: literal backslash-n where a
+    newline belongs and \\u03c0 where a π belongs, read that way by the debaters, the
+    judge, the challenger and anyone reading the run's readable document."""
+    from exp2.datasets import _clean
+
+    text = ("angular speed.\\n\\nThe inertia is (4/3)\\u03c0R^3 and \\u2248 4600 rad/s, "
+            "with ≤ and ω already decoded.")
+    cleaned = _clean(text)
+    assert cleaned.startswith("angular speed.\n\nThe inertia")
+    assert "(4/3)πR^3" in cleaned and "≈ 4600" in cleaned
+    # codecs.decode(..., "unicode_escape") is latin-1 based and would turn these to
+    # mojibake. 21 of the affected fields carry characters like these.
+    assert "≤" in cleaned and "ω" in cleaned
+    assert "\\u" not in cleaned
+
+
+def test_latex_is_not_touched():
+    """A blanket decode of \\n / \\t / \\r walks over LaTeX. Across the corpus:
+    \\neq 135, \\times 22, \\right and \\rightarrow 67, \\nu 18, plus \\rho, \\tau, \\theta."""
+    from exp2.datasets import _clean
+
+    latex = r"$1 \leq A_i \neq B_i$, $x \times y$, $\rho \to \theta$, $\frac{a}{b}$"
+    assert _clean(latex) == latex
+
+
+def test_an_escape_inside_the_code_under_review_is_left_alone():
+    """Nine python800 items have the two characters backslash-n inside the *program*
+    being reviewed. Decoding them would corrupt the text the reviewer is judging."""
+    from exp2.datasets import _clean
+
+    program = "S = input().rstrip('\\n')\nif len(S) == 2:\n    print(S)"
+    assert _clean(program) == program
+
+
+def test_a_field_that_mixes_an_escape_and_a_decoded_character_keeps_both():
+    from exp2.datasets import _clean
+
+    assert _clean("\\u2264 beside a real ≤") == "≤ beside a real ≤"
+    # an escaped backslash stays one backslash and does not swallow the n after it
+    assert _clean("pair \\\\n and escape \\n and \\u03c0") == "pair \\n and escape \n and π"

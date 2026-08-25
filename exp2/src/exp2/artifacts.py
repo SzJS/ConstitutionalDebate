@@ -206,6 +206,44 @@ def render_run_record(directory: Path) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
+# What the document says about each of the four stances. The distinction the middle two
+# draw is the whole point of recording a claimed verdict: a stakeholder who writes
+# "Objection: RAISED" and then agrees with the verdict has not contested anything, and a
+# document that presented that as an objection which failed would be describing a
+# contest that never happened.
+def _objection_section(challenge: dict) -> list[str]:
+    stance = challenge.get("stance") or (
+        "contests" if challenge.get("raised", True) else "declined")
+    text = _quote(challenge.get("text", ""))
+    claimed = challenge.get("claimed_verdict")
+    if stance == "declined":
+        lines = ["**The stakeholder declined to object.** They were free to, and "
+                 "reported finding no grounds. What they wrote:", "", text, "",
+                 "*No ruling was sought, because there was nothing to rule on. A "
+                 "decision that was never objected to is not the same as one that "
+                 "survived an objection.*"]
+        if challenge.get("contradictory"):
+            lines += ["", "*They declined and yet named the opposite verdict. Recorded "
+                          "as a decline — the question asked was whether to object, and "
+                          "they answered it.*"]
+    elif stance == "agrees":
+        lines = [f"**The stakeholder raised an objection that agreed with the verdict; "
+                 f"no ruling was sought.** They said the verdict should be "
+                 f"**{claimed}**, which is the verdict the decision reached. What they "
+                 f"wrote:", "", text, "",
+                 "*A recourse judge asked to rule on an objection that agrees with the "
+                 "decision is being asked nothing, so none was sought.*"]
+    elif stance == "unclear":
+        lines = ["**The stakeholder raised an objection without saying which verdict "
+                 "it wanted.** No ruling was sought, and the contest is excluded from "
+                 "the rates rather than counted either way. What they wrote:", "",
+                 text, ""]
+    else:
+        lines = [f"*Raised by a stakeholder who read only the record above. They say "
+                 f"the verdict should be **{claimed}**.*", "", text]
+    return ["## The objection", "", *lines, ""]
+
+
 def render_recourse_record(directory: Path) -> str:
     """The published document for a contest: the decision, the objection, the outcome."""
     manifest = _read(directory, "run.json") or {}
@@ -228,18 +266,8 @@ def render_recourse_record(directory: Path) -> str:
 
     if challenge is None:
         parts.append("## The objection\n\n*No objection was recorded.*\n")
-    elif not challenge.get("raised", True):
-        parts += ["## The objection", "",
-                  "**The stakeholder declined to object.** They were free to, and "
-                  "reported finding no grounds. What they wrote:", "",
-                  _quote(challenge.get("text", "")), "",
-                  "*No ruling was sought, because there was nothing to rule on. A "
-                  "decision that was never objected to is not the same as one that "
-                  "survived an objection.*", ""]
     else:
-        parts += ["## The objection", "",
-                  "*Raised by a stakeholder who read only the record above.*", "",
-                  _quote(challenge.get("text", "")), ""]
+        parts += _objection_section(challenge)
 
     if ruling is not None:
         outcome = ("**upheld**" if ruling.get("upheld") else "**overturned**")

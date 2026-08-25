@@ -102,7 +102,7 @@ async def grade_objection(
         grades_characterisation=flaw.grades_characterisation,
         objection=objection,
     )
-    (identified, characterised, reasoning, parse_mode), completion, repairs, _ = (
+    (identified, characterised, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=grading.grader_model, messages=messages,
             temperature=grading.grader_temperature, config=config,

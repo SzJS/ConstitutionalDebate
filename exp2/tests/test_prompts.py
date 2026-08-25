@@ -12,6 +12,7 @@ import pytest
 from helpers import SECRET_THINKING, full_transcript, make_config, make_item, make_sides
 
 from exp2.prompts import (
+    _round_instructions,
     FLAW_DEFINITION,
     FLAW_PHRASE,
     SOLO_CRITIQUE_INSTRUCTION,
@@ -274,8 +275,33 @@ def test_the_challenger_may_always_decline():
     messages = build_challenger_messages(
         make_item(), make_config(), DecisionRecord.for_solo_body("b"), sides=make_sides(),
         decision_verdict=SOUND, decision_grounds="g")
-    assert 'reading exactly "Objection: RAISED"' in messages[1]["content"]
-    assert '"Objection: NONE"' in messages[1]["content"]
+    assert "Objection: RAISED" in messages[1]["content"]
+    assert "Objection: NONE" in messages[1]["content"]
+
+
+def test_the_challenger_is_asked_about_the_verdict_not_about_the_text():
+    """The pilot's instruction was literally satisfiable by agreeing with the verdict:
+    "RAISED if the decision rests on an error" is true of every FLAWED verdict, and the
+    challenger duly raised objections that agreed with the decisions they objected to.
+    The question asked is now the verdict, and a claimed verdict comes with it."""
+    messages = build_challenger_messages(
+        make_item(), make_config(), DecisionRecord.for_solo_body("b"), sides=make_sides(),
+        decision_verdict=FLAWED, decision_grounds="g")
+    instruction = messages[1]["content"]
+    assert "whether the **verdict** above is right" in instruction
+    assert "Verdict should be:" in instruction
+    assert "rests on an error" not in instruction
+    # and it must not presuppose a section the challenger does not write: 118 of the
+    # pilot's 120 replies carried no Thinking:/Argument: labels at all.
+    assert "Begin the Argument section" not in instruction
+    # the system prompt says both verdicts are contestable, and says how each is
+    system = messages[0]["content"]
+    assert "Either verdict can be wrong." in system
+    assert "a SOUND verdict is contested by showing a flaw the decision missed" in system
+    # ... and deliberately does NOT invite the challenger to go looking for one itself:
+    # a challenger told to search has a ready-made flaw in a debate transcript and none
+    # in a solo record, which would raise the false-alarm rate for prompt reasons.
+    assert "examine it yourself" not in system
 
 
 def test_comprehension_is_asked_in_the_challengers_own_conversation():
@@ -389,21 +415,73 @@ def test_an_inline_thinking_label_anywhere_in_the_argument_is_refused():
     _, argument, _ = parse_debater_output(
         "Argument: Rethinking: the analyst's step 2 is where it fails.")
     assert argument.startswith("Rethinking:")
+    # ... and the lookbehind is [A-Za-z], not [a-z]. The paid pilot walked through the
+    # lower-case-only version: `Verdict: FLAWEDThinking: <private>` reached a challenger
+    # because a capital `D` sits before the label. This is that exact shape.
+    with pytest.raises(MalformedOutputError, match="contains a 'Thinking:' label"):
+        parse_debater_output(
+            "Argument: The sentence is wrong.\n\nVerdict: FLAWEDThinking: The sentence "
+            "under review asserts a specific grammatical parsing of option (B).")
+    # the same reply on the solo path, which is where every one of the three measured
+    # leaks of this class happened
+    with pytest.raises(MalformedOutputError):
+        parse_objection_output(
+            "Objection: NONE\nThe grounds hold.\nVerdict: SOUNDThinking: privately, no.")
 
 
 def test_the_objection_parser_layers_on_the_debater_parser():
-    thinking, raised, body, _ = parse_objection_output(
+    thinking, raised, body, _, claimed = parse_objection_output(
         "Thinking: private\nArgument: Objection: RAISED\nStep 2 divides by zero.")
     assert thinking == "private" and raised is True
     assert body == "Step 2 divides by zero."
+    assert claimed is None
 
 
 def test_a_decline_keeps_its_body_as_evidence():
     """The text after a decline is the only evidence for whether the challenger
     declined having understood the record or having skimmed it."""
-    _, raised, body, _ = parse_objection_output(
+    _, raised, body, _, _ = parse_objection_output(
         "Thinking: t\nArgument: Objection: NONE\nThe judge checked the algebra.")
     assert raised is False and body == "The judge checked the algebra."
+
+
+def test_the_claimed_verdict_is_parsed_and_taken_out_of_the_body():
+    """Both decision lines leave the body. It becomes ``Challenge.text``, which is handed
+    to the recourse judge — a challenge opening "Verdict should be: FLAWED" would be an
+    instruction to the judge about what to answer rather than an argument for it."""
+    _, raised, body, mode, claimed = parse_objection_output(
+        "Objection: RAISED\nVerdict should be: SOUND\n"
+        "The claimed flaw in step 2 is not one: the identity holds for all real x.")
+    assert raised is True and claimed == "SOUND" and mode == "salvaged_no_labels"
+    assert body == (
+        "The claimed flaw in step 2 is not one: the identity holds for all real x.")
+    assert "Verdict should be" not in body and "Objection" not in body
+
+
+def test_the_claimed_verdict_line_does_not_collide_with_the_verdict_line():
+    """`_VERDICT_RE` wants the colon straight after "verdict"; "should be" sits between
+    them here. Two vocabularies, as everywhere else in this module."""
+    from exp2.prompts import _CLAIMED_VERDICT_RE, _VERDICT_RE
+
+    assert _VERDICT_RE.search("Verdict should be: FLAWED") is None
+    assert _CLAIMED_VERDICT_RE.search("Verdict: FLAWED") is None
+    # a restated template is refused by both, in either randomised order
+    assert _CLAIMED_VERDICT_RE.search("Verdict should be: <FLAWED|SOUND>") is None
+    assert _CLAIMED_VERDICT_RE.search("Verdict should be: <SOUND|FLAWED>") is None
+    # markdown wrappers, as the other matchers tolerate them
+    assert _CLAIMED_VERDICT_RE.search(
+        "**Verdict should be:** SOUND").group(1) == "SOUND"
+
+
+def test_the_two_line_reply_the_challenger_actually_writes_still_salvages():
+    """The measured shape: no Thinking:/Argument: labels anywhere, the two decision
+    lines, then prose. 118 of the pilot's 120 replies parsed this way."""
+    thinking, raised, body, mode, claimed = parse_objection_output(
+        "Objection: NONE\nVerdict should be: FLAWED\n"
+        "The decision correctly identifies the error in step 4.")
+    assert mode == "salvaged_no_labels" and thinking == ""
+    assert raised is False and claimed == "FLAWED"
+    assert body == "The decision correctly identifies the error in step 4."
 
 
 def test_a_raised_objection_with_no_body_is_refused():
@@ -420,14 +498,14 @@ def test_a_label_less_challenger_reply_is_salvaged():
     """The shape the first probe measured 70/70 times on ling-3.0-flash: the decision
     line, then the reasoning, and no Thinking/Argument wrapper at all. Nothing was
     marked private, so nothing can leak by publishing all of it."""
-    thinking, raised, body, mode = parse_objection_output(
+    thinking, raised, body, mode, _ = parse_objection_output(
         "Objection: NONE\nThe decision is sound because the derivation is complete.")
     assert raised is False
     assert thinking == ""
     assert body == "The decision is sound because the derivation is complete."
     assert mode == "salvaged_no_labels"
 
-    _, raised, body, mode = parse_objection_output(
+    _, raised, body, mode, _ = parse_objection_output(
         "Objection: RAISED\nSentence 8 assumes the contract was fulfilled.")
     assert raised is True and mode == "salvaged_no_labels"
     assert body == "Sentence 8 assumes the contract was fulfilled."
@@ -525,3 +603,22 @@ def test_side_phrase_refuses_a_word_outside_the_vocabulary():
     assert side_phrase(FLAWED) == FLAW_PHRASE and side_phrase(SOUND) == SOUND_PHRASE
     with pytest.raises(ValueError):
         side_phrase("YES")
+
+
+def test_every_round_bounds_deliberation_and_none_of_them_offers_a_concession():
+    """The pilot's commonest runaway was a debater assigned the pro-flaw side of a sound
+    item, deliberating for ever because there is no honest flaw to find. The bound is
+    symmetric on purpose: a concede option would be reachable only from the pro-flaw
+    side, i.e. only on sound items, which leaks the gold label through the protocol."""
+    config = make_config()
+    texts = [_round_instructions(config, speaker=Speaker.ALICE, round_number=r)
+             for r in (1, 2, 3)]
+    for text in texts:
+        assert "do not search exhaustively, and do not restart" in text
+        # the bound sits in the Thinking directive, before the Argument is asked for
+        assert text.index("do not restart") < text.index("under Argument")
+        for word in ("concede", "concession", "withdraw", "may agree"):
+            assert word not in text.lower()
+    # identical wording in all three, so neither side is bounded differently by round
+    assert len({t.split("Decide what to argue")[1] for t in texts}) == 3  # tails differ
+    assert all(t.count("Decide what to argue quickly") == 1 for t in texts)

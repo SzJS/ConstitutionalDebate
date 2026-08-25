@@ -27,7 +27,16 @@ from dotenv import load_dotenv
 from .accounting import aggregate_tree
 from .analysis import analyse
 from .arms import CONDITIONS
-from .config import WHY, DebateConfig, load_config, load_grading_config
+from .config import (
+    CLIENT_WHY,
+    GRADING_WHY,
+    WHY,
+    ClientConfig,
+    DebateConfig,
+    GradingConfig,
+    load_config,
+    load_grading_config,
+)
 from .experiment import (
     STAGES,
     build_grid,
@@ -65,12 +74,26 @@ def calls_per_cell(condition: str, config: DebateConfig) -> int:
     return 2 * config.n_rounds + 1
 
 
-def print_hyperparameters(config: DebateConfig) -> None:
+def _print_table(title: str, config: Any, why: dict[str, str]) -> None:
+    print(f"\n[{title}]")
+    for field in fields(type(config)):
+        value = getattr(config, field.name)
+        print(f"  {field.name:28s} {str(value):26s} {why.get(field.name, '')}")
+
+
+def print_hyperparameters(config: DebateConfig, client_config: ClientConfig,
+                          grading: GradingConfig) -> None:
+    """All three tables, every field, defaults included.
+
+    The repo's practice rule is the *full* set of values with a reason each, and a
+    dry-run that printed only the decision-relevant table left the concurrency and
+    timeout levers — the ones a sweep dies on — to be read out of a toml by hand.
+    """
     print("\nHyperparameters — every value, and why it is what it is")
     print("=" * 100)
-    for field in fields(DebateConfig):
-        value = getattr(config, field.name)
-        print(f"  {field.name:28s} {str(value):26s} {WHY.get(field.name, '')}")
+    _print_table("debate", config, WHY)
+    _print_table("client", client_config, CLIENT_WHY)
+    _print_table("grading", grading, GRADING_WHY)
     print("=" * 100)
 
 
@@ -125,11 +148,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"experiment: {name}   stage: {args.stage}   outputs: {root}")
     print_estimate(grid, config)
-    print_hyperparameters(config)
-    print(f"\n  {'grader_model':28s} {grading.grader_model:26s} "
-          "off-path; batch latency costs nothing on a finished directory")
-    print(f"  {'max_concurrency':28s} {str(client_config.max_concurrency):26s} "
-          "requests in flight across the whole fleet")
+    print_hyperparameters(config, client_config, grading)
 
     if args.dry_run:
         print("\ndry run — nothing was sent. Re-run without --dry-run to spend.")

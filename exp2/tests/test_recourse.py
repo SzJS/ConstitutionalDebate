@@ -93,6 +93,102 @@ async def test_comprehension_is_still_asked_after_a_decline(tmp_path):
     assert (writer.dir / "comprehension.json").is_file()
 
 
+# --- the four stances ----------------------------------------------------------------
+#
+# The pilot's replies, in their measured shapes. Its instruction — "RAISED if the
+# decision rests on an error" — was satisfied by agreeing with a FLAWED verdict, and the
+# challenger duly raised 51 objections of which roughly 46 agreed with the decision they
+# objected to. `raised` alone therefore says nothing; `stance` is what gates.
+
+# The measured shape: no Thinking:/Argument: labels anywhere (118 of 120 pilot replies).
+AGREES = ("Objection: RAISED\nVerdict should be: FLAWED\n"
+          "The decision correctly identifies the error in step 2.")
+CONTESTS = ("Objection: RAISED\nVerdict should be: SOUND\n"
+            "The claimed flaw in step 2 is not one; the identity holds.")
+UNCLEAR = "Objection: RAISED\nSomething about this decision is off."
+CONTRADICTORY = "Objection: NONE\nVerdict should be: SOUND\nThe grounds check out."
+
+
+async def test_a_contesting_objection_is_the_only_stance_that_seeks_a_ruling(tmp_path):
+    """The fake judge decides FLAWED, so a claimed SOUND is a genuine contest."""
+    client = FakeClient(replies={"challenger": CONTESTS})
+    outcome, client, writer, _ = await contest(tmp_path, "debate", client=client)
+    assert outcome.challenge.stance == "contests"
+    assert outcome.challenge.claimed_verdict == SOUND
+    assert outcome.ruling is not None
+    assert (writer.dir / "ruling.json").is_file()
+    assert "recourse_judge" in client.roles()
+    # the claimed-verdict line is not in the text handed to the recourse judge
+    assert "Verdict should be" not in outcome.challenge.text
+    assert "Verdict should be" not in "".join(
+        m["content"] for m in client.sent_to("recourse_judge"))
+
+
+async def test_an_agreeing_objection_seeks_no_ruling(tmp_path):
+    """RAISED, and the verdict it names is the one already given. The pilot ran 51 such
+    rulings and read the judges' upholding of them as contestability."""
+    client = FakeClient(replies={"challenger": AGREES})
+    outcome, client, writer, _ = await contest(tmp_path, "debate", client=client)
+    assert outcome.challenge.raised is True          # the literal word it wrote
+    assert outcome.challenge.stance == "agrees"      # what the pipeline gates on
+    assert outcome.challenge.claimed_verdict == FLAWED
+    assert outcome.ruling is None
+    assert not (writer.dir / "ruling.json").is_file()
+    assert "recourse_judge" not in client.roles()
+    assert outcome.comprehension.asked_after_decline is True
+
+
+async def test_an_unclear_objection_seeks_no_ruling_and_is_not_fatal(tmp_path):
+    client = FakeClient(replies={"challenger": UNCLEAR})
+    outcome, client, writer, _ = await contest(tmp_path, "debate", client=client)
+    assert outcome.challenge.stance == "unclear"
+    assert outcome.challenge.claimed_verdict is None
+    assert outcome.ruling is None
+    assert "recourse_judge" not in client.roles()
+
+
+async def test_a_decline_that_names_the_contrary_verdict_is_still_a_decline(tmp_path):
+    """It was asked whether to object and it answered. Reading a contest into a reply
+    that says there is none would manufacture objections nobody made."""
+    client = FakeClient(replies={"challenger": CONTRADICTORY})
+    outcome, client, _, _ = await contest(tmp_path, "debate", client=client)
+    assert outcome.challenge.stance == "declined"
+    assert outcome.challenge.contradictory is True
+    assert outcome.ruling is None
+    assert "recourse_judge" not in client.roles()
+
+
+async def test_a_challenger_reply_unparsable_after_repair_is_unclear_not_fatal(tmp_path):
+    """The challenger is the experiment's subject. Making an unreadable reply fatal
+    would let the role under measurement lose an entire contest to a DebateFailure."""
+    client = FakeClient(replies={"challenger": "Thinking: private, and no Argument label."})
+    outcome, client, writer, _ = await contest(tmp_path, "debate", client=client)
+    assert outcome.challenge.stance == "unclear"
+    assert outcome.challenge.repair_attempts == 1
+    # it marked text private and the boundary is unknown, so the public text is withheld
+    assert outcome.challenge.parse_mode == "unparsed_unclear_withheld"
+    assert "private, and no Argument label" not in outcome.challenge.text
+    assert "private, and no Argument label" in outcome.challenge.raw
+    assert outcome.ruling is None
+
+
+async def test_the_contest_document_says_when_an_objection_agreed(tmp_path):
+    client = FakeClient(replies={"challenger": AGREES})
+    _, _, writer, _ = await contest(tmp_path, "debate", client=client)
+    document = (writer.dir / "transcript.md").read_text()
+    assert "agreed with the verdict" in document
+    assert "no ruling was sought" in document
+
+
+async def test_the_challenger_runs_at_its_own_temperature(tmp_path):
+    """It ran at debater_temperature by inheritance until 2026-08-25 — same value, no
+    field. The comprehension probe beside it is a measurement and stays at 0."""
+    config = make_config(challenger_temperature=0.55, debater_temperature=0.11)
+    _, client, _, _ = await contest(tmp_path, "debate", config=config)
+    assert client.temperature_for("challenger") == 0.55
+    assert client.temperature_for("comprehension") == 0.0
+
+
 async def test_comprehension_is_asked_in_the_challengers_conversation(tmp_path):
     outcome, client, _, _ = await contest(tmp_path, "debate")
     challenger_messages = client.sent_to("challenger")

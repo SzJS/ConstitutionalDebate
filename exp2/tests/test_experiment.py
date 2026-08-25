@@ -79,6 +79,13 @@ def make_decisions_wrong(client) -> None:
         ("solo", "answer"): "Thinking: t\nReasoning: it holds up.\nVerdict: SOUND",
         ("solo", "draft"): "Thinking: t\nReasoning: it holds up.\nVerdict: SOUND",
         ("solo", "revision"): "Thinking: t\nReasoning: it still holds.\nVerdict: SOUND",
+        # The challenger's claimed verdict has to disagree with the decision for the
+        # stance to be `contests` and a ruling to be sought. The default fixture claims
+        # SOUND against the default FLAWED; here the decision is SOUND, so it claims
+        # FLAWED. A fixture that says RAISED without saying which way is `unclear`.
+        "challenger": ("Thinking: I read the record.\n"
+                       "Argument: Objection: RAISED\nVerdict should be: FLAWED\n"
+                       "Step 2 divides by zero and the decision missed it."),
     })
 
 
@@ -236,7 +243,39 @@ async def test_a_declined_objection_is_not_graded(tmp_path, no_network):
     grid = build_grid(cases(2), ["debate"])
     await decide(tmp_path, grid)
     await contest(tmp_path, grid)
-    assert all(r["reason"] == "no objection raised" for r in await grade(tmp_path, grid))
+    assert all(r["reason"] == "stance is declined, not contests"
+               for r in await grade(tmp_path, grid))
+
+
+async def test_an_objection_that_agrees_with_the_verdict_is_not_graded(tmp_path, no_network):
+    """The pilot's modal contest. RAISED, and the verdict it names is the one already
+    given — nothing was contested, so there is nothing to grade and no ruling to seek."""
+    no_network.replies = {"challenger": ("Objection: RAISED\nVerdict should be: FLAWED\n"
+                                         "The decision correctly identifies the error.")}
+    grid = build_grid(cases(2), ["debate"])
+    await decide(tmp_path, grid)
+    results = await contest(tmp_path, grid)
+    assert all(r["stance"] == "agrees" for r in results)
+    assert all(r["reason"] == "stance is agrees, not contests"
+               for r in await grade(tmp_path, grid))
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["challenge_raised"] is False and row["challenge_agreed"] is True
+    assert row["challenge_declined"] is False and row["challenge_unclear"] is False
+    assert row["challenge_stance"] == "agrees"
+    assert row["challenge_claimed_verdict"] == "FLAWED"
+    assert "ruling_form" not in row
+
+
+async def test_a_raised_objection_with_no_claimed_verdict_is_unclear(tmp_path, no_network):
+    """Not malformed: making it so would let the experiment's own subject role lose a
+    whole contest to a DebateFailure, and the challenger's measured repair rate is 0%."""
+    no_network.replies = {"challenger": "Objection: RAISED\nSomething about this is off."}
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    assert (await contest(tmp_path, grid))[0]["stance"] == "unclear"
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["challenge_unclear"] is True and row["challenge_raised"] is False
+    assert "ruling_form" not in row
 
 
 # --- the index -----------------------------------------------------------------------

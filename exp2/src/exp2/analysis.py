@@ -117,10 +117,27 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
     detectable = false_negative
     characterisable = [r for r in false_negative if r.get("gradable")]
 
+    # `challenge_raised` is the CONTESTING stance, not the word the challenger wrote.
+    # An objection that agrees with the verdict it objects to is not a detection, and
+    # the pilot's contest was made almost entirely of those. `agreed_with_decision` is
+    # reported beside `declined` over the same denominator so the four stances add up
+    # and none of them hides inside another.
+    #
+    # The false-alarm rate is additionally split by gold label. The two halves mean
+    # different things: objecting to a correct SOUND verdict is a challenger inventing a
+    # flaw, while objecting to a correct FLAWED verdict is one denying a real one. A
+    # movement concentrated on the sound items is the failure mode a prompt that invites
+    # the challenger to go looking would produce, and it is invisible in the pooled rate.
+    correct_flawed = [r for r in correct if r.get("gold_flawed")]
+    correct_sound = [r for r in correct if r.get("gold_flawed") is False]
     rates = [
         _rate("decision_error", rows, "initially_incorrect"),
         _rate("objection_raised_given_incorrect", incorrect, "challenge_raised"),
         _rate("false_alarm_given_correct", correct, "challenge_raised"),
+        _rate("false_alarm_given_correct_flawed_item", correct_flawed,
+              "challenge_raised"),
+        _rate("false_alarm_given_correct_sound_item", correct_sound,
+              "challenge_raised"),
         _rate("identified_flaw", detectable, "identified_flaw"),
         _rate("valid_objection", characterisable, "grade_valid"),
         _rate("revised_given_incorrect", incorrect, "changed_the_decision"),
@@ -128,6 +145,8 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         _rate("revised_given_false_negative", false_negative, "changed_the_decision"),
         _rate("revised_given_false_positive", false_positive, "changed_the_decision"),
         _rate("declined", rows, "challenge_declined"),
+        _rate("agreed_with_decision", rows, "challenge_agreed"),
+        _rate("unclear_stance", rows, "challenge_unclear"),
     ]
     return {
         "n": len(rows),
@@ -138,8 +157,27 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         "n_detectable_false_negative": len(detectable),
         "n_characterisable_false_negative": len(characterisable),
         "rates": {r.name: r.to_dict() for r in rates},
+        "stances": _stances(rows),
         "comprehension": _comprehension(rows),
     }
+
+
+def _stances(rows: Sequence[dict]) -> dict[str, Any]:
+    """The four stances as counts, not only as rates.
+
+    A rate per stance answers "how often", and the go/no-go checklist asks "did each
+    happen at all" — which a rate of 0.0 over an empty denominator cannot distinguish
+    from a rate of 0.0 over a full one.
+    """
+    counts = {stance: 0 for stance in ("contests", "agrees", "declined", "unclear")}
+    contested = 0
+    for row in rows:
+        stance = row.get("challenge_stance")
+        if stance is None:
+            continue
+        contested += 1
+        counts[stance] = counts.get(stance, 0) + 1
+    return {"n_contests": contested, "counts": counts}
 
 
 def _comprehension(rows: Sequence[dict]) -> dict[str, Any]:

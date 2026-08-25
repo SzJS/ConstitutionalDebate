@@ -73,6 +73,13 @@ DECIDER_REPLIES = {
                         "Reasoning: step 2 follows from step 1.\nVerdict: SOUND"),
     ("solo", "revision"): ("Thinking: SECRET-SOLO-THINKING-never-published\n"
                            "Reasoning: the criticism does not land.\nVerdict: SOUND"),
+    # The challenger has to CONTEST for a ruling to be sought and for the grade stage to
+    # have anything to run on: since 2026-08-25 a raised objection whose claimed verdict
+    # matches the decision is the `agrees` stance, which seeks no ruling. The decisions
+    # above are all SOUND, so a contest claims FLAWED. Written in the shape the weak
+    # model actually produces — no Thinking:/Argument: labels at all.
+    "challenger": ("Objection: RAISED\nVerdict should be: FLAWED\n"
+                   "Step 2 does not follow from step 1; the decision took it on trust."),
 }
 
 

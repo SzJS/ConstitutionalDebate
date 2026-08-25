@@ -787,6 +787,47 @@ class DebateResult:
 # --------------------------------------------------------------------------- #
 # recourse
 # --------------------------------------------------------------------------- #
+#
+# What a challenger did, in four kinds. ``Challenge.raised`` keeps its literal meaning —
+# the model wrote the word RAISED — and every *gate* in the pipeline reads ``stance``
+# instead, because the pilot proved that the word alone does not say which way the
+# challenger went.
+#
+#   contests   RAISED, and the verdict it says the decision should have reached is not
+#              the verdict the decision reached. The only stance that seeks a ruling.
+#   agrees     RAISED, but the verdict it names is the one already given. The pilot's
+#              modal outcome (roughly 46 of its 51 raised objections): under the old
+#              instruction, "the decision rests on an error" was true of every FLAWED
+#              verdict, so agreeing and raising were the same act. No ruling is sought;
+#              a recourse judge asked to rule on an objection that agrees with the
+#              decision is being asked nothing.
+#   declined   NONE. A recorded judgement that the decision looks sound.
+#   unclear    RAISED with no parsable claimed verdict, after the one repair. Its own
+#              column: excluded from the rates, counted in coverage. It is NOT malformed
+#              — making it so would let the experiment's own subject role lose an entire
+#              contest to a DebateFailure, and the challenger's measured repair rate is
+#              0%.
+CHALLENGE_STANCES: tuple[str, ...] = ("contests", "agrees", "declined", "unclear")
+
+
+def challenge_stance(
+    *, raised: bool, claimed_verdict: str | None, decision_verdict: str
+) -> str:
+    """The stance, from the objection line and the verdict the challenger named.
+
+    A NONE that nonetheless names the *contrary* verdict is scored ``declined``: the
+    challenger was asked one question and answered it, and reading a contest into a
+    reply that says there is none would manufacture objections nobody made. The
+    contradiction is recorded on the challenge (``contradictory``) rather than resolved
+    here.
+    """
+    if not raised:
+        return "declined"
+    if claimed_verdict is None:
+        return "unclear"
+    return "agrees" if claimed_verdict == decision_verdict else "contests"
+
+
 @dataclass(frozen=True)
 class Challenge:
     """An argument that a completed decision was mistaken.
@@ -810,6 +851,17 @@ class Challenge:
     # that a challenge written before this existed, and every supplied one,
     # loads as raised.
     raised: bool = True
+    # The verdict the challenger says the decision should have reached, and the stance
+    # that follows from comparing it with the verdict the decision did reach. ``raised``
+    # is the word the model wrote; ``stance`` is what the pipeline gates on. Empty means
+    # "derive from ``raised``", which is what a challenge written before this existed —
+    # or supplied from a file — loads as.
+    claimed_verdict: str | None = None
+    stance: str = ""
+    # A reply that declined and yet named the contrary verdict. Scored ``declined``,
+    # recorded here, and worth counting: it is the shape that would show the two lines
+    # being answered independently of each other.
+    contradictory: bool = False
     source: str | None = None  # the path, when origin == "file"
     arm: str | None = None  # "grounded" | "specious" | "neutral" | "stakeholder"
     visibility: str | None = None  # "public" | "full" — what the generator saw
@@ -828,6 +880,20 @@ class Challenge:
     # exactly what the transparency claim rules out.
     native_reasoning: str = ""
     reasoning_withheld: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.stance:
+            object.__setattr__(
+                self, "stance", "contests" if self.raised else "declined"
+            )
+        if self.stance not in CHALLENGE_STANCES:
+            raise ValueError(
+                f"stance must be one of {CHALLENGE_STANCES}, got {self.stance!r}"
+            )
+        if self.raised != (self.stance in ("contests", "agrees", "unclear")):
+            raise ValueError(
+                f"stance {self.stance!r} disagrees with raised={self.raised}"
+            )
 
     @property
     def shown_private_reasoning(self) -> bool:

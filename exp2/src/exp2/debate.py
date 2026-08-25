@@ -116,7 +116,7 @@ async def _debater_turn(
         item, sides, config, transcript, speaker=speaker, round_number=round_number
     )
     model = sides.model_for(speaker, config.debater_model, config.debater_model_b)
-    (thinking, argument, parse_mode), completion, repairs, _ = await _complete_with_repair(
+    (thinking, argument, parse_mode), completion, repairs, _, repair_kind = await _complete_with_repair(
         client,
         model=model,
         messages=messages,
@@ -130,6 +130,8 @@ async def _debater_turn(
         parse=parse_debater_output,
         role="debater",
         word_limit=config.word_limit,
+        max_tokens=config.generation_max_tokens,
+        public_label="Argument",
     )
     words = count_words(argument)
     if config.word_limit and words > config.word_limit:
@@ -142,7 +144,12 @@ async def _debater_turn(
     return Turn(
         round=round_number, speaker=speaker, side=sides.side_for(speaker),
         thinking=thinking, argument=argument, word_count=words,
-        parse_mode=parse_mode, repair_attempts=repairs,
+        # The budget repair is marked in ``parse_mode`` because it is not a format
+        # failure and must not be counted as one: the model wrote nothing wrong, it ran
+        # out of room before it wrote anything at all. ``repair_attempts`` counts both.
+        parse_mode=(f"{parse_mode}_after_budget_repair"
+                    if repair_kind == "budget" else parse_mode),
+        repair_attempts=repairs,
         finish_reason=completion.finish_reason,
         has_native_reasoning=completion.has_native_reasoning,
         call_id=completion.call_id, raw=completion.content,
@@ -161,7 +168,7 @@ async def _judge(
     writer: Any | None,
 ) -> Verdict:
     messages = build_judge_messages(item, sides, config, transcript)
-    (verdict_word, reasoning, parse_mode), completion, repairs, _ = await _complete_with_repair(
+    (verdict_word, reasoning, parse_mode), completion, repairs, _, _ = await _complete_with_repair(
         client,
         model=config.judge_model,
         messages=messages,

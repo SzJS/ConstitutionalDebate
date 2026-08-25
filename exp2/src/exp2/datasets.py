@@ -111,9 +111,58 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+# Some upstream fields were stored without ever being decoded: the two characters
+# backslash-n where a newline belongs, and `\u03c0` where a π belongs. The debaters, the
+# judge, the challenger and anyone reading the run's readable document see them that
+# way, and the transparency claim is a claim about that document, so they are decoded
+# here.
+#
+# **The obvious way to do this is wrong twice over, and both ways were measured on this
+# corpus before this function was written.**
+#
+# 1. `codecs.decode(text, "unicode_escape")` is latin-1 based: every non-ASCII character
+#    already in the text comes back as mojibake. 21 of the affected fields carry `≤`,
+#    `π`, `ω` or `×`. Never use it here.
+# 2. A blanket `re.sub` over `\n`, `\t`, `\r` walks straight over LaTeX and over code.
+#    Counting backslash sequences across the 2,110-item corpus: `\neq` 135, `\times` 22,
+#    `\right`/`\rightarrow` 67, `\nu` 18, `\rho`, `\tau`, `\theta`, `\to`, `\text`, and in
+#    python800 nine programs whose *text under review* contains `rstrip('\n')`,
+#    `ord('\n')` or the string `"box\n"` — where the two characters are meant literally
+#    and decoding them would corrupt the program the reviewer is judging. A naive
+#    detector reports 324 items "affected"; almost every one of those is LaTeX.
+#
+# So the rule is evidence-based rather than pattern-based: a `\uXXXX` escape has no LaTeX
+# or Python counterpart anywhere in this corpus, so its presence is what says the field
+# was stored escaped. Only in such a field are the simple escapes decoded too. Measured
+# on the corpus, exactly **one** field qualifies —
+# `theoremqa-solutions-angular_momentum-txt-sound`, which is in the pilot's hand-read
+# set and is where the problem was noticed — and the nine python800 programs are left
+# exactly as they are, which is the correct answer for them.
+_UNICODE_ESCAPE_RE = re.compile(r"\\u[0-9a-fA-F]{4}")
+# One left-to-right pass, with `\\` consumed first so that a literal escaped backslash
+# cannot have its `n` eaten by the next alternative.
+_ESCAPE_RE = re.compile(r"\\\\|\\u([0-9a-fA-F]{4})|\\([ntr])")
+_SIMPLE_ESCAPES = {"n": "\n", "t": "\t", "r": "\r"}
+
+
+def _decode_escapes(text: str) -> str:
+    if not _UNICODE_ESCAPE_RE.search(text):
+        return text
+
+    def one(match: re.Match[str]) -> str:
+        code, simple = match.group(1), match.group(2)
+        if code is not None:
+            return chr(int(code, 16))
+        if simple is not None:
+            return _SIMPLE_ESCAPES[simple]
+        return "\\"
+
+    return _ESCAPE_RE.sub(one, text)
+
+
 def _clean(value: str | None) -> str:
-    """Strip whitespace and remove the benchmark canary from field text."""
-    return (value or "").replace(FTF_CANARY, "").strip()
+    """Strip whitespace, remove the benchmark canary, and decode stored escapes."""
+    return _decode_escapes((value or "").replace(FTF_CANARY, "")).strip()
 
 
 def _slug(problem_id: str) -> str:

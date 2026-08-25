@@ -59,13 +59,14 @@ async def decided(tmp_path, condition, *, client=None):
     return load_run_record(writer.dir)
 
 
-async def contest(tmp_path, condition, *, client=None, rule=True):
+async def contest(tmp_path, condition, *, client=None, rule=True, config=None):
     record = await decided(tmp_path, condition)
     writer = RunWriter.create_recourse(
         root=tmp_path / "c", parent_dir=record.directory, item=record.item,
         sides=record.sides, config=record.config, client_config=client_config(),
         condition=condition)
     client = _sink_into(client or FakeClient(), writer)
-    outcome = await run_recourse(record, make_config(), client, rule=rule, writer=writer)
+    outcome = await run_recourse(record, config or make_config(), client, rule=rule,
+                                 writer=writer)
     writer.finish("completed")
     return outcome, client, writer, record

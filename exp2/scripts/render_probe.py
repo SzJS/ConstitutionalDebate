@@ -263,7 +263,7 @@ def render(entry: dict, models: list[str], judge_calls: dict, challenge_calls: d
             if craw:
                 parts += ["**What it wrote:**", "", _quote(craw), ""]
         else:
-            _, raised, body, mode = cparsed
+            _, raised, body, mode, _claimed = cparsed
             repaired = " (after a format repair)" if cindex > 0 else ""
             head = ("**As challenger: objection RAISED**"
                     if raised else "**As challenger: declined to object**")

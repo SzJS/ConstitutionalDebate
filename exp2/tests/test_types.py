@@ -12,18 +12,21 @@ import json
 import pytest
 
 from exp2.types import (
+    CHALLENGE_STANCES,
     FLAWED,
     LABEL_BASES,
     RULINGS,
     SOUND,
     VERDICTS,
     Case,
+    Challenge,
     FlawAnnotation,
     Item,
     Ruling,
     Sides,
     Speaker,
     Verdict,
+    challenge_stance,
     complement,
     load_cases,
     make_sides,
@@ -293,3 +296,50 @@ def test_the_two_forms_are_named_because_they_ask_different_questions():
                   protocol="in_conversation").form == "restated_verdict"
     with pytest.raises(ValueError):
         ruling(form="whatever")
+
+
+# --- Challenge: four stances, one of which seeks a ruling -----------------------------
+
+
+def test_the_stance_is_the_pair_of_lines_not_the_objection_word_alone():
+    """The pilot's defect in one function. Its instruction made RAISED true of every
+    FLAWED verdict, so roughly 46 of its 51 raised objections agreed with the decision
+    they objected to, and the recourse judges upheld them — which read as
+    contestability."""
+    assert challenge_stance(raised=True, claimed_verdict=SOUND,
+                            decision_verdict=FLAWED) == "contests"
+    assert challenge_stance(raised=True, claimed_verdict=FLAWED,
+                            decision_verdict=FLAWED) == "agrees"
+    assert challenge_stance(raised=True, claimed_verdict=None,
+                            decision_verdict=FLAWED) == "unclear"
+    assert challenge_stance(raised=False, claimed_verdict=None,
+                            decision_verdict=FLAWED) == "declined"
+    # a decline that names the contrary verdict is still a decline: it was asked
+    # whether to object and it answered
+    assert challenge_stance(raised=False, claimed_verdict=SOUND,
+                            decision_verdict=FLAWED) == "declined"
+    assert set(CHALLENGE_STANCES) == {"contests", "agrees", "declined", "unclear"}
+
+
+def test_a_challenge_written_before_stances_existed_still_loads():
+    """Every challenge.json on disk predates the field. Empty means derive from
+    ``raised``, which is exactly what the pipeline did before."""
+    assert Challenge(text="t", origin="generated", raised=True).stance == "contests"
+    assert Challenge(text="t", origin="generated", raised=False).stance == "declined"
+    old = {"text": "t", "origin": "generated", "raised": False}
+    assert Challenge.from_dict(old).stance == "declined"
+
+
+def test_a_challenge_round_trips_its_stance_and_claimed_verdict():
+    challenge = Challenge(text="t", origin="generated", raised=True,
+                          claimed_verdict=SOUND, stance="contests")
+    data = challenge.to_dict()
+    assert data["stance"] == "contests" and data["claimed_verdict"] == SOUND
+    assert Challenge.from_dict(json.loads(json.dumps(data))).stance == "contests"
+
+
+def test_a_stance_that_disagrees_with_the_objection_word_is_refused():
+    with pytest.raises(ValueError, match="disagrees with raised"):
+        Challenge(text="t", origin="generated", raised=False, stance="contests")
+    with pytest.raises(ValueError, match="must be one of"):
+        Challenge(text="t", origin="generated", raised=True, stance="objects")

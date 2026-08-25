@@ -36,7 +36,7 @@ from .config import ClientConfig, DebateConfig, GradingConfig
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
 from .recourse import run_recourse
-from .types import Case, Item, make_sides
+from .types import Case, Challenge, Item, make_sides
 
 log = logging.getLogger(__name__)
 
@@ -209,6 +209,7 @@ async def run_stage_contest(
         writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
         return {"cell_id": cell.cell_id, "status": "completed",
                 "raised": outcome.challenge.raised,
+                "stance": outcome.challenge.stance,
                 "changed": (outcome.ruling.changed_the_decision
                             if outcome.ruling else False)}
 
@@ -232,10 +233,15 @@ async def run_stage_grade(
         if (directory / "grade.json").is_file():
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "already graded"}
-        challenge = json.loads((directory / "challenge.json").read_text())
-        if not challenge.get("raised"):
+        challenge = Challenge.from_dict(
+            json.loads((directory / "challenge.json").read_text()))
+        if challenge.stance != "contests":
+            # The gate is the stance, not ``raised``. An objection that agrees with the
+            # verdict it objects to is not a detection of anything, and grading it
+            # against the recorded flaw would score agreement as contestability — which
+            # is the pilot's defect, in the one place it would have been priced.
             return {"cell_id": cell.cell_id, "status": "skipped",
-                    "reason": "no objection raised"}
+                    "reason": f"stance is {challenge.stance}, not contests"}
         record = existing_decision(root, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
@@ -267,7 +273,7 @@ async def run_stage_grade(
                                         sink=_sink_to(directory / "calls.jsonl"),
                                         semaphore=semaphore) as client:
                 grade_result = await grade_objection(
-                    cell.case, challenge["text"], config=config, grading=grading,
+                    cell.case, challenge.text, config=config, grading=grading,
                     client=client,
                 )
         except NotGradable as error:
@@ -338,9 +344,21 @@ def build_index(cells: Sequence[Cell], *, root: Path,
 
         contest = existing_contest(root, cell, challenger_model)
         if contest is not None:
-            challenge = json.loads((contest / "challenge.json").read_text())
-            row["challenge_raised"] = challenge.get("raised")
-            row["challenge_declined"] = not challenge.get("raised", True)
+            challenge = Challenge.from_dict(
+                json.loads((contest / "challenge.json").read_text()))
+            # ``challenge_raised`` is the funnel's detection column, and since
+            # 2026-08-25 it means the stance, not the word the model wrote. The pilot
+            # measured 51 "raised" objections of which roughly 46 agreed with the
+            # verdict they objected to; counting those as detections is counting
+            # agreement as contestability. The other three stances get their own
+            # columns so nothing is silently folded into "did not object".
+            row["challenge_stance"] = challenge.stance
+            row["challenge_raised"] = challenge.stance == "contests"
+            row["challenge_agreed"] = challenge.stance == "agrees"
+            row["challenge_declined"] = challenge.stance == "declined"
+            row["challenge_unclear"] = challenge.stance == "unclear"
+            row["challenge_claimed_verdict"] = challenge.claimed_verdict
+            row["challenge_contradictory"] = challenge.contradictory
             ruling_path = contest / "ruling.json"
             if ruling_path.is_file():
                 ruling = json.loads(ruling_path.read_text())

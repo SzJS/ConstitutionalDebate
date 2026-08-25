@@ -1,0 +1,67 @@
+# Pilot 2: the same 42 items, all three conditions, end to end — after the first
+# pilot's three defects were fixed.
+#
+# Read `outputs/experiments/pilot/CHECKLIST.md` and LLM_NOTES §3l before comparing
+# anything here with pilot 1. **No pilot-1 <-> pilot-2 comparison is valid**: the
+# challenger's instruction, the debaters' round instructions, the corpus text and the
+# token cap all differ, so the two runs answer different questions on different inputs.
+# Every decision is re-made for the same reason; nothing is carried over.
+#
+# The three defects, and what changed for each:
+#   1. The challenger's instruction was satisfiable by AGREEING with the verdict
+#      ("RAISED if the decision rests on an error" is true of every FLAWED verdict).
+#      It now asks about the verdict and requires a claimed verdict beside the
+#      objection line, and every gate reads the resulting stance.
+#   2. The strong model's private Thinking ran away — 16 truncations, 12 of which never
+#      reached a public label, so nothing public was cut and the fatal rule spent the
+#      cap for nothing. Bounded by `generation_max_tokens` plus a budget-repair route,
+#      and by one sentence in each round instruction.
+#   3. Self-critique's critiques were withheld in every run of pilot 1 (the prompt fix
+#      landed after it), so its challenger read placeholders. Nothing to do but decide
+#      those cells again, which this spec does.
+name = "pilot-2"
+cases = "data/cases/pilot.jsonl"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# Unchanged from pilot 1. The judge and the challenger are the weak model; the debaters
+# stay strong, as the protocol requires.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# Kept at pilot 1's raised value, and it never bound anything: on the 732 successful
+# calls of that run the p95 completion length was 2,571 tokens, the p99 5,794 and the
+# maximum 7,888. This is the cap for the roles that emit a decision line — judge,
+# challenger, recourse judge, comprehension probe — none of which ever truncated.
+max_tokens = 16384
+
+# The cap for the roles that produce record text: debaters, the solo stages, the critic.
+# That is where every one of pilot 1's 16 truncations was — a private Thinking block of
+# 23k-64k characters, most often a debater assigned the pro-flaw side of a *sound* item
+# and unable to stop looking for a flaw that is not there. 8192 covers every successful
+# generation the pilot made and halves what a runaway costs against 16,384; a truncation
+# that never reached the public label now buys one budget repair instead of killing the
+# cell.
+generation_max_tokens = 8192
+
+# Same value the challenger ran at in pilot 1, where it inherited it from
+# `debater_temperature` with no field to say so. Stated because the challenger is the
+# role under measurement: at 0 every stakeholder writes the same objection, and variance
+# across objections is part of the result.
+challenger_temperature = 0.7
+
+# recourse_judge_model defaults to judge_model, comprehension_model to challenger_model.
+# Both are deliberately left unset: the design says the debate recourse judge is the
+# weak judge, and the comprehension probe is asked inside the challenger's own
+# conversation.
+
+[client]
+# RAISED from 8/4 deliberately, and this pilot is the place to test it. Pilot 1 projected
+# the sweep at 82-110 hours at 8/4, and its longest completed decision run took 1,306 s
+# against `run_timeout_s = 1800` — so more concurrency both shortens the sweep and eats
+# into the per-cell margin, and the two effects have to be measured together on 126
+# cells before they are trusted on 6,330. Checklist row 8 is where that lands.
+max_concurrency = 16
+max_runs_in_flight = 8

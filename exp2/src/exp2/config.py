@@ -40,6 +40,7 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
         "challenger_model",
         "challenge_word_limit",
         "comprehension_model",
+        "challenger_temperature",
     }
 )
 
@@ -89,6 +90,14 @@ class DebateConfig:
     frequency_penalty: float = 0.0
     max_decision_attempts: int = 2
 
+    # The cap for the roles that produce *record text* — debaters, the solo stages, the
+    # critic. Separate from ``max_tokens`` (which the judge, challenger, recourse judge
+    # and comprehension probe keep) because the two are bounding different risks: those
+    # roles emit a short decision line, while a debater's private Thinking block is
+    # where the runaway lives. Defaulted rather than required so that a config.json
+    # written before this field loads.
+    generation_max_tokens: int = 8192
+
     # Matched to n_rounds, and validated as such. A self_critique run of
     # draft + (critique, revision) * n gives 1 + 2n calls against debate's 2n + 1, so
     # equality here is what makes the two conditions the same number of generations.
@@ -115,6 +124,12 @@ class DebateConfig:
     challenge_word_limit: int | None = None
     # None means the run's reasoning_effort.
     challenger_reasoning_effort: str | None = None
+    # The challenger's own sampling temperature. Until 2026-08-25 there was no field:
+    # the challenger ran at ``debater_temperature`` by inheritance, so config.json could
+    # not show that a measured role was borrowing another role's setting, and WHY had no
+    # line for it. Placed among the contest settings, with a default, because the fields
+    # above it are required and a defaulted field cannot precede them.
+    challenger_temperature: float = 0.7
     # None means the challenger model — the probe asks the challenger about the
     # record it just read, so it must be the same reader.
     comprehension_model: str | None = None
@@ -149,6 +164,10 @@ class DebateConfig:
             )
         if self.max_tokens < 1:
             raise ConfigError(f"max_tokens must be >= 1, got {self.max_tokens}")
+        if self.generation_max_tokens < 1:
+            raise ConfigError(
+                f"generation_max_tokens must be >= 1, got {self.generation_max_tokens}"
+            )
         if self.n_critique_rounds != self.n_rounds:
             raise ConfigError(
                 f"n_critique_rounds ({self.n_critique_rounds}) must equal n_rounds "
@@ -182,6 +201,11 @@ class DebateConfig:
             raise ConfigError(
                 f"challenger_reasoning_effort must be one of {REASONING_EFFORTS} or "
                 f"unset, got {self.challenger_reasoning_effort!r}"
+            )
+        if not 0.0 <= self.challenger_temperature <= 2.0:
+            raise ConfigError(
+                f"challenger_temperature must be in [0, 2], got "
+                f"{self.challenger_temperature}"
             )
 
     # --- resolvers --------------------------------------------------------------
@@ -228,6 +252,7 @@ WHY: dict[str, str] = {
     "debater_temperature": "above zero, because two debaters on the same model at 0 would write the same argument.",
     "judge_temperature": "0 — the verdict should not vary between identical readings of one transcript.",
     "max_tokens": "a ceiling, not a spend; must leave room for the private Thinking block. Truncation is fatal and unretryable.",
+    "generation_max_tokens": "8192 — the cap for roles that produce record text (debaters, solo stages, critic). It covers every successful generation in the pilot (max 7,888 completion tokens; p99 5,794) and halves a runaway's cost against 16,384; anything lower truncated successful turns, four of them mid-argument.",
     "reasoning_effort": "off, so the private channel is the published Thinking block rather than a provider channel no reader can see.",
     "judge_cot": "on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.",
     "seed": "seeds side assignment and template order per item, so the draws are stable across re-runs.",
@@ -241,8 +266,33 @@ WHY: dict[str, str] = {
     "challenger_model": "the weak model — a stakeholder standing in for a human reader, not a second expert.",
     "challenge_word_limit": "unset means the run's word limit; an objection has to quote the record back.",
     "challenger_reasoning_effort": "unset means the run's setting; challenger deliberation is an experimental axis.",
+    "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",
     "comprehension_model": "unset means the challenger model — the probe asks the reader about what it just read.",
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
+}
+
+
+# The same rule for the operational table. None of it can change a decision, but the
+# repo's practice rule is a reason per hyperparameter and "it cannot change the outcome"
+# is not the same as "it does not matter": `max_concurrency` and `max_runs_in_flight`
+# decide whether a sweep fits in a day, and `run_timeout_s` is what a cell dies against.
+CLIENT_WHY: dict[str, str] = {
+    "base_url": "OpenRouter, so one key reaches every provider and the model id is the only thing that changes.",
+    "max_concurrency": "requests in flight across the whole fleet; the lever that decides the sweep's wall-clock.",
+    "max_attempts": "4 tries for a transport failure — distinct from the one format repair, which is a modelling decision.",
+    "backoff_base_s": "1s, doubling: enough to clear a rate-limit burst without idling on a transient 500.",
+    "backoff_cap_s": "30s, so one slow provider cannot stall a run past its own timeout.",
+    "connect_timeout_s": "15s — a connection that has not opened by then is not going to.",
+    "read_timeout_s": "300s: a long generation at a high token cap legitimately takes minutes.",
+    "run_timeout_s": "1800s per cell, the bound a whole debate must finish inside; raising concurrency eats into it.",
+    "max_runs_in_flight": "open run directories at once; a second bound because it limits file handles rather than requests.",
+    "copy_parent": "True — a contest record that does not contain the decision it contests is not self-contained.",
+}
+
+GRADING_WHY: dict[str, str] = {
+    "grader_model": "Haiku on the batch tier: grading is an offline pass over finished directories, so latency costs nothing and halves the price.",
+    "grader_temperature": "0 — a grade is a measurement, and the same objection against the same annotation should not vary.",
+    "max_tokens": "4096; a grade is two lines and a short explanation, and it reads an annotation rather than a transcript.",
 }
 
 

@@ -29,12 +29,27 @@ word_limit = 400
 
 debater_temperature = 0.7
 judge_temperature = 0.0
+# The challenger is a generative role, like a debater: at 0 every stakeholder would
+# write the same objection, and variance across objections is part of what is measured.
+# It ran at debater_temperature by inheritance until 2026-08-25 — same value, but no
+# field said so.
+challenger_temperature = 0.7
 
 # A ceiling, not a spend — we are billed for realised output tokens. It must leave room
 # for the private "Thinking" block, and truncation is fatal and cannot be fixed by a
 # retry at the same cap. python800 and the CELS subsets carry long solutions, so this
 # is the number most likely to need raising after the pilot.
 max_tokens = 8192
+
+# The same ceiling, for the roles that produce record text — debaters, the solo stages,
+# the critic. Split out on 2026-08-25: the pilot's 16 truncations were every one of them
+# a debater's or reviewer's own private "Thinking:" block running 23k-64k characters
+# without ever reaching the public label, so the runaway lives on this side of the split
+# and the judge/challenger/recourse roles never came near either cap. 8192 covers every
+# successful generation the pilot made (max 7,888 completion tokens, p99 5,794), and a
+# no-label truncation is now one repair rather than a dead cell — see engine._complete_
+# with_repair's budget route.
+generation_max_tokens = 8192
 
 # The protocol's private channel is the "Thinking:" block: private during the debate,
 # published afterwards, recorded either way. Native provider reasoning is a second

@@ -6,7 +6,13 @@ import pytest
 from conftest import SOLO_THINKING, FakeClient
 from helpers import make_config, make_item, make_sides
 
-from exp2.arms import CONDITIONS, DECIDERS, run_self_critique, run_single
+from exp2.arms import (
+    CONDITIONS,
+    DECIDERS,
+    WITHHELD,
+    run_self_critique,
+    run_single,
+)
 from exp2.debate import run_debate
 from exp2.engine import DebateFailure
 from exp2.types import FLAWED, SOUND, Speaker
@@ -179,3 +185,102 @@ async def test_the_side_a_debater_was_assigned_is_recorded_on_the_turn():
     for turn in result.transcript.all_turns():
         expected = SOUND if turn.speaker is Speaker.ALICE else FLAWED
         assert turn.side == expected
+
+
+# --- the two token caps --------------------------------------------------------------
+
+
+async def test_record_producing_roles_use_the_generation_cap(tmp_path):
+    """Every one of the pilot's 16 truncations was a debater's or reviewer's own private
+    Thinking block; not one was a judge, challenger or ruling. So the runaway is bounded
+    where it lives, and the deciding roles keep the run's own ceiling."""
+    config = make_config(max_tokens=16384, generation_max_tokens=8192)
+    client = FakeClient()
+    await run_debate(make_item(), config, make_sides(), client)
+    assert client.max_tokens_for("debater") == 8192
+    assert client.max_tokens_for("judge") == 16384
+
+    client = FakeClient()
+    await run_self_critique(make_item(), config, make_sides(), client)
+    assert client.max_tokens_for("solo", "draft") == 8192
+    assert client.max_tokens_for("critic", "critique") == 8192
+
+
+# --- the budget route ----------------------------------------------------------------
+#
+# The pilot's commonest truncation: a debater assigned the pro-flaw side of a *sound*
+# item, deliberating without end because there is no honest flaw to find. 12 of its 16
+# truncations never reached a public label, so nothing public was cut and the fatal rule
+# spent the cap for nothing.
+
+RUNAWAY = ("Thinking: The solution is correct. But I must argue there is a flaw. "
+           "Hmm. Perhaps the flaw is that the solu")
+# The same runaway, except that the word "Argument:" appears in the deliberation itself —
+# mid-line, which the pilot shows models doing. Line anchoring is what keeps this from
+# being read as "the public section was reached".
+RUNAWAY_MENTIONING_THE_LABEL = (
+    "Thinking: I will put this under Argument: once I know what to say. Hmm. Perhaps")
+CUT_ARGUMENT = "Thinking: private working.\nArgument: The solution fails at step 2 bec"
+
+
+def _repairs(client):
+    return [c for c in client.calls if c["meta"].get("purpose") == "repair"]
+
+
+async def test_a_truncation_that_reached_no_public_label_is_repaired_on_budget():
+    client = FakeClient(fail_on={(1, Speaker.ALICE.value): "truncated"},
+                        truncated_content=RUNAWAY)
+    result, client = await decide("debate", client=client)
+    turn = result.transcript.all_turns()[0]
+    assert turn.parse_mode.endswith("_after_budget_repair")
+    assert turn.repair_attempts == 1
+    repair = _repairs(client)[0]
+    # the truncated reply is the assistant turn, so the conversation stays true
+    assert repair["messages"][-2] == {"role": "assistant", "content": RUNAWAY}
+    assert "ran out of budget before writing the Argument section" in (
+        repair["messages"][-1]["content"])
+    assert "Do not deliberate further" in repair["messages"][-1]["content"]
+
+
+async def test_the_label_is_looked_for_line_anchored_not_anywhere():
+    client = FakeClient(fail_on={(1, Speaker.ALICE.value): "truncated"},
+                        truncated_content=RUNAWAY_MENTIONING_THE_LABEL)
+    result, client = await decide("debate", client=client)
+    assert result.transcript.all_turns()[0].parse_mode.endswith("_after_budget_repair")
+
+
+async def test_a_truncation_that_did_reach_the_public_label_stays_fatal():
+    """Something public may have been cut, and a half-written argument entering the
+    transcript as if authored is the failure the fatal rule was written for."""
+    client = FakeClient(fail_on={(1, Speaker.ALICE.value): "truncated"},
+                        truncated_content=CUT_ARGUMENT)
+    with pytest.raises(DebateFailure, match="stopped on"):
+        await decide("debate", client=client)
+    assert _repairs(client) == []
+
+
+async def test_a_deciding_role_truncated_twice_fails_the_run():
+    client = FakeClient(fail_on={"solo": "truncated_twice"},
+                        truncated_content=RUNAWAY)
+    with pytest.raises(DebateFailure, match="truncated again after a budget repair"):
+        await decide("single", client=client)
+
+
+async def test_a_critique_truncated_twice_is_withheld_rather_than_fatal():
+    """A withheld critique costs a step of the record; killing the cell costs all of it."""
+    client = FakeClient(fail_on={"critic": "truncated_twice"},
+                        truncated_content=RUNAWAY)
+    result, _ = await decide("self_critique", client=client)
+    critiques = [s for s in result.trace.all_steps() if s.stage == "critique"]
+    assert critiques[0].text == WITHHELD
+    assert critiques[0].parse_mode == "unparsed_withheld_after_budget_repair"
+    assert result.verdict.verdict in (FLAWED, SOUND)
+
+
+async def test_the_roles_that_decide_nothing_keep_truncation_fatal():
+    """No public_label, so no budget route: a truncated verdict, ruling or rating is a
+    cut decision line, and there is nothing to salvage."""
+    client = FakeClient(fail_on={"judge": "truncated"}, truncated_content=RUNAWAY)
+    with pytest.raises(Exception, match="stopped on"):
+        await decide("debate", client=client)
+    assert _repairs(client) == []

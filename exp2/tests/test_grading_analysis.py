@@ -80,11 +80,20 @@ async def test_the_grader_is_off_the_decision_path():
 def row(**kw):
     base = dict(item_id="i1", row_id="r1", condition="debate", subset="theoremqa",
                 label_basis="injected_pair", gold_flawed=True, initially_correct=False,
-                initially_incorrect=True, gradable=True, challenge_raised=True,
-                challenge_declined=False, identified_flaw=True, grade_valid=True,
+                initially_incorrect=True, gradable=True, challenge_stance="contests",
+                challenge_raised=True, challenge_agreed=False, challenge_declined=False,
+                challenge_unclear=False, identified_flaw=True, grade_valid=True,
                 changed_the_decision=True, comprehension=4)
     base.update(kw)
     return base
+
+
+def stance_row(stance, **kw):
+    """A contested cell in one of the four stances, with the columns build_index writes."""
+    flags = {f"challenge_{name}": stance == key for name, key in
+             (("raised", "contests"), ("agreed", "agrees"),
+              ("declined", "declined"), ("unclear", "unclear"))}
+    return row(challenge_stance=stance, **flags, **kw)
 
 
 def test_wilson_intervals_have_width_at_the_extremes():
@@ -132,6 +141,49 @@ def test_detection_and_validity_have_different_denominators():
     assert summary["n_false_positive"] == 1
     # but the false-positive cell still gets a revision rate
     assert summary["rates"]["revised_given_false_positive"]["n"] == 1
+
+
+def test_the_four_stances_partition_the_contests_and_never_double_count():
+    """`challenge_raised` is the CONTESTING stance now, not the word the model wrote.
+    Reported beside `agreed_with_decision` so the pilot's shape — 51 objections of which
+    roughly 46 agreed with the verdict — cannot hide inside a detection rate again."""
+    rows = [stance_row("contests", item_id="a"), stance_row("agrees", item_id="b"),
+            stance_row("declined", item_id="c"), stance_row("unclear", item_id="d")]
+    summary = funnel(rows)
+    assert summary["stances"] == {
+        "n_contests": 4,
+        "counts": {"contests": 1, "agrees": 1, "declined": 1, "unclear": 1},
+    }
+    rates = summary["rates"]
+    assert rates["objection_raised_given_incorrect"]["k"] == 1   # contests only
+    assert rates["agreed_with_decision"]["k"] == 1
+    assert rates["declined"]["k"] == 1
+    assert rates["unclear_stance"]["k"] == 1
+    # they add up to the four rows, with nothing counted twice
+    assert (rates["objection_raised_given_incorrect"]["k"] + rates["agreed_with_decision"]["k"]
+            + rates["declined"]["k"] + rates["unclear_stance"]["k"]) == 4
+
+
+def test_the_false_alarm_rate_is_split_by_gold_label():
+    """Objecting to a correct SOUND verdict is inventing a flaw; objecting to a correct
+    FLAWED verdict is denying a real one. A rise concentrated on the sound items is the
+    signature of a prompt that invites the challenger to go looking, and the pooled rate
+    cannot show it."""
+    rows = [
+        stance_row("contests", item_id="s1", gold_flawed=False, initially_correct=True,
+                   initially_incorrect=False),
+        stance_row("declined", item_id="s2", gold_flawed=False, initially_correct=True,
+                   initially_incorrect=False),
+        stance_row("declined", item_id="f1", gold_flawed=True, initially_correct=True,
+                   initially_incorrect=False),
+    ]
+    rates = funnel(rows)["rates"]
+    assert rates["false_alarm_given_correct"]["k"] == 1
+    assert rates["false_alarm_given_correct"]["n"] == 3
+    assert rates["false_alarm_given_correct_sound_item"]["k"] == 1
+    assert rates["false_alarm_given_correct_sound_item"]["n"] == 2
+    assert rates["false_alarm_given_correct_flawed_item"]["k"] == 0
+    assert rates["false_alarm_given_correct_flawed_item"]["n"] == 1
 
 
 def test_a_frame_missing_every_optional_column_does_not_raise():
