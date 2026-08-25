@@ -48,8 +48,12 @@ command from `exp2/`). These are the rules that are *not* written down anywhere 
    numbered questionnaire with a proposed default per item; expect "check the diff".
    Read `git diff -- exp2/DESIGN.md` to collect the answers. A question pasted back with
    its "?" still attached means unanswered.
-3. **Plans are written by a planning agent and executed by another.** Do not re-plan a
-   plan you were handed; do not extend one on your own initiative.
+3. **Fable plans, Opus executes** — root `CLAUDE.md`, "Have Opus do the implementation":
+   the user plans with Fable and every plan spawns an Opus subagent to execute it. If you
+   are the Opus executor, do not re-plan or extend the plan you were handed; if you are
+   Fable, do the reading and the checking yourself, and hand the coding and the runs to
+   Opus. Fable also reviews Opus's deliverables — this file was checked by Fable
+   against the repo after Opus wrote it.
 4. **Every hyperparameter is printed and confirmed before a paid run.** `--dry-run`
    prints all three tables — `[debate]`, `[client]`, `[grading]` — each field with the
    reason it is what it is. Show the user that output and wait.
@@ -152,7 +156,9 @@ items, both documents written for every cell and every contest:
 
 ```bash
 uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
-# ends with: missing documents: 0 / fallbacks: 0 / withheld critiques: 0
+# its last two lines must read:
+#   full documents on the generations-only fallback: 0
+#   self_critique readable documents with a withheld critique: 0
 ```
 
 ---
@@ -209,7 +215,8 @@ repair; the repair was restating a format the model had just failed, so it was m
 were selected by the failure being fixed.
 
 **Pilot 3** (69 items, 207 cells, $0.95, 30 min) — the last run before the sweep, and
-the run whose rates the sweep is budgeted from. Three changes: the challenger answers one
+the run whose rates the sweep is budgeted from. Four changes: the strong model was
+pinned to a provider for the first time; the challenger answers one
 **relative** line (`Decision: STANDS|REVERSE`) because its two absolute lines collided
 with its own vocabulary; a new off-path **`agreement`** stage asks Haiku whether the
 objection's *prose* argues the verdict was right or wrong; and the aimed repairs say
@@ -239,10 +246,15 @@ must not have to discover them (`LLM_NOTES.md` §4, §3l–§3o):
   and are already paid for (`records/pick-weak/rows-*.jsonl`).
 - **No specious-objection control.** The challenger is neutral only, so a high revision
   rate cannot be told apart from a re-decider that capitulates to any pushback.
-- **The informed judge.** Pilot 1's pre-registered stop trigger did not fire and its
-  mirror image did: the challenger objected to 6 of 8 debate false positives and declined
-  on every false *negative*. The question `DESIGN.md` leaves open should go back to the
-  user on those grounds.
+- **The informed judge.** `DESIGN.md` puts the problem and the solution in front of the
+  judge and the challenger, so this is "argument-assisted weak judge", not the
+  information-asymmetric debate of the literature. The probe measured the consequence:
+  given a debate transcript, the weak judge got *less* accurate, paired on identical
+  items (pooled McNemar p = 0.0009 on the first shortlist, `LLM_NOTES.md` §3h), and
+  eight of nine weak models over-called FLAWED. Pilot 3 adds that the challenger contests
+  SOUND verdicts rarely (3% in `single` and `debate`). Do not cite pilot 1's 6-of-8 /
+  0-of-12 asymmetry for this — that number was an artifact of the challenger misreading
+  its instruction (§3l), fixed in pilot 2.
 - **Debate's persuasion cuts both ways.** Pilot 3: `debate` corrected 4 of its 26 errors
   and broke 2 of its 31 correct decisions. And `debate` errs on 26 of 57 items against
   `single`'s 8 of 68, so its incorrect cell is four times the size and made of different
@@ -261,16 +273,20 @@ must not have to discover them (`LLM_NOTES.md` §4, §3l–§3o):
 - **Withheld critiques.** A critique whose public section cannot be located is withheld
   rather than guessed, and the challenger then reads a placeholder where the criticism
   should be — in the one condition whose record is *defined* by its critiques. Pilot 2:
-  21 of 139. Pilot 3: 0 of 166. Since 2026-08-26 a critique cut off by the token cap can
+  21 of 139. Pilot 3: 0 of 166. Since 2026-08-25 a critique cut off by the token cap can
   also be withheld rather than killing its cell (§3o); the two cases are distinguishable
   in the records.
 - **Record-length imbalance.** `decision_record_words` in pilot 3: `single` **151**,
   `self_critique` 1,884, `debate` 1,857. The two long conditions are matched to within
   1.5%; `single` is an order of magnitude shorter. That is a property of the condition,
   not of the run, and `DESIGN.md` lists a token-count ablation for it.
-- **`single` never moves.** 0 of 42 contests changed a `single` decision in pilot 2, 0 of
-  68 in pilot 3. A strong model asked to reconsider its own answer in its own
-  conversation holds it.
+- **`single` never moves — but that is not yet evidence of anchoring.** 0 of 18
+  contests (42 cells) changed a `single` decision in pilot 2, 0 of 8 (68 cells) in
+  pilot 3. In pilot 2, 16 of those 18 contests were on *correct* decisions and most
+  agreed with the verdict in prose (phantom contests); only 2 were on wrong decisions.
+  So the strong model has mostly been right to hold. Whether it also holds against a
+  *valid* objection is an open question the sweep's `single` false-negative cell answers
+  — watch `revised_given_incorrect` for `single` with its n.
 - **Two denominator subtleties.** The graded rates are conditional on an objection having
   been raised, so a write-up must multiply through `challenge_raised` or it overstates
   detection (§3f). And gpqa's annotations say *where* a flaw is and not *what* it is, so
@@ -328,7 +344,9 @@ retries are on top: max_decision_attempts=2, plus at most one format repair per 
 #    UNESCAPED, and an unknown slug with allow_fallbacks=false returns
 #    "No endpoints found for …" — which contains "no endpoints", so client.py reads it
 #    as a RETRYABLE 404 and every cell of a 13-hour stage would die slowly instead of
-#    fast. records/logs/pilot-3-provider-check.log is what the check looks like.
+#    fast. records/derivations/sweep-1-provider-check.py is the script that does this
+#    check (it reads OPENROUTER_KEY from .env); records/logs/pilot-3-provider-check.log
+#    is what its output looks like when the slugs are right.
 
 # 3. the five paid stages, in this order, each waited on its own PID
 nohup uv run exp2-experiment --spec experiments/sweep.toml --stage decide \
@@ -394,7 +412,7 @@ truncated cells — is **reported with its number, not stopped for**.
 
 ## 7. Pointers
 
-**`LLM_NOTES.md` section map** (2,100 lines; it is the working record, not a summary):
+**`LLM_NOTES.md` section map** (~2,240 lines; it is the working record, not a summary):
 
 | § | what |
 |---|---|

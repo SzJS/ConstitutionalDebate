@@ -1451,7 +1451,7 @@ judge strength.
 
 ## 3o. The largest hole pilot 3 found: a critique truncating past its own label
 
-**Written 2026-08-26, after pilot 3 and before the first full sweep. No paid call was
+**Written 2026-08-25, after pilot 3 and before the first full sweep. No paid call was
 made for this section; the numbers in it are pilot 3's, re-read from
 `outputs/experiments/pilot-3/CHECKLIST.md` row 1.**
 
