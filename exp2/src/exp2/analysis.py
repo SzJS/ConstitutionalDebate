@@ -1,0 +1,300 @@
+"""Rates, intervals, and the caveats that have to travel with them.
+
+Three things here are deliberate and easy to get wrong.
+
+**Coverage is reported, not assumed.** Every rate computes its denominator as "rows
+where this column is actually present", and reports how many of the eligible rows were
+graded. exp1 counted ungraded rows as detection failures, so running the analysis before
+the grading stage reported ``0/N`` with a tight confidence interval — a wrong number
+that never crashes.
+
+**Nothing is pooled across ``label_basis`` by default.** A planted reasoning error, two
+reviewers concurring on one sentence, and agreement with a final answer are three
+different claims about what "flawed" means. Pooling them produces a number that is not
+about anything.
+
+**The conditions are not intersected.** Each condition's incorrect cell is its own, so
+a between-condition difference is confounded with item difficulty. That is the user's
+choice, taken knowingly; ``caveats`` carries it into the output so a reader meets it
+before the rates rather than after.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import random
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterable, Sequence
+
+
+@dataclass(frozen=True)
+class Rate:
+    """A proportion with a Wilson interval.
+
+    Wilson rather than normal because 0/n and n/n are expected outcomes here, and a
+    normal interval collapses to zero width at both — reporting certainty where there
+    is none.
+    """
+
+    name: str
+    k: int
+    n: int
+    eligible: int | None = None  # rows that qualified but could not be measured
+
+    @property
+    def rate(self) -> float | None:
+        return self.k / self.n if self.n else None
+
+    def interval(self, z: float = 1.96) -> tuple[float, float] | None:
+        if not self.n:
+            return None
+        phat = self.k / self.n
+        denominator = 1 + z**2 / self.n
+        centre = (phat + z**2 / (2 * self.n)) / denominator
+        margin = z * math.sqrt(
+            phat * (1 - phat) / self.n + z**2 / (4 * self.n**2)
+        ) / denominator
+        return max(0.0, centre - margin), min(1.0, centre + margin)
+
+    def to_dict(self) -> dict[str, Any]:
+        interval = self.interval()
+        data: dict[str, Any] = {
+            "name": self.name, "k": self.k, "n": self.n, "rate": self.rate,
+            "ci_low": interval[0] if interval else None,
+            "ci_high": interval[1] if interval else None,
+        }
+        if self.eligible is not None and self.eligible != self.n:
+            # Coverage, stated whenever it is not total: "3/10 of the eligible rows
+            # were graded" is a different claim from "3/10 objections were valid".
+            data["coverage"] = {"measured": self.n, "eligible": self.eligible}
+        return data
+
+
+def _rate(name: str, rows: Sequence[dict], column: str,
+          eligible: Sequence[dict] | None = None) -> Rate:
+    measured = [r for r in rows if r.get(column) is not None]
+    return Rate(name=name, k=sum(1 for r in measured if r[column]), n=len(measured),
+                eligible=len(eligible if eligible is not None else rows))
+
+
+def _where(rows: Iterable[dict], **conditions: Any) -> list[dict]:
+    return [r for r in rows
+            if all(r.get(key) == value for key, value in conditions.items())]
+
+
+# --- the four pre-challenge cells ----------------------------------------------------
+#
+#   said FLAWED on a flawed item -> true positive
+#   said SOUND  on a flawed item -> FALSE NEGATIVE: missed a real flaw
+#   said FLAWED on a sound  item -> FALSE POSITIVE: alleged a flaw that is not there
+#   said SOUND  on a sound  item -> true negative
+#
+# The two error types behave completely differently and DESIGN.md asks for them apart.
+
+
+def error_type(row: dict) -> str | None:
+    if row.get("initially_correct") is not False:
+        return None
+    return "false_negative" if row.get("gold_flawed") else "false_positive"
+
+
+def funnel(rows: Sequence[dict]) -> dict[str, Any]:
+    """Every rate, over one slice of the index."""
+    incorrect = _where(rows, initially_correct=False)
+    correct = _where(rows, initially_correct=True)
+    false_negative = [r for r in incorrect if error_type(r) == "false_negative"]
+    false_positive = [r for r in incorrect if error_type(r) == "false_positive"]
+    # The two graded bars have DIFFERENT denominators, and conflating them costs a
+    # fifth of the corpus.
+    #
+    #   detection  is measurable wherever the annotation says *where* the flaw is —
+    #              which includes gpqa's step pointers (382 items).
+    #   validity   additionally needs the annotation to say *what* is wrong, so gpqa is
+    #              excluded; its clamped False would otherwise drag the rate down as
+    #              though those objections had failed rather than been unmeasurable.
+    detectable = false_negative
+    characterisable = [r for r in false_negative if r.get("gradable")]
+
+    rates = [
+        _rate("decision_error", rows, "initially_incorrect"),
+        _rate("objection_raised_given_incorrect", incorrect, "challenge_raised"),
+        _rate("false_alarm_given_correct", correct, "challenge_raised"),
+        _rate("identified_flaw", detectable, "identified_flaw"),
+        _rate("valid_objection", characterisable, "grade_valid"),
+        _rate("revised_given_incorrect", incorrect, "changed_the_decision"),
+        _rate("revised_given_correct", correct, "changed_the_decision"),
+        _rate("revised_given_false_negative", false_negative, "changed_the_decision"),
+        _rate("revised_given_false_positive", false_positive, "changed_the_decision"),
+        _rate("declined", rows, "challenge_declined"),
+    ]
+    return {
+        "n": len(rows),
+        "n_incorrect": len(incorrect),
+        "n_correct": len(correct),
+        "n_false_negative": len(false_negative),
+        "n_false_positive": len(false_positive),
+        "n_detectable_false_negative": len(detectable),
+        "n_characterisable_false_negative": len(characterisable),
+        "rates": {r.name: r.to_dict() for r in rates},
+        "comprehension": _comprehension(rows),
+    }
+
+
+def _comprehension(rows: Sequence[dict]) -> dict[str, Any]:
+    """A distribution, not a mean.
+
+    The expected outcome is a flat 4-5 with almost no variance, and a mean would hide
+    exactly that. A flat result is still a result, but only if it is visible as one.
+    """
+    scores = [r["comprehension"] for r in rows if r.get("comprehension") is not None]
+    if not scores:
+        return {"n": 0, "distribution": {}, "mean": None}
+    return {
+        "n": len(scores),
+        "distribution": {str(s): scores.count(s) for s in range(1, 6)},
+        "mean": sum(scores) / len(scores),
+    }
+
+
+def by_key(rows: Sequence[dict], key: str) -> dict[str, Any]:
+    values = sorted({str(r.get(key)) for r in rows if r.get(key) is not None})
+    return {value: funnel([r for r in rows if str(r.get(key)) == value])
+            for value in values}
+
+
+# --- uncertainty ---------------------------------------------------------------------
+
+
+def bootstrap_difference(
+    rows_a: Sequence[dict], rows_b: Sequence[dict], column: str,
+    *, draws: int = 2000, seed: int = 0, cluster: str = "row_id",
+) -> dict[str, Any]:
+    """A cluster bootstrap on ``row_id``.
+
+    Clustered because a FindTheFlaws row yields two items and a CELS argument can yield
+    several, and they are anything but independent — for the paired subsets the two
+    solutions differ by a single edit. Treating them as independent draws would
+    understate every interval.
+    """
+    def clusters(rows: Sequence[dict]) -> dict[str, list[dict]]:
+        out: dict[str, list[dict]] = {}
+        for row in rows:
+            if row.get(column) is not None:
+                out.setdefault(str(row.get(cluster)), []).append(row)
+        return out
+
+    a_clusters, b_clusters = clusters(rows_a), clusters(rows_b)
+    if not a_clusters or not b_clusters:
+        return {"checked": False, "reason": "no measured rows in one of the groups"}
+
+    def draw(pool: dict[str, list[dict]], rng: random.Random) -> float | None:
+        keys = list(pool)
+        picked = [row for _ in keys for row in pool[rng.choice(keys)]]
+        return (sum(1 for r in picked if r[column]) / len(picked)) if picked else None
+
+    rng = random.Random(seed)
+    differences = []
+    for _ in range(draws):
+        a, b = draw(a_clusters, rng), draw(b_clusters, rng)
+        if a is not None and b is not None:
+            differences.append(a - b)
+    differences.sort()
+    observed_a = sum(1 for rows in a_clusters.values() for r in rows if r[column])
+    total_a = sum(len(rows) for rows in a_clusters.values())
+    observed_b = sum(1 for rows in b_clusters.values() for r in rows if r[column])
+    total_b = sum(len(rows) for rows in b_clusters.values())
+    return {
+        "checked": True,
+        "difference": observed_a / total_a - observed_b / total_b,
+        "ci_low": differences[int(0.025 * len(differences))] if differences else None,
+        "ci_high": differences[int(0.975 * len(differences)) - 1] if differences else None,
+        "draws": len(differences), "clustered_by": cluster,
+    }
+
+
+# --- the caveats that travel with the numbers ----------------------------------------
+
+
+def matched_items(rows: Sequence[dict], conditions: Sequence[str]) -> dict[str, Any]:
+    """Items every condition got wrong, plus the overlap counts.
+
+    A secondary panel, not the headline filter — the user chose the un-intersected
+    comparison knowing difficulty is a confounder. It is computed anyway because it is
+    free once the code exists and it is the only quantitative handle on how large that
+    confound is.
+    """
+    wrong = {
+        condition: {r["item_id"] for r in rows
+                    if r.get("condition") == condition
+                    and r.get("initially_correct") is False}
+        for condition in conditions
+    }
+    shared = set.intersection(*wrong.values()) if wrong else set()
+    return {
+        "per_condition": {c: len(items) for c, items in wrong.items()},
+        "in_every_condition": len(shared),
+        "pairwise_overlap": {
+            f"{a}&{b}": len(wrong[a] & wrong[b])
+            for i, a in enumerate(conditions) for b in conditions[i + 1:]
+        },
+        "item_ids_in_every_condition": sorted(shared),
+    }
+
+
+def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
+    matching = matched_items(rows, conditions)
+    sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
+    return [
+        "NOT INTERSECTED — read this before the rates. Each condition's "
+        "P(revised | initially incorrect) is computed over that condition's OWN wrong "
+        f"decisions, and those sets are not the same items ({sizes}; wrong in every "
+        f"condition: {matching['in_every_condition']}). A condition that errs only on "
+        "hard items is being compared against one that errs on easy ones, so a "
+        "between-condition difference is confounded with item difficulty.",
+        "The debate condition is adjudicated by the WEAK judge while single and "
+        "self_critique are decided by the STRONG model, so the wrong-sets differ in "
+        "size and character by construction. There is no weak_alone condition, so a "
+        "debate-vs-single difference cannot separate the mechanism from model strength.",
+        "There is no specious-objection control, so a high revision rate cannot be "
+        "distinguished from a re-decider that folds under any pushback. This bites "
+        "hardest on single and self_critique, whose contest asks a model to contradict "
+        "itself in its own conversation.",
+        "Rates are not pooled across label_basis: injected_pair, sentence_labels and "
+        "final_answer are three different claims about what 'flawed' means. medqa's "
+        "final_answer basis in particular labels a badly-reasoned solution 'sound' "
+        "whenever it reached the right answer.",
+        "Natural errors only: a weak judge errs where the correct side argued badly, so "
+        "debate's incorrect cell selects the debates in which debate worked worst. This "
+        "understates debate; single has no equivalent filter, so it applies "
+        "asymmetrically.",
+    ]
+
+
+def analyse(index_path: Path, conditions: Sequence[str]) -> dict[str, Any]:
+    rows = [json.loads(line) for line in
+            index_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    small = [
+        f"{condition}: n={f['n_incorrect']} incorrect"
+        for condition, f in by_key(rows, "condition").items()
+        if f["n_incorrect"] < 20
+    ]
+    return {
+        "rows": len(rows),
+        "caveats": caveats(rows, conditions),
+        "small_cells": small,
+        "matching": matched_items(rows, conditions),
+        "overall": funnel(rows),
+        "by_condition": by_key(rows, "condition"),
+        "by_condition_and_subset": {
+            condition: by_key([r for r in rows if r.get("condition") == condition],
+                              "subset")
+            for condition in conditions
+        },
+        "by_condition_and_label_basis": {
+            condition: by_key([r for r in rows if r.get("condition") == condition],
+                              "label_basis")
+            for condition in conditions
+        },
+    }

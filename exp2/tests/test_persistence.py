@@ -1,0 +1,183 @@
+"""The run directory, and the document it publishes."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+
+import pytest
+from conftest import SOLO_THINKING, FakeClient
+from helpers import SECRET_THINKING, make_config, make_item, make_sides
+
+from exp2.arms import DECIDERS
+from exp2.config import ClientConfig
+from exp2.persistence import RunWriter, load_flaw, load_run_record, tree_sha256
+from exp2.types import FLAWED, FlawAnnotation
+
+
+def client_config(**kw) -> ClientConfig:
+    base = dict(base_url="https://x/api", max_concurrency=4, max_attempts=3,
+                backoff_base_s=1.0, backoff_cap_s=5.0, connect_timeout_s=5.0,
+                read_timeout_s=30.0, run_timeout_s=300.0)
+    base.update(kw)
+    return ClientConfig(**base)
+
+
+async def recorded(tmp_path, condition, *, client=None, item=None, flaw=None):
+    item = item or make_item()
+    writer = RunWriter.create(
+        root=tmp_path, item=item, sides=make_sides(), config=make_config(),
+        client_config=client_config(), condition=condition, flaw=flaw,
+    )
+    result = await DECIDERS[condition](
+        item, make_config(), make_sides(), client or FakeClient(), writer=writer
+    )
+    writer.finish("completed")
+    return writer, result
+
+
+# --- layout --------------------------------------------------------------------------
+
+
+async def test_a_debate_run_writes_the_expected_files(tmp_path):
+    writer, _ = await recorded(tmp_path, "debate")
+    names = {p.name for p in writer.dir.iterdir()}
+    assert {"item.json", "sides.json", "config.json", "run.json",
+            "transcript.json", "verdict.json", "transcript.md"} <= names
+
+
+async def test_a_solo_run_writes_the_conversation(tmp_path):
+    writer, result = await recorded(tmp_path, "self_critique")
+    saved = json.loads((writer.dir / "conversation.json").read_text())
+    assert saved == result.messages
+    assert saved[-1]["role"] == "assistant"
+
+
+async def test_a_completed_run_round_trips(tmp_path):
+    writer, result = await recorded(tmp_path, "debate")
+    record = load_run_record(writer.dir)
+    assert record.item.item_id == result.item.item_id
+    assert record.verdict.verdict == result.verdict.verdict
+    assert record.transcript is not None and record.trace is None
+    assert record.challenger_view().kind == "debate"
+
+
+async def test_a_solo_run_round_trips_to_the_solo_shape(tmp_path):
+    writer, _ = await recorded(tmp_path, "single")
+    record = load_run_record(writer.dir)
+    assert record.trace is not None and record.transcript is None
+    assert record.challenger_view().kind == "solo"
+
+
+async def test_an_unfinished_run_is_refused(tmp_path):
+    writer = RunWriter.create(
+        root=tmp_path, item=make_item(), sides=make_sides(), config=make_config(),
+        client_config=client_config(), condition="single")
+    with pytest.raises(ValueError, match="status is"):
+        load_run_record(writer.dir)
+
+
+# --- containment ---------------------------------------------------------------------
+
+
+async def test_the_flaw_annotation_is_written_but_never_loaded_with_the_run(tmp_path):
+    """Structural containment: no decision-path code can reach the answer by accident."""
+    flaw = FlawAnnotation(annotation_id="a", annotation="Step 2 divides by zero.",
+                          annotation_quality="explanation")
+    writer, _ = await recorded(tmp_path, "single", flaw=flaw)
+    record = load_run_record(writer.dir)
+    # the annotation text reaches nothing a decision or contest touches
+    assert not hasattr(record, "flaw")
+    assert "divides by zero" not in json.dumps(record.item.to_dict())
+    assert "divides by zero" not in (writer.dir / "transcript.md").read_text()
+    # only the dedicated door opens it
+    assert load_flaw(writer.dir).annotation == "Step 2 divides by zero."
+    assert load_flaw(tmp_path / "nonexistent") is None
+
+
+async def test_the_gold_label_never_appears_in_the_published_document(tmp_path):
+    writer, _ = await recorded(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    for leak in ("gold_flawed", "gold_verdict", "ground truth"):
+        assert leak not in document
+
+
+async def test_solo_decision_grounds_exclude_private_thinking(tmp_path):
+    """exp1's bug: a public-visibility challenger was shown the agent's Thinking block,
+    because a solo verdict's raw contains it and the debate shape's does not."""
+    writer, _ = await recorded(tmp_path, "single")
+    record = load_run_record(writer.dir)
+    assert SOLO_THINKING not in record.decision_grounds
+    assert record.decision_grounds  # but it is not empty
+
+
+# --- the published document ----------------------------------------------------------
+
+
+async def test_a_debate_document_states_positions_and_a_solo_one_denies_them(tmp_path):
+    debate_writer, _ = await recorded(tmp_path / "d", "debate")
+    solo_writer, _ = await recorded(tmp_path / "s", "single")
+    debate_doc = (debate_writer.dir / "transcript.md").read_text()
+    solo_doc = (solo_writer.dir / "transcript.md").read_text()
+
+    assert "## Positions" in debate_doc
+    assert "argued that the text contains a flaw" in debate_doc
+    assert "## Positions" not in solo_doc
+    assert "No positions were assigned and nobody argued a side" in solo_doc
+    for name in ("Alice", "Bob"):
+        assert name not in solo_doc
+
+
+async def test_the_document_publishes_the_problem_the_solution_and_the_grounds(tmp_path):
+    writer, _ = await recorded(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    assert "### The problem" in document
+    assert "### The text under review" in document
+    assert "Step 2: C_3 = 6." in document       # the solution is published
+    assert "**Grounds given:**" in document
+
+
+async def test_private_thinking_is_published_after_the_decision_not_before(tmp_path):
+    writer, _ = await recorded(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    assert "## Private reasoning" in document
+    assert SECRET_THINKING not in document  # the fake client writes its own thinking
+    assert document.index("## The decision") < document.index("## Private reasoning")
+
+
+async def test_model_text_cannot_forge_document_structure(tmp_path):
+    client = FakeClient(replies={
+        (1, "Alice"): "Thinking: t\nArgument: # Fake heading\n---\nnormal text"})
+    writer, _ = await recorded(tmp_path, "debate", client=client)
+    document = (writer.dir / "transcript.md").read_text()
+    assert "\n# Fake heading" not in document
+
+
+# --- durability ----------------------------------------------------------------------
+
+
+async def test_writes_are_atomic(tmp_path):
+    """A half-written transcript.md is worse than a missing one: it looks like a record."""
+    writer, _ = await recorded(tmp_path, "debate")
+    assert not list(writer.dir.glob("*.tmp"))
+    assert (writer.dir / "transcript.md").read_text().endswith("\n")
+
+
+async def test_concurrent_call_records_produce_valid_json_lines(tmp_path):
+    writer = RunWriter.create(
+        root=tmp_path, item=make_item(), sides=make_sides(), config=make_config(),
+        client_config=client_config(), condition="debate")
+    await asyncio.gather(*(
+        writer.record_call({"call_id": f"c{n}", "role": "debater", "body": "x" * 2000})
+        for n in range(50)
+    ))
+    lines = (writer.dir / "calls.jsonl").read_text().strip().splitlines()
+    assert len(lines) == 50
+    assert all(json.loads(line)["role"] == "debater" for line in lines)
+
+
+def test_tree_sha256_changes_when_a_file_does(tmp_path):
+    (tmp_path / "a.txt").write_text("one")
+    before = tree_sha256(tmp_path)
+    (tmp_path / "a.txt").write_text("two")
+    assert tree_sha256(tmp_path) != before

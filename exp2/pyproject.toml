@@ -1,14 +1,24 @@
 [project]
 name = "exp2"
 version = "0.1.0"
-description = "TBD"
+description = "Contestability of debate-produced decisions, measured against single-agent baselines"
 requires-python = ">=3.12"
-# Deliberately minimal: exp1's two-dependency runtime floor, nothing more. Add a
-# dependency when this experiment actually needs it, not by inheritance.
+# Deliberately minimal: the runtime floor is two dependencies, as in exp1. Everything
+# heavier is an optional extra, so a decision run cannot fail on a plotting library.
 dependencies = [
     "httpx>=0.27",
     "python-dotenv>=1.0",
 ]
+
+[project.optional-dependencies]
+# FindTheFlaws ships one AES-encrypted zip; stdlib zipfile only does ZipCrypto.
+datasets = ["pyzipper>=0.3"]
+# Imported only by exp2.analysis, never on the decision path.
+analysis = ["pandas>=2.0", "statsmodels>=0.14"]
+
+[project.scripts]
+exp2 = "exp2.cli:main"
+exp2-experiment = "exp2.experiment_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -21,6 +31,9 @@ packages = ["src/exp2"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    "pyzipper>=0.3",
+    "pandas>=2.0",
+    "statsmodels>=0.14",
 ]
 
 [tool.pytest.ini_options]

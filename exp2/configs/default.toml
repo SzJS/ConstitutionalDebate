@@ -1,0 +1,85 @@
+# Default configuration.
+#
+# [debate] is the published record of how the decision was set up: every value here can
+# change the outcome, and the resolved table is persisted to <run_dir>/config.json so a
+# reader can see the conditions it was made under.
+#
+# [client] is operational: retries, timeouts, concurrency. None of it can change the
+# decision, so it is recorded in run.json rather than config.json — two runs that
+# produced identical decisions should not look different because a timeout was tuned.
+#
+# [grading] is off-path measurement, re-runnable over finished directories.
+#
+# Every key here has a one-line reason in exp2.config.WHY, which `--dry-run` prints
+# beside the resolved values. Add a key there when you add one here; a test enforces it.
+
+[debate]
+# Settled by scripts/pick_weak.py on 2026-08-25 — see outputs/pick-weak/DECISION.md for
+# the table, the disqualifiers, and the one pre-registered rule that was withdrawn.
+# The debaters are strong and the judge is weak, which is the debate protocol; a bare
+# `uv run exp2` is now a real configuration rather than a deliberately-wrong placeholder.
+debater_model = "deepseek/deepseek-v4-flash-0731"
+judge_model = "openai/gpt-4.1-nano"
+
+n_rounds = 3
+turn_style = "simultaneous"   # "simultaneous" | "sequential"
+n_critique_rounds = 3         # validated == n_rounds
+
+word_limit = 400
+
+debater_temperature = 0.7
+judge_temperature = 0.0
+
+# A ceiling, not a spend — we are billed for realised output tokens. It must leave room
+# for the private "Thinking" block, and truncation is fatal and cannot be fixed by a
+# retry at the same cap. python800 and the CELS subsets carry long solutions, so this
+# is the number most likely to need raising after the pilot.
+max_tokens = 8192
+
+# The protocol's private channel is the "Thinking:" block: private during the debate,
+# published afterwards, recorded either way. Native provider reasoning is a second
+# channel that would be private *permanently* — invisible to the judge, the opponent
+# and the reader alike — so it is disabled deliberately rather than left to a provider
+# default. Anything that can move a decision has to end up somewhere a reader can see.
+# Some newer models refuse to disable it; scripts/pick_weak.py checks whether a
+# candidate honours this, because a weak judge that always reasons is not weak.
+reasoning_effort = "off"
+
+# A decision that states no grounds can be neither read nor contested, and both are the
+# claim under test. The verbalised reasoning is the substance of what transcript.md
+# publishes.
+judge_cot = true
+
+# Seeds side assignment and verdict-template order, per item. Stable across re-runs.
+seed = 0
+
+frequency_penalty = 0.0
+max_decision_attempts = 2
+
+# --- contest -----------------------------------------------------------------------
+# Judge-only recourse. Validated: see config.DebateConfig.__post_init__.
+recourse_rounds = 0
+challenger_may_decline = true
+challenger_model = "openai/gpt-4.1-nano"
+# challenger_model     — unset would mean the debater model, which would put a strong
+#                        model in the stakeholder's chair; set explicitly for that reason.
+# recourse_judge_model — unset means judge_model.
+# comprehension_model  — unset means the challenger model.
+# challenge_word_limit — unset means word_limit.
+
+[client]
+base_url = "https://openrouter.ai/api/v1"
+max_concurrency = 8
+max_runs_in_flight = 4
+max_attempts = 4
+backoff_base_s = 1.0
+backoff_cap_s = 30.0
+connect_timeout_s = 15.0
+read_timeout_s = 300.0
+run_timeout_s = 1800.0
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5:batch"
+grader_temperature = 0.0
+max_tokens = 4096
