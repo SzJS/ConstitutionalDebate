@@ -65,3 +65,12 @@ challenger_temperature = 0.7
 # cells before they are trusted on 6,330. Checklist row 8 is where that lands.
 max_concurrency = 16
 max_runs_in_flight = 8
+
+[grading]
+# Stated here rather than inherited, because pilot 2's grade stage is the first run of
+# this experiment ever to reach the grader and the id is what it found wrong. The
+# default carried `anthropic/claude-haiku-4.5:batch` from the day the harness was
+# written; that suffix routes to OpenRouter's separate Batch API, which `client.py` does
+# not speak, and all five eligible contests came back HTTP 404. Same model, ordinary
+# chat-completions endpoint.
+grader_model = "anthropic/claude-haiku-4.5"

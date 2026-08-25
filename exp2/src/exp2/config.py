@@ -290,7 +290,7 @@ CLIENT_WHY: dict[str, str] = {
 }
 
 GRADING_WHY: dict[str, str] = {
-    "grader_model": "Haiku on the batch tier: grading is an offline pass over finished directories, so latency costs nothing and halves the price.",
+    "grader_model": "The same Haiku model on the normal chat-completions endpoint. The `:batch` suffix this field carried until 2026-08-25 routes to OpenRouter's separate Batch API, which `client.py` does not speak, and it returned HTTP 404 on every call pilot 2 made.",
     "grader_temperature": "0 — a grade is a measurement, and the same objection against the same annotation should not vary.",
     "max_tokens": "4096; a grade is two lines and a short explanation, and it reads an annotation rather than a transcript.",
 }
@@ -344,9 +344,15 @@ class GradingConfig:
     are re-runnable without re-spending anything.  Recorded in ``run.json`` instead.
     """
 
-    # Grading is an offline pass over finished directories, so batch latency costs
-    # nothing and halves the price.
-    grader_model: str = "anthropic/claude-haiku-4.5:batch"
+    # Haiku, on the ordinary chat-completions endpoint. It read
+    # `anthropic/claude-haiku-4.5:batch` from the day the harness was written — the
+    # reasoning being that an offline pass over finished directories does not care
+    # about latency and the batch tier is half the price — and that id is reachable
+    # ONLY through OpenRouter's `/api/beta/batches` endpoint, which `client.py` does
+    # not speak. No run exercised it until pilot 2, whose five eligible contests each
+    # came back HTTP 404. If the batch tier is ever wanted it is a client feature, not
+    # a model id.
+    grader_model: str = "anthropic/claude-haiku-4.5"
     grader_temperature: float = 0.0
     max_tokens: int = 4096
 

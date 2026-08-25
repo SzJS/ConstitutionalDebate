@@ -81,6 +81,26 @@ def test_the_operational_and_grading_tables_also_carry_a_reason_each():
         assert sorted(set(why) - names) == [], f"{name} entries for absent fields"
 
 
+def test_the_grader_model_is_not_a_batch_tier_id():
+    """`:batch` is not a variant of a model; it is a different API.
+
+    `anthropic/claude-haiku-4.5:batch` sat in this default from the day the harness was
+    written and no run reached the grade stage until pilot 2, whose five eligible
+    contests each came back `HTTP 404: This model is only available through the Batch
+    API`. `client.py` speaks chat-completions and nothing else, so any `:batch` id here
+    is unsendable by construction — including one arriving through a spec file.
+    """
+    from exp2.config import DEFAULT_CONFIG_PATH, GradingConfig, load_grading_config
+
+    assert not GradingConfig().grader_model.endswith(":batch")
+    assert not load_grading_config().grader_model.endswith(":batch")
+    # Anchored on the package's own view of the repo, not on the working directory.
+    experiments = DEFAULT_CONFIG_PATH.parent.parent / "experiments"
+    for spec in sorted(experiments.glob("*.toml")):
+        model = load_grading_config(spec).grader_model
+        assert not model.endswith(":batch"), f"{spec} would send {model}"
+
+
 # --- resolvers ----------------------------------------------------------------------
 
 

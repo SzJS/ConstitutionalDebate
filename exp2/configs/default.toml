@@ -95,6 +95,9 @@ run_timeout_s = 1800.0
 copy_parent = true
 
 [grading]
-grader_model = "anthropic/claude-haiku-4.5:batch"
+# NOT `anthropic/claude-haiku-4.5:batch`. That suffix routes to OpenRouter's separate
+# Batch API (`/api/beta/batches`), which this client does not speak; it returned HTTP
+# 404 on all five of pilot 2's grader calls.
+grader_model = "anthropic/claude-haiku-4.5"
 grader_temperature = 0.0
 max_tokens = 4096
