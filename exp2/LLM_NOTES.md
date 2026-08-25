@@ -1121,6 +1121,240 @@ request to *this reply only*, at the cost of a longer instruction. Recorded rath
 fixed: fixing it is a prompt change, and this pass had one job.
 
 
+## 3n. One relative challenger line, its cost, and the provider it was measured on
+
+**Written 2026-08-25 after pilot 2's second pass. The pre-registered expectations at the
+end of this section were written and committed BEFORE `pilot-3`'s `decide` stage was
+launched.**
+
+Three changes stand between pilot 2 and a ~$30, ~40-hour sweep. Each touches the sweep's
+prompts or its routing, so each goes through a pilot first, and they go through the
+*same* pilot — which is the first thing to say about what pilot 3 can and cannot show.
+
+### 1. The two absolute lines collided with the challenger's own vocabulary
+
+Pilot 2 asked for `Objection: RAISED|NONE` and `Verdict should be: FLAWED|SOUND`, and
+§3l records why the second line was added. Read across the 29 replies that were examined
+by hand, the dominant failure is **not a reflex**. It is a vocabulary collision: the
+challenger uses `SOUND` to mean *"the verdict is sound"* at least as often as *"the text
+is sound"* —
+
+> *"the original verdict correctly identified the flaw… The verdict should stand as
+> SOUND"*
+> *"the record's verdict is correct because the solution… is flawed"* — claimed
+> **SOUND**
+
+The prompt aggravated it. The decision was stated to the challenger as a **phrase**
+("The decision reached was: the text under review contains a flaw") and never as the
+token, so the challenger had to translate a phrase into a verdict word and then compare
+it with its own. Two vocabularies, one of them ambiguous, and a translation step between
+them.
+
+What it cost, in numbers re-derived from `outputs/experiments/pilot-2/`:
+
+- **93 of 108** replies claimed `SOUND`, whichever way they actually argued.
+- **12 declines named the contrary verdict** (`Challenge.contradictory`), i.e. the two
+  lines were being answered somewhat independently of each other.
+- **Phantom contests**: `RAISED` + `SOUND` + prose that agrees with a FLAWED verdict. In
+  `single`, **16 of 18 contests were on correct decisions** and most agreed in prose; the
+  re-decider held every one of them and `single` moved **0 of 42**. Pilot 2's `contests`
+  counts are inflated by this, and the `agrees` detector cannot see it — `agrees`
+  requires the claimed verdict to *equal* the decision, and a phantom's claimed verdict
+  differs.
+
+**The fix is one line, stated relative to the decision, with no verdict word in it**:
+`Decision: STANDS` or `Decision: REVERSE`. Nothing to translate, no second answer to give
+independently of the first, and no word shared with the verdict's vocabulary. A test
+asserts that disjointness across all four decision vocabularies, because it is the
+property that failed.
+
+### 2. What that costs, and the instrument that replaces it
+
+The pair of lines was the **only mechanical evidence** that a reply's prose disagreed
+with its own label. One line cannot contradict itself, so `agrees` and `contradictory`
+become unreachable — and nothing whatever stops a model writing `REVERSE` and then
+agreeing with the verdict in prose. Shipping the fix alone would have replaced a
+measurable defect with an unmeasurable one.
+
+So the fix ships with a replacement: a new off-path stage, **`agreement`**, between
+`contest` and `grade`. One grader-model call per contest whose line parsed, temperature
+0, over the objection's prose:
+
+> Does this text argue that the verdict was **right**, argue that it was **wrong**, or
+> neither? Reply on the final line exactly: `Prose: RIGHT`, `Prose: WRONG`, or
+> `Prose: NEITHER`.
+
+Three properties of it are load-bearing:
+
+- **It cannot see the challenger's line.** The line is stripped from the body before the
+  challenge is recorded (it has been, since §3l, for a different reason: a challenge
+  opening with an instruction to the judge is not an argument for anything). So the
+  reading is independent of the label by construction, not by promise. A test asserts
+  the line is absent from what the reader is sent.
+- **It runs on declines too.** A decline whose prose argues for reversal is as much a
+  mismatch as a contest whose prose endorses the verdict, and measuring one direction
+  only would make the instrument agree with the column it is checking.
+- **`NEITHER` is its own column**, not folded into disagreement. Prose that takes no side
+  has not contradicted its label; it has failed to support it, which is a different
+  finding.
+
+`analysis` reports the full `line × prose` cross-tab per condition, a
+**phantom-contest rate** (`REVERSE` + `Prose: RIGHT`) over the contests actually read,
+and `declines_arguing_for_reversal` as its mirror. `agreed_with_decision` stays in the
+output as a **structural 0** with a caveat saying in words that the instrument no longer
+permits it — a column that reads 0 says the shape did not occur; a column that vanished
+says nobody looked.
+
+One deviation from the plan, stated because the prompt is the instrument: the plan's
+wording was to ask the question over the objection text alone. The call **is also shown
+the verdict under review**, because without it the question is not well-posed — "does
+this text argue the verdict was right" cannot be answered from a text that argues about a
+solution unless the reader knows what the verdict said. The question itself is verbatim,
+and the system prompt says explicitly that the reader is not being asked whether the
+decision was correct.
+
+### 3. The aimed repair left a scar on the conversation
+
+*"Do not write a Thinking section"* stays in a solo conversation and the model keeps
+obeying it: `salvaged_no_thinking` ran at **4.8%** across pilot 2's original decisions and
+**51.0%** in its retry pass (§3m records the discovery). Not a leak — nothing marked
+private was published, because nothing was marked private — but those cells' records are
+a different kind of document from the rest, and it is a confound between the retried
+cells and the others.
+
+The path that matters most is the **recourse replay**: `_rule_in_conversation` replays
+the conversation verbatim and appends one turn, and that call is what produces
+`changed_the_decision`. `single` has one stage, so a "next stage" reminder can never
+reach it.
+
+Fixed at the source — both aimed instructions now begin *"For this reply only"* — which
+reaches `single`, the final stage and the replay for free. Belt to those braces:
+`arms._run_solo` prefixes the next stage's instruction with a verdict-neutral
+restatement of the two-section format when an earlier stage spent a repair, and
+`build_solo_recourse_message` applies the same prefix when the replayed conversation
+contains a repair turn. Both conditional, so an unrepaired run's prompts are
+byte-identical to what they were. `conversation_spent_a_repair` reads the repair off the
+messages rather than off a counter, because the contest replays `conversation.json` and
+that file is the only record of what was said; a test asserts every repair template is
+detected by it.
+
+### 4. Provider variance, correctly attributed — and the cost of pinning
+
+20 providers served `deepseek/deepseek-v4-flash-0731` in pilot 2. **The attribution in
+the first table was wrong**: it charged each repair to the provider that served the
+*repair*, which for 40% of them was a different provider from the one that served the
+call that failed. Re-attributed to the **failing call** (166/166 paired):
+
+| provider | original calls | caused a repair | rate | vs pool (25.5%) |
+|---|---|---|---|---|
+| **GMICloud** | 48 | 1 | **2.1%** [0.4, 10.9] | **p < 0.0001** |
+| Baidu | 132 | 20 | 15.2% | — |
+| DeepInfra | 31 | 6 | 19.4% | — |
+| CoreWeave | 20 | 4 | 20.0% [8.1, 41.6] | p = 0.79, **no signal** |
+| Relace | 215 | 76 | 35.3% | p = 0.0001, worse |
+| DigitalOcean | 85 | 30 | 35.3% | — |
+
+Native reasoning on the same split: Relace 43%, Baidu 35%, GMICloud 8%, CoreWeave 0%.
+Latency p50 GMICloud 7.5 s / 92 tok/s; CoreWeave 4.8 s / 146 tok/s.
+
+Pilot 3 pins `["gmicloud/fp8", "coreweave/fp8"]`. **GMICloud is the only provider with a
+significant effect. CoreWeave is second because nothing disqualifies it, not because it
+was shown to be good — n=20 carries no signal and the report must say so.**
+
+`provider_order` is in `DebateConfig` and not `ClientConfig`, and that is the whole
+reason those two tables exist: routing decides which weights generate the text, so it can
+change a decision, so it belongs in the published record and a contest inherits it. A
+timeout cannot; this can. `provider_allow_fallbacks` is False, because a pin that
+silently falls back averages the measurement back over whichever providers were free —
+invisibly, since the served provider is only in the wire log.
+
+**Cost.** deepseek is **71% of pilot 2's bill**, not a small share, so this is a real
+price. Pinned to GMICloud: pilot 3 ≈ **$0.98**, sweep ≈ **$30** (vs ~$24 unpinned; ~$47
+if CoreWeave took the traffic). Fewer repairs mean fewer calls, so both are slight
+over-estimates.
+
+**Verifying the slugs was not optional, and the check found two things.**
+`order` takes OpenRouter provider *slugs*; `calls.jsonl` records *display names*.
+`outputs/pilot-3-provider-check.log` is the record. Two findings worth keeping:
+
+1. The endpoints API path takes the model id with the slash **unescaped**.
+   `/api/v1/models/deepseek%2Fdeepseek-v4-flash-0731/endpoints` returns **404**;
+   `/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints` returns the 29 endpoints.
+   The first form was tried first and looked exactly like "this model has no endpoint
+   data".
+2. An unrecognised slug with `allow_fallbacks: false` returns
+   **`HTTP 404 "No endpoints found for deepseek/deepseek-v4-flash-0731."`** — and that
+   message contains the substring *"no endpoints"*, so `client.NO_ENDPOINTS_MARKER`
+   matches it and the client classifies it as **retryable**. A wrong slug would therefore
+   not fail fast; it would burn `max_attempts = 4` on every call and kill every cell
+   slowly. No dry-run can catch that, which is why one real pinned call is made first.
+
+Five real calls confirmed the pin: three at `["gmicloud/fp8", "coreweave/fp8"]` all
+served by **GMICloud**, one at `["coreweave/fp8"]` served by **CoreWeave** (so the
+fallback leg is verified rather than assumed), and one control at
+`["not-a-real-provider"]` producing the 404 above. Both endpoints were healthy at check
+time (status 0, 100% uptime over 30 min) and both carry `max_completion_tokens` far above
+the run's 16,384 cap, so the pin cannot cause a truncation the free pool would not have.
+
+### 5. The corpus
+
+`data/cases/pilot-3.jsonl`: **69 items**, 34 flawed / 35 sound, **207 cells**, from
+`--pilot 4 --pilot-longest 2` at seed 0. Pilot 2's 42 items are a **strict subset**,
+verified by id (`outputs/get-tasks-pilot-3.log`). Gradable flawed rows 18 → **29**.
+`data/cases/pilot.jsonl` is untouched and still means the 42 items `pilot.toml` and
+`pilot-2.toml` were run on — that is what `--pilot-out` exists for.
+
+Rendering: `**Verdict:**` is now printed **after** the grounds quote, so nano's dangling
+`**Final verdict:**` header (12 pilot-2 records) stops pointing at nothing. No model text
+is edited or trimmed; only the order changed.
+
+### PRE-REGISTERED EXPECTATIONS for `pilot-3` (2026-08-25 21:54 UTC, before `decide`)
+
+Recorded and committed before the stage was launched, so they cannot be presented
+afterwards as findings.
+
+1. **The `contests` share is two-sided and I am not predicting a direction.** If
+   `REVERSE` tracks whatever the old `Objection:` line was tracking, contests stays near
+   **55%** of replies. If it tracks the prose, it falls sharply. The line-vs-prose
+   instrument is what says which; without it this expectation would be untestable, which
+   is the point of shipping the two together.
+2. **The reflex, conditioned on the parent verdict class.** Pilot 2's challenger raised
+   on **78% of FLAWED verdicts and 25% of SOUND ones** — a 3×-wide axis. Three outcomes
+   are possible: no asymmetry; a uniform STANDS-or-REVERSE reflex regardless of the
+   parent verdict; or the pilot-2 shape recurring as REVERSE-heavy on FLAWED and
+   STANDS-heavy on SOUND. Report which. **Noted in advance**: the derived
+   `claimed_verdict` column will read roughly **77% SOUND with no reflex at all**,
+   because most verdicts are FLAWED and REVERSE against FLAWED derives SOUND. That
+   number must not be read as a reflex.
+3. **`single` moves ≤ 2 of 69.** Its decisions are mostly right and the strong model
+   holds its own answer.
+4. **Repair rate on the pinned pair < 10% of original calls**, attributed to the failing
+   call. This is not a test of the pin — there is no unpinned arm — it is the pinned
+   pair's absolute rate.
+5. **Native reasoning on the strong model ≈ 0** (GMICloud 8% in pilot 2, CoreWeave 0%).
+6. **Withheld critique steps fall below 15% of critique steps.** Pilot 2 had 21 of 139
+   (15%), 12 of 50 self_critique runs carrying one, and **7 of 41 self_critique
+   challengers shown a placeholder** — defect 3 of §3l at a lower rate, in the condition
+   whose record is *defined* by its critiques, contradicting DESIGN.md's "every draft and
+   critique". The aimed repair shipped in §3m should reduce it; this measures whether it
+   did. The self_critique-challenger-shown-a-placeholder count is expected to be **0**
+   and is a checklist row.
+7. **~3 cells lost to truncation loops at 207 cells.** `frequency_penalty` is held at 0,
+   so this is an accepted loss, not a surprise. One or two may be a **critique truncating
+   past its label**, which stays fatal and kills the cell — a known cause (§3m), not a
+   stop trigger.
+8. **`salvaged_no_thinking` on solo runs.** Predicted **below 10%** across all solo
+   decision records now that the instruction scopes itself, against pilot 2's 4.8%
+   original / 51.0% retry. The honest form of this prediction is that it should look like
+   the *original* pass rather than the retry pass; a number near 50% would mean the
+   rewording did not take.
+9. **No comparison with pilot 2's numbers is valid, and nothing may be attributed to the
+   pin.** Prompts and routing both changed, in the same run, and there is no unpinned
+   arm. Pilot 3 measures the pinned pair's absolute rates under the new instruction. Any
+   table putting pilot 2 and pilot 3 side by side is comparing different questions asked
+   of different inputs through different weights.
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

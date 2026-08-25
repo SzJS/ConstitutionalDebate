@@ -1,0 +1,97 @@
+# Pilot 3: 69 items, all three conditions, end to end -- three changes between pilot 2
+# and a ~$30 sweep, each of which touches the sweep's prompts or its routing.
+#
+# **No pilot-2 <-> pilot-3 comparison is valid**, and nothing here may be attributed to
+# the pin: the challenger's instruction, the aimed repair's wording and the provider
+# routing all changed at once, and there is no unpinned arm. Pilot 3 measures the pinned
+# pair's absolute rates. See LLM_NOTES.md §3n for the pre-registered expectations, which
+# were written before this ran.
+#
+# The three changes:
+#   1. The challenger answers ONE line, stated relative to the decision:
+#      `Decision: STANDS | REVERSE`. Pilot 2's `Verdict should be: FLAWED|SOUND`
+#      collided with the challenger's own vocabulary -- it wrote SOUND to mean "the
+#      verdict is sound" as readily as "the text is sound", in 93 of 108 replies -- and
+#      the collision made `RAISED` + `SOUND` + prose agreeing with a FLAWED verdict, the
+#      phantom contest, both reachable and uncountable. One line cannot contradict
+#      itself, so the replacement instrument is the new `agreement` stage.
+#   2. The aimed repair says "For this reply only". Pilot 2's version stayed in a solo
+#      conversation and the model kept obeying it: `salvaged_no_thinking` at 4.8% in the
+#      original pass and 51.0% in the retry pass.
+#   3. The strong model's provider is pinned. 20 providers served it in pilot 2 at
+#      format-repair rates from 2.1% to 35.3%, attributed to the call that failed.
+name = "pilot-3"
+cases = "data/cases/pilot-3.jsonl"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# Unchanged from pilot 2. The judge and the challenger are the weak model; the debaters
+# stay strong, as the protocol requires.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# Unchanged from pilot 2, where it never bound anything. This is the cap for the roles
+# that emit a decision line -- judge, challenger, recourse judge, comprehension probe --
+# none of which has ever truncated in three runs.
+max_tokens = 16384
+
+# Unchanged from pilot 2. The cap for the roles that produce record text: debaters, the
+# solo stages, the critic. That is where every truncation in this experiment's history
+# has been -- a private Thinking block of 23k-64k characters, most often a debater
+# assigned the pro-flaw side of a *sound* item and unable to stop looking for a flaw
+# that is not there. 8192 covers every successful generation pilot 1 made (max 7,888
+# completion tokens, p99 5,794) and halves what a runaway costs against 16,384.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing, new in pilot 3 -----------------------------------------------
+# OpenRouter served the strong model from 20 providers in pilot 2. Attributing each
+# format repair to the call that FAILED (166/166 paired; the earlier table charged the
+# provider that served the repair, which was wrong for 40% of them):
+#
+#   GMICloud       1/48   2.1%  [0.4, 10.9]   p < 0.0001 against the 25.5% pool
+#   Baidu         20/132  15.2%
+#   DeepInfra      6/31   19.4%
+#   CoreWeave      4/20   20.0% [8.1, 41.6]   p = 0.79 -- n=20, NO SIGNAL
+#   Relace        76/215  35.3%              p = 0.0001, worse than the pool
+#   DigitalOcean  30/85   35.3%
+#
+# GMICloud is the only provider with a significant effect. CoreWeave is the fallback and
+# its n=20 carries no signal -- it is second because nothing disqualifies it, not
+# because it was shown to be good.
+#
+# The SLUGS were verified against /api/v1/models/<id>/endpoints and by five real pinned
+# calls before this spec was run: outputs/pilot-3-provider-check.log. That check is not
+# optional. `order` takes slugs, `calls.jsonl` records display names, and an
+# unrecognised slug returns "No endpoints found ..." -- which contains "no endpoints",
+# so client.py classifies it as a RETRYABLE 404 and every cell dies slowly rather than
+# fast. No dry-run can catch that.
+#
+# Cost, from pilot 2's token counts: deepseek is 71% of the bill, so this is not a small
+# share. Pinned to GMICloud, pilot 3 is about $0.98 and the sweep about $30, against
+# ~$24 unpinned and ~$47 if CoreWeave took the traffic.
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# Unchanged from pilot 2, which measured them on 126 cells: at 16/8 the sweep projected
+# to ~39 h against pilot 1's 82-110 h at 8/4, and the per-cell timeout margin improved
+# rather than eroding, because generation_max_tokens bounds the runaway that was eating
+# the clock. 207 cells here.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+[grading]
+# Stated rather than inherited, because this field is the one pilot 2's grade stage
+# found wrong: the default carried `anthropic/claude-haiku-4.5:batch` from the day the
+# harness was written, and that suffix routes to OpenRouter's separate Batch API, which
+# client.py does not speak. Same model, ordinary chat-completions endpoint. It is also
+# the model the new `agreement` stage calls.
+grader_model = "anthropic/claude-haiku-4.5"
