@@ -76,12 +76,17 @@ challenger_temperature = 0.7
 #
 # VERIFY THE SLUGS AGAIN BEFORE RUNNING, with one real pinned call. `order` takes
 # OpenRouter provider slugs and `calls.jsonl` records display names, so they cannot be
-# checked against each other after the fact; and an unrecognised slug with
-# allow_fallbacks false returns "No endpoints found for ..." -- which contains the
-# substring "no endpoints", so `client.NO_ENDPOINTS_MARKER` classifies it as RETRYABLE
-# and every cell of a 13-hour stage dies slowly instead of fast. No dry-run can catch
-# that. The endpoints API path takes the model id with the slash UNESCAPED.
-# records/logs/pilot-3-provider-check.log is what the check looks like.
+# checked against each other after the fact; and with allow_fallbacks false BOTH a
+# momentarily absent pinned provider AND an unrecognised or withdrawn slug return the
+# same HTTP 404 "No endpoints found for ...". `client.NO_ENDPOINTS_MARKERS` matches that
+# wording and classifies it as RETRYABLE, which is the right call for a 13-hour pinned
+# run -- a GMICloud blip must not kill every remaining cell -- but it means a WRONG slug
+# dies slowly instead of fast, burning max_attempts on every cell. No dry-run can catch
+# that; one real pinned call can, and is the only guard. Run
+#     uv run python records/derivations/sweep-1-provider-check.py
+# and require "VERDICT: PASS". The endpoints API path takes the model id with the slash
+# UNESCAPED. records/logs/sweep-provider-check.log is a passing run;
+# records/logs/pilot-3-provider-check.log additionally shows the wrong-slug control.
 [debate.provider_order]
 "deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
 # provider_allow_fallbacks stays at its default False. No fallback is added to make a

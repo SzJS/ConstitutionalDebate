@@ -375,12 +375,12 @@ async def test_without_a_shared_semaphore_each_client_bounds_only_itself():
 async def test_a_no_endpoints_404_is_retried_but_a_bad_model_id_is_not():
     """OpenRouter uses 404 for two unrelated things, told apart only by text.
 
-    A model whose providers are all momentarily unavailable is transient; a
-    model id that does not exist is not. Treating both as fatal cost a real
-    experiment: deepseek-v4-pro-0813 has two providers, both blipped, and the
-    run recorded the model as unusable when it worked again minutes later. The
-    models with the fewest providers are the capable ones, so the failure falls
-    exactly where it hurts.
+    A model with no reachable endpoint right now is transient; a model id that
+    does not exist is not. Treating both as fatal cost a real experiment:
+    deepseek-v4-pro-0813 has two providers, both blipped, and the run recorded
+    the model as unusable when it worked again minutes later. The models with
+    the fewest providers are the capable ones, so the failure falls exactly
+    where it hurts.
     """
     seen = []
 
@@ -399,6 +399,37 @@ async def test_a_no_endpoints_404_is_retried_but_a_bad_model_id_is_not():
     assert len(seen) == 2, "the transient 404 should have been retried"
 
 
+async def test_the_pinned_no_endpoints_found_404_is_retried_too():
+    """The wording a PINNED run gets, which the "available" marker does not match.
+
+    With ``provider.allow_fallbacks = false`` a provider that is momentarily
+    absent from the model's endpoint list produces ``"No endpoints found for
+    <model>."`` — see records/logs/pilot-3-provider-check.log, where a control
+    with a deliberately wrong slug returned exactly that. A 13-hour pinned run
+    must ride out a momentary GMICloud absence rather than dying on it, so this
+    is retried.
+
+    The cost is stated rather than hidden: this same wording is what a
+    MISCONFIGURED slug returns, so a bad pin now dies slowly instead of fast.
+    The guard against that is the one real pinned call before the run
+    (``records/derivations/sweep-1-provider-check.py``), not this classifier.
+    """
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        if len(seen) == 1:
+            return httpx.Response(404, json={"error": {
+                "message": "No endpoints found for "
+                           "deepseek/deepseek-v4-flash-0731.",
+                "code": 404}})
+        return httpx.Response(200, json=ok_body())
+
+    completion = await run(handler)
+    assert completion.content == "Answer: 1"
+    assert len(seen) == 2, "the pinned-absence 404 should have been retried"
+
+
 async def test_a_genuine_404_still_fails_immediately():
     seen = []
 
@@ -411,6 +442,26 @@ async def test_a_genuine_404_still_fails_immediately():
     with pytest.raises(FatalError, match="retrying will not help"):
         await run(handler)
     assert len(seen) == 1, "a bad model id must not be retried"
+
+
+async def test_an_unrelated_404_message_is_still_fatal():
+    """Only the two "no endpoints" wordings are transient; nothing else is.
+
+    Widening the match to cover the pinned wording must not widen it to every
+    404 — a model behind a batch-only endpoint, or a key without access, has to
+    fail in one second naming the problem.
+    """
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(404, json={"error": {
+            "message": "This model is only available through the Batch API.",
+            "code": 404}})
+
+    with pytest.raises(FatalError, match="retrying will not help"):
+        await run(handler)
+    assert len(seen) == 1, "an unrelated 404 must not be retried"
 
 
 # --- provider routing ----------------------------------------------------------------

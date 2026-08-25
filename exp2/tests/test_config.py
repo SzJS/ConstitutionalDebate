@@ -283,3 +283,48 @@ def test_client_config_validations():
         ClientConfig(**{**base, "max_concurrency": 0})
     with pytest.raises(ConfigError):
         ClientConfig(**{**base, "max_runs_in_flight": 0})
+
+
+def test_the_estimate_does_not_promise_a_retry_the_harness_does_not_make(capsys):
+    """`max_decision_attempts` is loaded and validated, and consulted nowhere.
+
+    The dry-run used to print "retries are on top: max_decision_attempts=2", which a
+    reader takes as a promise that a failed cell is attempted twice. It is not: the
+    harness makes one attempt per cell per invocation, and the retry is re-running the
+    stage, which picks up every cell with no completed record. The wrong line matters
+    because it is printed at the one moment a run is being approved.
+    """
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    print_estimate([], debate)
+    printed = capsys.readouterr().out
+    assert "max_decision_attempts" not in printed
+    assert "retries are on top" not in printed
+    assert "one attempt per cell per invocation" in printed
+    assert "re-run the stage" in printed
+
+
+def test_max_decision_attempts_is_documented_as_unwired():
+    """The field is not wired, so its WHY must not read like a live knob.
+
+    If it is ever wired, this test and the WHY line are what have to change first —
+    which is the point of asserting the claim rather than leaving it in a comment.
+    """
+    import exp2
+
+    assert "NOT WIRED" in WHY["max_decision_attempts"]
+    src = Path(exp2.__file__).resolve().parent
+
+    def mentions_in_code(path: Path) -> bool:
+        # Comments are where the field is *explained*; only code is a use.
+        return any(
+            "max_decision_attempts" in line and not line.lstrip().startswith("#")
+            for line in path.read_text(encoding="utf-8").splitlines()
+        )
+
+    users = sorted(path.name for path in src.glob("*.py") if mentions_in_code(path))
+    assert users == ["config.py"], (
+        "max_decision_attempts is now read outside config.py; wire it properly and "
+        "rewrite config.WHY and the dry-run line, which both say it is unwired"
+    )

@@ -138,9 +138,12 @@ class DebateConfig:
     # False, so the pin is a pin. A silent fallback would put the measurement back where
     # it started — a run whose repair rate is an average over whichever providers
     # happened to be free — and it would do so invisibly, since the served provider is
-    # only in the wire log. A momentarily missing endpoint is a 404 carrying
-    # `NO_ENDPOINTS_MARKER`, which `client.py` already treats as retryable; exhausting
-    # the attempts fails the cell, and that is the thing being measured.
+    # only in the wire log. A momentarily missing endpoint is a 404 reading "No
+    # endpoints found for <model>.", which `client.py` treats as retryable (see
+    # `NO_ENDPOINTS_MARKERS`); exhausting the attempts fails the cell, and that is the
+    # thing being measured. The same 404 is what a WRONG slug returns, so a misconfigured
+    # pin dies slowly rather than fast — the guard is the one real pinned call before the
+    # run, `records/derivations/sweep-1-provider-check.py`, not the classifier.
     provider_allow_fallbacks: bool = False
 
     # Second debater model, for the different-families ablation. None means self-play.
@@ -323,10 +326,10 @@ WHY: dict[str, str] = {
     "judge_cot": "on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.",
     "seed": "seeds side assignment and template order per item, so the draws are stable across re-runs.",
     "frequency_penalty": "0 unless a model loops; a nonzero value changes the text and so belongs in the record.",
-    "max_decision_attempts": "2 — one retry for a transient failure, without selecting for compliant outputs.",
+    "max_decision_attempts": "NOT WIRED. Read and validated, never consulted: the harness makes ONE attempt per cell per invocation, and re-running the stage retries every cell with no completed record. The retries that exist are the client's transport attempts and the one format repair.",
     "n_critique_rounds": "equal to n_rounds, so self_critique and debate make the same number of generations.",
     "provider_order": "per-model OpenRouter provider slugs, in preference order. Empty means OpenRouter routes freely, which is what pilot 2 did across 20 providers of one model whose format-repair rates ranged 2.1% (GMICloud, n=48, p<0.0001 against the 25.5% pool) to 35.3% (Relace, n=215). Routing decides which weights write the text, so it lives here and a contest inherits it.",
-    "provider_allow_fallbacks": "False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint is already a retryable 404; exhausting the retries fails the cell, which is the thing being measured.",
+    "provider_allow_fallbacks": "False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint returns 404 'No endpoints found for <model>.', which client.py retries so a 13-hour run rides out a blip; exhausting the retries fails the cell, which is the thing being measured. A WRONG slug returns that same 404 and so now dies slowly — verify the slugs with one real pinned call before the run.",
     "debater_model_b": "unset means self-play; setting it is the different-model-families ablation.",
     "critic_model": "unset means the debater model; a different critic would confound capability with procedure.",
     "recourse_rounds": "0 — judge-only recourse, so the contest step is identical across all three conditions.",

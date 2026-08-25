@@ -116,8 +116,15 @@ def print_estimate(grid, config: DebateConfig) -> None:
     print(f"estimated calls: decision {decision}, contest {contest}, "
           f"ruling <= {ruling}, agreement <= {agreement}, grading <= {gradable}  "
           f"=> up to {decision + contest + ruling + agreement + gradable}")
-    print(f"retries are on top: max_decision_attempts={config.max_decision_attempts}, "
-          "plus at most one format repair per generation")
+    # `max_decision_attempts` is deliberately NOT quoted here. It is loaded and
+    # validated but consulted nowhere in `src/`, and the line that used to print it
+    # promised a per-cell retry the harness does not make. What is true is stated
+    # instead: one attempt per cell per invocation, and re-running the stage is the
+    # retry — every cell without a completed record is attempted again, which is why a
+    # crashed stage is resumed by re-running it rather than by a flag.
+    print("one attempt per cell per invocation; re-run the stage to retry cells with "
+          "no completed record. Client transport retries and at most one format repair "
+          "per generation are on top.")
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -28,10 +28,24 @@ RETRY_STATUSES = frozenset({408, 409, 429, 500, 502, 503, 504})
 # Client errors that another attempt cannot fix: a bad key or model id should
 # fail in one second naming the problem, not after five backoffs.
 FATAL_STATUSES = frozenset({400, 401, 402, 403, 404})
-# The one 404 that is transient rather than terminal: every provider serving the
-# model was momentarily unavailable. Matched on the message because the status
-# code alone cannot tell it apart from a model id that does not exist.
-NO_ENDPOINTS_MARKER = "no endpoints available"
+# The 404s that are transient rather than terminal, matched on the message
+# because the status code alone cannot tell them apart from a model id that does
+# not exist. OpenRouter uses two wordings and they are not interchangeable:
+#
+#   "No endpoints available ..."  — the free pool is empty for a moment;
+#   "No endpoints found for <model>." — nothing matched the routing constraints,
+#       which is what a pinned run gets when a pinned provider is momentarily
+#       absent from the model's endpoint list AND what it gets when a slug is
+#       misspelt or withdrawn.
+#
+# Both are retried. The second is deliberately ambiguous and the choice is made
+# in favour of the 13-hour pinned run: a momentary GMICloud absence must not kill
+# every remaining cell. The price is that a MISCONFIGURED slug no longer fails
+# fast — it burns `max_attempts` on every call and dies slowly — which is exactly
+# why the one real pinned call before a run
+# (`records/derivations/sweep-1-provider-check.py`) is mandatory rather than
+# advisory. No dry-run can catch a bad slug; that call can.
+NO_ENDPOINTS_MARKERS = ("no endpoints available", "no endpoints found")
 # Blank completions are usually deterministic, so they get a tighter cap than
 # genuine transport failures.
 MAX_BLANK_ATTEMPTS = 2
@@ -308,19 +322,25 @@ class OpenRouterClient:
         if response.status_code in FATAL_STATUSES:
             message = _error_message(payload)
             # OpenRouter returns 404 for two unrelated things: a model id that
-            # does not exist, and a model whose providers are all momentarily
-            # unavailable. The second is transient and is distinguished only by
-            # the message text. Treating it as fatal cost us a real experiment
-            # once: deepseek-v4-pro-0813 is served by two providers, both were
-            # briefly unavailable, and the run recorded the model as unusable
-            # when it was working again minutes later. The failure mode is worst
-            # exactly where it matters most — the capable models have the fewest
-            # providers and so the least fallback.
-            if response.status_code == 404 and NO_ENDPOINTS_MARKER in message.lower():
+            # does not exist, and a model with no reachable endpoint right now.
+            # The second is transient and is distinguished only by the message
+            # text. Treating it as fatal cost us a real experiment once:
+            # deepseek-v4-pro-0813 is served by two providers, both were briefly
+            # unavailable, and the run recorded the model as unusable when it was
+            # working again minutes later. The failure mode is worst exactly
+            # where it matters most — the capable models have the fewest
+            # providers and so the least fallback, and a pin narrows that to one.
+            # See NO_ENDPOINTS_MARKERS for what the two wordings mean and what
+            # retrying the second one costs.
+            lowered = message.lower()
+            if response.status_code == 404 and any(
+                marker in lowered for marker in NO_ENDPOINTS_MARKERS
+            ):
                 error = RetryableError(
                     f"HTTP 404 from OpenRouter (model={body['model']!r}): "
-                    f"{message}. No provider was available for this model at "
-                    f"this moment; retrying."
+                    f"{message}. No endpoint was available for this model at "
+                    f"this moment; retrying. If this repeats on every call, the "
+                    f"pinned provider slug is wrong rather than absent."
                 )
                 error.retry_after = _retry_after_seconds(response)  # type: ignore[attr-defined]
                 raise error
