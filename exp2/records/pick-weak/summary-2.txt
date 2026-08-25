@@ -1,0 +1,29 @@
+model                                       solo  judge  uplift declin            skew  fmtfail  native   $total  calls
+qwen/qwen3-8b                               0.35   0.39   +0.00   0.47      69% FLAWED    32.0%    0.0%   0.1057   1008
+qwen/qwen3-14b                              0.71   0.55   -0.13   0.17      80% FLAWED     0.7%   68.7%   0.2447    422
+meta-llama/llama-3.1-8b-instruct            0.51   0.52   +0.01   0.37      72% FLAWED     0.7%    0.0%   0.0425    424
+mistralai/mistral-small-3.2-24b-instruct    0.72   0.51   -0.21   0.83      65% FLAWED     0.0%    0.0%   0.1240    425
+google/gemma-3-12b-it                       0.61   0.48   +0.00   0.01      87% FLAWED     0.0%    0.0%   0.0577    425
+openai/gpt-4.1-nano                         0.61   0.58   -0.03   0.56       51% SOUND     2.1%    0.0%   0.1593    456
+qwen/qwen3.8-27b-20260814                   0.86   0.68   -0.17   0.81      63% FLAWED     0.7%    0.0%   3.2374    761
+nvidia/nemotron-3.5-lightning               0.59   0.54   -0.06   0.83      76% FLAWED    15.4%    0.0%   0.5677    805
+inclusionai/ling-3.0-flash                  0.78   0.62   -0.08   0.46      64% FLAWED     2.6%    0.0%   0.0927    802
+(fixture, strong model)                                                                                   0.2674    875
+
+total probe spend on disk: $4.8989 over 6403 calls
+  this re-run (new six):    $0.7337
+
+new six: hurt 101 helped 76 n=177 exact McNemar two-sided p=0.0709
+   qwen/qwen3-8b                              hurt  16 helped  16
+   qwen/qwen3-14b                             hurt  17 helped   8
+   meta-llama/llama-3.1-8b-instruct           hurt  11 helped  12
+   mistralai/mistral-small-3.2-24b-instruct   hurt  24 helped   9
+   google/gemma-3-12b-it                      hurt  15 helped  15
+   openai/gpt-4.1-nano                        hurt  18 helped  16
+
+old three: hurt 46 helped 24 n=70 exact McNemar two-sided p=0.0115
+   qwen/qwen3.8-27b-20260814                  hurt  17 helped   5
+   nvidia/nemotron-3.5-lightning              hurt  13 helped   9
+   inclusionai/ling-3.0-flash                 hurt  16 helped  10
+
+fixture base rate FLAWED: 46%

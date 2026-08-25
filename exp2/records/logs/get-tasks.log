@@ -1,0 +1,21 @@
+fetching https://raw.githubusercontent.com/modulo-research/findtheflaws/58bea513102bb5fe7921603394f3319fca64975a/datasets.zip
+cached to data/findtheflaws/datasets.zip (1889237 bytes)
+wrote   382 cases to data/cases/ftf-gpqa.jsonl  sha256=d1ab787c01bf
+wrote    40 cases to data/cases/ftf-law.jsonl  sha256=a12a11fd7c3b
+wrote   120 cases to data/cases/ftf-lojban.jsonl  sha256=12bfc04e0b1b
+wrote   222 cases to data/cases/ftf-medqa.jsonl  sha256=c3feef140a60
+wrote   952 cases to data/cases/ftf-python800.jsonl  sha256=4153dd3d5b0c
+wrote   212 cases to data/cases/ftf-surgery.jsonl  sha256=bb3375b972a2
+wrote   182 cases to data/cases/ftf-theoremqa.jsonl  sha256=e457b2b4f8ec
+
+subset         rows   items   sound  flawed  gradable
+-----------------------------------------------------
+gpqa            191     382     191     191         0
+law              40      40      20      20        20
+lojban          120     120      41      79        79
+medqa           222     222      62     160       160
+python800       633     952     319     633       633
+surgery         212     212     137      75        75
+theoremqa        91     182      91      91        91
+-----------------------------------------------------
+TOTAL          1509    2110     861    1249      1058

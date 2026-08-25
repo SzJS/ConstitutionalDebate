@@ -1,0 +1,8 @@
+{
+  "qwen/qwen3-8b": "live",
+  "qwen/qwen3-14b": "live",
+  "meta-llama/llama-3.1-8b-instruct": "live",
+  "mistralai/mistral-small-3.2-24b-instruct": "live",
+  "google/gemma-3-12b-it": "live",
+  "openai/gpt-4.1-nano": "live"
+}

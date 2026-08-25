@@ -1,0 +1,222 @@
+
+==============================================================================
+ROW 1 — parse
+==============================================================================
+cells seen in decide: 207   completed 177   failed 30
+decided: 177/207 = 85.5%
+
+truncated calls: 48
+  role=debater        purpose=turn         reached_label  18
+  role=critic         purpose=critique     reached_label  16
+  role=solo           purpose=revision     reached_label  5
+  role=debater        purpose=repair       reached_label  4
+  role=solo           purpose=answer       reached_label  3
+  role=solo           purpose=draft        reached_label  2
+
+parse_mode over every recorded decision step/turn:
+  strict                                   619
+  salvaged_no_thinking                     198
+  salvaged_no_thinking_after_budget_repair 7
+  strict_after_budget_repair               7
+
+budget recoveries (parse_mode *_after_budget_repair): 14
+
+failed cells and their errors:
+  gpqa-102-sound__debate__r1                                     DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-102-sound__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-123-flawed__debate__r1                                    DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-93-sound__self_critique__r1                               TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  lojban-stim177_gpt4_A-s22__self_critique__r1                   TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  lojban-stim180_gpt4_B-s6__self_critique__r1                    TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  lojban-stim182_gpt4_A-s16__self_critique__r1                   TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  medqa-dev_0044__single__r1                                     TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  medqa-dev_0113__self_critique__r1                              TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  medqa-dev_0116__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  python800-p02724-sound__debate__r1                             DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  python800-p02724-sound__self_critique__r1                      TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  python800-p02863-flawed__debate__r1                            DebateFailure: round 2 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  python800-p02863-flawed__self_critique__r1                     TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  python800-p03672-sound__self_critique__r1                      TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  python800-p03845-flawed__debate__r1                            DebateFailure: round 2 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  python800-p03845-flawed__self_critique__r1                     TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  python800-p03945-flawed__debate__r1                            DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  surgery-sur10_gpt3-5_A-s1__self_critique__r1                   TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  surgery-sur20_gpt3-5_A-s4__self_critique__r1                   TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  surgery-sur36_gpt3-5_B-s8__debate__r1                          DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  surgery-sur36_gpt3-5_B-s8__self_critique__r1                   TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  surgery-sur38_gpt4_A-s6__self_critique__r1                     TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  theoremqa-solutions-Lah_number_3-txt-sound__debate__r1         DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  theoremqa-solutions-angular_momentum-txt-flawed__debate__r1    DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  theoremqa-solutions-angular_momentum-txt-sound__self_critique__r1 TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  theoremqa-solutions-kite2-png-flawed__debate__r1               DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__debate__r1 DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1 TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as 
+      ^^ CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause
+  theoremqa-solutions-modulararithmetic4-png-sound__debate__r1   DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+
+==============================================================================
+ROW 2 — repair, attributed to the call that FAILED
+==============================================================================
+original calls 1481   repair calls 198   paired to a failing call 198/198
+overall repair rate: 198/1481 = 13.4% of original calls
+
+provider             original calls  caused a repair     rate
+GMICloud                        880              198   22.5%
+OpenAI                          421                0    0.0%
+Amazon Bedrock                  179                0    0.0%
+CoreWeave                         1                0    0.0%
+
+STRONG MODEL ONLY (deepseek/deepseek-v4-flash-0731):
+  original calls 881   caused a repair 198   rate 22.5%
+
+repair kind, from the instruction actually sent:
+  aimed: misplaced label       136
+  aimed: no_public_label       40
+  budget                       18
+  per-role fallback            4
+
+malformed-after-repair cells: 0
+
+==============================================================================
+ROW 3 — verdict distribution per condition
+==============================================================================
+condition            n   FLAWED    SOUND  max share  gold flawed  accuracy
+single              68       38       30     55.9%           34    88.2%
+self_critique       52       24       28     53.8%           28    88.5%
+debate              57       26       31     54.4%           26    54.4%
+
+==============================================================================
+ROW 4 — stances per condition, split by parent verdict and by correctness
+==============================================================================
+
+-- pooled --
+condition        group                 n  contests  declined  unclear  contest rate
+single           all                  68         8        60        0        11.8%
+self_critique    all                  52        12        40        0        23.1%
+debate           all                  57        10        47        0        17.5%
+
+-- by PARENT VERDICT class --
+condition        group                 n  contests  declined  unclear  contest rate
+single           FLAWED               38         7        31        0        18.4%
+single           SOUND                30         1        29        0         3.3%
+self_critique    FLAWED               24         4        20        0        16.7%
+self_critique    SOUND                28         8        20        0        28.6%
+debate           FLAWED               26         9        17        0        34.6%
+debate           SOUND                31         1        30        0         3.2%
+
+-- by correctness --
+condition        group                 n  contests  declined  unclear  contest rate
+single           correct              60         8        52        0        13.3%
+single           incorrect             8         0         8        0         0.0%
+self_critique    correct              46        11        35        0        23.9%
+self_critique    incorrect             6         1         5        0        16.7%
+debate           correct              31         3        28        0         9.7%
+debate           incorrect            26         7        19        0        26.9%
+
+-- contests given a false negative vs a false positive --
+  single           false negative 0/2 = 0%         false positive 0/6 = 0%
+  self_critique    false negative 1/5 = 20%        false positive 0/1 = 0%
+  debate           false negative 1/13 = 8%        false positive 6/13 = 46%
+
+-- overall claimed_verdict, the column that must NOT be read as a reflex --
+   Counter({'SOUND': 99, 'FLAWED': 78})
+
+==============================================================================
+ROW 5 — line vs prose
+==============================================================================
+measured 177 of 177 eligible contests
+
+condition        line        RIGHT   WRONG   NEITHER
+single           REVERSE         6       2         0
+single           STANDS         58       2         0
+self_critique    REVERSE         2      10         0
+self_critique    STANDS         40       0         0
+debate           REVERSE         5       5         0
+debate           STANDS         47       0         0
+ALL              REVERSE        13      17         0
+ALL              STANDS        145       2         0
+
+  single           phantom contests 6/8 = 75.0%   declines arguing for reversal 2/60
+  self_critique    phantom contests 2/12 = 16.7%   declines arguing for reversal 0/40
+  debate           phantom contests 5/10 = 50.0%   declines arguing for reversal 0/47
+  ALL              phantom contests 13/30 = 43.3%   declines arguing for reversal 2/147
+
+==============================================================================
+ROW 6 — containment and native reasoning
+==============================================================================
+challenger-visible decision records checked: 204
+'Thinking:' occurrences in published text: 0
+
+provider                calls   native reasoning     rate
+GMICloud                 1078                172   16.0%
+OpenAI                    421                  0    0.0%
+Amazon Bedrock            179                  0    0.0%
+CoreWeave                   1                  0    0.0%
+reasoning billed but withheld: 0
+
+==============================================================================
+ROW 7 — critiques
+==============================================================================
+critique steps: 166   withheld: 0 = 0.0%
+self_critique runs carrying at least one withheld critique: 0
+self_critique CHALLENGERS shown a placeholder: 0   (0 expected)
+
+==============================================================================
+ROW 8 — graded rows
+==============================================================================
+
+  medqa-train_1701__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/pilot-3/cells/medqa-train_1701__debate__r1/contests/openai-gpt-4.1-nano/runs/20260825T222233Z-medqa-train_1701-recourse
+
+  medqa-train_3754__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/pilot-3/cells/medqa-train_3754__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260825T222250Z-medqa-train_3754-recourse
+
+==============================================================================
+ROW 9 — ops
+==============================================================================
+served-provider distribution over every call:
+  GMICloud                 1078   64.2%
+  OpenAI                    421   25.1%
+  Amazon Bedrock            179   10.7%
+  CoreWeave                   1    0.1%
+
+strong-model calls: 1079
+  GMICloud                 1078   99.9%
+  CoreWeave                   1    0.1%
+
+HTTP status counts: {200: 1679}
+non-200 attempts: 0 / 1679
+
+spend: $0.9504 over 384 run directories
+  decision path $0.7156  off path $0.2348
+  $/decided cell: $0.00537
+  sweep projection at 2110 items x 3 conditions = 6330 cells: $33.99  (1.3x headroom $44.19)
+
+cost by model:
+  deepseek/deepseek-v4-flash-0731      $  0.6072   63.9%   completion tokens 1402368
+  anthropic/claude-haiku-4.5           $  0.1875   19.7%   completion tokens 21229
+  openai/gpt-4.1-nano                  $  0.1557   16.4%   completion tokens 84329
+
+==============================================================================
+EXPECTATION 8 — salvaged_no_thinking on solo runs
+==============================================================================
+solo decision steps: 465
+salvaged_no_thinking: 173 = 37.2%
+  strict                                       291
+  salvaged_no_thinking                         166
+  salvaged_no_thinking_after_budget_repair     7
+  strict_after_budget_repair                   1

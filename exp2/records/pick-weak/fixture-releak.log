@@ -1,0 +1,13 @@
+71 debates, 426 turns
+3 debates contain a turn the fixed parser now refuses:
+
+  law-con5_gpt3-5_A-s8  (subset law)
+      round 1 Alice: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private  [published argument was 6397 chars]
+  law-evi4_gpt4_B-s7  (subset law)
+      round 1 Bob: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private  [published argument was 4616 chars]
+  theoremqa-solutions-math_algebra_3-png-flawed  (subset theoremqa)
+      round 1 Bob: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private  [published argument was 4128 chars]
+
+original preserved as outputs/pick-weak/fixture.with-leaks.jsonl
+wrote 68 debates to outputs/pick-weak/fixture.jsonl (was 71)
+dropped item_ids: ['law-con5_gpt3-5_A-s8', 'law-evi4_gpt4_B-s7', 'theoremqa-solutions-math_algebra_3-png-flawed']

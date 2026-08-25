@@ -1,0 +1,44 @@
+
+GENUINE CONTEST — single  (on a correct decision)
+  cell            medqa-train_2855__single__r1
+  subset          medqa   gold_flawed=True
+  verdict         FLAWED   initially_correct=True
+  stance          contests   claimed=SOUND
+  prose           WRONG   agree=True  phantom=False
+  changed         False   final_correct=True
+  comprehension   4
+  PATH            outputs/experiments/pilot-3/cells/medqa-train_2855__single__r1/contests/openai-gpt-4.1-nano/runs/20260825T222225Z-medqa-train_2855-recourse/transcript.md
+  verbatim        outputs/experiments/pilot-3/cells/medqa-train_2855__single__r1/contests/openai-gpt-4.1-nano/runs/20260825T222225Z-medqa-train_2855-recourse/transcript_full.md
+
+GENUINE CONTEST — self_critique  (on a decision that was wrong)
+  cell            medqa-train_3754__self_critique__r1
+  subset          medqa   gold_flawed=True
+  verdict         SOUND   initially_correct=False
+  stance          contests   claimed=FLAWED
+  prose           WRONG   agree=True  phantom=False
+  changed         True   final_correct=True
+  comprehension   2
+  PATH            outputs/experiments/pilot-3/cells/medqa-train_3754__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260825T222250Z-medqa-train_3754-recourse/transcript.md
+  verbatim        outputs/experiments/pilot-3/cells/medqa-train_3754__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260825T222250Z-medqa-train_3754-recourse/transcript_full.md
+
+GENUINE CONTEST — debate  (on a decision that was wrong)
+  cell            lojban-stim172_gpt4_B-s4__debate__r1
+  subset          lojban   gold_flawed=False
+  verdict         FLAWED   initially_correct=False
+  stance          contests   claimed=SOUND
+  prose           WRONG   agree=True  phantom=False
+  changed         True   final_correct=True
+  comprehension   4
+  PATH            outputs/experiments/pilot-3/cells/lojban-stim172_gpt4_B-s4__debate__r1/contests/openai-gpt-4.1-nano/runs/20260825T222217Z-lojban-stim172_gpt4_B-s4-recourse/transcript.md
+  verbatim        outputs/experiments/pilot-3/cells/lojban-stim172_gpt4_B-s4__debate__r1/contests/openai-gpt-4.1-nano/runs/20260825T222217Z-lojban-stim172_gpt4_B-s4-recourse/transcript_full.md
+
+DECLINED ON A WRONG DECISION
+  cell            gpqa-102-sound__single__r1
+  subset          gpqa   gold_flawed=False
+  verdict         FLAWED   initially_correct=False
+  stance          declined   claimed=FLAWED
+  prose           RIGHT   agree=True  phantom=False
+  changed         False   final_correct=False
+  comprehension   5
+  PATH            outputs/experiments/pilot-3/cells/gpqa-102-sound__single__r1/contests/openai-gpt-4.1-nano/runs/20260825T222138Z-gpqa-102-sound-recourse/transcript.md
+  verbatim        outputs/experiments/pilot-3/cells/gpqa-102-sound__single__r1/contests/openai-gpt-4.1-nano/runs/20260825T222138Z-gpqa-102-sound-recourse/transcript_full.md

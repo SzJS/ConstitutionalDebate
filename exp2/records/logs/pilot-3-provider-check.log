@@ -1,0 +1,186 @@
+=== 2026-08-25T21:51:48.342163+00:00 ===
+model: deepseek/deepseek-v4-flash-0731
+
+GET https://openrouter.ai/api/v1/models/deepseek%2Fdeepseek-v4-flash-0731/endpoints -> 404
+0 endpoints
+
+provider_name          tag/slug                          ctx  max_out  status
+------------------------------------------------------------------------------------------
+
+GMICloud     -> slugs []
+CoreWeave    -> slugs []
+
+PIN = []
+
+=== one real pinned call ===
+request provider block: {"order": [], "allow_fallbacks": false}
+HTTP 200
+{
+  "id": "gen-1787694708-nRsBy6GdX7hfNOgsK6yb",
+  "provider": "OpenInference",
+  "model": "deepseek/deepseek-v4-flash-0731",
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 2,
+    "total_tokens": 11,
+    "cost": 5.55e-07,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 5.55e-07,
+      "upstream_inference_prompt_cost": 3.15e-07,
+      "upstream_inference_completions_cost": 2.4e-07
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}
+content: 'OK'
+
+SERVED BY: OpenInference
+VERDICT: slugs accepted, pin is live
+
+=== retry: the endpoints path with the slash UNESCAPED ===
+GET https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints -> 200
+model id: deepseek/deepseek-v4-flash-0731  endpoints: 29
+{
+  "name": "OpenInference | deepseek/deepseek-v4-flash-20260731",
+  "model_id": "deepseek/deepseek-v4-flash-0731",
+  "model_name": "DeepSeek: DeepSeek V4 Flash 0731",
+  "context_length": 1048576,
+  "pricing": {
+    "prompt": "0.000000035",
+    "completion": "0.00000012",
+    "input_cache_read": "0.000000008",
+    "discount": 0
+  },
+  "provider_name": "OpenInference",
+  "tag": "open-inference/fp4",
+  "quantization": "fp4",
+  "max_completion_tokens": 943718,
+  "max_prompt_tokens": null,
+  "supported_parameters": [
+    "reasoning",
+    "include_reasoning",
+    "temperature",
+    "max_tokens",
+    "stop",
+    "seed",
+    "top_p",
+    "frequency_penalty",
+    "presence_penalty",
+    "structured_outputs",
+    "response_format",
+    "tools",
+    "tool_choice",
+    "reasoning_effort"
+  ],
+  "status": 0,
+  "uptime_last_30m": 99.98013508144616,
+  "uptime_last_5m": 100,
+  "uptime_last_1d": 99.83386638722142,
+  "supports_implicit_caching": false,
+  "supports_voice_cloning": false,
+  "latency_last_30m": {
+    "p50": 2137.5,
+    "p75": 2215,
+    "p90": 2438,
+    "p99": 23319.69000000002
+  },
+  "throughput_last_30m": {
+    "p50": 9,
+    "p75": 9,
+    "p90": 11,
+    "p99": 12
+  }
+}
+
+=== provider slug table, 2026-08-25T21:52:10.970753+00:00 ===
+29 endpoints for deepseek/deepseek-v4-flash-0731
+
+provider_name          tag (the slug `order` takes)     quant      max_out   p50 ms   tok/s   up30m st
+--------------------------------------------------------------------------------------------------------------
+AkashML                akashml/fp8                      fp8         117964      868      30     100 0
+Alibaba                alibaba                          unknown     393216   1670.5      93     100 0
+Ambient                ambient/fp4                      fp4         943718     5098       3    60.9 -5
+AtlasCloud             atlas-cloud/fp4                  fp4         393216     2093     120    99.5 0
+Baidu                  baidu/fp8                        fp8         131072      816      98   100.0 0
+BaseTen                baseten/fp8                      fp8         384000      538      51     100 0
+Cloudflare             cloudflare                       unknown    1179648   2095.5    39.5    99.6 0
+CoreWeave              coreweave/fp8                    fp8         235929      448     101   100.0 0
+DeepInfra              deepinfra/fp8                    fp8         384000      629      26    96.8 0
+DeepSeek               deepseek                         unknown     384000     1107      85     100 0
+DigitalOcean           digitalocean                     unknown     943718      554      16    98.7 0
+Fireworks              fireworks                        unknown     943718      760      74    99.4 0
+GMICloud               gmicloud/fp8                     fp8         943717     3194      52   100.0 0
+Inceptron              inceptron/fp4                    fp4         943718     1144      14    97.5 0
+Io Net                 io-net/fp8                       fp8          65536      887      76    99.3 0
+Makora                 makora                           unknown     384000   1078.5      41    83.6 -2
+Mancer 2               mancer/fp8                       fp8         943718     1233      60    90.6 -2
+Morph                  morph/bf16                       bf16        943718     2447      10    24.0 -5
+Novita                 novita/fp8                       fp8         393216     1764      80   100.0 0
+OpenInference          open-inference/fp4               fp4         943718   2137.5       9   100.0 0
+Parasail               parasail/fp8                     fp8         943718      984      46    94.4 -2
+Phala                  phala                            unknown     393216     4970      79    63.7 -5
+Reka                   reka/fp4                         fp4         131072    969.5     155     100 0
+Relace                 relace/fp4                       fp4         943718     1154      47    99.4 0
+SiliconFlow            siliconflow/fp8                  fp8         393216     2039      38    99.9 0
+StreamLake             streamlake/fp8                   fp8         384000     1317      39    99.9 0
+Together               together                         unknown     943718      818      51    98.9 0
+Venice                 venice                           unknown      32768     2010      33    98.3 0
+Wafer                  wafer/fast                       unknown     943718   1804.5     118    99.6 0
+
+GMICloud     -> [('GMICloud', 'gmicloud/fp8', 'fp8', 943717, 0)]
+CoreWeave    -> [('CoreWeave', 'coreweave/fp8', 'fp8', 235929, 0)]
+
+=== real pinned calls, 2026-08-25T21:52:26.510066+00:00 ===
+A. the tag form, which is what the endpoints API returns:
+  order=["gmicloud/fp8","coreweave/fp8"] HTTP 200  served='GMICloud'  content='OK'
+  order=["gmicloud/fp8","coreweave/fp8"] HTTP 200  served='GMICloud'  content='OK'
+  order=["gmicloud/fp8","coreweave/fp8"] HTTP 200  served='GMICloud'  content='OK'
+B. the bare-slug form, to see whether it also routes:
+  order=["gmicloud","coreweave"]     HTTP 200  served='GMICloud'  content='OK'
+  order=["gmicloud","coreweave"]     HTTP 200  served='GMICloud'  content='OK'
+C. control -- a deliberately WRONG slug, to prove the failure mode is loud:
+  order=["not-a-real-provider"]      HTTP 404  served=None  error='No endpoints found for deepseek/deepseek-v4-flash-0731.'
+D. CoreWeave alone, so the fallback leg is verified too:
+  order=["coreweave/fp8"]            HTTP 200  served='CoreWeave'  content='OK'
+
+CONCLUSION
+  slugs to pin : as verified above
+  wrong-slug behaviour (C) is the failure the dry-run cannot catch
+
+=== SETTLED ===
+PIN (tag form, exactly as the endpoints API returns it):
+    "deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+Both endpoints healthy at check time (status 0, uptime_last_30m 100.0%).
+max_completion_tokens: GMICloud 943717, CoreWeave 235929 -- both far above the
+run's 16384 cap, so the pin cannot cause a truncation the pool would not have.
+
+Three live calls at that order were all served by GMICloud; two more at the bare
+slug form (["gmicloud","coreweave"]) also routed correctly, so either form works
+and the tag form is used because it names the quantization as well.
+One call at ["coreweave/fp8"] alone was served by CoreWeave, so the fallback leg
+is verified rather than assumed.
+
+THE FAILURE THE DRY-RUN CANNOT CATCH, demonstrated:
+  order=["not-a-real-provider"] with allow_fallbacks=false
+    -> HTTP 404 "No endpoints found for deepseek/deepseek-v4-flash-0731."
+Note that message contains "no endpoints", so client.NO_ENDPOINTS_MARKER matches
+it and the client treats it as RETRYABLE. A wrong slug would therefore not fail
+fast: it would burn max_attempts=4 on every call and fail every cell slowly.
+That is exactly why this check is run before the stage rather than after it.
+
+ALSO RECORDED: the endpoints API path takes the model id with the slash
+UNESCAPED. The URL-encoded form
+  /api/v1/models/deepseek%2Fdeepseek-v4-flash-0731/endpoints
+returns 404, which is the first thing this check tried.
+Total spend on this check: 7 completions of 2 tokens each, ~$0.00001.

@@ -1,0 +1,82 @@
+
+--- OVERALL  (n=177, incorrect=40, FN=20, FP=20) ---
+  decision_error                             40/177 = 0.226  [0.171, 0.293]
+  objection_raised_given_incorrect           8/40 = 0.200  [0.105, 0.348]
+  false_alarm_given_correct                  22/137 = 0.161  [0.109, 0.231]
+  false_alarm_given_correct_flawed_item      14/68 = 0.206  [0.127, 0.316]
+  false_alarm_given_correct_sound_item       8/69 = 0.116  [0.060, 0.212]
+  identified_flaw                            1/2 = 0.500  [0.095, 0.905]
+  valid_objection                            1/2 = 0.500  [0.095, 0.905]
+  revised_given_incorrect                    5/40 = 0.125  [0.055, 0.261]
+  revised_given_correct                      3/137 = 0.022  [0.007, 0.062]
+  revised_given_false_negative               2/20 = 0.100  [0.028, 0.301]
+  revised_given_false_positive               3/20 = 0.150  [0.052, 0.360]
+  declined                                   147/177 = 0.831  [0.768, 0.879]
+  agreed_with_decision                       0/177 = 0.000  [0.000, 0.021]
+  unclear_stance                             0/177 = 0.000  [0.000, 0.021]
+  phantom_contest                            13/30 = 0.433  [0.274, 0.608]
+  stances {'n_contests': 177, 'counts': {'contests': 30, 'agrees': 0, 'declined': 147, 'unclear': 0}}
+  line_vs_prose measured=177/177 table={'REVERSE': {'RIGHT': 13, 'WRONG': 17, 'NEITHER': 0}, 'STANDS': {'RIGHT': 145, 'WRONG': 2, 'NEITHER': 0}}
+    agree=162 disagree=15 no_direction=0 phantom=13/30 declines_for_reversal=2/147
+
+--- debate  (n=57, incorrect=26, FN=13, FP=13) ---
+  decision_error                             26/57 = 0.456  [0.334, 0.584]
+  objection_raised_given_incorrect           7/26 = 0.269  [0.137, 0.461]
+  false_alarm_given_correct                  3/31 = 0.097  [0.033, 0.249]
+  false_alarm_given_correct_flawed_item      3/13 = 0.231  [0.082, 0.503]
+  false_alarm_given_correct_sound_item       0/18 = 0.000  [0.000, 0.176]
+  identified_flaw                            1/1 = 1.000  [0.207, 1.000]
+  valid_objection                            1/1 = 1.000  [0.207, 1.000]
+  revised_given_incorrect                    4/26 = 0.154  [0.061, 0.335]
+  revised_given_correct                      2/31 = 0.065  [0.018, 0.207]
+  revised_given_false_negative               1/13 = 0.077  [0.014, 0.333]
+  revised_given_false_positive               3/13 = 0.231  [0.082, 0.503]
+  declined                                   47/57 = 0.825  [0.706, 0.902]
+  agreed_with_decision                       0/57 = 0.000  [0.000, 0.063]
+  unclear_stance                             0/57 = 0.000  [0.000, 0.063]
+  phantom_contest                            5/10 = 0.500  [0.237, 0.763]
+  stances {'n_contests': 57, 'counts': {'contests': 10, 'agrees': 0, 'declined': 47, 'unclear': 0}}
+  line_vs_prose measured=57/57 table={'REVERSE': {'RIGHT': 5, 'WRONG': 5, 'NEITHER': 0}, 'STANDS': {'RIGHT': 47, 'WRONG': 0, 'NEITHER': 0}}
+    agree=52 disagree=5 no_direction=0 phantom=5/10 declines_for_reversal=0/47
+
+--- self_critique  (n=52, incorrect=6, FN=5, FP=1) ---
+  decision_error                             6/52 = 0.115  [0.054, 0.230]
+  objection_raised_given_incorrect           1/6 = 0.167  [0.030, 0.564]
+  false_alarm_given_correct                  11/46 = 0.239  [0.139, 0.379]
+  false_alarm_given_correct_flawed_item      4/23 = 0.174  [0.070, 0.371]
+  false_alarm_given_correct_sound_item       7/23 = 0.304  [0.156, 0.509]
+  identified_flaw                            0/1 = 0.000  [0.000, 0.793]
+  valid_objection                            0/1 = 0.000  [0.000, 0.793]
+  revised_given_incorrect                    1/6 = 0.167  [0.030, 0.564]
+  revised_given_correct                      1/46 = 0.022  [0.004, 0.113]
+  revised_given_false_negative               1/5 = 0.200  [0.036, 0.624]
+  revised_given_false_positive               0/1 = 0.000  [0.000, 0.793]
+  declined                                   40/52 = 0.769  [0.639, 0.863]
+  agreed_with_decision                       0/52 = 0.000  [0.000, 0.069]
+  unclear_stance                             0/52 = 0.000  [0.000, 0.069]
+  phantom_contest                            2/12 = 0.167  [0.047, 0.448]
+  stances {'n_contests': 52, 'counts': {'contests': 12, 'agrees': 0, 'declined': 40, 'unclear': 0}}
+  line_vs_prose measured=52/52 table={'REVERSE': {'RIGHT': 2, 'WRONG': 10, 'NEITHER': 0}, 'STANDS': {'RIGHT': 40, 'WRONG': 0, 'NEITHER': 0}}
+    agree=50 disagree=2 no_direction=0 phantom=2/12 declines_for_reversal=0/40
+
+--- single  (n=68, incorrect=8, FN=2, FP=6) ---
+  decision_error                             8/68 = 0.118  [0.061, 0.215]
+  objection_raised_given_incorrect           0/8 = 0.000  [0.000, 0.324]
+  false_alarm_given_correct                  8/60 = 0.133  [0.069, 0.242]
+  false_alarm_given_correct_flawed_item      7/32 = 0.219  [0.110, 0.388]
+  false_alarm_given_correct_sound_item       1/28 = 0.036  [0.006, 0.177]
+  identified_flaw                            0/0   (empty denominator)
+  valid_objection                            0/0   (empty denominator)
+  revised_given_incorrect                    0/8 = 0.000  [0.000, 0.324]
+  revised_given_correct                      0/60 = 0.000  [0.000, 0.060]
+  revised_given_false_negative               0/2 = 0.000  [0.000, 0.658]
+  revised_given_false_positive               0/6 = 0.000  [0.000, 0.390]
+  declined                                   60/68 = 0.882  [0.785, 0.939]
+  agreed_with_decision                       0/68 = 0.000  [0.000, 0.053]
+  unclear_stance                             0/68 = 0.000  [0.000, 0.053]
+  phantom_contest                            6/8 = 0.750  [0.409, 0.929]
+  stances {'n_contests': 68, 'counts': {'contests': 8, 'agrees': 0, 'declined': 60, 'unclear': 0}}
+  line_vs_prose measured=68/68 table={'REVERSE': {'RIGHT': 6, 'WRONG': 2, 'NEITHER': 0}, 'STANDS': {'RIGHT': 58, 'WRONG': 2, 'NEITHER': 0}}
+    agree=60 disagree=8 no_direction=0 phantom=6/8 declines_for_reversal=2/60
+
+matching: {"single": 8, "self_critique": 6, "debate": 26} in_every_condition 2

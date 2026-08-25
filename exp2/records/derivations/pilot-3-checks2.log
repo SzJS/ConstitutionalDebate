@@ -1,0 +1,62 @@
+
+==============================================================================
+TRUNCATION SHAPE — corrected: did it reach its own PUBLIC label?
+==============================================================================
+truncated calls: 48 of 1679 attempts (2.9%)
+  critic     critique   PAST its public label (fatal by design)    13
+  critic     critique   never reached it (budget route eligible)   3
+  debater    repair     never reached it (budget route eligible)   4
+  debater    turn       PAST its public label (fatal by design)    8
+  debater    turn       never reached it (budget route eligible)   10
+  solo       answer     PAST its public label (fatal by design)    1
+  solo       answer     never reached it (budget route eligible)   2
+  solo       draft      PAST its public label (fatal by design)    2
+  solo       revision   PAST its public label (fatal by design)    2
+  solo       revision   never reached it (budget route eligible)   3
+
+truncated reply length (chars): min 21302  median 29632  max 40045
+
+completion tokens on truncated calls: [8192]
+
+==============================================================================
+THE SCAR — is salvaged_no_thinking caused by a repair, or is it just the model?
+==============================================================================
+runs that spent NO repair    runs   58  steps  104  salvaged_no_thinking   24 = 23.1%
+runs that spent a repair     runs   77  steps  361  salvaged_no_thinking  149 = 41.3%
+
+Within a repaired run, by position relative to the FIRST repaired stage:
+  before the repair  steps   38  salvaged_no_thinking    1 = 2.6%
+  the repaired stage steps   77  salvaged_no_thinking   74 = 96.1%
+  after the repair   steps  246  salvaged_no_thinking   74 = 30.1%
+
+==============================================================================
+REVISION RATES per condition, with n
+==============================================================================
+condition           revised|incorrect    revised|correct  acc before  acc after
+single                            0/8               0/60       60/68      60/68
+self_critique                     1/6               1/46       46/52      46/52
+debate                           4/26               2/31       31/57      33/57
+ALL                              5/40              3/137     137/177    139/177
+
+rulings actually sought (stance == contests):
+  single           0/8 contests changed the decision
+  self_critique    2/12 contests changed the decision
+  debate           6/10 contests changed the decision
+
+phantom contests that nonetheless changed a decision:
+  medqa-dev_0076__debate__r1  verdict FLAWED -> changed, final_correct=True
+
+==============================================================================
+COMPREHENSION
+==============================================================================
+Counter({4: 108, 5: 64, 3: 3, 2: 2})
+  single           n=68   mean 4.34  Counter({4: 43, 5: 24, 3: 1})
+  self_critique    n=52   mean 4.23  Counter({4: 30, 5: 18, 2: 2, 3: 2})
+  debate           n=57   mean 4.39  Counter({4: 35, 5: 22})
+
+==============================================================================
+DECISION RECORD LENGTH (the token-balance check)
+==============================================================================
+  single           n=68   mean 151 words
+  self_critique    n=52   mean 1884 words
+  debate           n=57   mean 1857 words

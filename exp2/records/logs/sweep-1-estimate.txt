@@ -1,0 +1,46 @@
+sweep-1 — cost and wall-clock estimate, from pilot-3's MEASURED figures
+written 2026-08-25, before the run; nothing here is a list price
+
+Inputs (outputs/experiments/pilot-3/CHECKLIST.md rows 1 and 9):
+  pilot-3 cells attempted            207
+  pilot-3 cells decided              177  (85.5%)
+  pilot-3 spend                      $0.9504
+  pilot-3 $ per DECIDED cell         $0.00537
+  pilot-3 $ per ATTEMPTED cell       $0.00459
+  pilot-3 decide wall-clock          26.0 min at 16/8
+  pilot-3 min per attempted cell     7.54 s
+
+sweep-1: 241 items x 3 conditions x 1 repeat = 723 cells
+
+COST
+  at $0.00459 per attempted cell           $3.32
+  with 1.3x retry headroom                    $4.32
+  by model, scaling pilot-3's split (deepseek 63.9%, Haiku 19.7%, nano 16.4%):
+    deepseek                           $2.12
+    Haiku (grader + agreement)         $0.65
+    nano (judge + challenger)          $0.54
+
+  The $/cell is the PINNED cost and it includes the agreement stage. There is no
+  unpinned arm, so it cannot be read as what the pin cost.
+
+WALL-CLOCK
+  decide at 16/8, pilot-3's rate                  90.8 min
+  decide at 24/12, if the raise scales linearly   60.5 min
+  the honest range is those two numbers: the raise is a ceiling on throughput,
+  not a promise, and per-call latency is unchanged by it.
+  contest + agreement + grade + analyse at pilot-3's rate  12.9 min
+  TOTAL, best case (24/12 scales)                 73.4 min
+  TOTAL, worst case (no speedup at all)          103.7 min
+
+  Stop trigger: decide > 4 h = 240 min. The worst case above is 91 min,
+  a 2.6x margin.
+
+EXPECTED LOSSES, carried from pilot-3 rather than fixed
+  cells lost to truncation at 14.5%           ~105 of 723
+  cells expected to decide                    ~618
+  13 of pilot-3's 30 losses were a critique truncating past its own Reasoning:
+  label; on the same shape that is ~46 cells here. generation_max_tokens stays
+  8192 and frequency_penalty stays 0. This is the accepted price of the caps.
+
+The plan's Step G expectation was ~$3 and 3-5 h at ~220 items. The draw came out
+at 241 items / 723 cells, so the cost lands on it and the clock comes in well under.

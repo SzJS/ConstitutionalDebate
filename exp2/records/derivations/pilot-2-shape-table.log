@@ -1,0 +1,55 @@
+cell                                                                        cond           role     stage     first                    repair
+gpqa-161-flawed__self_critique__r1                                          self_critique  solo     revision  no_verdict_line          truncated
+gpqa-93-sound__debate__r1                                                   debate         debater  turn      xml_tag                  xml_tag
+gpqa-93-sound__self_critique__r1                                            self_critique  solo     draft     label_not_at_line_start  no_public_label
+law-con2_gpt4_A-s13__self_critique__r1                                      self_critique  solo     revision  no_verdict_line          no_public_label
+law-con5_gpt4_B-s4__self_critique__r1                                       self_critique  solo     revision  label_not_at_line_start  label_not_at_line_start
+lojban-stim157_gpt3-5_B-s3__debate__r1                                      debate         debater  turn      truncated                n/a (no repair — fatal by design)
+lojban-stim157_gpt3-5_B-s3__self_critique__r1                               self_critique  solo     draft     label_not_at_line_start  no_public_label
+lojban-stim172_gpt4_B-s4__self_critique__r1                                 self_critique  solo     revision  label_not_at_line_start  label_not_at_line_start
+lojban-stim177_gpt4_A-s22__single__r1                                       single         solo     answer    no_public_label          label_not_at_line_start
+medqa-train_1442__debate__r1                                                debate         debater  turn      no_public_label          private_label_in_public
+medqa-train_2769__self_critique__r1                                         self_critique  solo     revision  label_not_at_line_start  label_not_at_line_start
+python800-p03372-flawed__debate__r1                                         debate         debater  turn      truncated                truncated
+python800-p03407-flawed__debate__r1                                         debate         debater  turn      no_public_label          no_public_label
+python800-p03945-flawed__debate__r1                                         debate         debater  turn      truncated                no_public_label
+surgery-sur10_gpt3-5_A-s1__self_critique__r1                                self_critique  solo     revision  label_not_at_line_start  private_label_in_public
+theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__self_critique__r1 self_critique  solo     revision  private_label_in_public  private_label_in_public
+theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1       self_critique  solo     revision  no_verdict_line          label_not_at_line_start
+theoremqa-solutions-rate_distortion_function_2-png-sound__debate__r1        debate         debater  turn      label_not_at_line_start  no_public_label
+
+--- FIRST reply (the one that bought the repair) ---
+  label_not_at_line_start          7
+  no_verdict_line                  3
+  truncated                        3
+  no_public_label                  3
+  xml_tag                          1
+  private_label_in_public          1
+
+--- REPAIR reply (the one the cell died on) ---
+  no_public_label                  6
+  label_not_at_line_start          5
+  private_label_in_public          3
+  truncated                        2
+  xml_tag                          1
+  n/a (no repair — fatal by design) 1
+
+--- repair shape x condition ---
+  debate         n/a (no repair — fatal by design) 1
+  debate         no_public_label                  3
+  debate         private_label_in_public          1
+  debate         truncated                        1
+  debate         xml_tag                          1
+  self_critique  label_not_at_line_start          4
+  self_critique  no_public_label                  3
+  self_critique  private_label_in_public          2
+  self_critique  truncated                        1
+  single         label_not_at_line_start          1
+
+--- repair shape x solo stage (solo/critic roles only) ---
+  answer     label_not_at_line_start          1
+  draft      no_public_label                  2
+  revision   label_not_at_line_start          4
+  revision   no_public_label                  1
+  revision   private_label_in_public          2
+  revision   truncated                        1

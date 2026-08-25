@@ -1,0 +1,57 @@
+experiment: pilot-3   stage: decide   outputs: outputs/experiments/pilot-3
+
+cells: 207  debate=69  self_critique=69  single=69
+estimated calls: decision 1035, contest 414, ruling <= 207, agreement <= 207, grading <= 87  => up to 1950
+retries are on top: max_decision_attempts=2, plus at most one format repair per generation
+
+Hyperparameters — every value, and why it is what it is
+====================================================================================================
+
+[debate]
+  debater_model                deepseek/deepseek-v4-flash-0731 strong, per the debate literature: weak debaters give the judge nothing to weigh.
+  judge_model                  openai/gpt-4.1-nano        weak, per the debate literature: a strong judge verifies for itself and needs no transcript.
+  n_rounds                     3                          3 — opening, attack, counter; the smallest number that lets a claim be rebutted and defended.
+  turn_style                   simultaneous               simultaneous, so neither debater conditions on the other's current-round argument.
+  word_limit                   400                        400 words per argument; long enough to quote the solution, short enough to keep the record readable.
+  debater_temperature          0.7                        above zero, because two debaters on the same model at 0 would write the same argument.
+  judge_temperature            0.0                        0 — the verdict should not vary between identical readings of one transcript.
+  max_tokens                   16384                      a ceiling, not a spend; must leave room for the private Thinking block. Truncation is fatal and unretryable.
+  reasoning_effort             off                        off, so the private channel is the published Thinking block rather than a provider channel no reader can see.
+  judge_cot                    True                       on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.
+  seed                         0                          seeds side assignment and template order per item, so the draws are stable across re-runs.
+  frequency_penalty            0.0                        0 unless a model loops; a nonzero value changes the text and so belongs in the record.
+  max_decision_attempts        2                          2 — one retry for a transient failure, without selecting for compliant outputs.
+  generation_max_tokens        8192                       8192 — the cap for roles that produce record text (debaters, solo stages, critic). It covers every successful generation in the pilot (max 7,888 completion tokens; p99 5,794) and halves a runaway's cost against 16,384; anything lower truncated successful turns, four of them mid-argument.
+  n_critique_rounds            3                          equal to n_rounds, so self_critique and debate make the same number of generations.
+  provider_order               {'deepseek/deepseek-v4-flash-0731': ['gmicloud/fp8', 'coreweave/fp8']} per-model OpenRouter provider slugs, in preference order. Empty means OpenRouter routes freely, which is what pilot 2 did across 20 providers of one model whose format-repair rates ranged 2.1% (GMICloud, n=48, p<0.0001 against the 25.5% pool) to 35.3% (Relace, n=215). Routing decides which weights write the text, so it lives here and a contest inherits it.
+  provider_allow_fallbacks     False                      False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint is already a retryable 404; exhausting the retries fails the cell, which is the thing being measured.
+  debater_model_b              None                       unset means self-play; setting it is the different-model-families ablation.
+  critic_model                 None                       unset means the debater model; a different critic would confound capability with procedure.
+  recourse_rounds              0                          0 — judge-only recourse, so the contest step is identical across all three conditions.
+  recourse_judge_model         None                       unset means the judge model: debate's recourse is ruled by the same weak judge that decided.
+  challenger_model             openai/gpt-4.1-nano        the weak model — a stakeholder standing in for a human reader, not a second expert.
+  challenge_word_limit         None                       unset means the run's word limit; an objection has to quote the record back.
+  challenger_reasoning_effort  None                       unset means the run's setting; challenger deliberation is an experimental axis.
+  challenger_temperature       0.7                        0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.
+  comprehension_model          None                       unset means the challenger model — the probe asks the reader about what it just read.
+  challenger_may_decline       True                       True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.
+
+[client]
+  base_url                     https://openrouter.ai/api/v1 OpenRouter, so one key reaches every provider and the model id is the only thing that changes.
+  max_concurrency              16                         requests in flight across the whole fleet; the lever that decides the sweep's wall-clock.
+  max_attempts                 4                          4 tries for a transport failure — distinct from the one format repair, which is a modelling decision.
+  backoff_base_s               1.0                        1s, doubling: enough to clear a rate-limit burst without idling on a transient 500.
+  backoff_cap_s                30.0                       30s, so one slow provider cannot stall a run past its own timeout.
+  connect_timeout_s            15.0                       15s — a connection that has not opened by then is not going to.
+  read_timeout_s               300.0                      300s: a long generation at a high token cap legitimately takes minutes.
+  run_timeout_s                1800.0                     1800s per cell, the bound a whole debate must finish inside; raising concurrency eats into it.
+  max_runs_in_flight           8                          open run directories at once; a second bound because it limits file handles rather than requests.
+  copy_parent                  True                       True — a contest record that does not contain the decision it contests is not self-contained.
+
+[grading]
+  grader_model                 anthropic/claude-haiku-4.5 The same Haiku model on the normal chat-completions endpoint. The `:batch` suffix this field carried until 2026-08-25 routes to OpenRouter's separate Batch API, which `client.py` does not speak, and it returned HTTP 404 on every call pilot 2 made.
+  grader_temperature           0.0                        0 — a grade is a measurement, and the same objection against the same annotation should not vary.
+  max_tokens                   4096                       4096; a grade is two lines and a short explanation, and it reads an annotation rather than a transcript.
+====================================================================================================
+
+dry run — nothing was sent. Re-run without --dry-run to spend.

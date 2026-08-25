@@ -1,0 +1,43 @@
+using cached data/findtheflaws/datasets.zip
+wrote   382 cases to data/cases/ftf-gpqa.jsonl  sha256=d1ab787c01bf
+wrote    40 cases to data/cases/ftf-law.jsonl  sha256=a12a11fd7c3b
+wrote   120 cases to data/cases/ftf-lojban.jsonl  sha256=12bfc04e0b1b
+wrote   222 cases to data/cases/ftf-medqa.jsonl  sha256=c3feef140a60
+wrote   952 cases to data/cases/ftf-python800.jsonl  sha256=4153dd3d5b0c
+wrote   212 cases to data/cases/ftf-surgery.jsonl  sha256=bb3375b972a2
+wrote   182 cases to data/cases/ftf-theoremqa.jsonl  sha256=e457b2b4f8ec
+
+wrote 69 pilot cases to data/cases/pilot-3.jsonl (34 flawed / 35 sound) over 7 subsets
+
+subset        items  flawed  seeded  +longest   longest items (chars: problem+solution)
+----------------------------------------------------------------------------------------------------
+gpqa             10       5       8         2   gpqa-127-flawed (6715), gpqa-127-sound (6524)
+law              10       4       8         2   law-con5_gpt4_B-s4 (4738), law-con5_gpt4_A-s7 (4093)
+lojban           10       6       8         2   lojban-stim177_gpt4_A-s22 (3086), lojban-stim175_gpt4_A-s4 (3061)
+medqa            10       6       8         2   medqa-train_2769 (5219), medqa-train_3754 (4766)
+python800        10       5       8         2   python800-p03372-flawed (7559), python800-p03240-sound (7006)
+surgery          10       4       8         2   surgery-sur28_gpt4_B-s17 (3622), surgery-sur42_gpt4_B-s8 (3544)
+theoremqa         9       4       8         1   theoremqa-solutions-angular_momentum-txt-sound (2339), theoremqa-solutions-angular_momentum-txt-flawed (2270)
+----------------------------------------------------------------------------------------------------
+TOTAL            69      34
+
+A subset shows fewer than the expected 2N+longest items when a longest item was
+already in the balanced draw, or when the subset has fewer than N of one label.
+
+subset         rows   items   sound  flawed  gradable
+-----------------------------------------------------
+gpqa            191     382     191     191         0
+law              40      40      20      20        20
+lojban          120     120      41      79        79
+medqa           222     222      62     160       160
+python800       633     952     319     633       633
+surgery         212     212     137      75        75
+theoremqa        91     182      91      91        91
+-----------------------------------------------------
+TOTAL          1509    2110     861    1249      1058
+pilot(-2) items: 42   pilot-3 items: 69
+pilot-2 ids NOT in pilot-3: 0 []
+SUBSET CONFIRMED
+flawed: 34  sound: 35
+gradable flawed rows (explanation-quality annotation): 29
+cells at 3 conditions: 207

@@ -1,0 +1,36 @@
+wrote 241 cases to data/cases/sweep-1.jsonl (122 flawed / 119 sound) over 175 rows and 7 subsets
+cells at three conditions x one repeat: 723
+
+subset        rows  /avail  items  /avail  flawed  sound  gradable   label_basis
+----------------------------------------------------------------------------------------------------
+gpqa            25     191     50     382      25     25         0   injected_pair 50
+law             25      40     25      40      11     14        11   sentence_labels 25
+lojban          25     120     25     120      17      8        17   sentence_labels 25
+medqa           25     222     25     222      11     14        11   final_answer 25
+python800       25     633     41     952      25     16        25   injected_pair 41
+surgery         25     212     25     212       8     17         8   sentence_labels 25
+theoremqa       25      91     50     182      25     25        25   injected_pair 50
+----------------------------------------------------------------------------------------------------
+TOTAL          175            241             122    119        97
+
+A subset draws fewer than --rows rows only if it has fewer rows than that.
+
+overlap with data/cases/pilot-3.jsonl: 17 of 241 slice items (69 there). Every decision is made fresh, so an overlapping item is not a re-use of a result; it is reported because the two runs' cells are then not independent.
+  gpqa-123-flawed
+  gpqa-19-flawed
+  law-evi1_gpt4_A-s4
+  law-evi2_gpt4_A-s4
+  law-evi5_gpt4_A-s5
+  lojban-stim144_gpt4_A-s18
+  lojban-stim177_gpt3-5_B-s7
+  medqa-dev_0044
+  medqa-dev_0116
+  python800-p03240-sound
+  python800-p03606-sound
+  surgery-sur28_gpt4_B-s17
+  surgery-sur40_gpt4_A-s15
+  theoremqa-solutions-angular_momentum-txt-flawed
+  theoremqa-solutions-angular_momentum-txt-sound
+  theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed
+  theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed
+BUNDLES UNTOUCHED

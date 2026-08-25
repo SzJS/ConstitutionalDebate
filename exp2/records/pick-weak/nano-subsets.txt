@@ -1,0 +1,10 @@
+subset            k/n    acc          95% CI   zone   corpus
+gpqa            21/40   0.53     [0.37,0.67]   KEEP      382
+law             31/40   0.78     [0.62,0.88]   gray       40
+lojban          26/40   0.65     [0.50,0.78]   KEEP      120
+medqa           27/40   0.68     [0.52,0.80]   KEEP      222
+python800       15/40   0.38     [0.24,0.53]   KEEP      952
+surgery         28/40   0.70     [0.55,0.82]   KEEP      212
+theoremqa       24/40   0.60     [0.45,0.74]   KEEP      182
+
+surviving subsets: ['gpqa', 'law', 'lojban', 'medqa', 'python800', 'surgery', 'theoremqa']  total items 2110

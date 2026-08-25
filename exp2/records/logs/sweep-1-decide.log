@@ -1,0 +1,872 @@
+2026-08-25 22:36:54,199 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,435 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,475 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,523 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,690 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,720 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,809 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:54,872 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:55,077 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:55,818 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:57,326 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:36:59,744 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:02,000 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:02,151 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:02,241 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:02,248 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:04,113 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:06,060 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:06,066 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:08,917 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:15,071 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:24,814 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:25,832 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:26,115 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:26,953 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:27,320 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:27,355 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:27,371 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:28,098 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:28,597 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:28,631 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:30,325 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:30,401 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:30,783 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:30,895 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:32,130 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:35,118 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:35,132 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:35,142 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:36,209 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:36,736 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:39,571 WARNING exp2.debate round 2 Bob wrote 603 words over a 400-word limit
+2026-08-25 22:37:39,873 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:40,138 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:41,154 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:43,467 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:43,527 WARNING exp2.debate round 2 Alice parsed as salvaged_no_thinking
+2026-08-25 22:37:44,126 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:45,251 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:45,398 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:45,665 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:47,164 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:47,961 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:48,084 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:48,383 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:48,501 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:48,930 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:50,215 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:50,503 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:53,483 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:54,142 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:54,799 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:55,996 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:56,298 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:37:56,475 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:58,206 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:58,588 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:37:59,792 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:00,490 WARNING exp2.debate round 3 Bob parsed as salvaged_no_thinking
+2026-08-25 22:38:00,740 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:01,654 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:01,922 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:01,987 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:02,516 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:04,537 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:06,351 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:10,005 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:13,471 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:38:15,617 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:17,211 WARNING exp2.engine solo ran out of budget before reaching 'Reasoning:' (31829 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:38:18,320 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:20,266 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:20,666 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:21,016 WARNING exp2.engine solo output malformed (no_public_label: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:38:21,867 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:21,894 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:22,833 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:24,864 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:27,131 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:27,330 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:27,529 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:38:27,645 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:28,244 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:29,880 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:30,431 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:32,985 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:34,139 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:35,933 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:36,031 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:36,037 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:41,215 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:41,631 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:42,436 WARNING exp2.debate round 2 Bob wrote 408 words over a 400-word limit
+2026-08-25 22:38:44,003 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:44,237 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:44,269 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:44,781 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:45,693 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:46,897 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:47,185 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:48,590 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:48,820 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:49,092 WARNING exp2.debate round 3 Bob parsed as salvaged_no_thinking
+2026-08-25 22:38:49,097 WARNING exp2.experiment gpqa-32-sound__debate__r1 failed: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:38:49,236 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:50,353 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:50,470 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:51,037 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:57,123 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:57,315 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:57,502 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:58,689 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:38:59,395 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:38:59,969 WARNING exp2.experiment gpqa-58-sound__debate__r1 failed: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:39:00,053 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:00,504 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:00,608 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:00,780 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:02,045 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:02,517 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:03,561 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:03,851 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:04,431 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:05,207 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:07,204 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:07,204 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:07,741 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:08,361 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:08,579 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:09,052 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:09,490 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:10,704 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:11,032 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:11,876 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:11,943 WARNING exp2.engine critic ran out of budget before reaching 'Reasoning:' (21432 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:39:11,996 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:13,157 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:13,746 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:14,307 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:16,462 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:16,899 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:17,133 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:17,795 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:17,848 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:17,983 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:18,343 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:18,611 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:21,341 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:23,853 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:25,565 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:25,939 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:27,116 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:27,408 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:28,362 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:28,545 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:28,884 WARNING exp2.debate round 2 Alice parsed as salvaged_no_thinking
+2026-08-25 22:39:30,589 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:30,965 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:31,307 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:31,659 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:32,226 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:32,322 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:32,632 WARNING exp2.debate round 2 Bob parsed as salvaged_no_thinking
+2026-08-25 22:39:34,522 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:34,569 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:34,704 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:34,785 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:37,196 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:37,515 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:39,256 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:40,413 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:41,293 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:42,120 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:42,288 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:43,118 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:45,595 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:45,766 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:47,016 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:47,240 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:48,021 WARNING exp2.debate round 3 Bob parsed as salvaged_no_thinking
+2026-08-25 22:39:48,501 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:51,698 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:51,953 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:52,410 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:52,432 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:52,488 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:52,500 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:39:56,125 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:56,138 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:57,492 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:39:59,732 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:00,605 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:01,288 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:01,691 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:02,146 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:03,853 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:04,160 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:06,792 WARNING exp2.experiment gpqa-148-flawed__single__r1 failed: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:40:07,050 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:07,219 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:08,083 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:40:08,935 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:09,181 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:09,625 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:09,832 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:13,532 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:13,616 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:14,525 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:14,578 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:16,888 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:18,926 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:20,176 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:21,131 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:21,409 WARNING exp2.engine critic ran out of budget before reaching 'Reasoning:' (36044 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:40:23,445 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:24,084 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:25,731 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:25,808 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:29,946 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,200 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:40:30,226 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,439 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,537 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,679 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,738 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:30,776 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:31,806 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:32,188 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:33,338 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:33,348 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:36,641 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:37,430 WARNING exp2.debate round 3 Alice wrote 465 words over a 400-word limit
+2026-08-25 22:40:37,716 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:37,997 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:38,819 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:40,304 WARNING exp2.debate round 1 Bob wrote 521 words over a 400-word limit
+2026-08-25 22:40:42,962 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:43,318 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:43,463 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:44,884 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:45,018 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:40:45,729 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:46,113 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:46,959 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:40:48,605 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:48,776 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:49,282 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:49,347 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:49,617 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:49,913 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:52,939 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:53,527 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:55,907 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:56,135 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:57,537 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:57,776 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:58,193 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:58,196 WARNING exp2.debate round 2 Alice wrote 704 words over a 400-word limit
+2026-08-25 22:40:58,442 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:58,988 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:40:59,580 WARNING exp2.experiment gpqa-9-sound__single__r1 failed: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:41:00,283 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:00,693 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:01,572 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:02,153 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:02,207 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:06,828 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:08,053 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:08,907 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:10,056 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:10,135 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:10,607 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:10,907 WARNING exp2.experiment gpqa-19-sound__self_critique__r1 failed: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:41:11,239 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:12,849 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:13,107 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:13,385 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:14,190 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:14,672 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:15,582 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:18,338 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:18,912 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:19,820 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:20,970 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:21,935 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:22,008 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:22,136 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:23,745 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:23,991 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:24,413 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:24,521 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:24,615 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:27,868 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:29,865 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:30,728 WARNING exp2.debate round 3 Bob wrote 454 words over a 400-word limit
+2026-08-25 22:41:31,085 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:31,394 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:31,625 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:32,862 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:33,169 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:33,474 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:33,496 WARNING exp2.debate round 1 Alice wrote 423 words over a 400-word limit
+2026-08-25 22:41:34,755 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:35,008 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:35,726 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:36,031 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:37,165 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:37,510 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:38,282 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:40,360 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:41,326 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:42,417 WARNING exp2.debate round 1 Alice parsed as salvaged_no_thinking
+2026-08-25 22:41:43,252 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:41:43,651 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:44,068 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:44,940 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:45,834 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:46,011 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:46,142 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:46,753 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:47,847 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:48,573 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:49,814 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:52,679 WARNING exp2.engine critic output malformed (private_label_in_public: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private); attempting one repair
+2026-08-25 22:41:53,541 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:53,629 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:54,567 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:55,704 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:56,371 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:56,810 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:41:58,912 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:00,116 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:00,454 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:02,654 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:03,151 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:03,681 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:03,902 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:06,452 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:06,743 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:42:08,351 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:08,379 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:08,920 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:09,400 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:12,561 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:13,341 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:13,611 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:14,575 WARNING exp2.engine critic ran out of budget before reaching 'Reasoning:' (35748 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:42:15,793 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:16,615 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:17,086 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:20,782 WARNING exp2.engine solo output malformed (private_label_in_public: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private); attempting one repair
+2026-08-25 22:42:21,276 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:21,403 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:42:22,300 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:22,771 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:24,319 WARNING exp2.engine debater ran out of budget before reaching 'Argument:' (31621 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:42:25,230 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:25,904 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:25,974 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:26,435 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:26,997 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:27,075 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:27,399 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:42:29,441 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:30,811 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:33,718 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:33,995 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:37,255 WARNING exp2.debate round 1 Bob parsed as strict_after_budget_repair
+2026-08-25 22:42:39,116 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:39,491 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:40,899 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:42:41,722 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:42:41,864 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:42,456 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:43,922 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:45,383 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:45,651 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:45,661 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:46,359 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:49,406 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:50,213 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:52,938 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:58,463 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:59,118 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:42:59,913 WARNING exp2.engine critic output malformed (no_labels_at_all: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:00,113 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:00,854 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:02,052 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:04,315 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:04,589 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:06,664 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:06,678 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:07,427 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:08,374 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:09,734 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:10,017 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:12,697 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:13,541 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:14,400 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:14,510 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:14,638 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:15,858 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:17,135 WARNING exp2.debate round 1 Alice parsed as salvaged_no_thinking
+2026-08-25 22:43:17,140 WARNING exp2.debate round 1 Bob parsed as salvaged_no_thinking
+2026-08-25 22:43:17,710 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:17,754 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:18,758 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:19,125 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:19,189 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:19,230 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:19,530 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:20,663 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:20,691 WARNING exp2.engine debater ran out of budget before reaching 'Argument:' (30769 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:43:21,279 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:22,824 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:22,893 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:22,990 WARNING exp2.debate round 2 Bob parsed as salvaged_no_thinking
+2026-08-25 22:43:23,868 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:24,231 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:24,759 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:24,812 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:25,477 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:29,732 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:31,257 WARNING exp2.debate round 2 Alice wrote 588 words over a 400-word limit
+2026-08-25 22:43:32,611 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:32,963 WARNING exp2.debate round 1 Alice wrote 470 words over a 400-word limit
+2026-08-25 22:43:32,968 WARNING exp2.debate round 1 Alice parsed as strict_after_budget_repair
+2026-08-25 22:43:33,114 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:34,493 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:34,604 WARNING exp2.experiment gpqa-168-flawed__self_critique__r1 failed: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:43:34,932 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:35,273 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:35,493 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:35,935 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:39,353 WARNING exp2.engine solo output malformed (no_public_label: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:40,321 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:40,921 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:41,288 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:41,439 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:41,564 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:42,011 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:42,711 WARNING exp2.debate round 2 Alice wrote 468 words over a 400-word limit
+2026-08-25 22:43:42,821 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:43,993 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:44,495 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:45,061 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:47,185 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:47,449 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:48,529 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:48,859 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:49,355 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:51,296 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:52,262 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:43:53,636 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:54,530 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:54,984 WARNING exp2.debate round 3 Alice wrote 510 words over a 400-word limit
+2026-08-25 22:43:55,253 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:43:56,141 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:00,590 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:01,072 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:01,131 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:01,198 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:01,962 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:03,026 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:05,138 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:06,472 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:06,488 WARNING exp2.debate round 3 Alice parsed as salvaged_no_thinking
+2026-08-25 22:44:06,784 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:06,933 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:08,015 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:10,652 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:13,375 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:13,905 WARNING exp2.engine solo output malformed (no_public_label: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:14,316 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:15,376 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:15,915 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:16,761 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:16,934 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:17,996 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:18,252 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:19,981 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:21,196 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:21,401 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:21,430 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:21,989 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:23,058 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:24,347 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:24,577 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:26,005 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:26,042 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:27,549 WARNING exp2.debate round 2 Alice wrote 586 words over a 400-word limit
+2026-08-25 22:44:28,762 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:29,221 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:29,368 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:29,392 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:29,545 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:29,852 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:30,015 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:30,622 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:33,252 WARNING exp2.debate round 2 Alice wrote 573 words over a 400-word limit
+2026-08-25 22:44:34,229 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:34,501 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:34,829 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:36,170 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:36,700 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:38,297 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:40,029 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:40,076 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:40,659 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:41,649 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:42,093 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:44,086 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:44,839 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:45,149 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:47,662 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:49,809 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:51,555 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:53,175 WARNING exp2.debate round 3 Alice parsed as salvaged_no_thinking
+2026-08-25 22:44:53,490 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:53,867 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:54,849 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:44:55,145 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:55,279 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:56,768 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:57,366 WARNING exp2.engine debater ran out of budget before reaching 'Argument:' (29685 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:44:57,426 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:44:59,902 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:00,030 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:00,298 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:04,389 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:05,695 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:06,856 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:07,503 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:07,708 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:08,675 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:09,070 WARNING exp2.engine debater output malformed (private_label_in_public: 'Argument:' section contains a 'Thinking:' label; refusing to publish what the debater marked as private); attempting one repair
+2026-08-25 22:45:11,040 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:11,198 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:11,707 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:12,322 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:12,918 WARNING exp2.debate round 1 Alice parsed as salvaged_no_thinking
+2026-08-25 22:45:17,471 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:17,730 WARNING exp2.experiment gpqa-138-sound__self_critique__r1 failed: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:45:18,154 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:19,045 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:19,276 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:19,900 WARNING exp2.debate round 2 Alice wrote 546 words over a 400-word limit
+2026-08-25 22:45:20,260 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:21,715 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:21,812 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:22,292 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:22,792 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:24,306 WARNING exp2.engine debater ran out of budget before reaching 'Argument:' (31613 chars of deliberation); spending the repair on the budget rather than on the format
+2026-08-25 22:45:24,503 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:25,257 WARNING exp2.engine critic output malformed (no_labels_at_all: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:25,404 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:26,120 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:26,891 WARNING exp2.engine critic output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:27,040 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:27,694 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:27,921 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:28,430 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:28,931 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:29,594 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:30,720 WARNING exp2.debate round 1 Alice parsed as strict_after_budget_repair
+2026-08-25 22:45:30,726 WARNING exp2.debate round 1 Bob parsed as salvaged_no_thinking
+2026-08-25 22:45:31,152 WARNING exp2.experiment gpqa-95-sound__self_critique__r1 failed: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:45:32,313 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:32,324 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:33,559 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:33,883 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:33,897 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:34,819 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:35,422 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:35,897 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:36,579 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:37,327 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:37,983 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:38,757 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:38,973 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:39,876 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:41,521 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:42,121 WARNING exp2.engine solo output malformed (xml_tag: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:43,267 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:43,866 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:44,260 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:44,360 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:45,800 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:47,294 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:48,621 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:49,305 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:49,813 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:55,636 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:57,406 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:58,079 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:59,049 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:45:59,092 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:45:59,270 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:00,180 WARNING exp2.debate round 1 Alice parsed as salvaged_no_thinking
+2026-08-25 22:46:01,243 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:01,252 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:02,079 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:02,465 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:02,505 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:03,739 WARNING exp2.debate round 1 Alice parsed as salvaged_no_thinking
+2026-08-25 22:46:04,347 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:06,031 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:06,723 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:11,213 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:11,765 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:11,997 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:14,178 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:14,563 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:15,061 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:15,996 WARNING exp2.debate round 3 Alice wrote 1042 words over a 400-word limit
+2026-08-25 22:46:16,209 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:16,302 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:17,772 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:18,164 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:18,978 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:19,093 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:21,034 WARNING exp2.experiment gpqa-98-sound__debate__r1 failed: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+2026-08-25 22:46:21,171 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:21,469 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:23,347 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:25,462 WARNING exp2.engine debater output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:26,020 WARNING exp2.engine critic output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:27,003 WARNING exp2.engine solo output malformed (no_public_label: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:27,762 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:27,954 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:27,997 WARNING exp2.debate round 3 Bob parsed as salvaged_no_thinking
+2026-08-25 22:46:28,124 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:28,275 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:29,064 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:29,342 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:29,675 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:30,192 WARNING exp2.engine solo output malformed (label_not_at_line_start: no 'Argument:' label found; refusing to treat the whole response as the public argument); attempting one repair
+2026-08-25 22:46:30,941 WARNING exp2.debate round 3 Alice parsed as salvaged_no_thinking
+2026-08-25 22:46:31,221 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:31,914 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:31,962 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:32,515 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:32,592 WARNING exp2.experiment gpqa-123-sound__self_critique__r1 failed: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-sound__self_critique__r1/runs/20260825T224621Z-gpqa-123-sound/tmpf_yg3tlh.tmp' -> 'outputs/experiments/sweep-1/cells/gpqa-123-sound__self_critique__r1/runs/20260825T224621Z-gpqa-123-sound/conversation.json'
+2026-08-25 22:46:34,365 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:34,900 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:46:35,208 INFO httpx HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-25 22:47:03,244 WARNING exp2.engine critic truncated again after a format repair; falling back
+experiment: sweep-1   stage: decide   outputs: outputs/experiments/sweep-1
+
+cells: 723  debate=241  self_critique=241  single=241
+estimated calls: decision 3615, contest 1446, ruling <= 723, agreement <= 723, grading <= 291  => up to 6798
+retries are on top: max_decision_attempts=2, plus at most one format repair per generation
+
+Hyperparameters — every value, and why it is what it is
+====================================================================================================
+
+[debate]
+  debater_model                deepseek/deepseek-v4-flash-0731 strong, per the debate literature: weak debaters give the judge nothing to weigh.
+  judge_model                  openai/gpt-4.1-nano        weak, per the debate literature: a strong judge verifies for itself and needs no transcript.
+  n_rounds                     3                          3 — opening, attack, counter; the smallest number that lets a claim be rebutted and defended.
+  turn_style                   simultaneous               simultaneous, so neither debater conditions on the other's current-round argument.
+  word_limit                   400                        400 words per argument; long enough to quote the solution, short enough to keep the record readable.
+  debater_temperature          0.7                        above zero, because two debaters on the same model at 0 would write the same argument.
+  judge_temperature            0.0                        0 — the verdict should not vary between identical readings of one transcript.
+  max_tokens                   16384                      a ceiling, not a spend; must leave room for the private Thinking block. Truncation is fatal and unretryable.
+  reasoning_effort             off                        off, so the private channel is the published Thinking block rather than a provider channel no reader can see.
+  judge_cot                    True                       on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.
+  seed                         0                          seeds side assignment and template order per item, so the draws are stable across re-runs.
+  frequency_penalty            0.0                        0 unless a model loops; a nonzero value changes the text and so belongs in the record.
+  max_decision_attempts        2                          2 — one retry for a transient failure, without selecting for compliant outputs.
+  generation_max_tokens        8192                       8192 — the cap for roles that produce record text (debaters, solo stages, critic). It covers every successful generation in the pilot (max 7,888 completion tokens; p99 5,794) and halves a runaway's cost against 16,384; anything lower truncated successful turns, four of them mid-argument.
+  n_critique_rounds            3                          equal to n_rounds, so self_critique and debate make the same number of generations.
+  provider_order               {'deepseek/deepseek-v4-flash-0731': ['gmicloud/fp8', 'coreweave/fp8']} per-model OpenRouter provider slugs, in preference order. Empty means OpenRouter routes freely, which is what pilot 2 did across 20 providers of one model whose format-repair rates ranged 2.1% (GMICloud, n=48, p<0.0001 against the 25.5% pool) to 35.3% (Relace, n=215). Routing decides which weights write the text, so it lives here and a contest inherits it.
+  provider_allow_fallbacks     False                      False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint is already a retryable 404; exhausting the retries fails the cell, which is the thing being measured.
+  debater_model_b              None                       unset means self-play; setting it is the different-model-families ablation.
+  critic_model                 None                       unset means the debater model; a different critic would confound capability with procedure.
+  recourse_rounds              0                          0 — judge-only recourse, so the contest step is identical across all three conditions.
+  recourse_judge_model         None                       unset means the judge model: debate's recourse is ruled by the same weak judge that decided.
+  challenger_model             openai/gpt-4.1-nano        the weak model — a stakeholder standing in for a human reader, not a second expert.
+  challenge_word_limit         None                       unset means the run's word limit; an objection has to quote the record back.
+  challenger_reasoning_effort  None                       unset means the run's setting; challenger deliberation is an experimental axis.
+  challenger_temperature       0.7                        0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.
+  comprehension_model          None                       unset means the challenger model — the probe asks the reader about what it just read.
+  challenger_may_decline       True                       True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.
+
+[client]
+  base_url                     https://openrouter.ai/api/v1 OpenRouter, so one key reaches every provider and the model id is the only thing that changes.
+  max_concurrency              24                         requests in flight across the whole fleet; the lever that decides the sweep's wall-clock.
+  max_attempts                 4                          4 tries for a transport failure — distinct from the one format repair, which is a modelling decision.
+  backoff_base_s               1.0                        1s, doubling: enough to clear a rate-limit burst without idling on a transient 500.
+  backoff_cap_s                30.0                       30s, so one slow provider cannot stall a run past its own timeout.
+  connect_timeout_s            15.0                       15s — a connection that has not opened by then is not going to.
+  read_timeout_s               300.0                      300s: a long generation at a high token cap legitimately takes minutes.
+  run_timeout_s                1800.0                     1800s per cell, the bound a whole debate must finish inside; raising concurrency eats into it.
+  max_runs_in_flight           12                         open run directories at once; a second bound because it limits file handles rather than requests.
+  copy_parent                  True                       True — a contest record that does not contain the decision it contests is not self-contained.
+
+[grading]
+  grader_model                 anthropic/claude-haiku-4.5 The same Haiku model on the normal chat-completions endpoint. The `:batch` suffix this field carried until 2026-08-25 routes to OpenRouter's separate Batch API, which `client.py` does not speak, and it returned HTTP 404 on every call pilot 2 made.
+  grader_temperature           0.0                        0 — a grade is a measurement, and the same objection against the same annotation should not vary.
+  max_tokens                   4096                       4096; a grade is two lines and a short explanation, and it reads an annotation rather than a transcript.
+====================================================================================================
+
+decide: completed=80  error=633  failed=10
+  ! gpqa-32-sound__debate__r1: DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-58-sound__debate__r1: DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-148-flawed__single__r1: TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-9-sound__single__r1: TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-19-sound__self_critique__r1: TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-168-flawed__self_critique__r1: TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-138-sound__self_critique__r1: TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-98-sound__debate__r1: DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! gpqa-95-sound__self_critique__r1: TruncatedOutputError: critic response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-95-flawed__self_critique__r1/runs/20260825T224439Z-gpqa-95-flawed/tmpkpixe8pb.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-139-sound__self_critique__r1/runs/20260825T224517Z-gpqa-139-sound/tmp53_c8swv.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-139-flawed__self_critique__r1/runs/20260825T224531Z-gpqa-139-flawed/tmpdtv4ge1o.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-142-sound__self_critique__r1/runs/20260825T224545Z-gpqa-142-sound/tmp1jkcqezh.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-142-sound__debate__r1/runs/20260825T224546Z-gpqa-142-sound/tmpn9w9afqm.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-142-flawed__single__r1/runs/20260825T224554Z-gpqa-142-flawed/tmphxja8z63.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-142-flawed__self_critique__r1/runs/20260825T224601Z-gpqa-142-flawed/tmp94_ymnie.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-142-flawed__debate__r1/runs/20260825T224609Z-gpqa-142-flawed/tmpg48aeyip.tmp'
+  ! gpqa-123-sound__self_critique__r1: OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-sound__self_critique__r1/runs/20260825T224621Z-gpqa-123-sound/tmpf_yg3tlh.tmp' -> 'outputs/experiments/sweep-1/cells/gpqa-123-sound__self_critique__r1/runs/20260825T224621Z-gpqa-123-sound/conversation.json'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-sound__debate__r1/runs/20260825T224627Z-gpqa-123-sound/tmptwdauaub.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-flawed__single__r1/runs/20260825T224632Z-gpqa-123-flawed/tmpi0isqvr_.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-flawed__self_critique__r1/runs/20260825T224633Z-gpqa-123-flawed/tmpcu4eyp9o.tmp'
+  ! OSError: [Errno 28] No space left on device: '/workspace/ConstitutionalDebate/exp2/outputs/experiments/sweep-1/cells/gpqa-123-flawed__debate__r1/runs/20260825T224634Z-gpqa-123-flawed/tmpofn29ilo.tmp'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-178-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-81-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-25-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-82-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-179-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-184-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-131-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-sound__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-sound__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-sound__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-flawed__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-flawed__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/gpqa-60-flawed__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt3-5_B-s6__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt3-5_B-s6__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt3-5_B-s6__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt4_B-s1__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt4_B-s1__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con1_gpt4_B-s1__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_A-s6__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_A-s6__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_A-s6__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_B-s1__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_B-s1__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con2_gpt3-5_B-s1__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt3-5_B-s6__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt3-5_B-s6__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt3-5_B-s6__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_A-s11__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_A-s11__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_A-s11__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_B-s15__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_B-s15__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con3_gpt4_B-s15__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt3-5_A-s5__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt3-5_A-s5__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt3-5_A-s5__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_A-s8__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_A-s8__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_A-s8__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_B-s13__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_B-s13__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con4_gpt4_B-s13__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con5_gpt3-5_A-s8__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con5_gpt3-5_A-s8__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-con5_gpt3-5_A-s8__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_A-s3__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_A-s3__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_A-s3__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_B-s6__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_B-s6__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt3-5_B-s6__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt4_A-s4__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt4_A-s4__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi1_gpt4_A-s4__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_A-s5__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_A-s5__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_A-s5__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_B-s6__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_B-s6__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt3-5_B-s6__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_A-s4__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_A-s4__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_A-s4__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_B-s10__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_B-s10__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi2_gpt4_B-s10__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi3_gpt4_B-s13__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi3_gpt4_B-s13__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi3_gpt4_B-s13__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_A-s11__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_A-s11__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_A-s11__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_B-s7__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_B-s7__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi4_gpt4_B-s7__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_A-s1__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_A-s1__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_A-s1__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_B-s3__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_B-s3__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt3-5_B-s3__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_A-s5__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_A-s5__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_A-s5__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_B-s10__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_B-s10__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/law-evi5_gpt4_B-s10__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_A-s3__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_A-s3__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_A-s3__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_B-s7__single__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_B-s7__self_critique__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim177_gpt3-5_B-s7__debate__r1'
+  ! OSError: [Errno 28] No space left on device: 'outputs/experiments/sweep-1/cells/lojban-stim144_gpt4_A-s18_Traceback (most recent call last):
+  File "/workspace/ConstitutionalDebate/exp2/.venv/bin/exp2-experiment", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/workspace/ConstitutionalDebate/exp2/src/exp2/experiment_cli.py", line 207, in main
+    print(f"  ! {type(result).__name__}: {result}")
+OSError: [Errno 28] No space left on device
