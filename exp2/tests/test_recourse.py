@@ -148,6 +148,18 @@ async def test_the_contest_document_names_which_mechanism_ruled(tmp_path):
     assert "same reviewer that made the decision, in the same conversation" in solo_doc
 
 
+async def test_the_contest_document_ends_with_the_ground_truth(tmp_path):
+    """Same rule as a decision record: the answer is last, and nowhere above it."""
+    _, _, writer, record = await contest(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    head, marker, tail = document.rpartition("\n## Ground truth")
+    assert marker
+    assert "\n## " not in tail
+    for leak in ("gold", "ground truth", "label_basis"):
+        assert leak not in head.lower()
+    assert record.item.gold_verdict in tail
+
+
 async def test_the_contest_record_carries_a_hash_of_the_decision_it_contests(tmp_path):
     import json
     _, _, writer, _ = await contest(tmp_path, "debate")

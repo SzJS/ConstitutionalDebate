@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from conftest import SOLO_THINKING, FakeClient
@@ -67,17 +68,31 @@ async def test_the_flaw_annotation_is_written_but_never_loaded_with_the_run(tmp_
     # the annotation text reaches nothing a decision or contest touches
     assert not hasattr(record, "flaw")
     assert "divides by zero" not in json.dumps(record.item.to_dict())
-    assert "divides by zero" not in (writer.dir / "transcript.md").read_text()
+    head, _, tail = _split_at_ground_truth((writer.dir / "transcript.md").read_text())
+    assert "divides by zero" not in head
+    assert "divides by zero" in tail
     # only the dedicated door opens it
     assert load_flaw(writer.dir).annotation == "Step 2 divides by zero."
     assert load_flaw(tmp_path / "nonexistent") is None
 
 
-async def test_the_gold_label_never_appears_in_the_published_document(tmp_path):
-    writer, _ = await recorded(tmp_path, "debate")
-    document = (writer.dir / "transcript.md").read_text()
-    for leak in ("gold_flawed", "gold_verdict", "ground truth"):
-        assert leak not in document
+def _split_at_ground_truth(document: str) -> tuple[str, str, str]:
+    head, marker, tail = document.rpartition("\n## Ground truth")
+    assert marker, "the document has no ground-truth section"
+    return head, marker, tail
+
+
+async def test_ground_truth_is_the_last_section_and_appears_nowhere_earlier(tmp_path):
+    """A reader who knows the answer first can only say whether they agree with the
+    decision, not whether the record was legible enough to check it."""
+    writer, result = await recorded(tmp_path, "debate")
+    head, _, tail = _split_at_ground_truth(
+        (writer.dir / "transcript.md").read_text())
+    assert "\n## " not in tail  # nothing follows it
+    for leak in ("gold", "ground truth", "label_basis"):
+        assert leak not in head.lower()
+    assert result.item.gold_verdict in tail
+    assert "label_basis" in tail
 
 
 async def test_solo_decision_grounds_exclude_private_thinking(tmp_path):
@@ -115,12 +130,35 @@ async def test_the_document_publishes_the_problem_the_solution_and_the_grounds(t
     assert "**Grounds given:**" in document
 
 
-async def test_private_thinking_is_published_after_the_decision_not_before(tmp_path):
-    writer, _ = await recorded(tmp_path, "debate")
+async def test_private_reasoning_is_not_in_the_readable_document_but_is_pointed_to(
+    tmp_path,
+):
+    """It still has to be published somewhere — that is the transparency claim — but
+    the readable document is read straight through, and nobody saw it there."""
+    writer, _ = await recorded(tmp_path, "self_critique")
     document = (writer.dir / "transcript.md").read_text()
-    assert "## Private reasoning" in document
-    assert SECRET_THINKING not in document  # the fake client writes its own thinking
-    assert document.index("## The decision") < document.index("## Private reasoning")
+    assert "## Private reasoning" not in document
+    assert SOLO_THINKING not in document
+    assert SECRET_THINKING not in document
+    assert "`transcript_full.md`" in document
+
+
+def test_no_model_facing_module_reads_the_published_documents():
+    """The documents end with the ground truth, so anything on the decision or contest
+    path that opened one would be reading the answer out of a file it published."""
+    import exp2
+
+    package = Path(exp2.__file__).resolve().parent
+    mentioning = {
+        path.name for path in package.glob("*.py")
+        if "transcript.md" in path.read_text(encoding="utf-8")
+        or "transcript_full.md" in path.read_text(encoding="utf-8")
+    }
+    decision_path = {"prompts.py", "arms.py", "debate.py", "recourse.py", "engine.py",
+                     "experiment.py", "grading.py", "types.py"}
+    assert not mentioning & decision_path
+    assert mentioning <= {"artifacts.py", "artifacts_full.py", "persistence.py",
+                          "cli.py"}
 
 
 async def test_model_text_cannot_forge_document_structure(tmp_path):
