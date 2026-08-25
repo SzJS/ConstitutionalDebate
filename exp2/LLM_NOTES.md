@@ -317,6 +317,46 @@ section cannot be located, the text is **withheld** rather than guessed — publ
 everything leaks, and guessing where the private part ends would be worse than losing
 the step. The raw generation survives in the run's records either way.
 
+### Follow-up (2026-08-25): the withholding was firing on every critique, not on the odd one
+
+The paid pilot's `gpqa-123-flawed__self_critique__r1` withheld **3 of 3** critiques, and
+the shape repeats across the `self_critique` cells. The replies were not bad. They
+carried a `Thinking:` block and then the criticism, with **no `Reasoning:` label
+anywhere**, so the splitter could not locate a public section and stored `WITHHELD`.
+
+Two prompts put it there. `SOLO_CRITIQUE_INSTRUCTION` said what to criticise and said
+not to give a verdict; it never said **where the criticism was to go**. `SOLO_SYSTEM`
+described `Reasoning:` as the section "ending with the verdict line when one is asked
+for" — so a response that is asked for no verdict has, by that description, no
+`Reasoning:` section to write at all. The model filed the whole critique under
+`Thinking:`, which is what it had been told, and the splitter did the only safe thing
+with it.
+
+**The cost is a confound, not a rendering gap.** The challenger's view is
+`DecisionRecord.for_solo` over `trace.json`, so in the `self_critique` condition the
+challenger read placeholders where the critiques belonged. Whatever that condition's
+contest numbers measure, it is not the record `DESIGN.md` describes.
+
+**Fixed 2026-08-25 at the prompt, with one retry behind it.** `SOLO_SYSTEM` now describes
+the section as `<the part of your response that is published; every response has one>`,
+which is true of a critique and of an answer alike, and `SOLO_CRITIQUE_INSTRUCTION` adds
+"Under Reasoning, give the criticism itself; it is published as part of the record."
+The critique stage now runs through `_complete_with_repair` like every other generation
+— `parse=_split_solo`, `role="critic"`, and a new `SOLO_CRITIQUE_REPAIR` registered
+under `"critic"` in `REPAIR_INSTRUCTIONS` — so a label-less critique costs one repair
+attempt before anything is lost. The repair instruction names `Reasoning:` and asks for
+no verdict, because a critique repaired with the answer instruction would be asked for
+the one thing that must not be there.
+
+`unrepaired=_withhold_critique` is what happens after that attempt fails. A critique has
+no decision line to get wrong, so raising `DebateFailure` would throw away an otherwise
+complete decision over a missing label. **Withholding remains the last resort** — it is
+simply now reached only after the model has been asked twice.
+
+The pilot's `self_critique` cells were decided before all of this. They cannot be
+repaired by re-rendering: the critique text was never in the record. They have to be
+**re-decided** before any cross-condition comparison rests on them.
+
 ## 3e. Settled (2026-08-25): Thinking blocks are published in `transcript.md`
 
 `DESIGN.md` says "CoTs are not part of the published record in debate", in the section
@@ -333,6 +373,27 @@ participants did. `DESIGN.md`'s own "All model generations should be published i
 transcripts, including CoT (if it is enabled)" says the same thing from the other side.
 
 No code change; this section is closed.
+
+### Superseded in part (2026-08-25): the Thinking blocks moved to `transcript_full.md`
+
+The decision above is reversed for the readable document and kept for the record as a
+whole. `transcript.md` no longer prints `Thinking:` blocks: its private-reasoning
+section is gone, replaced by one paragraph pointing at `transcript_full.md`, which is
+written beside it and holds every prompt and every reply verbatim, native reasoning
+included. Nothing is dropped — the claim that every channel which moved the decision
+ends up somewhere a reader can see is now carried by the pair of documents rather than
+by one of them. §3k describes the split.
+
+One consequence has to be stated plainly, because it inverts an old assumption.
+**Both documents now end with a `## Ground truth` section** — the gold label, the
+`label_basis`, `label_reliable`, and the flaw annotation when there is one. That is safe
+only because no model-facing module reads either file: the challenger's view is built
+from `transcript.json` / `trace.json`, never from the rendered markdown. It is also
+fragile in exactly the way conventions are, so it is a test rather than a convention —
+`test_no_model_facing_module_reads_the_published_documents` asserts that the strings
+`transcript.md` and `transcript_full.md` appear in `src/exp2/` only in `artifacts.py`,
+`artifacts_full.py`, `persistence.py` and `cli.py`. **Neither document may ever be shown
+to a model.** If some future stage wants to feed a record to a model, it reads the JSON.
 
 ## 3i. The challenger parser was too strict — and a second leak the tests still miss
 
@@ -467,6 +528,115 @@ were being asked a vaguer question than the one the gold labels answer.
   what it is looking for. The pilot's own per-subset behaviour is the first evidence
   either way, and check 3 of the go/no-go list (verdicts non-degenerate) is where it
   would show.
+
+## 3k. Two documents per run
+
+**Settled 2026-08-25.** Every run directory — decision runs and contest runs alike — now
+carries two markdown documents, written by `persistence.RunWriter._render` in
+independent `try/except` blocks so that a failure in one cannot cost the other.
+
+`transcript.md` is the **readable** document and keeps its name, because every doc, test
+and CLI message already points at it. It is what the transparency claim is about: the
+material, the public generations blockquoted and tag-defanged, the decision, the
+contest. It shows only the parsed public part of each generation, shows no prompts, and
+since 2026-08-25 no longer shows `Thinking:` blocks either (§3e). One paragraph after
+the decision says so and names the other file.
+
+`transcript_full.md` is the **verbatim** document: every message that went over the wire
+and every accepted reply, reproducible byte for byte, in fenced blocks with no defanging
+of any kind. It exists because the readable document is an edit of what happened and the
+record has to contain the unedited version somewhere.
+
+### The reference scheme
+
+A wire log is mostly repetition — round 3's request contains rounds 1 and 2, and every
+solo request is a prefix of the next. Printing it raw would bury the document; printing
+a summary would make it not a record. The rule instead is:
+
+> Every distinct text is printed verbatim exactly once, in a fenced block introduced by
+> a label; wherever that same text recurs, the marker `[[label]]` stands in its place.
+> Substitution is **exact string match only**. No match, and the text prints in full.
+
+The scheme therefore degrades to *verbatim with repetition*, never to *edited* — a bug
+in the substitution costs a longer document, not a wrong one. Label prefixes: `P` the
+problem, `T` the text under review (both as `neutralise_tags(...)`, the form actually
+sent), `S` system prompts, `M` other messages, `G` replies, `X` texts derived from
+earlier replies (a rendered transcript, a decision record, grounds, an objection), `N` a
+provider's native reasoning. Definitions are themselves substituted, so the block that
+defines `[[X2]]` shows `[[X1]]` inside it. `expand()` walks the markers back out, and
+`test_every_accepted_request_round_trips_byte_for_byte` uses it to compare the expanded
+document against `request_body.messages` for every accepted call.
+
+One wrinkle worth stating, because it is invisible otherwise: a `G` block prints the
+reply **as it came off the wire**, but registers `content.strip()` as the substitutable
+text, since that is what the client passes into the next conversation. The Legend says
+this in the document itself.
+
+### Which attempt is printed
+
+The accepted attempt is the one whose `call_id` the record files name —
+`transcript.json turns[].call_id`, `trace.json steps[].call_id`, and the `call_id` in
+`verdict.json`, `challenge.json`, `ruling.json`, `comprehension.json`. Never the log
+order, never `status`, never `attempt`. Debate rounds run concurrently and append to
+`calls.jsonl` in completion order, so log order is not conversation order; and a `200`
+can carry `finish_reason="error"` and an empty reply, so status does not identify an
+accepted generation either. Ordering comes from the record files too.
+
+**Rejected attempts and repair attempts are deliberately absent.** A rejected reply is
+not lost: the repair request that followed it contains it as an assistant turn, and that
+request is printed in full, so the reply appears exactly where it was actually sent. A
+call the record accepted after a repair is labelled as such. Anything more would print
+the same generation twice under two headings.
+
+Parameters — model per role, temperature, `max_tokens`, reasoning setting, frequency
+penalty — are stated **once** in a header table. A call that was made with anything else
+gets a `*Deviates from header: …*` line of its own. Stating them per call would add a
+table to every heading to say nothing; stating them only once without the deviation line
+would let a document assert something untrue about a call.
+
+### The solo ruling, split like a solo step
+
+`recourse._parse_solo_ruling` splits the solo re-decision with `_split_solo` before
+`parse_verdict_output` sees it. `parse_verdict_output` alone takes *everything* before
+the verdict line as the grounds — `Thinking:` block included — and the readable contest
+record prints the grounds under "Grounds given". Same class of leak as §3d and §3i, on
+the third path. `Ruling.raw` is unchanged.
+
+### When the prompts were not recorded
+
+If `calls.jsonl` is absent, or an accepted `call_id` is not in it, the document says so
+in one line and falls back to the accepted generations alone, from the record files,
+under the same headings. Runs decided before this change have no wire log and would
+otherwise render an empty document.
+
+### What is printed twice, on purpose
+
+In a debate document each argument appears twice: once as the reply `[G…]`, and once
+inside the `[X…]` block that is the re-indented, defanged transcript the judge actually
+read. `indent_continuations` makes the rendered form a **different byte string** from
+the reply, so the substitution cannot and must not collapse them — and the difference
+between what a debater wrote and what the judge saw is exactly the sort of thing this
+document exists to make checkable.
+
+### It is smaller than the log it replaces
+
+Measured on the paid pilot: a debate cell's full document is 47,095 B against a
+`calls.jsonl` of 92,436 B (51%); a `self_critique` cell's is 53,146 B against 310,252 B
+(**17%**) — the solo conditions are where the repetition lives, because every request
+replays the whole conversation. The round trip was checked on the same real data:
+92 request messages and 15 replies reproduced byte for byte.
+
+### Suggested DESIGN.md edits (not applied)
+
+Two lines in `DESIGN.md` now point at the wrong file or make a claim the code has only
+just started to keep. Neither is edited here; both are for the user to decide.
+
+- "All model generations should be published in the transcripts, including CoT (if it is
+  enabled)" now maps to **`transcript_full.md`**, not to `transcript.md`. The readable
+  document deliberately publishes no CoT (§3e).
+- "self_critique → the same plus every draft and critique" became true of the record
+  only with the critique fix in §3d. Every `self_critique` cell decided before
+  2026-08-25 has placeholders where the critiques should be.
 
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
@@ -644,7 +814,7 @@ promised cost-per-item and measured-latency figures impossible), and it screened
 
 ## 7. State of the build, and how to run it
 
-**218 tests pass** (`uv run pytest`). Two probe runs have been paid for; the pilot has
+**240 tests pass** (`uv run pytest`). Two probe runs have been paid for; the pilot has
 not been run and nothing exists under `outputs/experiments/pilot/`. The harness has been
 exercised end to end against a fake client over the **real** dataset: 84 cells decided,
 contested and graded, all seven subsets and all three label bases flowing through.
@@ -660,7 +830,7 @@ contested and graded, all seven subsets and all three label bases flowing throug
 | `prompts.py` | templates, builders, and the parsers |
 | `debate.py`, `arms.py` | the three conditions; solo conditions hold a real conversation |
 | `recourse.py` | the two contest mechanisms — the module exp1 lacks |
-| `persistence.py`, `artifacts.py` | the run directory and `transcript.md` |
+| `persistence.py`, `artifacts.py`, `artifacts_full.py` | the run directory, `transcript.md` and `transcript_full.md` (§3k) |
 | `experiment.py`, `*_cli.py` | the staged batch harness |
 | `grading.py`, `analysis.py` | the two bars, and the rates |
 
@@ -686,6 +856,12 @@ uv run python scripts/pick_weak.py --models <chosen> --subsets <gray> --offset 4
 # 3b. make the probe readable before deciding anything
 uv run python scripts/render_probe.py 2>&1 | tee outputs/render-probe.log
 
+# 3c. the whole harness end to end against the fake client — no network, no key.
+#     Writes both documents for every cell and every contest, over real items, and
+#     fails loudly if one is missing, falls back to generations-only, or withholds a
+#     critique. Read a few of them before spending.
+uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline-2.log
+
 # 4. put the chosen models into experiments/pilot.toml, then
 uv run exp2-experiment --spec experiments/pilot.toml --stage decide --dry-run
 uv run exp2-experiment --spec experiments/pilot.toml --stage decide  2>&1 | tee outputs/pilot-decide.log
@@ -696,6 +872,20 @@ uv run exp2-experiment --spec experiments/pilot.toml --stage analyse 2>&1 | tee 
 
 Every stage resumes on its own artifacts, so a re-run after a failure spends nothing on
 what already succeeded.
+
+### Next, before any comparison across conditions
+
+**Re-decide the pilot's `self_critique` cells.** They were decided with the critique
+prompt of §3d, so their records carry placeholders instead of critiques and the
+challenger contested a record with its middle missing. Re-rendering cannot fix it — the
+text was never recorded — so the cells have to be decided again, with the full set of
+hyperparameters shown and confirmed first, as the repo rule requires. Until then those
+cells are not comparable with `single` or `debate`.
+
+**Existing run directories keep the documents they have.** There is no re-render script
+and there will not be one: a document regenerated by today's code over yesterday's
+records would claim to be the record of a run it does not describe. New runs get both
+documents; old ones keep whatever they were written with.
 
 ### What has actually been run, and what it cost
 
