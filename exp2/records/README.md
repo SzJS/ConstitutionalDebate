@@ -14,10 +14,36 @@ edited — the files are byte-for-byte copies of what the runs wrote.
 Nothing here is an input to any stage. No code reads this directory; deleting it would
 break no command. It is evidence, and it is small (≈4 MB).
 
-The one thing here that is meant to be *run* again is `derivations/`: those scripts read
-run directories under `outputs/` that no longer exist, so they will not work as they
-stand, but they are the templates for the sweep's own checklist and for the provider
-check that has to happen before it.
+The one thing here that is meant to be *run* again is `derivations/`. What each script
+does now is **not** the same across the eight, so the blanket "none of them work" that
+used to stand here is replaced by the truth per script. Every one of them inserts `src`
+on `sys.path`, so all of them must be run from `exp2/`.
+
+| script | state now |
+|---|---|
+| `sweep-1-provider-check.py` | **live, and the pre-run check.** One paid call (~$0.00001) against OpenRouter. It reads nothing under `outputs/`, builds its request with `client.OpenRouterClient._build_body` so the call it tests is the call the run makes, and prints `SERVED BY: <provider>` and `VERDICT: PASS`/`FAIL`, exiting non-zero on FAIL. `HANDOFF.md` §5 step 2 runs it; `logs/sweep-provider-check.log` is a passing run. |
+| `pilot-3-checks.py` | **takes a `ROOT` argument** (`sys.argv[1]`, default `outputs/experiments/pilot-3`) and derives a whole CHECKLIST from any finished run's directory. This is the one to point at the sweep. |
+| `sweep-1-checks2.py` | same, default `outputs/experiments/sweep-1`. The follow-up pass: truncation shape, repair scar, revision rates. |
+| `sweep-1-funnel.py` | same, default `outputs/experiments/sweep-1`. Reads only `metrics.json` and `index.jsonl`, so it runs against any analysed run. |
+| `pilot-3-paths.py`, `pilot-3-handcheck-sample.py` | same, both take a `ROOT` (the sample script also takes `N`). They pick the cells for a hand read, which the sweep needs too. |
+| `pilot-2-shapes.py`, `pilot-3-checks2.py` | **hard-coded** to `outputs/experiments/pilot-2` and `-pilot-3`, which were wiped. One line each to re-point; until then they are a record of a derivation, not a runnable script. `sweep-1-checks2.py` is the generalised `pilot-3-checks2.py`, so prefer it. |
+
+Two `.log` files there have no `.py` beside them — `pilot-3-funnel.log` (superseded by
+`sweep-1-funnel.py`, which is the same derivation with the root as an argument) and
+`pilot-3-timing.log`. They are output, kept as evidence.
+
+## A vocabulary note
+
+"Step A", "Step B", "Step G", "D1" and the like — in `experiments/pilot-3/GATE.md`,
+`logs/sweep-1-estimate.txt` and `../LLM_NOTES.md` — name steps of a **plan file that
+lived in `/root/.claude/plans/` on the pod that was wiped**. It is gone and is not
+recoverable. `../HANDOFF.md` §5 replaces it; nothing here depends on the plan except
+these labels.
+
+`GATE.md` is likewise a **historical** gate: its five rows were the go/no-go between
+pilot 3 and the abandoned `sweep-1` slice, and they are stricter than the four
+catastrophic stop triggers in `HANDOFF.md` §5, which are the ones that apply to the
+sweep. Do not re-apply `GATE.md`'s thresholds to a run it was not written for.
 
 ## What is here
 
@@ -38,14 +64,16 @@ check that has to happen before it.
 | `pick-weak/fixture-releak.log` | re-parsing every fixture argument with the fixed `_ANY_THINKING_RE` | §3i's "3 of 426 published arguments" |
 | `pick-weak/review/*.md` | the **14 hand-review transcripts** rendered by `scripts/render_probe.py` | the "transcripts are illegible to weak judges" reading behind §3h |
 | `logs/*-dryrun.log` | every hyperparameter table each run printed before it spent anything | the repo rule that values are shown and confirmed first |
-| `logs/{pilot-3,sweep-1}-provider-check.log` | the endpoints-API check and the five real pinned calls | §3n.4 — the unescaped model id, and the 404-reads-as-retryable trap |
+| `logs/pilot-3-provider-check.log` | the endpoints-API check and five real pinned calls, including the wrong-slug control | §3n.4 — the unescaped model id, and the 404 that reads as retryable |
+| `logs/sweep-provider-check.log` | **the reference passing run** of `derivations/sweep-1-provider-check.py`: `SERVED BY: GMICloud`, `VERDICT: PASS` | `HANDOFF.md` §5 step 2 — what a pass looks like |
+| `logs/sweep-1-provider-check.log` | the same check before the abandoned slice, run by the earlier script that sent no `reasoning` key: it printed a pass on `content: None` | why the check was rewritten (§3n.4) |
 | `logs/sweep-1-estimate.txt` | the abandoned sweep-1 slice's cost and disk projection | §7's sweep-1 entry |
 | `logs/sweep-1-decide.log` | that run's own log, ending in 145 `[Errno 28] No space left on device` and `completed=80 error=633 failed=10` | that sweep-1 died of a full disk and not of anything about the experiment |
 | `logs/sweep-dryrun.log`, `logs/get-tasks-all-concat.log` | the hyperparameter tables and the corpus counts a fresh pod should reproduce | `HANDOFF.md` sections 3 and 5 |
 | `logs/get-tasks*.log`, `logs/make-slice-1.log` | corpus counts and per-file md5s at each build | that a corpus rebuilt on a new pod is the same corpus |
 | `logs/pilot-3-paths.log` | how the four hand-read contests below were selected | §3n's outcome section |
 | `derivations/*.py` | the scripts that re-derived each checklist's numbers from disk, with their `.log` output beside them | every number in `experiments/*/CHECKLIST.md` |
-| `derivations/sweep-1-provider-check.py` | the provider-slug check `HANDOFF.md` section 5 says to run before a sweep: an endpoints read plus one real pinned call | §3n.4; it is a **paid** script, one call |
+| `derivations/sweep-1-provider-check.py` | the provider-slug check `HANDOFF.md` section 5 says to run before a sweep: an endpoints read plus one real pinned call, with a PASS/FAIL verdict and a non-zero exit on FAIL | §3n.4; it is a **paid** script, one call |
 | `pilot-3-hand-read/<cell>/transcript{,_full}.md` | the four contests read by hand: a genuine contest in each condition, and a decline on a wrong decision | the transparency claim, read rather than counted |
 
 ## Two warnings

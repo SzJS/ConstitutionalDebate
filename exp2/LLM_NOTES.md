@@ -1283,11 +1283,31 @@ over-estimates.
    The first form was tried first and looked exactly like "this model has no endpoint
    data".
 2. An unrecognised slug with `allow_fallbacks: false` returns
-   **`HTTP 404 "No endpoints found for deepseek/deepseek-v4-flash-0731."`** — and that
-   message contains the substring *"no endpoints"*, so `client.NO_ENDPOINTS_MARKER`
-   matches it and the client classifies it as **retryable**. A wrong slug would therefore
-   not fail fast; it would burn `max_attempts = 4` on every call and kill every cell
-   slowly. No dry-run can catch that, which is why one real pinned call is made first.
+   **`HTTP 404 "No endpoints found for deepseek/deepseek-v4-flash-0731."`**
+
+   **CORRECTED (2026-08-25, after the hand-off review).** What is written above this
+   line was wrong about the code, and the code has since been changed to make it true.
+   The marker was `NO_ENDPOINTS_MARKER = "no endpoints available"`; *"No endpoints
+   **found** for …"* does not contain that substring, so until now this 404 was
+   **fatal**, not retryable. That is the wrong default for a **pinned** 13-hour run: the
+   identical message is what a momentarily absent pinned provider returns, and a
+   30-second GMICloud blip would have killed every remaining cell of `decide` outright.
+
+   `client.py` now carries `NO_ENDPOINTS_MARKERS = ("no endpoints available", "no
+   endpoints found")` and retries both, case-insensitively. Three tests hold it: one per
+   wording, and one that an unrelated 404 (`"This model is only available through the
+   Batch API."`) still fails immediately.
+
+   **The price, stated because it is real.** The two cases — absent provider and
+   *misconfigured* slug — are indistinguishable in the response, so a wrong slug now
+   fails **slowly**: `max_attempts = 4` burnt on every call, every cell dying, hours
+   wasted. The trade is deliberate — a blip is transient and recoverable, a typo is
+   caught in one second by a human reading a log — and it makes the pre-run check
+   **mandatory rather than advisory**. `records/derivations/sweep-1-provider-check.py`
+   makes one real pinned call, asserts non-empty content and a served provider inside
+   the pin, and prints `VERDICT: PASS` / `FAIL`, exiting non-zero on FAIL;
+   `records/logs/sweep-provider-check.log` is a passing run. No dry-run can catch a bad
+   slug. That call can, and nothing else does.
 
 Five real calls confirmed the pin: three at `["gmicloud/fp8", "coreweave/fp8"]` all
 served by **GMICloud**, one at `["coreweave/fp8"]` served by **CoreWeave** (so the
@@ -1537,6 +1557,51 @@ In `tests/test_arms.py`, all against the fake client:
 **325 tests pass.**
 
 
+## 3p. Four fixes from the hand-off review (2026-08-25), and one script that did not exist
+
+A fresh agent read `HANDOFF.md` against the code and found four places where the two
+disagreed. All four are in the path of the sweep, so they are recorded rather than just
+fixed. **337 tests pass** after them.
+
+**1. A pinned 404 was fatal.** `NO_ENDPOINTS_MARKER = "no endpoints available"` did not
+match `"No endpoints found for <model>."`, which is the wording a run with
+`allow_fallbacks: false` gets — so a momentary GMICloud absence would have killed the
+rest of a 13-hour `decide` outright. Both wordings are now retried; §3n.4 carries the
+correction and the price, which is that a misconfigured slug fails slowly. Three tests,
+one per wording plus one that an unrelated 404 stays fatal.
+
+**2. The pre-run provider check could not fail.** `sweep-1-provider-check.py` sent no
+`reasoning` key, the provider defaulted reasoning on, and the reply came back with
+`content: None` and 16 reasoning tokens — while the script printed "pin is live". It now
+builds its body with `client.OpenRouterClient._build_body`, so the call it tests is the
+call the run makes; it requires non-empty content *and* a served provider inside the pin
+(display names read from the endpoints API rather than hard-coded, so a rename cannot
+pass); and it prints `VERDICT: PASS`/`FAIL` and exits non-zero on FAIL. Re-run for real:
+`SERVED BY: GMICloud`, `VERDICT: PASS`, $0.00000083, saved as
+`records/logs/sweep-provider-check.log`. Given fix 1, this call is now the *only* guard
+against a bad slug.
+
+**3. `scripts/run_sweep.sh`.** The hand-off's run order was `PID=$!; until ! ps -p $PID;
+do sleep 60; done` per stage — which **an agent cannot execute**: the harness caps a
+foreground shell at minutes and blocks `sleep`. So the document described a run that the
+only available operator could not perform. The driver runs all five stages sequentially
+under one `nohup`, tees each to `outputs/<name>-<stage>.log`, halts on the first non-zero
+exit with `outputs/experiments/<name>/STOP.md` naming the stage and the code, and writes
+`DONE.md` when all five finish. An agent then only ever *reads* files. A stage exits
+non-zero only when the stage itself crashed — failed cells leave it at 0 — so STOP.md is
+stop trigger 3 and nothing else. Eight tests drive the script against a stub command,
+including that a failure at each of three stages halts the chain; it was also driven once
+against the real CLI in `--dry-run`.
+
+**4. `max_decision_attempts` is not wired.** It is loaded and validated and read nowhere
+in `src/`, yet the dry-run printed "retries are on top: max_decision_attempts=2" at the
+one moment a run is being approved. Left unwired deliberately — a per-cell retry selects
+for compliant outputs, and re-running the stage already retries every cell with no
+completed record. The print and `config.WHY` now say that instead, and two tests hold it:
+one on the printed text, one asserting the field is still referenced only in `config.py`,
+so wiring it forces both documents to be rewritten first.
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later
@@ -1713,9 +1778,16 @@ promised cost-per-item and measured-latency figures impossible), and it screened
 
 ## 7. State of the build, and how to run it
 
-**325 tests pass** (`uv run pytest`) as of the critique-truncation fix (§3o); 311 was
-the count at pilot 3's three changes (§3n), 284 after the shape-aware repair, 272 at
-pilot 2, and the 240 below was the count when this section was first written.
+> **This section is CHRONOLOGICAL and is not rewritten as things change.** The
+> paragraphs below were written before the pilots and still say the pilot has not run;
+> the current state is at the **end** of the section, not at the top.
+> **`HANDOFF.md` is the summary** — read it instead if you want the state of the build
+> rather than the order it arrived in.
+
+**337 tests pass** (`uv run pytest`) as of the hand-off-review fixes (§3p); 325 was the
+count at the critique-truncation fix (§3o), 311 at pilot 3's three changes (§3n), 284
+after the shape-aware repair, 272 at pilot 2, and the 240 below was the count when this
+section was first written.
 
 **Read `HANDOFF.md` first if you are new here.** It carries the state of the build for
 an agent with no memory of the project, and it is the document that replaced the plan

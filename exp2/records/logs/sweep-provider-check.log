@@ -1,0 +1,50 @@
+=== 2026-08-25T23:49:02.281131+00:00 ===
+model: deepseek/deepseek-v4-flash-0731
+pin:   ['gmicloud/fp8', 'coreweave/fp8']
+
+GET https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints -> 200
+29 endpoints
+
+tag/slug                                 ctx  max_out  status   name
+--------------------------------------------------------------------------------------------------------------
+gmicloud/fp8                         1048575   943717       0   GMICloud | deepseek/deepseek-v4-flash-20260731
+coreweave/fp8                         262144   235929       0   CoreWeave | deepseek/deepseek-v4-flash-20260731
+
+pinned slugs present in the endpoint list: ['gmicloud/fp8', 'coreweave/fp8']
+display names the response's `provider` field should carry: ['CoreWeave', 'GMICloud']
+
+=== one real pinned call ===
+request body (minus messages): {"model": "deepseek/deepseek-v4-flash-0731", "temperature": 0.0, "max_tokens": 16, "usage": {"include": true}, "reasoning": {"enabled": false}, "provider": {"order": ["gmicloud/fp8", "coreweave/fp8"], "allow_fallbacks": false}}
+HTTP 200
+{
+  "id": "gen-1787701742-voooXUve4pkpq8ta9GPK",
+  "provider": "GMICloud",
+  "model": "deepseek/deepseek-v4-flash-0731",
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 2,
+    "total_tokens": 11,
+    "cost": 8.288e-07,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 7,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 8.288e-07,
+      "upstream_inference_prompt_cost": 3.808e-07,
+      "upstream_inference_completions_cost": 4.48e-07
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}
+content: 'OK'
+
+SERVED BY: GMICloud
+VERDICT: PASS — non-empty content, served by GMICloud, which is in the pin

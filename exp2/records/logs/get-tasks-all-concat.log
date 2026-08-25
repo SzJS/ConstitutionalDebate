@@ -9,23 +9,6 @@ wrote   182 cases to data/cases/ftf-theoremqa.jsonl  sha256=e457b2b4f8ec
 
 wrote 2110 cases to data/cases/ftf-all.jsonl  sha256=9e479a5edbe8
 
-wrote 69 pilot cases to /tmp/claude-0/-workspace-ConstitutionalDebate/809b6bfa-5787-48fa-a827-23a1f5bcec61/scratchpad/pilot-check.jsonl (34 flawed / 35 sound) over 7 subsets
-
-subset        items  flawed  seeded  +longest   longest items (chars: problem+solution)
-----------------------------------------------------------------------------------------------------
-gpqa             10       5       8         2   gpqa-127-flawed (6715), gpqa-127-sound (6524)
-law              10       4       8         2   law-con5_gpt4_B-s4 (4738), law-con5_gpt4_A-s7 (4093)
-lojban           10       6       8         2   lojban-stim177_gpt4_A-s22 (3086), lojban-stim175_gpt4_A-s4 (3061)
-medqa            10       6       8         2   medqa-train_2769 (5219), medqa-train_3754 (4766)
-python800        10       5       8         2   python800-p03372-flawed (7559), python800-p03240-sound (7006)
-surgery          10       4       8         2   surgery-sur28_gpt4_B-s17 (3622), surgery-sur42_gpt4_B-s8 (3544)
-theoremqa         9       4       8         1   theoremqa-solutions-angular_momentum-txt-sound (2339), theoremqa-solutions-angular_momentum-txt-flawed (2270)
-----------------------------------------------------------------------------------------------------
-TOTAL            69      34
-
-A subset shows fewer than the expected 2N+longest items when a longest item was
-already in the balanced draw, or when the subset has fewer than N of one label.
-
 subset         rows   items   sound  flawed  gradable
 -----------------------------------------------------
 gpqa            191     382     191     191         0
