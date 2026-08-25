@@ -1,0 +1,105 @@
+# Sweep slice 1: a stratified 25-rows-per-subset draw over all seven subsets --
+# 241 items, 723 cells. The first run whose numbers are broken out per subset and per
+# label_basis, i.e. the first look at whether debate's contestability differs across
+# domains.
+#
+# Nothing in the decision path changed between pilot 3 and this run except the corpus
+# and two operational concurrency numbers (see [client]). The provider pin, the
+# challenger's one line, the aimed repair's wording, the token caps, the models and the
+# grader are pilot 3's, unedited, so pilot 3's rates are this run's priors and its two
+# open numbers are carried rather than fixed:
+#
+#   * 30 of 207 cells (14.5%) lost to truncation at generation_max_tokens = 8192,
+#     13 of them a critique truncating PAST its own `Reasoning:` label, which is fatal
+#     on the first failure by design (LLM_NOTES.md 3m). frequency_penalty stays 0.
+#     Expect ~105 lost cells here on the same rate; that is the accepted price, not a
+#     surprise, and not something to fix mid-sweep.
+#   * a 22.5% format-repair rate on the pinned pair, against a pre-registered <10%.
+#     Zero cells died malformed after their repair, so this costs calls, not cells.
+#
+# The corpus is drawn by scripts/make_slice.py, NOT by `get_tasks.py --sample`: that
+# flag rewrites the full corpus bundles data/cases/ftf-*.jsonl with the sampled rows,
+# which would destroy the 2,110-item corpus every finished run's provenance describes.
+# The draw is clustered on row_id at seed 1, so a paired row's flawed and sound siblings
+# travel together. 17 of the 241 items are also in pilot-3.jsonl; every decision here is
+# made fresh, and the overlap is reported (outputs/make-slice-1.log) because those
+# cells are then not independent of pilot 3's.
+name = "sweep-1"
+cases = "data/cases/sweep-1.jsonl"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# Unchanged from pilot 2. The judge and the challenger are the weak model; the debaters
+# stay strong, as the protocol requires.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# Unchanged from pilot 2, where it never bound anything. This is the cap for the roles
+# that emit a decision line -- judge, challenger, recourse judge, comprehension probe --
+# none of which has ever truncated in three runs.
+max_tokens = 16384
+
+# Unchanged from pilot 2. The cap for the roles that produce record text: debaters, the
+# solo stages, the critic. That is where every truncation in this experiment's history
+# has been -- a private Thinking block of 23k-64k characters, most often a debater
+# assigned the pro-flaw side of a *sound* item and unable to stop looking for a flaw
+# that is not there. 8192 covers every successful generation pilot 1 made (max 7,888
+# completion tokens, p99 5,794) and halves what a runaway costs against 16,384.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing, new in pilot 3 -----------------------------------------------
+# OpenRouter served the strong model from 20 providers in pilot 2. Attributing each
+# format repair to the call that FAILED (166/166 paired; the earlier table charged the
+# provider that served the repair, which was wrong for 40% of them):
+#
+#   GMICloud       1/48   2.1%  [0.4, 10.9]   p < 0.0001 against the 25.5% pool
+#   Baidu         20/132  15.2%
+#   DeepInfra      6/31   19.4%
+#   CoreWeave      4/20   20.0% [8.1, 41.6]   p = 0.79 -- n=20, NO SIGNAL
+#   Relace        76/215  35.3%              p = 0.0001, worse than the pool
+#   DigitalOcean  30/85   35.3%
+#
+# GMICloud is the only provider with a significant effect. CoreWeave is the fallback and
+# its n=20 carries no signal -- it is second because nothing disqualifies it, not
+# because it was shown to be good.
+#
+# The SLUGS were verified against /api/v1/models/<id>/endpoints and by five real pinned
+# calls before this spec was run: outputs/pilot-3-provider-check.log. That check is not
+# optional. `order` takes slugs, `calls.jsonl` records display names, and an
+# unrecognised slug returns "No endpoints found ..." -- which contains "no endpoints",
+# so client.py classifies it as a RETRYABLE 404 and every cell dies slowly rather than
+# fast. No dry-run can catch that.
+#
+# Cost, from pilot 2's token counts: deepseek is 71% of the bill, so this is not a small
+# share. Pinned to GMICloud, pilot 3 is about $0.98 and the sweep about $30, against
+# ~$24 unpinned and ~$47 if CoreWeave took the traffic.
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# Raised 16/8 -> 24/12, the plan's one operational change. Pilot 3 ran 207 cells through
+# `decide` in 26.0 min at 16/8 with 0 non-200 responses in 1,679 attempts, which is
+# under the 1.6 h threshold the plan set for this raise. 723 cells at pilot 3's measured
+# rate would be ~91 min at 16/8; at 24/12 the same work projects to ~61 min, against a
+# 4 h stop trigger. The margin that matters is per-cell, not aggregate: pilot 3's
+# longest completed run was well inside run_timeout_s = 1800, and this raise adds
+# queueing pressure rather than lengthening a call. Nothing here can change a decision;
+# that is why these two live in [client] and not in [debate].
+max_concurrency = 24
+max_runs_in_flight = 12
+
+[grading]
+# Stated rather than inherited, because this field is the one pilot 2's grade stage
+# found wrong: the default carried `anthropic/claude-haiku-4.5:batch` from the day the
+# harness was written, and that suffix routes to OpenRouter's separate Batch API, which
+# client.py does not speak. Same model, ordinary chat-completions endpoint. It is also
+# the model the new `agreement` stage calls.
+grader_model = "anthropic/claude-haiku-4.5"
