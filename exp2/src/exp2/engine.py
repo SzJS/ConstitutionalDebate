@@ -119,12 +119,17 @@ async def _complete_with_repair(
         )
         budget_repair, completion = True, reply
 
+    shape: str | None = None
     if not budget_repair:
         try:
             return parse(completion.content), completion, 0, messages, "none"
         except MalformedOutputError as first_error:
-            log.warning("%s output malformed (%s); attempting one repair",
-                        role, first_error)
+            # The shape the parser refused it for, so the one repair can be aimed at
+            # that shape rather than restating the format at a model that has already
+            # restated the format back (LLM_NOTES §3m).
+            shape = first_error.kind
+            log.warning("%s output malformed (%s: %s); attempting one repair",
+                        role, shape, first_error)
 
     kind = "budget" if budget_repair else "format"
     repair_messages = (
@@ -132,7 +137,7 @@ async def _complete_with_repair(
                                      label=public_label or "", word_limit=word_limit)
         if budget_repair else
         build_repair_messages(messages, completion.content, role=role,
-                              word_limit=word_limit)
+                              word_limit=word_limit, kind=shape)
     )
     try:
         repaired = await _complete(

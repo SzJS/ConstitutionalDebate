@@ -35,6 +35,7 @@ from exp2.prompts import (
     parse_objection_output,
     parse_ruling_output,
     parse_verdict_output,
+    REPAIR_INSTRUCTIONS,
     repair_instruction_for,
     side_phrase,
 )
@@ -590,6 +591,140 @@ def test_repair_messages_replay_the_bad_output_so_the_model_can_see_it():
     messages = build_repair_messages(original, "garbage", role="judge", word_limit=400)
     assert [m["role"] for m in messages] == ["system", "user", "assistant", "user"]
     assert messages[2]["content"] == "garbage"
+
+
+# --- the shape of a refusal, and the repair aimed at it ------------------------------
+#
+# The four literals below are pilot-2's measured shapes, trimmed but not reshaped
+# (LLM_NOTES §3m). Every one of them is a reply the parser is RIGHT to refuse; what
+# changed is that the refusal now says which shape it refused, so the one repair
+# attempt can be spent on that shape.
+
+# 6 of the 15 malformed-after-repair cells. Everything filed under Thinking, complete
+# answer and all, and no public label anywhere.
+THINKING_ONLY = (
+    "Thinking:\nThe solution claims the assumption is harmless. I need to check it.\n\n"
+    "Therefore, the sentence is flawed.\n\nVerdict: FLAWED"
+)
+# 5 of the 15. The label IS there — glued to the end of the sentence that announced it,
+# with no newline, so the line-anchored `_LABEL_RE` cannot see it.
+GLUED_LABEL = (
+    "Thinking:\nThe criticism is right about the parol evidence rule.\n\n"
+    "I'll write the revised assessment under Reasoning.Reasoning:\n"
+    "The sentence says \"statements\" where the rule says \"agreements\".\n\n"
+    "Verdict: FLAWED"
+)
+# 1 of the 15. An XML wrapper in place of the label, after two requests for one.
+XML_WRAPPED = (
+    "Thinking:\nI must show the starting material is wrong.\n"
+    "<argument>\nThe regiochemistry does not match the target.\n</argument>"
+)
+# 3 of the 15. The model restarts mid-sentence and the private label lands INSIDE the
+# public section, glued to the last word — "...the text contains no logicalThinking:".
+# `_LABEL_RE` is line-anchored and cannot see it as a boundary, so the argument would
+# run to the end of the text and publish the restart. `_ANY_THINKING_RE` is what
+# catches it, and refusing is the only safe answer: the boundary is unknown.
+THINKING_INSIDE = (
+    "Thinking: private working.\nArgument: The step is wrong, and the text "
+    "contains no logicalThinking:\nThe solution defines PLR correctly, then"
+)
+
+
+def _kind_of(text: str, *, solo: bool = False) -> str:
+    from exp2.arms import _split_solo
+
+    parse = _split_solo if solo else parse_debater_output
+    with pytest.raises(MalformedOutputError) as caught:
+        parse(text)
+    return caught.value.kind
+
+
+def test_every_refusal_names_the_shape_it_refused():
+    """One repair attempt is all there is, so it has to be aimed. These are the shapes
+    it is aimed at, and they are the ones pilot-2 actually produced."""
+    assert _kind_of(THINKING_ONLY, solo=True) == "no_public_label"
+    assert _kind_of(GLUED_LABEL, solo=True) == "label_not_at_line_start"
+    assert _kind_of(XML_WRAPPED) == "xml_tag"
+    assert _kind_of(THINKING_INSIDE) == "private_label_in_public"
+    assert _kind_of("Thinking: a\nArgument:\nThinking: b") == "empty_public"
+    assert _kind_of("no labels here at all") == "no_labels_at_all"
+    assert MalformedOutputError("m").kind == "other"
+
+
+def test_ordinary_prose_is_not_mistaken_for_a_misplaced_label():
+    """`_INLINE_LABEL_RE` requires the label to be GLUED to the character before it,
+    which is the measured shape. A sentence that merely uses the word would otherwise
+    be told where to put a label it never wrote."""
+    assert _kind_of("Thinking:\nHere is my reasoning: the integral diverges.",
+                    solo=True) == "no_public_label"
+
+
+def test_the_kind_vocabulary_is_closed():
+    """A typo'd kind would silently fall through to the per-role instruction and the
+    aiming would quietly stop happening."""
+    with pytest.raises(ValueError, match="unknown malformed-output kind"):
+        MalformedOutputError("m", kind="no_public_lable")
+
+
+def test_the_two_aimed_repairs_ask_for_the_public_section_and_nothing_else():
+    """A model that has just filed everything under Thinking, told to "reply again with
+    exactly two labelled sections", writes two sections the same way again — pilot-2's
+    15 repair replies are the evidence. So the second attempt asks for the one section
+    that can be published, which `salvaged_no_thinking` already accepts."""
+    for role, label in (("debater", "Argument"), ("solo", "Reasoning"),
+                        ("critic", "Reasoning"), ("challenger", "Argument"),
+                        ("recourse_solo", "Reasoning")):
+        aimed = repair_instruction_for(role, 400, "no_public_label")
+        assert "had only a Thinking section" in aimed
+        assert f"begin your reply with the line `{label}:`" in aimed
+        assert "do not write a Thinking section" in aimed
+        for kind in ("label_not_at_line_start", "private_label_in_public", "xml_tag"):
+            placed = repair_instruction_for(role, 400, kind)
+            assert f"must begin on its own line with `{label}:`" in placed
+            assert f"Reply now with **only** the {label} section." in placed
+
+
+def test_each_aimed_repair_still_asks_for_the_line_the_role_owes():
+    """Repairing the format by dropping the content would trade one refusal for
+    another: a solo reply with no `Verdict:` line is refused just as surely."""
+    assert "Verdict: FLAWED" in repair_instruction_for("solo", 400, "no_public_label")
+    assert "Verdict: FLAWED" in repair_instruction_for("recourse_solo", 400, "xml_tag")
+    assert "Objection: <RAISED|NONE>" in repair_instruction_for(
+        "challenger", 400, "no_public_label")
+    assert "within the stated word limit" in repair_instruction_for(
+        "debater", 400, "no_public_label")
+    assert "concisely" in repair_instruction_for("debater", 0, "no_public_label")
+    # the critic is the one role that must NOT be asked for a verdict
+    critic = repair_instruction_for("critic", 400, "no_public_label")
+    assert "Do not give a verdict" in critic and "Verdict:" not in critic
+
+
+def test_a_shape_with_no_aimed_repair_gets_exactly_the_old_instruction():
+    """The fallback is the whole safety of this change: an unclassified failure is told
+    what it was told before the kinds existed."""
+    for role in REPAIR_INSTRUCTIONS:
+        base = repair_instruction_for(role, 400)
+        for kind in ("other", "empty_public", "no_labels_at_all",
+                     "missing_decision_line", None):
+            assert repair_instruction_for(role, 400, kind) == base
+    # and the roles that emit a decision line and no public section are never aimed
+    for role in ("judge", "recourse_judge", "comprehension", "grader"):
+        assert repair_instruction_for(role, 400, "no_public_label") == (
+            repair_instruction_for(role, 400))
+
+
+def test_a_public_only_reply_is_what_the_aimed_repair_can_actually_get():
+    """The aimed instruction asks for a reply with no Thinking section. If that did not
+    parse, the repair would be asking for a response the parser then refuses — exp1's
+    mistake, and the reason this is a test rather than a comment."""
+    from exp2.arms import _parse_solo
+
+    _, argument, mode = parse_debater_output("Argument: The step is wrong.")
+    assert (argument, mode) == ("The step is wrong.", "salvaged_no_thinking")
+    _, reasoning, verdict, mode = _parse_solo(
+        "Reasoning: The sentence misstates the rule.\n\nVerdict: FLAWED")
+    assert verdict == "FLAWED" and mode == "salvaged_no_thinking"
+    assert reasoning.startswith("The sentence misstates the rule.")
 
 
 def test_length_rule_and_clause_handle_the_no_cap_case():

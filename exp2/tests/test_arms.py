@@ -141,6 +141,92 @@ async def test_a_repairs_extra_turns_appear_in_the_conversation():
     assert repaired.verdict.repair_attempts == 1
 
 
+# --- the repair, aimed by shape ------------------------------------------------------
+#
+# Pilot 2 lost 15 cells malformed-AFTER-repair, and in every one the repair reply was
+# the same class of failure as the reply that bought it: told "reply again with exactly
+# two labelled sections", the model wrote two sections wrongly again. The fix is to ask
+# for the one section that can be published. These tests are the end-to-end half of
+# `test_prompts.py`'s unit half: they check what actually goes on the wire, that it is
+# still ONE repair, and that the conversation records what happened.
+
+# Pilot-2's commonest shape, verbatim in structure: everything filed under Thinking,
+# verdict and all, and no public label anywhere.
+THINKING_ONLY_SOLO = (
+    "Thinking:\nThe solution claims the assumption is harmless. Checking it now.\n\n"
+    "Therefore, the sentence is flawed.\n\nVerdict: FLAWED"
+)
+# What the aimed instruction asks for, and what the parser accepts from it.
+PUBLIC_ONLY_SOLO = "Reasoning: The sentence misstates the rule.\n\nVerdict: FLAWED"
+PUBLIC_ONLY_ARGUMENT = "Argument: Alice argues the step is wrong."
+
+
+async def test_a_thinking_only_reply_is_told_that_none_of_it_can_be_published():
+    client = FakeClient(
+        fail_on={("solo", "answer"): "malformed"},
+        malformed_content=THINKING_ONLY_SOLO,
+        replies={("solo", "repair"): PUBLIC_ONLY_SOLO},
+    )
+    result, client = await decide("single", client=client)
+    repair = _repairs(client)[0]
+    # the malformed reply is the assistant turn: the conversation has to be true
+    assert repair["messages"][-2] == {"role": "assistant",
+                                      "content": THINKING_ONLY_SOLO}
+    instruction = repair["messages"][-1]["content"]
+    assert "had only a Thinking section" in instruction
+    assert "begin your reply with the line `Reasoning:`" in instruction
+    assert "Verdict: FLAWED" in instruction
+    # and the reply it asks for is one the parser accepts, at ONE repair
+    step = result.trace.all_steps()[0]
+    assert step.parse_mode == "salvaged_no_thinking"
+    assert step.repair_attempts == 1
+    assert result.verdict.repair_attempts == 1
+    assert len(_repairs(client)) == 1
+
+
+async def test_a_glued_label_is_told_where_the_label_goes_not_what_it_can_publish():
+    """5 of pilot-2's 15: the label was there, glued to the end of the sentence that
+    announced it. Telling that reply "none of it can be published" would be false."""
+    glued = ("Thinking:\nThe criticism is right.\n\n"
+             "I'll write the revised assessment under Reasoning.Reasoning:\n"
+             "The sentence misstates the rule.\n\nVerdict: FLAWED")
+    client = FakeClient(
+        fail_on={("solo", "answer"): "malformed"},
+        malformed_content=glued,
+        replies={("solo", "repair"): PUBLIC_ONLY_SOLO},
+    )
+    result, client = await decide("single", client=client)
+    instruction = _repairs(client)[0]["messages"][-1]["content"]
+    assert "must begin on its own line with `Reasoning:`" in instruction
+    assert "had only a Thinking section" not in instruction
+    assert result.trace.all_steps()[0].parse_mode == "salvaged_no_thinking"
+
+
+async def test_a_debater_gets_the_same_treatment_under_its_own_label():
+    client = FakeClient(
+        fail_on={(1, Speaker.ALICE.value): "malformed"},
+        malformed_content=("Thinking:\nI must show the starting material is wrong.\n"
+                           "So the regiochemistry does not match the target."),
+        replies={(1, Speaker.ALICE.value): PUBLIC_ONLY_ARGUMENT},
+    )
+    result, client = await decide("debate", client=client)
+    instruction = _repairs(client)[0]["messages"][-1]["content"]
+    assert "begin your reply with the line `Argument:`" in instruction
+    assert "within the stated word limit" in instruction
+    turn = result.transcript.all_turns()[0]
+    assert turn.parse_mode == "salvaged_no_thinking"
+    assert turn.repair_attempts == 1
+
+
+async def test_an_unclassified_malformed_reply_still_gets_the_old_instruction():
+    """The fallback is the safety of the whole change. `no labels here at all` is the
+    fake's default malformed reply and has no aimed instruction."""
+    client = FakeClient(fail_on={("solo", "answer"): "malformed"})
+    _, client = await decide("single", client=client)
+    instruction = _repairs(client)[0]["messages"][-1]["content"]
+    assert "Reply again with exactly two labelled sections" in instruction
+
+
 # --- debate scheduling ---------------------------------------------------------------
 
 

@@ -979,15 +979,95 @@ REPAIR_INSTRUCTIONS = {
 }
 
 
-def repair_instruction_for(role: str, word_limit: int) -> str:
+# --- shape-aware repair -------------------------------------------------------------
+#
+# The repair above restates the two-section format. Pilot 2 shows what a model does with
+# that: 15 cells died malformed **after** their one repair, and in every one the repair
+# reply was the same class of failure as the reply that bought it (LLM_NOTES §3m). A
+# model that has just written `Thinking:` and filed everything under it, when told
+# "reply again with exactly two labelled sections", writes `Thinking:` and files
+# everything under it again.
+#
+# The way out is that a **public-only** reply already parses. `parse_debater_output`
+# salvages a missing `Thinking:` as `salvaged_no_thinking` — there is no leak risk in a
+# reply that marked nothing private, and the judge sees exactly what it would have seen.
+# So the second attempt asks for the one section that can be published, and asks for
+# nothing else. No parser rule is loosened to make this work; `_LABEL_RE` stays
+# line-anchored.
+#
+# Which sentence is sent depends on the shape, because the two failures need opposite
+# things said to them: a reply with no public label has to be told that none of what it
+# wrote can be published, while a reply whose label was merely glued to the end of a
+# sentence has to be told where the label goes.
+
+# The label each role files its record text under. Roles absent from this table emit a
+# decision line and no public section, so no shape-aware instruction applies to them and
+# they always get their own.
+PUBLIC_LABELS = {
+    "debater": "Argument",
+    "challenger": "Argument",
+    "solo": "Reasoning",
+    "recourse_solo": "Reasoning",
+    "critic": "Reasoning",
+}
+
+# What the role still owes at the end of the section it is being asked for. Dropping it
+# would repair the format by breaking the content: a solo reply with no `Verdict:` line
+# is refused just as surely as one with no label.
+REPAIR_CLOSINGS = {
+    "debater": "Keep it {length_clause}.",
+    "challenger": (
+        'Begin it with the two lines "Objection: <RAISED|NONE>" and '
+        '"Verdict should be: <FLAWED|SOUND>".'
+    ),
+    "solo": 'End it with the line "Verdict: FLAWED" or "Verdict: SOUND".',
+    "recourse_solo": 'End it with the line "Verdict: FLAWED" or "Verdict: SOUND".',
+    "critic": "Do not give a verdict in this response.",
+}
+
+NO_PUBLIC_LABEL_REPAIR = """\
+Your previous response had only a Thinking section, so none of it can be published. \
+Reply now with **only** the {label} section: begin your reply with the line \
+`{label}:` and do not write a Thinking section. {closing}"""
+
+MISPLACED_LABEL_REPAIR = """\
+Your previous response could not be parsed: the {label} section must begin on its own \
+line with `{label}:` and must not contain the word `Thinking:` anywhere after it. \
+Reply now with **only** the {label} section. {closing}"""
+
+# Shapes with no aimed instruction fall through to the role's own template, which is
+# what was sent before this existed. `empty_public`, `no_labels_at_all` and
+# `missing_decision_line` are there deliberately: the first two are not label-placement
+# failures, and the third means the section parsed and the decision line did not, which
+# the per-role text already addresses.
+KIND_REPAIRS = {
+    "no_public_label": NO_PUBLIC_LABEL_REPAIR,
+    "label_not_at_line_start": MISPLACED_LABEL_REPAIR,
+    "private_label_in_public": MISPLACED_LABEL_REPAIR,
+    "xml_tag": MISPLACED_LABEL_REPAIR,
+}
+
+
+def repair_instruction_for(
+    role: str, word_limit: int, kind: str | None = None
+) -> str:
     """The correction sent after a malformed reply.
 
     Per-role, because a challenger repaired with the debater's instruction would be
     asked for a response the challenger parser then refuses — burning the one repair
     attempt on a prompt that could not have succeeded. exp1 learned this the hard way.
+
+    Per-**shape** as well, when the caught error says what the shape was and the role
+    has a public section. ``kind=None`` and any shape without an aimed instruction give
+    the role's own template unchanged, so nothing here can quietly change what an
+    unclassified failure is told.
     """
     if role not in REPAIR_INSTRUCTIONS:
         raise ValueError(f"no repair instruction for role {role!r}")
+    template = KIND_REPAIRS.get(kind or "")
+    if template is not None and role in PUBLIC_LABELS:
+        closing = REPAIR_CLOSINGS[role].format(length_clause=length_clause(word_limit))
+        return template.format(label=PUBLIC_LABELS[role], closing=closing)
     template = REPAIR_INSTRUCTIONS[role]
     if "{length_clause}" in template:
         return template.format(length_clause=length_clause(word_limit))
@@ -1000,11 +1080,12 @@ def build_repair_messages(
     *,
     role: str,
     word_limit: int = 400,
+    kind: str | None = None,
 ) -> list[dict[str, str]]:
     return [
         *original,
         {"role": "assistant", "content": bad_output},
-        {"role": "user", "content": repair_instruction_for(role, word_limit)},
+        {"role": "user", "content": repair_instruction_for(role, word_limit, kind)},
     ]
 
 
@@ -1069,8 +1150,54 @@ def has_public_label(text: str, label: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
+# The shapes a malformed reply actually takes, measured on pilot-2's 18 lost cells
+# (LLM_NOTES §3m) rather than imagined. The point of the vocabulary is that the ONE
+# repair attempt can be aimed: a reply that filed everything under `Thinking:` needs to
+# be told that none of it can be published, which is a different sentence from the one
+# a reply with a misplaced label needs.
+#
+#   no_public_label          a `Thinking:` label and no public label anywhere
+#   label_not_at_line_start  the public label is there, glued to the end of a sentence
+#                            ("...ending with the verdict.Reasoning:"), so the
+#                            line-anchored `_LABEL_RE` cannot see it
+#   xml_tag                  `<argument>` / `</argument>` stands in for the label
+#   no_labels_at_all         neither label; nothing was marked private
+#   private_label_in_public  a `Thinking:` label inside the extracted public section
+#   empty_public             the public label is immediately followed by another label,
+#                            or the body is empty once the decision lines come out
+#   missing_decision_line    the section parsed; the Verdict/Ruling/Objection/
+#                            Comprehension/grader line the role owes is absent
+#   other                    anything else — the per-role fallback instruction
+MALFORMED_KINDS: tuple[str, ...] = (
+    "no_public_label",
+    "label_not_at_line_start",
+    "xml_tag",
+    "no_labels_at_all",
+    "private_label_in_public",
+    "empty_public",
+    "missing_decision_line",
+    "other",
+)
+
+
 class MalformedOutputError(ValueError):
-    """Raised when a response cannot be parsed into the protocol's format."""
+    """Raised when a response cannot be parsed into the protocol's format.
+
+    ``kind`` is the shape, and it exists so that ``engine._complete_with_repair`` can
+    choose the correction rather than restating the format at a model that has already
+    shown it can restate the format back. It defaults to ``"other"``, which routes to
+    exactly the per-role instruction that was sent before this field existed, so a raise
+    site that forgets to classify itself loses diagnosis and changes no behaviour.
+    """
+
+    def __init__(self, message: str, *, kind: str = "other") -> None:
+        super().__init__(message)
+        if kind not in MALFORMED_KINDS:
+            raise ValueError(
+                f"unknown malformed-output kind {kind!r}; expected one of "
+                f"{MALFORMED_KINDS}"
+            )
+        self.kind = kind
 
 
 # Labels arrive dressed up in practice: markdown wrappers ("**Argument:**",
@@ -1131,6 +1258,40 @@ _ANY_THINKING_RE = re.compile(
 )
 
 
+# An `<argument>...</argument>` wrapper in place of the label. One of pilot-2's 18 lost
+# cells ended on exactly this, having been asked twice for a labelled section.
+_XML_SECTION_RE = re.compile(r"(?i)</?[ \t]*(?:argument|reasoning)[ \t]*>")
+# The public label present but NOT at the head of a line, and specifically **glued** to
+# the character before it: "...ending with the verdict.Reasoning:", "...under 400
+# words.Argument:". That is the measured shape — 5 of pilot-2's 15
+# malformed-after-repair cells, every one of them the model announcing in its Thinking
+# block what it is about to write and then writing the label without a newline. The
+# lookbehind is what keeps ordinary prose out: "my reasoning: the integral diverges" is
+# preceded by a space and is not a misplaced label, and misreading it as one would send
+# the wrong correction. Both vocabularies are matched because `arms._split_solo`
+# relabels only an exact "Reasoning:" and a parenthesised or lower-cased one survives.
+_INLINE_LABEL_RE = re.compile(
+    r"(?i)(?<=\S)(?:Argument|Reasoning)[ \t]*(?:\([^)\n]{0,80}\))?[ \t]*[:：]"
+)
+
+
+def _missing_label_kind(text: str) -> str:
+    """Why no line-anchored public label was found — one of ``MALFORMED_KINDS``.
+
+    Diagnosis only. Every branch here is a refusal either way; what the answer changes
+    is which of the two repair instructions is spent on it.
+    """
+    if _XML_SECTION_RE.search(text):
+        return "xml_tag"
+    if _INLINE_LABEL_RE.search(text):
+        return "label_not_at_line_start"
+    if any(m.group(1).lower() == "thinking" for m in _LABEL_RE.finditer(text)):
+        return "no_public_label"
+    if _ANY_THINKING_RE.search(text):
+        return "no_public_label"
+    return "no_labels_at_all"
+
+
 # The markdown wrapper "**Answer:** 2" or "### Answer: 2" leaves its opening
 # half dangling on the end of the reasoning. It is only stripped when it starts
 # after whitespace, so a judge whose last word is "C#" keeps its "#" — this text
@@ -1177,7 +1338,8 @@ def parse_debater_output(text: str) -> tuple[str, str, str]:
     if argument_match is None:
         raise MalformedOutputError(
             "no 'Argument:' label found; refusing to treat the whole response as "
-            "the public argument"
+            "the public argument",
+            kind=_missing_label_kind(text),
         )
 
     thinking_match = next(
@@ -1203,12 +1365,14 @@ def parse_debater_output(text: str) -> tuple[str, str, str]:
     if not argument:
         raise MalformedOutputError(
             "'Argument:' section is empty (the label may be immediately followed "
-            "by another label)"
+            "by another label)",
+            kind="empty_public",
         )
     if _ANY_THINKING_RE.search(argument):
         raise MalformedOutputError(
             "'Argument:' section contains a 'Thinking:' label; refusing to publish "
-            "what the debater marked as private"
+            "what the debater marked as private",
+            kind="private_label_in_public",
         )
 
     dropped = argument_end < len(text)
@@ -1307,7 +1471,8 @@ def parse_verdict_output(text: str) -> tuple[str, str, str]:
     decisive = _last(_VERDICT_RE, text)
     if decisive is None:
         raise MalformedOutputError(
-            "no 'Verdict: <FLAWED|SOUND>' found; refusing to infer a verdict"
+            "no 'Verdict: <FLAWED|SOUND>' found; refusing to infer a verdict",
+            kind="missing_decision_line",
         )
     reasoning = _WRAPPER_TAIL_RE.sub("", text[: decisive.start()]).strip()
     return decisive.group(1).upper(), reasoning, "strict"
@@ -1364,7 +1529,8 @@ def parse_objection_output(text: str) -> tuple[str, bool, str, str, str | None]:
     if match is None:
         raise MalformedOutputError(
             "no 'Objection: RAISED' or 'Objection: NONE' line found at the head of "
-            "the argument; refusing to guess whether an objection was raised"
+            "the argument; refusing to guess whether an objection was raised",
+            kind="missing_decision_line",
         )
     raised = match.group(1).upper() == "RAISED"
     claimed = _CLAIMED_VERDICT_RE.search(argument)
@@ -1379,7 +1545,8 @@ def parse_objection_output(text: str) -> tuple[str, bool, str, str, str | None]:
     body = body.strip()
     if raised and not body:
         raise MalformedOutputError(
-            "'Objection: RAISED' with no objection after it"
+            "'Objection: RAISED' with no objection after it",
+            kind="empty_public",
         )
     return thinking, raised, body, mode, (
         claimed.group(1).upper() if claimed else None
@@ -1392,7 +1559,8 @@ def parse_ruling_output(text: str) -> tuple[str, str, str]:
     if decisive is None:
         raise MalformedOutputError(
             "no 'Ruling: <UPHOLD|OVERTURN>' found; near-misses such as 'UPHELD' or "
-            "'OVERRULED' are refused rather than normalised"
+            "'OVERRULED' are refused rather than normalised",
+            kind="missing_decision_line",
         )
     reasoning = _WRAPPER_TAIL_RE.sub("", text[: decisive.start()]).strip()
     return decisive.group(1).upper(), reasoning, "strict"
@@ -1403,7 +1571,8 @@ def parse_comprehension_output(text: str) -> tuple[int, str, str]:
     decisive = _last(_COMPREHENSION_RE, text)
     if decisive is None:
         raise MalformedOutputError(
-            "no 'Comprehension: <1-5>' found; refusing to infer a rating"
+            "no 'Comprehension: <1-5>' found; refusing to infer a rating",
+            kind="missing_decision_line",
         )
     justification = _WRAPPER_TAIL_RE.sub("", text[: decisive.start()]).strip()
     return int(decisive.group(1)), justification, "strict"
@@ -1424,7 +1593,9 @@ def parse_grade_output(text: str) -> tuple[bool, bool, str, str]:
             (("Identified the flaw", identified), ("Characterised the flaw", characterised))
             if match is None
         ]
-        raise MalformedOutputError(f"grader response is missing: {missing}")
+        raise MalformedOutputError(
+            f"grader response is missing: {missing}", kind="missing_decision_line"
+        )
     first = min(identified.start(), characterised.start())
     reasoning = _WRAPPER_TAIL_RE.sub("", text[:first]).strip()
     return (

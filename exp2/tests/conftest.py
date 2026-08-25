@@ -66,7 +66,8 @@ class FakeClient:
     def __init__(self, *, replies: dict[Any, str] | None = None,
                  fail_on: dict[Any, str] | None = None, sink=None,
                  native_reasoning: str = "",
-                 truncated_content: str = "cut off mid-sen"):
+                 truncated_content: str = "cut off mid-sen",
+                 malformed_content: str = "no labels here at all"):
         self.replies = dict(replies or {})
         self.fail_on = dict(fail_on or {})
         self.sink = sink
@@ -75,6 +76,10 @@ class FakeClient:
         # public label was reached decides whether the truncation cut anything — so a
         # test has to be able to say what the model got as far as writing.
         self.truncated_content = truncated_content
+        # What a malformed reply contains. The repair route now reads it — the SHAPE of
+        # the refusal picks which correction is sent — so a test has to be able to say
+        # which of pilot-2's measured shapes the model produced.
+        self.malformed_content = malformed_content
         self.calls: list[dict[str, Any]] = []
         self.in_flight = 0
         self.max_in_flight = 0
@@ -134,7 +139,7 @@ class FakeClient:
                     return await self._deliver(self.truncated_content, request, meta,
                                                finish_reason="length")
                 if failure == "malformed":
-                    return await self._deliver("no labels here at all", request, meta)
+                    return await self._deliver(self.malformed_content, request, meta)
             return await self._deliver(self.reply_for(meta), request, meta)
         finally:
             self.in_flight -= 1
