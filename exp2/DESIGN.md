@@ -32,11 +32,13 @@ In the debate protocol, two debaters — Alice and Bob — are assigned opposing
 **Other mechanics relevant to reimplementation:** debaters output a private "Thinking" section plus a public "Argument" section (only the argument reaches the judge);  we add round-specific instructions, e.g. opening argument → attacking the opponent's flaws (round 2) → countering the opponent's critiques (round 3).
 
 ### Recourse mechanisms
-Each experimental condition needs a recourse mechanism. Note that the baseline recourse mechanisms haven't been implemetned properly in exp1.
+The recourse mechanism is **identical across conditions**: a weak *recourse judge* — the same trusted weak model that represents the stakeholder's side — reads the published record and the objection and rules whether the decision **stands** or is **overturned**. The decision-maker does not adjudicate its own appeal. This is the design's premise applied consistently: the trusted party is weak, and recourse belongs to the trusted party, not to the system being contested.
 
-1. **`single`** - this baseline simulates an LLM being asked to make a decision as part of a chat. A contest here is the user raising an objection during chat. That is, the LLM itself is the "judge" evaluating the recourse. This is different from debate, where the recourse judge is a weak judge.
-2. **`self_critique`** - this baseline also simulates an LLM being asked to make a decision as part of a chat, but also being prompted to critique and revise its answer. As a result, the recourse mechanism is the same as in 1.
-3. **`debate`** - in debate, a recourse could be followed up by further (possibly 0) rounds of debate. The default number is 0. Note that the recourse mechanism is implemented in exp1.
+1. **`single`** — the recourse judge reads the single reviewer's record and the objection.
+2. **`self_critique`** — the recourse judge reads the record including every draft and critique, and the objection.
+3. **`debate`** — the recourse judge reads the debate transcript and the objection. A recourse could be followed up by further (possibly 0) rounds of debate; the default is 0.
+
+The first full sweep (2026-08-26) used an asymmetric mechanism — in `single` and `self_critique` the strong model that made the decision was handed the objection in its own conversation and asked again, while `debate` used a weak third-party judge — and that asymmetry confounded the result: the weak judge overturned 24% of objections whose prose *agreed* with the decision, against 0–4% for the strong re-decider. The in-conversation form is kept as a **deployment-realistic ablation** ("the user objects in chat"), reported separately and never compared against the third-party form.
 
 ### Further details
 - Self-critique recieves the same number of critique-revise passes as the there are rounds of debate, to match them.
@@ -67,6 +69,8 @@ Humans would be better subjects, but a weaker model stands in for one. A second 
 - **neutral** — a stakeholder reviewing the decision, not required to find fault.
 
 We will evaluate the neutral variant. Note that both variants can decline to contest a decision - this is important otherwise `P(revised | initially correct)` will be high (which is not something we want).
+
+**The challenger must reason before it commits.** The first sweep found 51.8% of objections were *phantoms*: a `REVERSE` line sitting on prose that argued the verdict was right, because the line was demanded first and the weak model wrote it before reasoning, and because "I found a flaw" was being mapped onto REVERSE when the verdict had already said the text was flawed. The decision line therefore comes **last**, and the prompt states what REVERSE means for *this* decision ("the decision was that the text contains a flaw; REVERSE means you believe it does not"). A separate `agreement` reading of the prose stays in place as the instrument that measures the phantom rate; it is not a substitute for the fix.
 
 The challenger sees the published record per condition, which is:
 - single → question + answer + justification
@@ -124,7 +128,7 @@ Run the debate protocol on the FindTheFlaws dataset, measuring the relevant meas
 The following are ordered by their importance, starting with most important and ending with least important.
 
 ## Challenger and judge model variance
-We should check whether contestability is lower when the challenger and the judge models are different; maybe the judge would simply agree with its own reasoning.
+We should check whether contestability is lower when the challenger and the judge models are different; maybe the judge would simply agree with its own reasoning. This now applies to the *recourse* judge as well: the challenger and the recourse judge are the same weak model, so a ruling may be the model agreeing with its own objection.
 
 ## Challenger variants
 We can use a partisan variant for our challenger as an ablation. Relatedly, we can have a specious variant: instructed to produce a plausible-but-invalid objection (i.e. deliberately wrong). We can use this to check whether the judge is simply sycophantic.
@@ -132,8 +136,8 @@ We can use a partisan variant for our challenger as an ablation. Relatedly, we c
 ## Other datasets
 Also run the protocol on other datasets, such as the Habermas one.
 
-## Strong recourse judge
-In the baseline recourse mechanisms, the recourse judges are strong. This seems unfair - to make it fair, we can use an ablation where the recourse judge is also a strong model.
+## Recourse judge strength
+The main design uses a weak recourse judge in every condition (see *Recourse mechanisms*). A strong recourse judge is an **ablation**, not the fix: a strong judge can re-solve the problem from scratch and needs no record at all, so it measures model capability rather than whether the record carries enough to adjudicate from. The ablation is worth running only to detect a floor effect — if the weak judge folds under every objection over every record, the conditions cannot be told apart, and a mid-strength judge is the next step.
 
 ## Same vs different models
 Note that debate might work better if different models debate. One ablation, therefore is to see if using different player models (from different model families) make debate more contestable.
