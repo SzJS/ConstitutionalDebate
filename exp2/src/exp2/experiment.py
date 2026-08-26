@@ -14,6 +14,12 @@ only if the record it should have written loads. exp1 keyed one stage on the run
 directory, which exists before the first call, making failed contests permanently
 un-retryable and invisible to the index.
 
+**A resume gives no cell a second draw.** ``decide`` also skips a cell whose latest run
+manifest says ``"failed"`` — attempted, and the model's outcome recorded. Only a cell
+with no run, or one left ``"running"`` by a killed process, is attempted again, because
+only there was nothing learned. ``--retry-failed`` opts back in; see
+``run_stage_decide``.
+
 **Every stage is concurrent against one shared client.** exp1's grade and validate
 stages were serial `await` loops that each built a fresh client per item, so their
 semaphores could never be contended — a direct violation of the repo's parallelism
@@ -89,6 +95,40 @@ def existing_decision(root: Path, cell: Cell):
     return None
 
 
+def latest_run_status(root: Path, cell: Cell) -> str | None:
+    """The ``status`` in the newest run directory's manifest, or ``None`` if never
+    attempted.
+
+    ``persistence.RunWriter`` writes exactly three values: ``"running"`` at creation,
+    then ``"completed"`` or ``"failed"`` through ``finish()``. The three mean different
+    things to a resume:
+
+    * ``"completed"`` — decided; ``existing_decision`` already skips it.
+    * ``"failed"`` — the cell was attempted and the *model* or the *call* produced no
+      usable decision (truncation, a malformed reply that survived its repair, a
+      timeout). That is an outcome, not an interruption.
+    * ``"running"`` — the process was killed mid-flight (a crash, an ENOSPC, a SIGTERM
+      to the driver). Nothing about the model was learned, so this is not an outcome and
+      the cell is attempted again.
+    * ``None`` — no run directory at all: never attempted.
+
+    Run directories are named ``<timestamp>-<item_id>``, so a reverse sort is newest
+    first. A directory whose manifest cannot be read is not evidence of anything and the
+    search falls through to the one before it.
+    """
+    runs = sorted((cell_dir(root, cell) / "runs").glob("*"), reverse=True)
+    for directory in runs:
+        try:
+            manifest = json.loads(
+                (directory / "run.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        status = manifest.get("status")
+        if isinstance(status, str):
+            return status
+    return None
+
+
 def contest_dir(root: Path, cell: Cell, challenger_model: str) -> Path:
     slug = challenger_model.replace("/", "-")
     return cell_dir(root, cell) / "contests" / slug
@@ -130,14 +170,33 @@ async def _bounded(tasks: Sequence[Callable[[], Any]], limit: int) -> list[Any]:
 
 async def run_stage_decide(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
-    client_config: ClientConfig, api_key: str,
+    client_config: ClientConfig, api_key: str, retry_failed: bool = False,
 ) -> list[dict[str, Any]]:
+    """One attempt per cell per invocation, and by default one attempt per cell *ever*.
+
+    A resume attempts a cell only when nothing was learned about it: no run directory at
+    all, or a run left ``"running"`` by a killed process. A cell whose latest run is
+    ``"failed"`` was attempted and produced a model outcome — a truncation, a reply that
+    was still malformed after its repair — and re-attempting it is the per-cell retry
+    that ``LLM_NOTES.md`` §3p.4 declined to wire, for two reasons that both still hold:
+    it selects for compliant outputs, so the surviving cells are no longer a sample of
+    the corpus; and at ``seed = 0`` the side assignment and template order are identical
+    on the second draw, so most of the spend reproduces the first failure.
+
+    ``retry_failed=True`` (``--retry-failed``) opts back in, for the case where the
+    failures were the harness's fault rather than the model's — a bad provider slug, a
+    full disk — and the run is being repaired rather than resumed.
+    """
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
 
     async def decide(cell: Cell) -> dict[str, Any]:
         if existing_decision(root, cell) is not None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "already decided"}
+        if not retry_failed and latest_run_status(root, cell) == "failed":
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already attempted and failed; --retry-failed to "
+                              "re-attempt"}
         sides = make_sides(cell.case.item, config.seed)
         writer = RunWriter.create(
             root=cell_dir(root, cell) / "runs", item=cell.case.item, sides=sides,

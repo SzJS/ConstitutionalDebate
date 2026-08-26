@@ -2,7 +2,7 @@ experiment: sweep   stage: decide   outputs: outputs/experiments/sweep
 
 cells: 6330  debate=2110  self_critique=2110  single=2110
 estimated calls: decision 31650, contest 12660, ruling <= 6330, agreement <= 6330, grading <= 3174  => up to 60144
-one attempt per cell per invocation; re-run the stage to retry cells with no completed record. Client transport retries and at most one format repair per generation are on top.
+one attempt per cell per invocation, and one per cell across a resume: re-run the stage to resume, and a cell whose latest run is completed or failed is skipped while only a cell with no run — or one left running by a crash — is attempted. --retry-failed re-attempts failed cells too. Client transport retries and at most one format repair per generation are on top.
 
 Hyperparameters — every value, and why it is what it is
 ====================================================================================================
@@ -20,7 +20,7 @@ Hyperparameters — every value, and why it is what it is
   judge_cot                    True                       on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.
   seed                         0                          seeds side assignment and template order per item, so the draws are stable across re-runs.
   frequency_penalty            0.0                        0 unless a model loops; a nonzero value changes the text and so belongs in the record.
-  max_decision_attempts        2                          NOT WIRED. Read and validated, never consulted: the harness makes ONE attempt per cell per invocation, and re-running the stage retries every cell with no completed record. The retries that exist are the client's transport attempts and the one format repair.
+  max_decision_attempts        2                          NOT WIRED. Read and validated, never consulted: the harness makes ONE attempt per cell per invocation, and re-running the stage attempts only cells with no run or one left running by a crash — a cell whose latest run FAILED is skipped as attempted unless --retry-failed is passed. The retries that exist are the client's transport attempts and the one format repair.
   generation_max_tokens        8192                       8192 — the cap for roles that produce record text (debaters, solo stages, critic). It covers every successful generation in the pilot (max 7,888 completion tokens; p99 5,794) and halves a runaway's cost against 16,384; anything lower truncated successful turns, four of them mid-argument.
   n_critique_rounds            3                          equal to n_rounds, so self_critique and debate make the same number of generations.
   provider_order               {'deepseek/deepseek-v4-flash-0731': ['gmicloud/fp8', 'coreweave/fp8']} per-model OpenRouter provider slugs, in preference order. Empty means OpenRouter routes freely, which is what pilot 2 did across 20 providers of one model whose format-repair rates ranged 2.1% (GMICloud, n=48, p<0.0001 against the 25.5% pool) to 35.3% (Relace, n=215). Routing decides which weights write the text, so it lives here and a contest inherits it.

@@ -305,6 +305,36 @@ def test_the_estimate_does_not_promise_a_retry_the_harness_does_not_make(capsys)
     assert "re-run the stage" in printed
 
 
+def test_the_estimate_states_which_cells_a_resume_re_attempts(capsys):
+    """The header is read at the one moment a $34 run is being approved.
+
+    "re-run the stage to retry cells with no completed record" was true of the old
+    behaviour and is now wrong: a resume skips failed cells as well as completed ones,
+    and only `--retry-failed` re-attempts them. A reader who believes the old line would
+    expect a resume to re-draw the ~900 cells the sweep loses to truncation.
+    """
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    print_estimate([], debate)
+    printed = capsys.readouterr().out
+    assert "completed or failed is skipped" in printed
+    assert "no run" in printed and "left running by a crash" in printed
+    assert "--retry-failed" in printed
+
+
+def test_retry_failed_is_a_flag_that_defaults_to_off():
+    """Off by default is the whole point: the opt-in has to be typed, per run.
+
+    Asserted against the CLI's own parser, so a renamed or dropped flag fails here.
+    """
+    from exp2.experiment_cli import build_parser
+
+    parser = build_parser()
+    assert parser.parse_args(["--spec", "x.toml"]).retry_failed is False
+    assert parser.parse_args(["--spec", "x.toml", "--retry-failed"]).retry_failed is True
+
+
 def test_max_decision_attempts_is_documented_as_unwired():
     """The field is not wired, so its WHY must not read like a live knob.
 

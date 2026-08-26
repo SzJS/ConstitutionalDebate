@@ -119,23 +119,37 @@ def print_estimate(grid, config: DebateConfig) -> None:
     # `max_decision_attempts` is deliberately NOT quoted here. It is loaded and
     # validated but consulted nowhere in `src/`, and the line that used to print it
     # promised a per-cell retry the harness does not make. What is true is stated
-    # instead: one attempt per cell per invocation, and re-running the stage is the
-    # retry — every cell without a completed record is attempted again, which is why a
-    # crashed stage is resumed by re-running it rather than by a flag.
-    print("one attempt per cell per invocation; re-run the stage to retry cells with "
-          "no completed record. Client transport retries and at most one format repair "
-          "per generation are on top.")
+    # instead — including which cells a resume actually re-attempts, because that is
+    # the difference between finishing a crashed sweep and giving ~900 truncated cells
+    # a second draw at the moment the run is being approved.
+    print("one attempt per cell per invocation, and one per cell across a resume: "
+          "re-run the stage to resume, and a cell whose latest run is completed or "
+          "failed is skipped while only a cell with no run — or one left running by a "
+          "crash — is attempted. --retry-failed re-attempts failed cells too. Client "
+          "transport retries and at most one format repair per generation are on top.")
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The argument parser, out of ``main`` so a test can assert on the real flags."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--spec", type=Path, required=True)
     parser.add_argument("--stage", default="decide", choices=STAGES)
     parser.add_argument("--outputs", type=Path, default=Path("outputs/experiments"))
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--retry-failed", action="store_true",
+        help="re-attempt cells whose latest run failed. Off by default: a failed cell "
+             "was attempted and the model's outcome recorded, and re-drawing it "
+             "selects for compliant outputs (LLM_NOTES.md 3p.4). Use it when the "
+             "failures were the harness's fault — a bad provider slug, a full disk — "
+             "not the model's. Only `decide` reads it.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -190,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     runner = {
         "decide": lambda: run_stage_decide(
             grid, root=root, config=config, client_config=client_config,
-            api_key=api_key),
+            api_key=api_key, retry_failed=args.retry_failed),
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key),

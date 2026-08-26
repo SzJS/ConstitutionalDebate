@@ -20,6 +20,7 @@ from exp2.experiment import (
     build_index,
     cell_dir,
     existing_decision,
+    latest_run_status,
     run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
@@ -91,9 +92,10 @@ def make_decisions_wrong(client) -> None:
     })
 
 
-async def decide(tmp_path, grid, **kw):
+async def decide(tmp_path, grid, *, retry_failed=False, **kw):
     return await run_stage_decide(grid, root=tmp_path, config=make_config(),
-                                  client_config=client_config(**kw), api_key="k")
+                                  client_config=client_config(**kw), api_key="k",
+                                  retry_failed=retry_failed)
 
 
 # --- the grid ------------------------------------------------------------------------
@@ -173,9 +175,85 @@ async def test_one_failing_cell_does_not_take_the_stage_down(tmp_path, no_networ
     grid = build_grid(cases(3), ["debate"])
     results = await decide(tmp_path, grid)
     assert all(r["status"] == "failed" for r in results)
-    # and a failed cell is retryable, because no completed record was written
+    # and the stage is still runnable afterwards — see the resume tests below for
+    # which of those cells a second invocation attempts.
     no_network.fail_on = {}
-    assert all(r["status"] == "completed" for r in await decide(tmp_path, grid))
+    assert all(r["status"] in ("skipped", "completed")
+               for r in await decide(tmp_path, grid))
+
+
+# --- resume: one attempt per cell, unless asked for another ---------------------------
+
+
+async def _fail_one_cell(tmp_path, no_network):
+    """Decide one cell with the client failing, leaving `run.json` at `"failed"`."""
+    no_network.fail_on = {(1, "Alice"): "fatal"}
+    grid = build_grid(cases(1), ["debate"])
+    assert [r["status"] for r in await decide(tmp_path, grid)] == ["failed"]
+    no_network.fail_on = {}
+    assert latest_run_status(tmp_path, grid[0]) == "failed"
+    return grid
+
+
+async def test_a_failed_cell_is_not_re_attempted_by_default(tmp_path, no_network):
+    """A truncation or an unrepairable reply is a MODEL OUTCOME, not an interruption.
+
+    Re-running `decide` after a crash must finish the sweep, not give ~900 truncated
+    cells a second draw: that selects for compliant outputs, so the surviving cells stop
+    being a sample of the corpus, and at seed 0 the second draw mostly reproduces the
+    first failure anyway. `LLM_NOTES.md` 3p.4 declined to wire a per-cell retry for
+    exactly these reasons; before this the resume was one, silently.
+    """
+    grid = await _fail_one_cell(tmp_path, no_network)
+    before = len(no_network.calls)
+    again = await decide(tmp_path, grid)
+    assert [r["status"] for r in again] == ["skipped"]
+    assert "--retry-failed" in again[0]["reason"]
+    assert len(no_network.calls) == before, "a skipped cell must cost nothing"
+
+
+async def test_retry_failed_opts_back_into_re_attempting_a_failed_cell(tmp_path,
+                                                                      no_network):
+    """The escape hatch, for failures that were the harness's fault and not the model's."""
+    grid = await _fail_one_cell(tmp_path, no_network)
+    before = len(no_network.calls)
+    again = await decide(tmp_path, grid, retry_failed=True)
+    assert [r["status"] for r in again] == ["completed"]
+    assert len(no_network.calls) > before
+    assert existing_decision(tmp_path, grid[0]) is not None
+
+
+async def test_a_cell_left_running_is_still_attempted_without_the_flag(tmp_path,
+                                                                      no_network):
+    """`"running"` is a killed process, not a model outcome — nothing was learned.
+
+    This is the case the default exists to keep: a driver SIGTERMed mid-`decide`, an
+    ENOSPC, a pod reboot. Those cells have to be picked up by a plain resume, or a
+    crashed sweep can never be finished.
+    """
+    grid = build_grid(cases(1), ["single"])
+    await decide(tmp_path, grid)
+    cell = grid[0]
+    killed = sorted((cell_dir(tmp_path, cell) / "runs").glob("*"))[0]
+    manifest = json.loads((killed / "run.json").read_text())
+    manifest["status"] = "running"
+    (killed / "run.json").write_text(json.dumps(manifest))
+    assert latest_run_status(tmp_path, cell) == "running"
+
+    before = len(no_network.calls)
+    assert [r["status"] for r in await decide(tmp_path, grid)] == ["completed"]
+    assert len(no_network.calls) > before
+
+
+async def test_a_never_attempted_cell_has_no_status_and_a_completed_one_is_skipped(
+        tmp_path, no_network):
+    grid = build_grid(cases(1), ["single"])
+    assert latest_run_status(tmp_path, grid[0]) is None
+    assert [r["status"] for r in await decide(tmp_path, grid)] == ["completed"]
+    assert latest_run_status(tmp_path, grid[0]) == "completed"
+    # completed wins over the flag: --retry-failed re-attempts failures, not decisions
+    assert [r["status"] for r in await decide(tmp_path, grid,
+                                              retry_failed=True)] == ["skipped"]
 
 
 async def test_cells_run_concurrently(tmp_path, no_network):
