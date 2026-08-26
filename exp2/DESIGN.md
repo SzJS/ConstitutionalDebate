@@ -78,7 +78,7 @@ Note that CoTs are not part of the published record in debate.
 We have identified `deepseek/deepseek-v4-flash-0731` and `openai/gpt-5.6-luna` as competent and cost effective models using [artificialanalysis.ai](https://artificialanalysis.ai/models).
 
 ## Weak models
-Qwen3 has 8b (`qwen3-8b`), 14b (`qwen3-14b`) and 32b (`qwen3-32b`) variants; these are all potential weak models. Start with the 14b variant and use the weaker/stronger variant as needed.
+Originally, I wanted to use the qwen family, but after some tests, I think gpt-4.1-nano is the best choice.
 
 ## Grader/validator
 In case any grading, validating is necessary, using Haiku.
