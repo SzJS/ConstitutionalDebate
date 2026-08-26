@@ -211,14 +211,10 @@ nano on latency (9.5 s judge p95 against llama's 27.1 s) and on verdict skew: ei
 the nine models over-call FLAWED at 63–87% on a 46%-flawed fixture, and nano is the only
 one that does not (51% SOUND). All seven subsets survive the screen.
 
-**A precedence wrinkle you will notice, resolved here so you do not stall on it.**
-`DESIGN.md` still names Qwen3-8b/14b/32b as the weak models, and `LLM_NOTES.md` says
-`DESIGN.md` wins where they disagree. The user chose `gpt-4.1-nano` in conversation on
-2026-08-25 after seeing the probe (`records/pick-weak/DECISION.md`), which under ground
-rule 2 counts as a settled decision that has not yet been written into `DESIGN.md` — it
-is the third unapplied `DESIGN.md` edit, alongside §3k and §3l's. Run with nano; put "the
-weak model is gpt-4.1-nano — shall I note that in DESIGN.md's Weak models section for
-you?" in your first questionnaire; do not change the model.
+**The weak model is settled in `DESIGN.md` itself** (its *Weak models* section, commit
+`27877b5`, 2026-08-26): the user chose `gpt-4.1-nano` after seeing the probe
+(`records/pick-weak/DECISION.md`). Older text in `LLM_NOTES.md` that calls this an
+unapplied `DESIGN.md` edit predates that commit. Do not change the model.
 
 **A provider attribution that was published wrong and then corrected.** Pilot 2's first
 per-provider table charged each format repair to the provider that served the *repair*,
