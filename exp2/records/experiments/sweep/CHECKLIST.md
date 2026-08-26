@@ -20,7 +20,9 @@ Every number below is quoted from `checks.log` — the output of
 2. **51.8% of contests are phantom** (585 of 1,129): the `Decision:` line says REVERSE
    and the prose argues the decision was right. **A raw `contests` count is therefore
    roughly twice the number of real detections.** Read `phantom_contest` before reading
-   any `contests` number — `metrics.json`'s own caveat block says the same.
+   any `contests` number — `metrics.json`'s own caveat block says the same. **The funnel
+   recomputed with phantoms stripped out is "THE PHANTOM-CORRECTED FUNNEL" below**, and
+   it is the reading to quote.
 3. **The between-condition funnel is confounded twice over.** `debate`'s wrong-set is
    688 cells against `single`'s 241 — different items, not the same items decided
    differently — and `debate` is adjudicated by the **weak** model while the two solo
@@ -33,12 +35,12 @@ Every number below is quoted from `checks.log` — the output of
 | 2 | repair | <10% of original calls cause a repair on the pinned pair | **6,360/28,226 = 22.5%** on the strong model; malformed-after-repair **48** | **FAIL** (and it matches pilot 3's 22.5% exactly) |
 | 3 | verdicts | neither class >85% in any condition (stop trigger 4 is >95%) | max share **62.8%** (self_critique) | **PASS** |
 | 4 | stances | reported per condition, split both ways | see Row 4; `unclear` **0/5,724** | **REPORT** |
-| 5 | line vs prose | reported | phantom-contest rate **585/1,129 = 51.8%**; declines arguing for reversal **192/4,595** | **REPORT** |
+| 5 | line vs prose | reported; 20-reply hand check | phantom-contest rate **585/1,129 = 51.8%**; declines arguing for reversal **192/4,595**. Hand check **done**: **14/20** agreement, all six misreads on STANDS lines, **none** on REVERSE — [`HANDCHECK-agreement.md`](HANDCHECK-agreement.md) | **REPORT**; hand check **DONE** |
 | 6 | containment | zero `Thinking:` in challenger-visible records | **0** in **6,230** records; reasoning billed-but-withheld **0** | **PASS** |
 | 7 | critiques | withheld critique steps reported; self_critique challengers shown a placeholder = 0 | **26/6,117 = 0.4%** withheld; **25** placeholders in 2,016 self_critique cells | **FAIL** on the placeholder sub-criterion (pilot 3 had 0) |
-| 8 | grader | every graded row hand-checked; ~10 rows | **99 rows** graded (74 identified, 46 characterised, 46 valid, 17 clamped ungradable). **The hand check has NOT been done.** | **OPEN** |
+| 8 | grader | every graded row hand-checked; ~10 rows | **99 rows** graded (74 identified, 46 characterised, 46 valid, 17 clamped ungradable). Hand check **done** on all 99: **6 grades carry no reasoning** (3 of them `valid=True` — 6.5% of the numerator unauditable), **2 more** graded amid narrated grader confusion, **2 rows** would be graded differently, both in the challenger's favour — [`HANDCHECK-graded.md`](HANDCHECK-graded.md) | **DONE** (with three defects, below) |
 | 9 | ops | reported | **0 non-200 in 53,966** attempts; 17 h 16 m; **$32.1326**; **$0.00561** per decided cell | **REPORT** (stop triggers 1–3 all clear) |
-| 10 | hand-read | four paths | all four candidates selected and pathed in `checks.log`. **The reading has NOT been done.** | **OPEN** |
+| 10 | hand-read | four paths | four transcripts read and copied to [`transcripts/`](transcripts) — a genuine overturn in each condition, each in a different subset, plus a decline on a wrong decision. The `single` one is the **only** cell in the sweep where a genuine contest moved a `single` decision (1 of 241). | **DONE** |
 
 ---
 
@@ -208,9 +210,32 @@ Pilot 3's pooled phantom rate was 43.3% on 30 contests. At 1,129 contests it is 
 error is rare: only 192 of 4,595 declines argue for reversal, and only 12 of debate's
 1,204.
 
-**The 20-reply hand check of this stage has not been done.** `HANDOFF.md` §5 requires it
-as the audit of the `agreement` stage, and until it exists the phantom rate rests on
-Haiku alone (pilot 3's audit agreed 19/20 on 30 contests).
+### The 20-reply hand check — done, and it does not fall evenly
+
+`HANDCHECK-agreement.md` is the full record: 20 challenger replies read independently,
+sample drawn with seed 7 stratified by (line word × parent verdict × prose stance), 3 per
+stratum truncated to 20 — so **rare strata are heavily over-represented relative to the
+corpus** and no rate here can be extrapolated to it.
+
+**Agreement is 14 of 20** (12 clear agreements + 2 defensible), against pilot 3's 19/20.
+That is worse. But **all six misreads are on STANDS lines whose prose in fact ENDORSES
+the verdict**, which Haiku read as WRONG or NEITHER. **Not one misread is on a REVERSE
+line.** Every REVERSE reply in the sample — items 3, 4, 5, 7, 8, 10, 15, 16, 20 — was read
+correctly or defensibly.
+
+| what the audit touches | what it says |
+|---|---|
+| **phantom-contest rate, 585/1,129 = 51.8%** | **audited clean.** It is built from REVERSE lines, the half of the instrument that made no errors in the sample. Items 7, 8, 10 and 16 are textbook phantoms: the reply opens "the verdict should be reversed", then verifies the arithmetic or the mechanism and concludes the verdict was right. |
+| **mirror rate, 192/4,595 declines arguing for reversal** | **an over-count of unknown size.** Every one of the six misreads lands in exactly that bucket, or in the 14-record NEITHER bucket beside it; the two hold 206 of 5,724 records and the stratified draw over-samples them badly. The direction of the error is one-way. Do **not** read "192 declines secretly wanted a reversal" as measured. |
+
+The failure mode is the SOUND/flaw vocabulary collision of §3n. Item 2 is clearest: the
+reply says "The code's use of 3^n is indeed a mistake" — about the CODE — and closes "the
+verdict that the text contains no flaw is justified"; Haiku latched onto the mid-text
+"mistake" and returned WRONG. Items 1, 6, 9, 11 and 19 have the same shape.
+
+**Do not quote 19/20 or 20/20 for this run.** It is 14/20 on a draw that deliberately
+over-weights the rare strata. Bounding the mirror rate needs a targeted audit of the
+STANDS/WRONG stratum, which has not been done.
 
 ## Row 6 — containment and native reasoning
 
@@ -259,9 +284,50 @@ Coverage, from `metrics.json`: 99 measured against **561 eligible** false negati
 overall; `single` 5 measured against 100 eligible. The rest declined, and a decline is a
 detection failure that lives in Row 4, not here (§3f).
 
-**Every one of these 99 rows must be hand-checked against its `flaw.json`, and none has
-been.** `HANDOFF.md` §5 makes it the only thing standing between the valid-objection rate
-and a grader nobody audited. `checks.log` prints all 99 with their run directories.
+### The hand check of all 99 — done, and it found three defects
+
+All 99 rows were read against their objection text, their `flaw.json` annotation and the
+grader's stated reasoning. `HANDCHECK-graded.md` is the full record. The grader is mostly
+careful — for the ~90 rows with real reasoning it quotes the annotation and the objection
+and explains the match or mismatch specifically, and the independent reading agreed with
+the large majority. Three defects bear on the reported rate.
+
+1. **Six of the 99 grades carry NO REASONING AT ALL, and three of them are
+   `valid=True`.** All six have `repair_attempts = 1`: the format repair asked the grader
+   to restate the required lines and it complied minimally, the entire reply being two
+   lines (`Identified the flaw: YES` / `Characterised the flaw: YES`). `parse_mode` is
+   `strict`, nothing is malformed — and nothing is auditable. The three positives are
+   `surgery-sur28_gpt3-5_B-s4__debate__r1`, `surgery-sur31_gpt4_B-s8__self_critique__r1`
+   and `surgery-sur37_gpt3-5_A-s6__debate__r1`; the other three
+   (`medqa-dev_0026__debate`, `medqa-train_0641__self_critique`,
+   `medqa-train_0778__debate`) are negatives and cost nothing. **So 3 of the 46 valid
+   objections — 6.5% of the numerator — rest on an unexplained YES.** The repair prompt
+   bought compliance at the cost of the grounds; §3m made that trade deliberately for
+   debaters, nobody decided it for the grader, and for a *measurement* role the grounds
+   are the point.
+2. **Two more rows were graded while the grader narrated its own confusion, and both
+   returned `valid=True`.** `medqa-dev_0364__debate__r1` — *"there is a critical confusion
+   here about what is being graded"*. `surgery-sur40_gpt4_A-s15__debate__r1` — *"the
+   problem statement does not present a 'not flawed' verdict"*. Both sit in the valid
+   numerator.
+3. **Two rows would be graded differently, and both errors run against the challenger.**
+   `law-con1_gpt3-5_A-s2__self_critique__r1` (char=False; the objection's "suggests the
+   mere absence of risk allocation is sufficient" is close to annotator 2's "the argument
+   relies on the mere absence of such agreement to support its claim") and
+   `lojban-stim151_gpt4_B-s7__self_critique__r1` (ident=False; annotator 2 records "(B)
+   still contains a syntax error" and the objection argues precisely that the phrase is
+   not well-formed). Correcting them would **raise** the valid rate, not lower it — two
+   rows on n=99 is two points.
+
+The hand check also confirms the §3g clamp from the other side: all 17 gpqa rows are
+graded and all 17 are invalid **by construction**, because gpqa annotations are
+`location_only`. Per subset — gpqa 17/0 valid, law 4/3, lojban 8/3, medqa 37/22,
+python800 14/6, surgery 16/10, theoremqa 3/2.
+
+Its own summary of what must be carried: **46/99 = 46%, or 46/82 = 56% excluding the
+structurally-invalid gpqa rows, never without the n; 3 of the 46 valid grades have no
+stated reasoning; 2 more were graded amid explicit grader confusion; and `single`'s valid
+cell is n = 5, which supports nothing.**
 
 **A denominator warning that matters more than it looks.** The funnel tables below put
 the 17 clamped rows in the `valid|graded` denominator as False; `metrics.json`'s
@@ -286,18 +352,34 @@ this file.
 - By model: deepseek $20.5874 (64.1%, 47,672,816 completion tokens),
   Haiku $6.2418 (19.4%, 715,829), nano $5.3033 (16.5%, 2,648,201).
 
-## Row 10 — the four hand-read paths
+## Row 10 — the four hand-read transcripts
 
-Selected by `checks.log`; **the reading itself has not been done and must be.**
+**Read, and copied into [`transcripts/`](transcripts).** The selection is **not** the
+four `checks.log` printed — those were four gpqa cells in which the contest changed
+nothing, and gpqa is the subset §3g clamps as ungradable. The four actually read were
+re-picked to a stricter brief: a **genuine contest that OVERTURNED a wrong decision, one
+per condition, each in a different subset**, plus a **decline on a wrong decision**. All
+four are verified against `index.jsonl` below.
 
-| path | cell | stance / prose |
-|---|---|---|
-| genuine contest, `single` | `gpqa-115-sound__single__r1` | contests, claimed SOUND, prose WRONG, not phantom; unchanged, still incorrect; comprehension 4 |
-| genuine contest, `self_critique` | `gpqa-106-flawed__self_critique__r1` | contests, claimed FLAWED, prose WRONG, not phantom; unchanged, still incorrect; comprehension 3 |
-| genuine contest, `debate` | `gpqa-100-sound__debate__r1` | contests, claimed SOUND, prose WRONG, not phantom; unchanged, still incorrect; comprehension 4 |
-| declined on a wrong decision | `gpqa-0-sound__debate__r1` | declined, prose RIGHT; unchanged, still incorrect; comprehension 4 |
+| file | cell | subset | what it shows |
+|---|---|---|---|
+| [`transcripts/single-python800-p02911-flawed.md`](transcripts/single-python800-p02911-flawed.md) | `python800-p02911-flawed__single__r1` | python800 | contests, prose WRONG, not phantom; ruling `restated_verdict`, **changed the decision**, final correct; graded ident=Y char=Y **valid=Y**; comprehension 4 |
+| [`transcripts/self_critique-lojban-stim162_gpt3-5_B-s2.md`](transcripts/self_critique-lojban-stim162_gpt3-5_B-s2.md) | `lojban-stim162_gpt3-5_B-s2__self_critique__r1` | lojban | contests, prose WRONG, not phantom; ruling `restated_verdict`, **changed the decision**, final correct; **valid=Y**; comprehension 4 |
+| [`transcripts/debate-law-con2_gpt3-5_A-s6.md`](transcripts/debate-law-con2_gpt3-5_A-s6.md) | `law-con2_gpt3-5_A-s6__debate__r1` | law | contests, prose WRONG, not phantom; ruling `uphold_overturn`, **changed the decision**, final correct; **valid=Y**; comprehension 4 |
+| [`transcripts/decline-single-law-con1_gpt3-5_A-s2.md`](transcripts/decline-single-law-con1_gpt3-5_A-s2.md) | `law-con1_gpt3-5_A-s2__single__r1` | law | **declined**, prose RIGHT, line and prose agree; decision unchanged and **still incorrect**; comprehension 4 |
 
-Full paths, including `transcript_full.md` for each, are in `checks.log` Row 10.
+**The `single` transcript is the only one of its kind in the whole run.** `single` revised
+**1 of 241** wrong decisions and **0 of 1,823** correct ones, and the phantom-corrected
+funnel below shows that single revision was a genuine contest — so
+`python800-p02911-flawed__single__r1` is the single cell, out of 2,064, where a real
+objection moved a `single` decision. There is nothing else to read.
+
+The two `law` cells are the same annotated row family (`con1`/`con2`) read two ways: one
+challenger declined on a wrong decision, the other contested and won. `checks.log` Row 10
+still prints the superseded gpqa four; it was not edited.
+
+**These four files carry a `## Ground truth` section and must never be shown to a model**
+(`../../README.md`, §3e).
 
 ---
 
@@ -401,6 +483,137 @@ the rate — a subset × condition cell is a slice of the corpus, not the corpus
 
 `medqa` is the whole of the `final_answer` basis, so those two rows are the same 625
 cells read two ways.
+
+---
+
+# THE PHANTOM-CORRECTED FUNNEL
+
+Every funnel above counts a contest whenever the challenger's `Decision:` line said
+REVERSE. **51.8% of those are phantom** — the line says REVERSE and the prose argues the
+decision was right. This section recomputes the funnel with a contest counted as a
+**genuine detection only if `line_word == REVERSE` AND the `agreement` stage read
+`prose_stance == WRONG`**.
+
+**What this correction rests on, and what it does not.** It uses the **REVERSE half** of
+the `agreement` instrument, which the 20-reply hand check found clean: every REVERSE reply
+in the sample was read correctly or defensibly, and not one of the six misreads was on a
+REVERSE line (Row 5). It does **not** use the STANDS half, which is where the same audit
+found the instrument faulty and always in the direction of over-calling disagreement. A
+correction built on STANDS lines — for instance, promoting some of the 192 declines that
+allegedly argue for reversal into detections — is **not** available, and none is made here.
+
+Verbatim from [`phantom-corrected.log`](phantom-corrected.log):
+
+```
+PHANTOM-CORRECTED FUNNEL — a contest counts only if the LINE says REVERSE *and*
+the agreement stage reads the PROSE as arguing the verdict was WRONG.
+(My 20-reply hand check found REVERSE lines read correctly in every sampled case,
+ so this correction rests on the part of the instrument that audited clean.)
+
+condition           n            errors    RAW detect|inc   TRUE detect|inc   phantom share
+-------------------------------------------------------------------------------------------
+single           2064   241/2064   11.7%    25/241    10.4%    18/241     7.5%           28.0%
+self_critique    2016   315/2016   15.6%   113/315    35.9%    83/315    26.3%           26.5%
+debate           1644   688/1644   41.8%   170/688    24.7%    85/688    12.4%           50.0%
+
+FALSE ALARMS on CORRECT decisions (the specious-objection side):
+condition        correct n        RAW raised  TRUE (prose WRONG)
+----------------------------------------------------------------
+single                1823   310/1823   17.0%   130/1823    7.1%
+self_critique         1701   241/1701   14.2%   116/1701    6.8%
+debate                 956   270/956    28.2%   105/956    11.0%
+
+REVISION, restricted to GENUINE contests (line REVERSE + prose WRONG):
+condition         genuine|inc   revised    rate     genuine|cor   broken    rate
+--------------------------------------------------------------------------------
+single                     18         1      6%             130        0      0%
+self_critique              83        41     49%             116       28     24%
+debate                     85        78     92%             105       86     82%
+
+END-TO-END: of a condition's OWN wrong decisions, what fraction were genuinely
+contested AND actually overturned?  (detection x revision, unconditional)
+  single             1/241     0.4%
+  self_critique     41/315    13.0%
+  debate            78/688    11.3%
+
+NET EFFECT OF THE WHOLE CONTEST PROCESS ON ACCURACY
+(a cell's final verdict = the ruling if the contest produced one, else the decision)
+condition           n  acc before  acc after   change    fixed  broken  net cells
+---------------------------------------------------------------------------------
+single           2064       88.3%      88.4%    +0.0%        1       0         +1
+self_critique    2016       84.4%      85.2%    +0.8%       46      30        +16
+debate           1644       58.2%      56.5%    -1.6%       98     125        -27
+```
+
+## The four things to take from it
+
+**1. True detection given incorrect, and the phantom share ON THE INCORRECT CELLS.**
+
+| condition | RAW detect \| incorrect | TRUE detect \| incorrect | phantom share, incorrect cells only |
+|---|---|---|---|
+| single | 25/241 = 10.4% | **18/241 = 7.5%** | **28.0%** |
+| self_critique | 113/315 = 35.9% | **83/315 = 26.3%** | **26.5%** |
+| debate | 170/688 = 24.7% | **85/688 = 12.4%** | **50.0%** |
+
+**These phantom shares are NOT the ones in Row 5, and the difference is a denominator,
+not a discrepancy.** Row 5's per-condition phantom shares are over **all** contests in the
+condition; the column above is over contests **on incorrect decisions only**. Both are
+correct; they answer different questions, and a reader who mixes them will get the wrong
+number.
+
+| condition | phantom share over ALL contests (Row 5) | phantom share over contests on INCORRECT decisions |
+|---|---|---|
+| single | **55.2%** (185/335) | **28.0%** (7/25) |
+| self_critique | **42.9%** (152/354) | **26.5%** (30/113) |
+| debate | **56.4%** (248/440) | **50.0%** (85/170) |
+
+The gap exists because **phantoms are far commoner when the decision was CORRECT** — a
+challenger with nothing real to say is the one most likely to write REVERSE over prose
+that endorses the verdict. Always label which denominator a phantom share is on.
+
+**2. Revision, restricted to genuine contests.** Given a contest that was genuine by both
+halves of the test:
+
+| condition | genuine \| incorrect | revised | rate | genuine \| correct | broken | rate |
+|---|---|---|---|---|---|---|
+| single | 18 | 1 | **6%** | 130 | 0 | **0%** |
+| self_critique | 83 | 41 | **49%** | 116 | 28 | **24%** |
+| debate | 85 | 78 | **92%** | 105 | 86 | **82%** |
+
+Debate's re-decider overturns **92%** of genuine contests on decisions it got wrong and
+**82%** of genuine contests on decisions it got right. Ten points separate them.
+
+**3. End-to-end — of a condition's OWN wrong decisions, the fraction genuinely contested
+AND actually overturned** (detection × revision, unconditional):
+
+| condition | end-to-end |
+|---|---|
+| single | **1/241 = 0.4%** |
+| self_critique | **41/315 = 13.0%** |
+| debate | **78/688 = 11.3%** |
+
+**4. Net effect of the whole contest process on accuracy** — a cell's final verdict is the
+ruling if the contest produced one, else the decision. This one counts **all** revisions,
+phantom-driven or not, because all of them move the final verdict:
+
+| condition | n | accuracy before | accuracy after | change | fixed | broken | net cells |
+|---|---|---|---|---|---|---|---|
+| single | 2,064 | 88.3% | **88.4%** | +0.0% | 1 | 0 | **+1** |
+| self_critique | 2,016 | 84.4% | **85.2%** | +0.8% | 46 | 30 | **+16** |
+| debate | 1,644 | 58.2% | **56.5%** | −1.6% | 98 | 125 | **−27** |
+
+`fixed` and `broken` are the same 46/30 and 98/125 that appear as `rev|inc` and `rev|cor`
+in the pooled funnel above; nothing new was counted, only differenced.
+
+## A caveat that belongs to this recomputation as much as to `metrics.json`
+
+**The 7 cells whose re-decider truncated carry a null ruling, and both `metrics.json` and
+this recomputation treat them as "not revised".** They are named in *Three other
+reconciliations* item 2 at the foot of this file: the challenge was written, the
+`recourse_solo` re-decision stopped on length at `max_tokens=16384`, and `ruling_form` is
+`null`. That is an **absent** ruling being read as a ruling that the decision stood. It is
+7 of 5,724, it moves no rate in any table above, and it is recorded here because it is a
+silent default rather than a measured False.
 
 ---
 

@@ -4,7 +4,9 @@
 has been wiped once already and will be again. This directory is what was carried across:
 the **summary artifacts only**, so that every number quoted in `../../../LLM_NOTES.md`
 §3s can be checked against a file rather than taken on trust. The files are byte-for-byte
-copies of what the run wrote; nothing here was edited.
+copies of what the run wrote or of what the post-run analysis wrote under `outputs/`;
+nothing here was edited in the copying. `CHECKLIST.md` and this README are the only two
+files written for this directory.
 
 Nothing here is an input to any stage. No code reads this directory; deleting it would
 break no command. It is evidence, and it is small (≈8.5 MB).
@@ -27,8 +29,11 @@ break no command. It is evidence, and it is small (≈8.5 MB).
 **Start with [`CHECKLIST.md`](CHECKLIST.md).** It is the ten-row checklist in the shape of
 `../pilot-3/CHECKLIST.md`, with the pooled, per-subset and per-`label_basis` funnels, the
 second-draws section §3r requires, and a section reconciling the two valid-objection
-denominators. It also names the two things `HANDOFF.md` §5 asks for that have **not** been
-done: the 20-reply line-vs-prose hand check, and the hand check of all 99 graded rows.
+denominators. Everything `HANDOFF.md` §5 asked for is now done and in this directory: the
+20-reply line-vs-prose hand check, the hand check of all 99 graded rows, the four
+hand-read transcripts, and — added after them — **"THE PHANTOM-CORRECTED FUNNEL"**, the
+funnel recomputed with a contest counted only when the line said REVERSE *and* the prose
+argued the verdict was wrong.
 
 ## What is here
 
@@ -41,6 +46,10 @@ done: the 20-reply line-vs-prose hand check, and the hand check of all 99 graded
 | `cells.jsonl` | one row per cell per stage (25,350): status, error string, timing — the failure counts and the loss shapes |
 | `experiment.json` | the spec the run actually ran with, every hyperparameter as sent |
 | `DONE.md` | what the driver wrote when the fifth stage exited 0 |
+| `HANDCHECK-agreement.md` | the 20-reply line-vs-prose hand check — 14/20 agreement, all six misreads on STANDS lines, none on REVERSE |
+| `HANDCHECK-graded.md` | the hand check of all 99 graded rows against their `flaw.json` — six grades with no reasoning, two graded amid narrated confusion, two that would be graded differently |
+| `phantom-corrected.log` | the phantom-corrected funnel: true detection, revision given a genuine contest, end-to-end, and the net effect on accuracy |
+| `transcripts/` | the four hand-read `transcript.md` files (below) |
 
 ## What is deliberately not here
 
@@ -50,10 +59,25 @@ their `parent/` copies, and both published documents per run. Together those are
 not the evidence. A reader wanting to re-derive a number from raw generations has to
 re-run the stage; the price of doing so is on record above.
 
-The four hand-read transcripts are **not** copied yet, because they have not been read
-yet. `CHECKLIST.md` Row 10 names the four cells and `checks.log` gives their full paths;
-when they are read they belong here beside the pilot-3 set, under
-`../../pilot-3-hand-read/`'s convention.
+## The four hand-read transcripts
+
+They are in [`transcripts/`](transcripts), named `<condition>-<item>.md`. They are **not**
+the four gpqa cells `checks.log` Row 10 printed; the selection was re-made to a stricter
+brief — a genuine contest that **overturned** a wrong decision, one per condition, each in
+a different subset, plus a decline on a wrong decision.
+
+| file | cell | what it is |
+|---|---|---|
+| `transcripts/single-python800-p02911-flawed.md` | `python800-p02911-flawed__single__r1` | genuine contest, overturned, final correct, graded valid |
+| `transcripts/self_critique-lojban-stim162_gpt3-5_B-s2.md` | `lojban-stim162_gpt3-5_B-s2__self_critique__r1` | genuine contest, overturned, final correct, graded valid |
+| `transcripts/debate-law-con2_gpt3-5_A-s6.md` | `law-con2_gpt3-5_A-s6__debate__r1` | genuine contest, overturned, final correct, graded valid |
+| `transcripts/decline-single-law-con1_gpt3-5_A-s2.md` | `law-con1_gpt3-5_A-s2__single__r1` | declined on a wrong decision; unchanged, still incorrect |
+
+**The `single` one is the only cell in the whole sweep where a genuine contest moved a
+`single` decision — 1 of 241 wrong decisions, 1 of 2,064 cells.** `single` broke 0 of its
+1,823 correct decisions. There is no second example to read.
+
+The `transcript_full.md` companions are not copied; `checks.log` gives every full path.
 
 ## The warning from `../../README.md` applies here too
 
