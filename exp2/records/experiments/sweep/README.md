@@ -48,7 +48,7 @@ argued the verdict was wrong.
 | `DONE.md` | what the driver wrote when the fifth stage exited 0 |
 | `HANDCHECK-agreement.md` | the 20-reply line-vs-prose hand check — 14/20 agreement, all six misreads on STANDS lines, none on REVERSE |
 | `HANDCHECK-graded.md` | the hand check of all 99 graded rows against their `flaw.json` — six grades with no reasoning, two graded amid narrated confusion, two that would be graded differently |
-| `phantom-corrected.log` | the phantom-corrected funnel: true detection, revision given a genuine contest, end-to-end, and the net effect on accuracy |
+| `phantom-corrected.log` | the phantom-corrected funnel: true detection, revision given a genuine contest, end-to-end, and the net effect on accuracy. **Reproducible on a bare clone**: `uv run python records/derivations/sweep-phantom-corrected.py` reads only `index.jsonl` and reprints these tables number for number |
 | `transcripts/` | the four hand-read `transcript.md` files (below) |
 
 ## What is deliberately not here

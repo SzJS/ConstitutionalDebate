@@ -11,6 +11,25 @@ with that pod. Section 3 rebuilds them. The small summary artifacts behind every
 quoted here were copied into [`records/`](records/README.md) first, so the numbers stay
 checkable.
 
+> **THE SWEEP HAS BEEN RUN. DO NOT RE-RUN IT.**
+>
+> The first full sweep **ran and completed on 2026-08-26**: 17 h 16 m, **$32.13**,
+> **5,724 of 6,330 cells decided (90.4%)**, all five stages exit 0.
+> [`records/experiments/sweep/DONE.md`](records/experiments/sweep/DONE.md) is the proof,
+> and it is in git.
+>
+> Its evidence is [`records/experiments/sweep/`](records/experiments/sweep/README.md) —
+> read [`CHECKLIST.md`](records/experiments/sweep/CHECKLIST.md) **first**, then
+> `metrics.json`, then `index.jsonl`. The headline result is that checklist's
+> **"THE PHANTOM-CORRECTED FUNNEL"** section; reproduce it from the committed index with
+> `uv run python records/derivations/sweep-phantom-corrected.py`. The write-up is
+> [`LLM_NOTES.md`](LLM_NOTES.md) **§3s**, and §4 below summarises it in a paragraph.
+>
+> **Section 5 is kept as the record of how that run was run, and as the procedure for any
+> future sweep the user opens — but the run it describes is done.** Do not execute it
+> because it is written in the imperative. Running it again costs $32 and re-decides
+> cells that are already decided.
+
 ---
 
 ## 1. What this is, in five lines
@@ -192,9 +211,10 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$6.67** through pilot 3, plus roughly $0.40 for sweep-1's 80
-decided cells and a few cents of provider checks that nothing itemises. Nothing below
-needs re-running, and section 6 says why.
+Total spent so far: **$39.33** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, and
+a few cents of provider checks that nothing itemises. Nothing below needs re-running, and
+section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
 
@@ -261,6 +281,43 @@ objection's *prose* argues the verdict was right or wrong; and the aimed repairs
 `decide`, 80 of 723 cells done, on the 5 GB pod. Its spec is kept as
 `experiments/sweep-1.toml` for the record; its outputs are gone. Nothing was learned from
 it and nothing rests on it.
+
+### The first full sweep (2026-08-26) — done
+
+**2,110 items × 3 conditions × 1 repeat = 6,330 cells, $32.1326, 17 h 16 m**, launched
+01:14:17Z and finished 18:30:34Z, five stages sequentially under `scripts/run_sweep.sh`,
+every stage exit 0, `DONE.md` written. **5,724 cells decided = 90.4%**, so the loss is
+9.6% against the 14.5% budgeted; the 606 lost are truncations and failed repairs (debate
+466, self_critique 94, single 46). **0 non-200 responses in 53,966 attempts**, and the pin
+held at 97.1% GMICloud. Section 5 is the procedure it was run by; it must not be run
+again. Four commits carry it: **`4a30ea4`** (§3r, the retry-on-resume decision and
+`--retry-failed`), **`85bf7da`** (`records/derivations/sweep-checks.py`, the ten-row
+checklist over any finished tree, plus the two funnels and the second draws), **`8dbee7d`**
+(`records/experiments/sweep/` and the write-up, `LLM_NOTES.md` §3s), **`beb92d8`** (the two
+hand checks, the phantom-corrected funnel and the four transcripts).
+
+The numbers, **reported and not concluded from** — §3s says in its own first paragraph
+that it does not conclude debate is or is not more contestable, and the two reasons
+(no `weak_alone` arm, no specious-objection control) are in §4 above and in §3s:
+accuracy **88.3% / 84.4% / 58.2%** (`single` / `self_critique` / `debate`), so debate's
+wrong-set is 688 cells against `single`'s 241 and they are not the same items;
+**585 of 1,129 contests are phantom (51.8%)** — the `Decision:` line says REVERSE over
+prose that argues the verdict was right; corrected for that, **true detection given
+incorrect is 7.5% / 26.3% / 12.4%** against a raw 10.4% / 35.9% / 24.7%; debate's
+re-decider **overturns 92% of genuine contests on its wrong decisions and 82% of those on
+its correct ones**, ten points apart on 85 and 105 cells; and the net effect of the whole
+contest process on accuracy is **+1 cell for `single`, +16 for `self_critique`, −27 for
+`debate`**. `records/derivations/sweep-phantom-corrected.py` re-derives that last funnel
+from the committed `index.jsonl`.
+
+Two findings about the **instruments** came out of the hand checks and both bind anything
+quoted from this run. The `agreement` stage agrees with a 20-reply hand read **14 of 20**,
+not pilot 3's 19/20 — but **all six misreads are on STANDS lines** and none on a REVERSE
+line, so the 51.8% phantom rate (built entirely from REVERSE lines) is audited clean while
+the mirror statistic "192 of 4,595 declines argue for reversal" is an over-count of
+unknown size. And of the 99 graded rows, **6 carry no reasoning at all and 3 of those are
+`valid=True`** — 3 of the 46 valid objections rest on an unexplained YES. Both are written
+up in `records/experiments/sweep/HANDCHECK-agreement.md` and `HANDCHECK-graded.md`.
 
 ### The open findings the write-up must carry
 
@@ -329,6 +386,8 @@ must not have to discover them (`LLM_NOTES.md` §4, §3l–§3o):
 ---
 
 ## 5. The first sweep — exactly what to run
+
+**This ran on 2026-08-26 — see the notice at the top and §4. Kept as the procedure.**
 
 The spec is [`experiments/sweep.toml`](experiments/sweep.toml), already written. It is
 `pilot-3.toml` with a different corpus and one explicit `copy_parent`; nothing in the

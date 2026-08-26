@@ -1,0 +1,51 @@
+PHANTOM-CORRECTED FUNNEL — a contest counts only if the LINE says REVERSE *and*
+the agreement stage reads the PROSE as arguing the verdict was WRONG.
+(My 20-reply hand check found REVERSE lines read correctly in every sampled case,
+ so this correction rests on the part of the instrument that audited clean.)
+
+The 'phantom share' column below is ON INCORRECT DECISIONS ONLY: (raw-true)/raw
+within the incorrect cell. The share over ALL contests is the table after it.
+condition           n            errors    RAW detect|inc   TRUE detect|inc   phantom share
+-------------------------------------------------------------------------------------------
+single           2064   241/2064   11.7%    25/241    10.4%    18/241     7.5%           28.0%
+self_critique    2016   315/2016   15.6%   113/315    35.9%    83/315    26.3%           26.5%
+debate           1644   688/1644   41.8%   170/688    24.7%    85/688    12.4%           50.0%
+
+PHANTOM SHARE OVER **ALL** CONTESTS (the denominator LLM_NOTES §3s reports first):
+condition        phantom/contests   share
+------------------------------------------
+single                 185/335     55.2%
+self_critique          152/354     42.9%
+debate                 248/440     56.4%
+The two denominators differ because phantoms are far commoner on CORRECT decisions —
+a challenger with nothing real to say is the one most likely to write REVERSE over
+prose that endorses the verdict — so the all-contests share is the higher of the two
+wherever a condition gets most of its decisions right.
+
+FALSE ALARMS on CORRECT decisions (the specious-objection side):
+condition        correct n        RAW raised  TRUE (prose WRONG)
+----------------------------------------------------------------
+single                1823   310/1823   17.0%   130/1823    7.1%
+self_critique         1701   241/1701   14.2%   116/1701    6.8%
+debate                 956   270/956    28.2%   105/956    11.0%
+
+REVISION, restricted to GENUINE contests (line REVERSE + prose WRONG):
+condition         genuine|inc   revised    rate     genuine|cor   broken    rate
+--------------------------------------------------------------------------------
+single                     18         1      6%             130        0      0%
+self_critique              83        41     49%             116       28     24%
+debate                     85        78     92%             105       86     82%
+
+END-TO-END: of a condition's OWN wrong decisions, what fraction were genuinely
+contested AND actually overturned?  (detection x revision, unconditional)
+  single             1/241     0.4%
+  self_critique     41/315    13.0%
+  debate            78/688    11.3%
+
+NET EFFECT OF THE WHOLE CONTEST PROCESS ON ACCURACY
+(a cell's final verdict = the ruling if the contest produced one, else the decision)
+condition           n  acc before  acc after   change    fixed  broken  net cells
+---------------------------------------------------------------------------------
+single           2064       88.3%      88.4%    +0.0%        1       0         +1
+self_critique    2016       84.4%      85.2%    +0.8%       46      30        +16
+debate           1644       58.2%      56.5%    -1.6%       98     125        -27

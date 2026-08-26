@@ -17,7 +17,7 @@ Nothing here is an input to any stage. No code reads this directory; deleting it
 break no command. It is evidence, and it is small (≈4 MB).
 
 The one thing here that is meant to be *run* again is `derivations/`. What each script
-does now is **not** the same across the eight, so the blanket "none of them work" that
+does now is **not** the same across the ten, so the blanket "none of them work" that
 used to stand here is replaced by the truth per script. All of them must be run from `exp2/`
 (the pilot-3 scripts insert `src` on `sys.path`; `sweep-1-provider-check.py` imports the
 installed package under `uv run` and needs the root `.env`).
@@ -26,6 +26,8 @@ installed package under `uv run` and needs the root `.env`).
 |---|---|
 | `sweep-1-provider-check.py` | **live, and the pre-run check.** One paid call (~$0.00001) against OpenRouter. It takes the spec as its argument (default `experiments/sweep.toml`) and reads the model and the pin **out of it** — `[debate] debater_model` and that model's entry in `[debate.provider_order]` — so it checks the slugs the spec actually sends. It reads nothing under `outputs/`, builds its request with `client.OpenRouterClient._build_body` so the call it tests is the call the run makes, and prints `SERVED BY: <provider>` and one of three verdicts: `PASS` (exit 0) only when the **first** pinned provider served it; `WAIT` (exit 4) when another pinned provider did, because `order` is a preference list and the fallback is not the provider the routing argument was made about; `FAIL` (exit 1/2/3/5) otherwise. `HANDOFF.md` §5 step 2 runs it; `logs/sweep-provider-check.log` is a passing run. |
 | `pilot-3-checks.py` | **takes a `ROOT` argument** (`sys.argv[1]`, default `outputs/experiments/pilot-3`) and derives a whole CHECKLIST from any finished run's directory. This is the one to point at the sweep. |
+| `sweep-checks.py` | the generalised `pilot-3-checks.py`: the same ten rows over any tree (`sys.argv[1]`, default `outputs/experiments/sweep`), and it prints `NOT YET RUN` for stages that have not run rather than a zero, so it is safe on a live tree. Adds the per-subset funnel, the per-`label_basis` funnel and the second-draw count §3r requires. It needs a **run tree**, so on a machine with no `outputs/` it has nothing to read; `experiments/sweep/checks.log` is its output over the finished sweep. |
+| `sweep-phantom-corrected.py` | **the only derivation here that runs on a bare `git clone`.** It reads `experiments/sweep/index.jsonl` (`sys.argv[1]`, that path by default) and nothing else — no `outputs/`, no network, no key — and reprints the phantom-corrected funnel: true detection with a contest counted only when the line said REVERSE *and* the prose read WRONG, the phantom share on both denominators, false alarms, revision given a genuine contest, end-to-end, and the net effect on accuracy. Reproduces `experiments/sweep/phantom-corrected.log` number for number; `sweep-phantom-corrected.log` beside it is a run of it. |
 | `sweep-1-checks2.py` | same, default `outputs/experiments/sweep-1`. The follow-up pass: truncation shape, repair scar, revision rates. |
 | `sweep-1-funnel.py` | same, default `outputs/experiments/sweep-1`. Reads only `metrics.json` and `index.jsonl`, so it runs against any analysed run. |
 | `pilot-3-paths.py`, `pilot-3-handcheck-sample.py` | same, both take a `ROOT` (the sample script also takes `N`). They pick the cells for a hand read, which the sweep needs too. |
@@ -58,6 +60,7 @@ sweep. Do not re-apply `GATE.md`'s thresholds to a run it was not written for.
 | `experiments/*/cells.jsonl` | one row per cell per stage: status, error string, timing | the failure counts and the loss shapes |
 | `experiments/*/experiment.json` | the spec each run actually ran with | which hyperparameters produced which numbers |
 | `experiments/pilot-3/GATE.md` | the five-row permissive gate applied before the sweep | the decision to proceed |
+| `experiments/sweep/` | **the first full sweep, 2026-08-26 — the run this repository exists to have done.** Its own [`README.md`](experiments/sweep/README.md) lists the directory; start at `CHECKLIST.md`, whose "THE PHANTOM-CORRECTED FUNNEL" section is the headline. Also there: `DONE.md`, the two hand checks, `phantom-corrected.log`, and the four hand-read transcripts | `LLM_NOTES.md` §3s in full, and `HANDOFF.md` §4's sweep paragraph |
 | `experiments/sweep-1/experiment.json` | the abandoned slice's spec as it ran | LLM_NOTES §7's sweep-1 entry |
 | `pick-weak/DECISION.md` | the weak-model choice and the subset screen, written by `scripts/pick_weak.py` | §1b in full |
 | `pick-weak/rows.jsonl` | probe 2's six candidates, one row per call-level outcome | §1b, §3h's six-candidate row |

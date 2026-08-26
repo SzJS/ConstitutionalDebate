@@ -502,6 +502,11 @@ found the instrument faulty and always in the direction of over-calling disagree
 correction built on STANDS lines — for instance, promoting some of the 192 declines that
 allegedly argue for reversal into detections — is **not** available, and none is made here.
 
+**Re-derivable from this directory alone.** `uv run python
+records/derivations/sweep-phantom-corrected.py` reads only
+[`index.jsonl`](index.jsonl) — no `outputs/` tree, no network — and reprints every table
+below; its own run is `records/derivations/sweep-phantom-corrected.log`.
+
 Verbatim from [`phantom-corrected.log`](phantom-corrected.log):
 
 ```
