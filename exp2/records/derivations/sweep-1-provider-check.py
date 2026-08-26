@@ -1,10 +1,29 @@
 """The pre-run provider check: one real pinned call, plus a health read of the pins.
 
     cd exp2
-    uv run python records/derivations/sweep-1-provider-check.py \
+    uv run python records/derivations/sweep-1-provider-check.py [spec.toml] \
         2>&1 | tee outputs/sweep-provider-check.log
 
-One paid call, ~$0.00001. `records/logs/sweep-provider-check.log` is a passing run.
+One paid call, ~$0.00001. The spec defaults to `experiments/sweep.toml`, and the model
+and the pin are **read out of it** — `[debate] debater_model` (the strong model, the only
+one this experiment pins) and its entry in `[debate.provider_order]`. Hard-coding them
+here meant the script could pass while the spec pointed somewhere else entirely, which
+is the one thing it exists to rule out.
+
+`records/logs/sweep-provider-check.log` is a passing run.
+
+**Three verdicts, three exit codes.** `order` is a *preference* list, so a call served by
+`PIN[1]` is a pass as far as OpenRouter is concerned and is not one here: the entire
+routing argument in `sweep.toml` is about GMICloud, the only provider with a significant
+format-repair effect, and a run served by the fallback measures something else.
+
+    VERDICT: PASS  exit 0   non-empty content, served by the FIRST pinned provider
+    VERDICT: WAIT  exit 4   served by another provider in the pin — the primary is down;
+                            wait for it rather than starting a 13-hour run on the
+                            fallback, or accept it deliberately and say so in the record
+    VERDICT: FAIL  exit 1/2/3/5  non-200, empty content, served from outside the pin,
+                            a body that no longer matches the run's, or a spec that does
+                            not pin the strong model at all
 
 **Why this cannot be skipped.** `provider.order` takes OpenRouter provider *slugs*;
 `calls.jsonl` records provider *display names*, so the two cannot be checked against each
@@ -28,6 +47,8 @@ import datetime
 import json
 import os
 import sys
+import tomllib
+from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
@@ -37,12 +58,27 @@ from exp2.client import OpenRouterClient
 # The repo-root .env, found by walking up from the working directory (exp2/).
 load_dotenv()
 KEY = os.environ["OPENROUTER_KEY"]
-MODEL = "deepseek/deepseek-v4-flash-0731"
-PIN = ["gmicloud/fp8", "coreweave/fp8"]
 H = {"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}
 
+# --- 0. what the spec says to check ---------------------------------------------------
+# Read rather than hard-coded, so this checks the slugs the run will actually send.
+SPEC = Path(sys.argv[1] if len(sys.argv) > 1 else "experiments/sweep.toml")
+spec = tomllib.loads(SPEC.read_text(encoding="utf-8"))
+debate = spec.get("debate", {})
+MODEL = debate.get("debater_model")          # the strong model; the only one pinned
+PIN = list((debate.get("provider_order") or {}).get(MODEL) or [])
+
 print(f"=== {datetime.datetime.now(datetime.timezone.utc).isoformat()} ===")
-print(f"model: {MODEL}\npin:   {PIN}\n")
+print(f"spec:    {SPEC}")
+print(f"model:   {MODEL}   [debate.debater_model]")
+print(f"pin:     {PIN}   [debate.provider_order]")
+if not MODEL or not PIN:
+    print(f"\nVERDICT: FAIL — {SPEC} does not pin {MODEL!r} under "
+          f"[debate.provider_order]; there is nothing to check and the run would route "
+          f"freely")
+    sys.exit(5)
+PRIMARY_SLUG = PIN[0]
+print(f"primary: {PRIMARY_SLUG}   — a call served by anything else is not a pass\n")
 
 # --- 1. the endpoint list: are the pinned slugs there, and are they healthy? ----------
 # The slash is UNESCAPED in this path; %2F returns 404 (LLM_NOTES 3n).
@@ -110,27 +146,42 @@ served = d.get("provider")
 print(f"content: {content!r}")
 print(f"\nSERVED BY: {served}")
 
-# --- 3. the verdict, on two independent conditions ------------------------------------
-# Content, because a pin that routes but returns nothing is useless to the run; and the
-# served provider, because a pin that returns text from OUTSIDE the pin is not a pin.
+# --- 3. the verdict, on three independent conditions -----------------------------------
+# Content, because a pin that routes but returns nothing is useless to the run; the
+# served provider, because a pin that returns text from OUTSIDE the pin is not a pin;
+# and *which* pinned provider, because `order` is a preference list and the second entry
+# is a fallback nobody chose to measure on.
 reasons = []
 if not (content or "").strip():
     reasons.append(
         f"content was empty ({content!r}) — the call routed but produced no text; "
         f"completion_tokens_details="
         f"{(d.get('usage') or {}).get('completion_tokens_details')}")
-allowed = set(display_names.values()) or {"GMICloud", "CoreWeave"}
-if served not in allowed:
+allowed = set(display_names.values())
+if not display_names:
+    # Nothing is assumed here any more. Without the endpoints read there is no way to
+    # say which display name the primary slug carries, and a check that guesses the
+    # thing it is checking is not a check.
+    reasons.append(f"the endpoints read returned none of the pinned slugs, so neither "
+                   f"the pin's display names nor the primary's could be read")
+elif served not in allowed:
     reasons.append(f"served by {served!r}, which is not one of the pinned "
                    f"providers {sorted(allowed)}")
-if not display_names:
-    reasons.append("the endpoints read returned no pinned slug, so the display names "
-                   "above were assumed rather than read")
 
 if reasons:
     for reason in reasons:
         print(f"  ! {reason}")
     print("VERDICT: FAIL — " + reasons[0])
     sys.exit(2)
-print(f"VERDICT: PASS — non-empty content, served by {served}, which is in the pin")
+
+primary = display_names.get(PRIMARY_SLUG)
+if served != primary:
+    # Inside the pin, but not the provider the spec's whole routing argument is about.
+    # Not a failure of configuration — a reason to wait rather than to start.
+    print(f"VERDICT: WAIT — served by {served}, not the primary {primary} "
+          f"({PRIMARY_SLUG}). The pin routes, but a 13-hour run started now would be "
+          f"measured on the fallback.")
+    sys.exit(4)
+print(f"VERDICT: PASS — non-empty content, served by {served}, the primary pinned "
+      f"provider ({PRIMARY_SLUG})")
 sys.exit(0)

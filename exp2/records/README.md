@@ -8,8 +8,10 @@ it** and are not recoverable without paying for the runs again.
 
 This directory is what was carried across: the **summary artifacts only**, so that every
 number quoted in `../LLM_NOTES.md` §7 (and the §1b, §3h, §3l–§3n numbers it rests on)
-can still be checked against a file rather than taken on trust. Nothing here was
-edited — the files are byte-for-byte copies of what the runs wrote.
+can still be checked against a file rather than taken on trust. The files are
+byte-for-byte copies of what the runs wrote, with **two logs excepted** — see "The one
+exception to 'nothing here was edited'" below, which names every line that differs and
+why.
 
 Nothing here is an input to any stage. No code reads this directory; deleting it would
 break no command. It is evidence, and it is small (≈4 MB).
@@ -22,7 +24,7 @@ installed package under `uv run` and needs the root `.env`).
 
 | script | state now |
 |---|---|
-| `sweep-1-provider-check.py` | **live, and the pre-run check.** One paid call (~$0.00001) against OpenRouter. It reads nothing under `outputs/`, builds its request with `client.OpenRouterClient._build_body` so the call it tests is the call the run makes, and prints `SERVED BY: <provider>` and `VERDICT: PASS`/`FAIL`, exiting non-zero on FAIL. `HANDOFF.md` §5 step 2 runs it; `logs/sweep-provider-check.log` is a passing run. |
+| `sweep-1-provider-check.py` | **live, and the pre-run check.** One paid call (~$0.00001) against OpenRouter. It takes the spec as its argument (default `experiments/sweep.toml`) and reads the model and the pin **out of it** — `[debate] debater_model` and that model's entry in `[debate.provider_order]` — so it checks the slugs the spec actually sends. It reads nothing under `outputs/`, builds its request with `client.OpenRouterClient._build_body` so the call it tests is the call the run makes, and prints `SERVED BY: <provider>` and one of three verdicts: `PASS` (exit 0) only when the **first** pinned provider served it; `WAIT` (exit 4) when another pinned provider did, because `order` is a preference list and the fallback is not the provider the routing argument was made about; `FAIL` (exit 1/2/3/5) otherwise. `HANDOFF.md` §5 step 2 runs it; `logs/sweep-provider-check.log` is a passing run. |
 | `pilot-3-checks.py` | **takes a `ROOT` argument** (`sys.argv[1]`, default `outputs/experiments/pilot-3`) and derives a whole CHECKLIST from any finished run's directory. This is the one to point at the sweep. |
 | `sweep-1-checks2.py` | same, default `outputs/experiments/sweep-1`. The follow-up pass: truncation shape, repair scar, revision rates. |
 | `sweep-1-funnel.py` | same, default `outputs/experiments/sweep-1`. Reads only `metrics.json` and `index.jsonl`, so it runs against any analysed run. |
@@ -66,7 +68,7 @@ sweep. Do not re-apply `GATE.md`'s thresholds to a run it was not written for.
 | `pick-weak/review/*.md` | the **14 hand-review transcripts** rendered by `scripts/render_probe.py` | the "transcripts are illegible to weak judges" reading behind §3h |
 | `logs/*-dryrun.log` | every hyperparameter table each run printed before it spent anything | the repo rule that values are shown and confirmed first |
 | `logs/pilot-3-provider-check.log` | the endpoints-API check and five real pinned calls, including the wrong-slug control | §3n.4 — the unescaped model id, and the 404 that reads as retryable |
-| `logs/sweep-provider-check.log` | **the reference passing run** of `derivations/sweep-1-provider-check.py`: `SERVED BY: GMICloud`, `VERDICT: PASS` | `HANDOFF.md` §5 step 2 — what a pass looks like |
+| `logs/sweep-provider-check.log` | **the reference passing run** of `derivations/sweep-1-provider-check.py`: `SERVED BY: GMICloud`, `VERDICT: PASS`. Its four header lines and its verdict line are **re-typed to the current print format** — see "The one exception" below; everything between them is the run's own output | `HANDOFF.md` §5 step 2 — what a pass looks like |
 | `logs/sweep-1-provider-check.log` | the same check before the abandoned slice, run by the earlier script that sent no `reasoning` key: it printed a pass on `content: None` | why the check was rewritten (§3n.4) |
 | `logs/sweep-1-estimate.txt` | the abandoned sweep-1 slice's cost and disk projection | §7's sweep-1 entry |
 | `logs/sweep-1-decide.log` | that run's own log, ending in 145 `[Errno 28] No space left on device` and `completed=80 error=633 failed=10` | that sweep-1 died of a full disk and not of anything about the experiment |
@@ -88,6 +90,24 @@ asserted by `test_no_model_facing_module_reads_the_published_documents`.
 between all three, in the same runs, with no controlled arm. Every one of these
 directories says so in its own words; a table putting two of them side by side is
 comparing different questions asked of different inputs.
+
+## The one exception to "nothing here was edited"
+
+Two logs no longer match, line for line, the code that produced them.
+
+* `logs/sweep-dryrun.log` was **re-recorded** on 2026-08-26 with
+  `uv run exp2-experiment --spec experiments/sweep.toml --stage decide --dry-run 2>&1 | tee outputs/sweep-dryrun.log`
+  after the resume rule changed (LLM_NOTES §3q). Two lines differ from the previous
+  copy — the attempts header and `max_decision_attempts`'s WHY. The corpus, the cell
+  counts and the call estimate reproduce byte for byte, which is the thing this log
+  exists to let a fresh pod check.
+* `logs/sweep-provider-check.log` was recorded by the **previous version** of
+  `derivations/sweep-1-provider-check.py`, which hard-coded the model and the pin and
+  passed on either pinned provider. Re-running it costs a paid call, so instead its
+  four header lines (`spec:`/`model:`/`pin:`/`primary:`) and its final `VERDICT:` line
+  are re-typed into the format the current script prints. The endpoints table, the
+  request body, the HTTP response and `SERVED BY: GMICloud` are untouched, and the
+  verdict is unchanged in substance: GMICloud is `gmicloud/fp8`, the primary.
 
 ## What is deliberately not here
 

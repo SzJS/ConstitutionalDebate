@@ -1,6 +1,8 @@
 === 2026-08-25T23:49:02.281131+00:00 ===
-model: deepseek/deepseek-v4-flash-0731
-pin:   ['gmicloud/fp8', 'coreweave/fp8']
+spec:    experiments/sweep.toml
+model:   deepseek/deepseek-v4-flash-0731   [debate.debater_model]
+pin:     ['gmicloud/fp8', 'coreweave/fp8']   [debate.provider_order]
+primary: gmicloud/fp8   — a call served by anything else is not a pass
 
 GET https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints -> 200
 29 endpoints
@@ -47,4 +49,4 @@ HTTP 200
 content: 'OK'
 
 SERVED BY: GMICloud
-VERDICT: PASS — non-empty content, served by GMICloud, which is in the pin
+VERDICT: PASS — non-empty content, served by GMICloud, the primary pinned provider (gmicloud/fp8)
