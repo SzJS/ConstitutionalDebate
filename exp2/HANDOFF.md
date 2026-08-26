@@ -130,8 +130,9 @@ uv run python scripts/get_tasks.py --subset all --concat \
     2>&1 | tee outputs/get-tasks-all-concat.log
 ```
 
-Expected output (`records/logs/get-tasks-all-concat.log` is this exact command's
-output) — if these counts or the sha differ, **stop and find out why before spending**:
+Expected output (`records/logs/get-tasks-all-concat.log` is this command's output; on a
+fresh pod its first line reads `fetching https://…` instead of `using cached …`, which is
+fine) — if the **counts or the sha** differ, **stop and find out why before spending**:
 
 ```
 wrote 2110 cases to data/cases/ftf-all.jsonl  sha256=9e479a5edbe8
@@ -163,10 +164,16 @@ The pilot corpora can be rebuilt the same way and are byte-identical to the ones
 pilots ran on (verified 2026-08-25):
 
 ```bash
+uv run python scripts/get_tasks.py --subset all --pilot 2 --pilot-longest 2 \
+    2>&1 | tee outputs/get-tasks-pilot.log
+# 42 pilot cases to data/cases/pilot.jsonl (21 flawed / 21 sound) over 7 subsets
 uv run python scripts/get_tasks.py --subset all --pilot 4 --pilot-longest 2 \
     --pilot-out data/cases/pilot-3.jsonl 2>&1 | tee outputs/get-tasks-pilot-3.log
 # 69 pilot cases, 34 flawed / 35 sound, over 7 subsets
 ```
+
+**The first of those is not optional**: `scripts/e2e_offline.py` reads
+`data/cases/pilot.jsonl` (`e2e_offline.py:52`) and dies in `load_cases` without it.
 
 Last, the whole harness end to end against a fake client — no network, no key, real
 items, both documents written for every cell and every contest:
@@ -182,7 +189,9 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$6.67**. Nothing below needs re-running, and section 6 says why.
+Total spent so far: **$6.67** through pilot 3, plus roughly $0.40 for sweep-1's 80
+decided cells and a few cents of provider checks that nothing itemises. Nothing below
+needs re-running, and section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
 
@@ -383,8 +392,9 @@ uv run python records/derivations/sweep-1-provider-check.py \
 #    Expected: a line "SERVED BY: <provider>" naming a pinned provider, non-empty
 #    content, and "VERDICT: PASS". records/logs/sweep-provider-check.log is a passing
 #    run. On FAIL, or if GMICloud is absent: wait up to an hour and retry once; if it
-#    still fails, stop and put it to the user. Do not run on CoreWeave alone (n=20, no
-#    signal) and do not add fallbacks.
+#    still fails, stop and put it to the user. (An agent cannot wait an hour inside a
+#    turn: end the turn with the FAIL log and retry first thing next turn.) Do not run
+#    on CoreWeave alone (n=20, no signal) and do not add fallbacks.
 
 # 3. the five stages (four paid; `analyse` makes no calls), sequentially, one driver:
 nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &
@@ -400,6 +410,15 @@ projection (trigger 2); a crash is `STOP.md` appearing (trigger 3); verdict skew
 read straight from the `verdict.json` files under `outputs/experiments/sweep/cells/`
 (trigger 4) — check it once ~200 cells are in, and again at ~1,000. Report the numbers
 each time; act only on the four triggers.
+
+**Across turns.** An agent session does not last 15 hours; the driver does. `nohup`'d
+processes in this repo's history have outlived the turn that launched them (a waiter
+loop once ran all night, `LLM_NOTES.md` §7), so: launch, record the PID, poll from a
+background shell until ~200 cells are in, report trigger 4 and the non-200 count, and
+**end the turn** with the PID and log paths. Every later session begins by checking
+that PID, then `STOP.md`/`DONE.md`, then the tail of the current stage's log, before
+believing anything else. Trigger 2 (wall-clock) is therefore checked whenever someone
+opens a session, not hourly; the user should know that.
 
 Every stage resumes on its own artifacts, so a re-run after a crash spends nothing on
 what already succeeded. A cell killed mid-decide leaves `run.json` at `"running"`, which
@@ -434,7 +453,11 @@ truncated cells — is **reported with its number, not stopped for**.
 - The report in the shape of `LLM_NOTES.md` §7's pilot-3 section, **plus per-subset and
   per-`label_basis` funnel tables** — the first look at whether contestability differs
   across domains, and the reason the sweep runs the whole corpus rather than a slice.
-- Commit everything. The user pushes.
+- Commit everything — `outputs/` is git-ignored, so "everything" means copying the
+  sweep's small summary artifacts into `records/experiments/sweep/` in pilot 3's shape
+  (`CHECKLIST.md`, `metrics.json`, `index.jsonl`, `cells.jsonl`, `experiment.json`,
+  `GATE.md`-equivalent notes, and the hand-read transcripts), never `calls.jsonl` or the
+  cell directories. The user pushes.
 
 ---
 

@@ -16,8 +16,9 @@ break no command. It is evidence, and it is small (≈4 MB).
 
 The one thing here that is meant to be *run* again is `derivations/`. What each script
 does now is **not** the same across the eight, so the blanket "none of them work" that
-used to stand here is replaced by the truth per script. Every one of them inserts `src`
-on `sys.path`, so all of them must be run from `exp2/`.
+used to stand here is replaced by the truth per script. All of them must be run from `exp2/`
+(the pilot-3 scripts insert `src` on `sys.path`; `sweep-1-provider-check.py` imports the
+installed package under `uv run` and needs the root `.env`).
 
 | script | state now |
 |---|---|

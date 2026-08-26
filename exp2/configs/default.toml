@@ -14,7 +14,7 @@
 # beside the resolved values. Add a key there when you add one here; a test enforces it.
 
 [debate]
-# Settled by scripts/pick_weak.py on 2026-08-25 — see outputs/pick-weak/DECISION.md for
+# Settled by scripts/pick_weak.py on 2026-08-25 — see records/pick-weak/DECISION.md for
 # the table, the disqualifiers, and the one pre-registered rule that was withdrawn.
 # The debaters are strong and the judge is weak, which is the debate protocol; a bare
 # `uv run exp2` is now a real configuration rather than a deliberately-wrong placeholder.
