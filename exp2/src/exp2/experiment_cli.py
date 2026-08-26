@@ -106,11 +106,20 @@ def print_hyperparameters(config: DebateConfig, client_config: ClientConfig,
     print("=" * 100)
 
 
-def print_estimate(grid, config: DebateConfig) -> None:
+def print_estimate(grid, config: DebateConfig,
+                   decisions_from: Path | None = None) -> None:
+    """The call estimate, which is the line a run is approved from.
+
+    ``decisions_from`` makes the decision term ZERO rather than the cost of deciding the
+    grid: a re-contest reads its decisions off another tree and calls no decider at all.
+    Printing the ordinary figure there would quote 90 calls for a run that makes 36, and
+    quote them at the moment the spend is being agreed to.
+    """
     by_condition: dict[str, int] = {}
     for cell in grid:
         by_condition[cell.condition] = by_condition.get(cell.condition, 0) + 1
-    decision = sum(n * calls_per_cell(c, config) for c, n in by_condition.items())
+    decision = (0 if decisions_from is not None
+                else sum(n * calls_per_cell(c, config) for c, n in by_condition.items()))
     # challenge + comprehension always; ruling only when an objection is raised, and
     # grading only on flawed items whose subset records what the flaw was.
     contest = 2 * len(grid)
@@ -121,7 +130,9 @@ def print_estimate(grid, config: DebateConfig) -> None:
     gradable = sum(1 for cell in grid if cell.case.gradable)
     print(f"\ncells: {len(grid)}  " +
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
-    print(f"estimated calls: decision {decision}, contest {contest}, "
+    decision_term = (f"decision 0 (read from {decisions_from})"
+                     if decisions_from is not None else f"decision {decision}")
+    print(f"estimated calls: {decision_term}, contest {contest}, "
           f"ruling <= {ruling}, agreement <= {agreement}, grading <= {gradable}  "
           f"=> up to {decision + contest + ruling + agreement + gradable}")
     # `max_decision_attempts` is deliberately NOT quoted here. It is loaded and
@@ -207,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"experiment: {name}   stage: {args.stage}   outputs: {root}")
     if decision_root is not None:
         print(f"decisions read from: {decision_root}   (never written to)")
-    print_estimate(grid, config)
+    print_estimate(grid, config, decisions_from=decision_root)
     print_hyperparameters(config, client_config, grading)
 
     if args.dry_run:

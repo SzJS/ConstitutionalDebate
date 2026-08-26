@@ -19,13 +19,17 @@ The deciders are scripted to answer SOUND, because that is what makes the flawed
 without a wrong decision it would skip everything and the grading path would go
 unexercised.
 
-The contest runs under ``recourse_form = "third_party"``, which is what the re-contest
-specs set and what DESIGN.md settled on: every condition's objection is ruled by a judge
-that did not decide. It is exercised here rather than only in the unit tests because it
-changes a **document** — a solo cell's ``transcript.md`` now closes with "Ruled on by a
-judge who did not make the original decision", and whether that reads correctly over a
-real solo record is exactly what this script is for. The challenger's reply is in its
-new shape too: reasons first, the decision line last.
+**Two passes, because there are two recourse forms and each writes a different
+document.** The first is the whole grid under ``recourse_form = "third_party"`` — what
+the re-contest specs set and what DESIGN.md settled on: every condition's objection is
+ruled by a judge that did not decide, so a solo cell's ``transcript.md`` closes with
+"Ruled on by a judge who did not make the original decision". The second is two solo
+cells under ``per_condition``, the historical routing every paid run so far used, whose
+document closes with "Reconsidered by the same reviewer that made the decision" instead.
+Both sentences are published to a stakeholder as the account of how their objection was
+heard, so both have to be rendered over a real record and read, and a script that
+covered only the new one would let the other rot. The challenger's reply is in its new
+shape in both: reasons first, the decision line last.
 """
 
 from __future__ import annotations
@@ -60,7 +64,13 @@ from exp2.types import load_cases  # noqa: E402
 SPEC = REPO / "experiments" / "pilot.toml"
 CASES = REPO / "data" / "cases" / "pilot.jsonl"
 ROOT = REPO / "outputs" / "e2e-offline-2"
+# The second pass writes its own tree: a cell is contested once, so the two forms cannot
+# share one.
+ROOT_PER_CONDITION = REPO / "outputs" / "e2e-offline-2-per-condition"
 CONDITIONS = ["single", "self_critique", "debate"]
+# `per_condition` only differs from `third_party` where the decider re-decides, which is
+# the two solo conditions; `debate` is ruled by the judge under either.
+SOLO_CONDITIONS = ["single", "self_critique"]
 # The line artifacts_full.py prints when an accepted call is not in calls.jsonl.
 FALLBACK = "Prompts were not recorded for this run"
 
@@ -126,10 +136,66 @@ def install_fake_client() -> list[FakeClient]:
     return made
 
 
+async def run_stages(root, grid, config, client_config, grading) -> None:
+    """decide, contest, agreement, grade over one grid, into one tree."""
+    stages = {
+        "decide": lambda: run_stage_decide(
+            grid, root=root, config=config, client_config=client_config, api_key="fake"),
+        "contest": lambda: run_stage_contest(
+            grid, root=root, config=config, client_config=client_config, api_key="fake"),
+        "agreement": lambda: run_stage_agreement(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key="fake"),
+        "grade": lambda: run_stage_grade(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key="fake"),
+    }
+    for stage, runner in stages.items():
+        results = await runner()
+        counts: dict[str, int] = {}
+        for result in results:
+            key = ("error" if isinstance(result, BaseException)
+                   else result.get("status", "unknown"))
+            counts[key] = counts.get(key, 0) + 1
+        print(f"{stage:9s} {counts}")
+        for result in results:
+            if isinstance(result, BaseException):
+                print(f"  ! {type(result).__name__}: {result}")
+            elif result.get("status") == "failed":
+                print(f"  ! {result['cell_id']}: {result.get('error')}")
+
+
+def ruling_forms(root) -> dict[str, dict[str, int]]:
+    """``{condition: {form: count}}`` over every ruling.json in a tree."""
+    forms: dict[str, dict[str, int]] = {}
+    for path in sorted(root.glob("cells/*/contests/*/runs/*/ruling.json")):
+        condition = path.parents[4].name.split("__")[1]
+        form = json.loads(path.read_text(encoding="utf-8")).get("form")
+        forms.setdefault(condition, {})
+        forms[condition][form] = forms[condition].get(form, 0) + 1
+    return forms
+
+
+def rendered_outcome_lines(root) -> set[str]:
+    """The italic sentence each contest document closes its outcome section with.
+
+    Read out of the rendered markdown rather than asserted against `artifacts.py`,
+    because what is under test is the document a stakeholder is handed.
+    """
+    lines = set()
+    for path in sorted(root.glob("cells/*/contests/*/runs/*/transcript.md")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("*Ruled on by") or line.startswith("*Reconsidered by"):
+                lines.add(line.strip())
+    return lines
+
+
 async def main() -> int:
     config, client_config = load_config(SPEC)
-    # `pilot.toml` predates the field and so loads the historical routing. The contest
-    # is run under the settled one; the decision stages do not read it.
+    # `pilot.toml` predates the field and so loads the historical routing, which is what
+    # the second pass wants; the first replaces it with the settled one. The decision
+    # stages read neither.
+    per_condition_config = config
     config = dataclasses.replace(config, recourse_form="third_party")
     grading = load_grading_config(SPEC)
 
@@ -148,31 +214,7 @@ async def main() -> int:
     print(f"recourse_form: {config.recourse_form} — every condition's objection is "
           "ruled by a judge that did not decide\n")
 
-    stages = {
-        "decide": lambda: run_stage_decide(
-            grid, root=ROOT, config=config, client_config=client_config, api_key="fake"),
-        "contest": lambda: run_stage_contest(
-            grid, root=ROOT, config=config, client_config=client_config, api_key="fake"),
-        "agreement": lambda: run_stage_agreement(
-            grid, root=ROOT, config=config, grading=grading,
-            client_config=client_config, api_key="fake"),
-        "grade": lambda: run_stage_grade(
-            grid, root=ROOT, config=config, grading=grading,
-            client_config=client_config, api_key="fake"),
-    }
-    for stage, runner in stages.items():
-        results = await runner()
-        counts: dict[str, int] = {}
-        for result in results:
-            key = ("error" if isinstance(result, BaseException)
-                   else result.get("status", "unknown"))
-            counts[key] = counts.get(key, 0) + 1
-        print(f"{stage:9s} {counts}")
-        for result in results:
-            if isinstance(result, BaseException):
-                print(f"  ! {type(result).__name__}: {result}")
-            elif result.get("status") == "failed":
-                print(f"  ! {result['cell_id']}: {result.get('error')}")
+    await run_stages(ROOT, grid, config, client_config, grading)
 
     rows = build_index(grid, root=ROOT, challenger_model=config.challenger_model_for())
     index = ROOT / "index.jsonl"
@@ -193,15 +235,14 @@ async def main() -> int:
     # Under `third_party` there must be no `restated_verdict` anywhere, in any condition
     # — that form is the decider re-deciding its own appeal, which is what the change
     # removes. Reported per condition, because the solo ones are where it would survive.
-    forms: dict[str, dict[str, int]] = {}
-    for path in sorted(ROOT.glob("cells/*/contests/*/runs/*/ruling.json")):
-        condition = path.parents[4].name.split("__")[1]
-        form = json.loads(path.read_text(encoding="utf-8")).get("form")
-        forms.setdefault(condition, {})
-        forms[condition][form] = forms[condition].get(form, 0) + 1
+    forms = ruling_forms(ROOT)
     print(f"ruling forms per condition: {forms}")
     stray = {c: f for c, f in forms.items() if set(f) != {"uphold_overturn"}}
     print(f"rulings NOT made by a third-party judge: {stray}")
+    outcomes = rendered_outcome_lines(ROOT)
+    print(f"rendered outcome sentences: {sorted(outcomes)}")
+    if not outcomes or any("Reconsidered by" in line for line in outcomes):
+        stray["rendering"] = {"the document does not say a judge ruled": 1}
     # And the challenger's line really is last: the parser strips the decisive match, so
     # a body that still ends in one would mean an earlier line was taken instead.
     still_labelled = sum(
@@ -210,15 +251,49 @@ async def main() -> int:
     print(f"objections whose published text still carries a decision line: "
           f"{still_labelled}")
 
-    return report_documents() or (1 if stray else 0)
+    first = report_documents(ROOT) or (1 if stray else 0)
+    return await per_condition_pass(
+        per_condition_config, client_config, grading, by_id) or first
 
 
-def report_documents() -> int:
+async def per_condition_pass(config, client_config, grading, by_id) -> int:
+    """The historical routing, on two solo cells, for the document it writes.
+
+    `single` and `self_critique` are re-decided by the model that decided, in its own
+    conversation — `restated_verdict`, and a contest record that says so. It is the form
+    every paid run before 2026-08-26 used, so the sweep's 5,724 contest documents are
+    all of this shape; the re-contest does not delete them and a renderer that quietly
+    stopped handling them would make those records unreadable.
+    """
+    items = ITEMS[:2]
+    grid = build_grid([by_id[i] for i in items], SOLO_CONDITIONS)
+    ROOT_PER_CONDITION.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\nsecond pass — the historical routing")
+    print(f"outputs: {ROOT_PER_CONDITION}")
+    print(f"cells: {len(grid)}  items: {len(items)}  conditions: {SOLO_CONDITIONS}")
+    print(f"recourse_form: {config.recourse_form} — the solo conditions are re-decided "
+          "by the model that decided\n")
+
+    await run_stages(ROOT_PER_CONDITION, grid, config, client_config, grading)
+
+    forms = ruling_forms(ROOT_PER_CONDITION)
+    print(f"\nruling forms per condition: {forms}")
+    stray = {c: f for c, f in forms.items() if set(f) != {"restated_verdict"}}
+    print(f"solo rulings NOT made in the decider's own conversation: {stray}")
+    outcomes = rendered_outcome_lines(ROOT_PER_CONDITION)
+    print(f"rendered outcome sentences: {sorted(outcomes)}")
+    if not outcomes or any("Ruled on by" in line for line in outcomes):
+        stray["rendering"] = {"the document does not say the decider reconsidered": 1}
+
+    return report_documents(ROOT_PER_CONDITION) or (1 if stray else 0)
+
+
+def report_documents(root) -> int:
     """Both documents, for every run directory and every contest directory."""
-    print("\ndocuments written")
+    print(f"\ndocuments written under {root.name}")
     missing = 0
     fallbacks: list[str] = []
-    for run in sorted((ROOT / "cells").glob("*/runs/*")):
+    for run in sorted((root / "cells").glob("*/runs/*")):
         pairs = [run] + sorted((run.parent.parent / "contests").glob("*/runs/*"))
         for directory in pairs:
             have = [name for name in ("transcript.md", "transcript_full.md")
@@ -229,9 +304,9 @@ def report_documents() -> int:
             sizes = "  ".join(f"{n}={(directory / n).stat().st_size}B" for n in have)
             full = directory / "transcript_full.md"
             if full.is_file() and FALLBACK in full.read_text(encoding="utf-8"):
-                fallbacks.append(str(directory.relative_to(ROOT)))
+                fallbacks.append(str(directory.relative_to(root)))
                 sizes += "  [generations-only fallback]"
-            print(f"  {kind} {directory.relative_to(ROOT)}  {sizes}{gap}")
+            print(f"  {kind} {directory.relative_to(root)}  {sizes}{gap}")
     print(f"\nmissing documents: {missing}")
     print(f"full documents on the generations-only fallback: {len(fallbacks)}")
     for path in fallbacks:
@@ -240,7 +315,7 @@ def report_documents() -> int:
     # The self_critique readable document has to contain the critique itself: that is
     # the whole point of the Step 2 prompt fix, and a placeholder there is a confound.
     withheld = []
-    for run in sorted((ROOT / "cells").glob("*__self_critique__*/runs/*")):
+    for run in sorted((root / "cells").glob("*__self_critique__*/runs/*")):
         text = (run / "transcript.md").read_text(encoding="utf-8")
         trace = json.loads((run / "trace.json").read_text(encoding="utf-8"))
         critiques = [s for s in trace["steps"] if s["stage"] == "critique"]
@@ -248,7 +323,7 @@ def report_documents() -> int:
                if not s["text"].strip() or s["text"] in (WITHHELD, WITHHELD_TRUNCATED)
                or s["text"].strip().splitlines()[0] not in text]
         if bad or not critiques:
-            withheld.append(f"{run.relative_to(ROOT)}  "
+            withheld.append(f"{run.relative_to(root)}  "
                             f"({len(bad)}/{len(critiques)} critiques not published)")
     print(f"self_critique readable documents with a withheld critique: {len(withheld)}")
     for path in withheld:

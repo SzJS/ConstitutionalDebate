@@ -43,6 +43,21 @@ def debate_kwargs(**kw):
     return base
 
 
+def _two_cases():
+    """Two flawed, gradable cases — enough for the estimate's arithmetic to be checked
+    by hand against `calls_per_cell`."""
+    from exp2.types import Case, FlawAnnotation, Item
+
+    return [
+        Case(item=Item(item_id=f"theoremqa-p{i}-flawed", row_id=f"theoremqa:p{i}",
+                       subset="theoremqa", problem="p", solution="s", gold_flawed=True),
+             flaw=FlawAnnotation(annotation_id=f"a{i}", flaw_location="2",
+                                 annotation="Step 2 miscounts.",
+                                 annotation_quality="explanation"))
+        for i in range(2)
+    ]
+
+
 # --- the defaults load, and say what they are ---------------------------------------
 
 
@@ -353,6 +368,29 @@ def test_the_estimate_states_which_cells_a_resume_re_attempts(capsys):
     assert "completed or failed is skipped" in printed
     assert "no run" in printed and "left running by a crash" in printed
     assert "--retry-failed" in printed
+
+
+def test_the_estimate_charges_nothing_for_decisions_it_reads_off_another_tree(capsys):
+    """A `decisions_from` spec calls no decider at all, and this is the line the spend
+    is approved from. Quoting the cost of deciding the grid there would price a
+    re-contest at five times what it spends and name a stage it never runs."""
+    from exp2.experiment import build_grid
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    grid = build_grid(_two_cases(), ["single", "self_critique", "debate"])
+
+    print_estimate(grid, debate)
+    deciding = capsys.readouterr().out
+    assert "decision 30," in deciding          # 2 items x (1 + 7 + 7) calls
+    assert "=> up to 60" in deciding           # + contest 12, ruling 6, agreement 6, grading 6
+
+    print_estimate(grid, debate, decisions_from=Path("outputs/experiments/sweep"))
+    contesting = capsys.readouterr().out
+    assert "decision 0 (read from outputs/experiments/sweep)," in contesting
+    assert "=> up to 30" in contesting         # the same run, less the 30 decision calls
+    # the rest of the estimate is unchanged: the contest stages still run in full
+    assert "contest 12" in contesting and "ruling <= 6" in contesting
 
 
 def test_retry_failed_is_a_flag_that_defaults_to_off():
