@@ -80,9 +80,12 @@ command from `exp2/`). These are the rules that are *not* written down anywhere 
 10. **Stop triggers are catastrophic-only, by the user's standing instruction.** Runs are
     launched unattended overnight. A high repair rate, phantom contests, an ugly number
     or a dead cell or two are **reported, never stopped for**. Section 5 lists the four
-    things that do stop a run. "Stop and wake the user" means, for an agent: kill the
-    driver, write what happened to `outputs/experiments/<name>/STOP.md`, and end your
-    turn with the finding — you cannot wake anyone. The only confirmation a run needs is
+    things that do stop a run. "Stop and wake the user" means, for an agent:
+    `kill <driver PID>` (the driver forwards the signal to the running stage's process
+    group, waits for it to die, and writes `STOP.md` naming the signal — confirm with
+    `pgrep -f exp2-experiment` that nothing is still spending), add what you saw to
+    `outputs/experiments/<name>/STOP.md`, and end your turn with the finding — you
+    cannot wake anyone. The only confirmation a run needs is
     the one before it starts (rule 4); nothing mid-run waits on the user.
 11. **Nothing may reach across into `../exp1/`** — no import, no symlink, no path. exp2
     was ported from exp1 at `f5fc3c9` and has diverged; reading exp1 to see how it did
@@ -96,7 +99,7 @@ from `LLM_NOTES.md` §4.
 ## 3. Bootstrap on a fresh pod
 
 **Size the disk first.** A full sweep writes **~3.9 GB** under `outputs/`
-(0.616 MB per cell measured on pilot 3 × 6,330 cells), the venvs are ~0.6 GB and the
+(0.616 MB per cell measured on pilot 3 × 6,330 cells), the venv is ~0.3 GB and the
 image ~3.6 GB. The previous pod had **5 GB and the first sweep died on ENOSPC 80 cells
 in** (`LLM_NOTES.md` §7). Ask for **20 GB or more**; the floor below which do not start
 is **12 GB free** after `uv sync` (3.9 GB of outputs, plus resume slack for abandoned
@@ -328,8 +331,22 @@ must not have to discover them (`LLM_NOTES.md` §4, §3l–§3o):
 ## 5. The first sweep — exactly what to run
 
 The spec is [`experiments/sweep.toml`](experiments/sweep.toml), already written. It is
-`pilot-3.toml` with a different corpus and one explicit `copy_parent`; **nothing in the
-decision path differs from the run its budget comes from.**
+`pilot-3.toml` with a different corpus and one explicit `copy_parent`; nothing in the
+**spec's** decision path differs from the run its budget comes from. The **code** does
+differ in two places that post-date every paid run: `ce51cbc` (a critique cut off past
+its label is withheld instead of killing the cell, §3o) and `1cacd0b` (a pinned 404 is
+retried, §3p). Both are covered offline by `e2e_offline.py` and the test suite; step 2b
+below is the ~$0.10 paid smoke that exercises the real client through them.
+
+**Resume semantics (one attempt per cell).** Re-running a stage skips every cell whose
+latest run is `completed` *or* `failed`, and attempts only cells with no run or one left
+`running` by a crash. So a re-run after a STOP finishes the sweep without giving any cell
+a second draw — which `LLM_NOTES.md` §3p.4 refused to wire as a retry because it selects
+for compliant outputs, and which at seed 0 mostly reproduces the same truncation anyway.
+`--retry-failed` opts back into re-attempting failed cells; do not use it for the sweep
+unless the user says so. (This default was chosen by Fable on 2026-08-26 on that
+reasoning; it is the one operational choice in this file the user has not explicitly
+confirmed — put it in the pre-run questionnaire.)
 
 | | |
 |---|---|
@@ -371,7 +388,7 @@ experiment: sweep   stage: decide   outputs: outputs/experiments/sweep
 cells: 6330  debate=2110  self_critique=2110  single=2110
 estimated calls: decision 31650, contest 12660, ruling <= 6330, agreement <= 6330,
                  grading <= 3174  => up to 60144
-one attempt per cell per invocation; re-run the stage to retry cells with no completed record. Client transport retries and at most one format repair per generation are on top.
+one attempt per cell per invocation, and one per cell across a resume: re-run the stage to resume, and a cell whose latest run is completed or failed is skipped while only a cell with no run — or one left running by a crash — is attempted. --retry-failed re-attempts failed cells too. Client transport retries and at most one format repair per generation are on top.
 ```
 
 ```bash
@@ -383,14 +400,25 @@ one attempt per cell per invocation; re-run the stage to retry cells with no com
 #    which a 13-hour run needs — and the price of that is that a MISCONFIGURED slug is
 #    also retried, slowly, until max_attempts is spent on every cell. This one call is
 #    the guard against that.
-uv run python records/derivations/sweep-1-provider-check.py \
+uv run python records/derivations/sweep-1-provider-check.py experiments/sweep.toml \
     2>&1 | tee outputs/sweep-provider-check.log
-#    Expected: a line "SERVED BY: <provider>" naming a pinned provider, non-empty
-#    content, and "VERDICT: PASS". records/logs/sweep-provider-check.log is a passing
-#    run. On FAIL, or if GMICloud is absent: wait up to an hour and retry once; if it
-#    still fails, stop and put it to the user. (An agent cannot wait an hour inside a
-#    turn: end the turn with the FAIL log and retry first thing next turn.) Do not run
-#    on CoreWeave alone (n=20, no signal) and do not add fallbacks.
+#    The script reads the model and pin from experiments/sweep.toml. Expected:
+#    "SERVED BY: GMICloud" and "VERDICT: PASS" with non-empty content
+#    (records/logs/sweep-provider-check.log is a passing run). "VERDICT: WAIT" means
+#    the call was served by the second pinned provider — GMICloud is absent right
+#    now; that is not a go. On WAIT or FAIL: retry once, an hour later; if it still is
+#    not PASS, stop and put it to the user. (An agent cannot wait an hour inside a
+#    turn: end the turn with the log and retry first thing next turn.) Never run on
+#    CoreWeave alone (n=20, no signal) and never add fallbacks.
+
+# 2b. A PAID SMOKE of the real path, ~$0.10: decide the first 10 items into the
+#     sweep's own tree, so the driver later skips them and nothing is decided twice.
+#     This is the only paid exercise of the two post-pilot-3 code changes.
+uv run exp2-experiment --spec experiments/sweep.toml --stage decide --limit 10 \
+    2>&1 | tee outputs/sweep-smoke-decide.log
+#     Expected: 30 cells attempted, most completed, no traceback, no STOP; a few
+#     truncation failures are normal (pilot 3 lost 14%). A traceback or 0 completed
+#     is a stop. Read two transcript.md files before going on.
 
 # 3. the five stages (four paid; `analyse` makes no calls), sequentially, one driver:
 nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &
@@ -401,8 +429,10 @@ nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&
 
 **Measuring the stop triggers while it runs** — from a background shell, hourly:
 provider failures are the non-`200 OK` lines in `outputs/sweep-decide.log` against the
-total (trigger 1); wall-clock is the log's first and last timestamps against the 13 h
-projection (trigger 2); a crash is `STOP.md` appearing (trigger 3); verdict skew is
+total (trigger 1); wall-clock is the time since the *latest* `=== run_sweep: decide …`
+start line in `outputs/sweep-driver.log` (the stage log is appended across attempts, so
+its first line is the wrong clock after a resume) against the 13 h projection
+(trigger 2); a crash is `STOP.md` appearing (trigger 3); verdict skew is
 read straight from the `verdict.json` files under `outputs/experiments/sweep/cells/`
 (trigger 4) — check it once ~200 cells are in, and again at ~1,000. Report the numbers
 each time; act only on the four triggers.
@@ -414,7 +444,11 @@ background shell until ~200 cells are in, report trigger 4 and the non-200 count
 **end the turn** with the PID and log paths. Every later session begins by checking
 that PID, then `STOP.md`/`DONE.md`, then the tail of the current stage's log, before
 believing anything else. Trigger 2 (wall-clock) is therefore checked whenever someone
-opens a session, not hourly; the user should know that.
+opens a session, not hourly. **The user opens those sessions** — say so in the pre-run
+message: "I will end my turn once ~200 cells are in; open a session every few hours or
+in the morning and my first act will be the PID / STOP.md / DONE.md check." A STOP at
+hour 2 otherwise sits unnoticed until then, which is acceptable by rule 10 (nothing is
+spending after a STOP) but should be said.
 
 Every stage resumes on its own artifacts, so a re-run after a crash spends nothing on
 what already succeeded. A cell killed mid-decide leaves `run.json` at `"running"`, which
