@@ -22,6 +22,12 @@
 #     leave the exit status at 0, which is stop trigger 3 in HANDOFF.md §5 and nothing
 #     else.
 #   * DONE.md is written only when all five completed.
+#   * a signal to the DRIVER stops the STAGE. Each stage runs in its own process group
+#     and the driver waits on it, so SIGINT/SIGTERM to the driver's pid kills the whole
+#     stage tree — uv, python, tee — waits for it to die, writes STOP.md naming
+#     `signal:TERM` (or INT), and exits 143. `kill <driver pid>` is therefore a real
+#     stop button; before this the trap was deferred behind a foreground pipeline and
+#     `decide` carried on spending for hours.
 #
 # Re-running the driver after a STOP is safe and is the intended repair: every stage
 # resumes on its own artifacts and spends nothing on cells that already have a completed
@@ -92,10 +98,45 @@ stop() {  # stage, exit code, note
     echo "run_sweep: STOPPED at $stage (exit $code) -> $ROOT/STOP.md"
 }
 
+# Job control, so that every backgrounded stage below becomes the leader of its OWN
+# process group. That is the whole mechanism behind on_signal: `kill -TERM -$STAGE_PID`
+# then reaches the subshell, the `uv run` it spawned, the python under that, and the
+# `tee`. Without it they all share the driver's group and a signal that reaches the
+# driver reaches nothing else.
+set -m
+
+STAGE_PID=""
+
+# Kill the stage's whole process group and wait for it to actually be gone. Returns
+# once nothing in the group answers, or after ~5 s of TERM followed by KILL.
+kill_stage() {
+    [[ -n "$STAGE_PID" ]] || return 0
+    kill -0 "$STAGE_PID" 2>/dev/null || return 0
+    echo "run_sweep: killing stage process group $STAGE_PID"
+    kill -TERM "-$STAGE_PID" 2>/dev/null
+    local i
+    for ((i = 0; i < 50; i++)); do
+        kill -0 "-$STAGE_PID" 2>/dev/null || break
+        sleep 0.1
+    done
+    if kill -0 "-$STAGE_PID" 2>/dev/null; then
+        echo "run_sweep: stage group $STAGE_PID survived SIGTERM; sending SIGKILL"
+        kill -KILL "-$STAGE_PID" 2>/dev/null
+    fi
+    wait "$STAGE_PID" 2>/dev/null
+    STAGE_PID=""
+}
+
 on_signal() {
     local signal=$1
+    echo
+    echo "run_sweep: caught SIG$signal during $CURRENT_STAGE"
+    # The stage is what spends money, so it dies FIRST and the bookkeeping happens
+    # after. A driver that wrote STOP.md and exited while `decide` kept running would
+    # report a stopped sweep that was still billing for thirteen hours.
+    kill_stage
     stop "$CURRENT_STAGE" "signal:$signal" \
-        "The driver was killed by SIG$signal rather than a stage failing."
+        "The driver was killed by SIG$signal rather than a stage failing. The stage's process group was signalled and waited for before this file was written, so nothing is still spending."
     exit 143
 }
 CURRENT_STAGE="(none)"
@@ -107,11 +148,28 @@ for stage in "${STAGES[@]}"; do
     log="$LOGS/$NAME-$stage.log"
     echo
     echo "=== run_sweep: $stage  $(date -u +%Y-%m-%dT%H:%M:%SZ)  -> $log ==="
+    # The stage runs in a BACKGROUNDED subshell and the driver `wait`s on it, rather
+    # than as a foreground pipeline. Two reasons, both signal-shaped:
+    #   * bash defers a trap until the current foreground command returns, so a
+    #     foreground pipeline meant `kill <driver pid>` did nothing at all until the
+    #     stage finished on its own — thirteen hours of `decide` later.
+    #   * `wait` IS interruptible: a caught signal returns from it immediately and runs
+    #     the trap, which then kills the stage's process group.
+    # `set -m` above makes the subshell its own process group leader, so $! is also the
+    # group id. The subshell re-exports PIPESTATUS[0] as its own exit status, so the
+    # stage's status — not tee's — is still what the chain halts on.
+    #
     # Word splitting on $CMD is deliberate: it is a command line ("uv run
     # exp2-experiment"), not a single executable.
-    # shellcheck disable=SC2086
-    $CMD --spec "$SPEC" --stage "$stage" --outputs "$OUTPUTS" 2>&1 | tee -a "$log"
-    status=${PIPESTATUS[0]}
+    (
+        # shellcheck disable=SC2086
+        $CMD --spec "$SPEC" --stage "$stage" --outputs "$OUTPUTS" 2>&1 | tee -a "$log"
+        exit "${PIPESTATUS[0]}"
+    ) &
+    STAGE_PID=$!
+    wait "$STAGE_PID"
+    status=$?
+    STAGE_PID=""
     echo "=== run_sweep: $stage exited $status  $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
     if [[ $status -ne 0 ]]; then
         stop "$stage" "$status"
