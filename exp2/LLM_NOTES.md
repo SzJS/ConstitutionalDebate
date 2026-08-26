@@ -1762,6 +1762,36 @@ the hand-off adds for exactly that gap. The provider-check paragraph in the same
 updated to pass the spec as an argument and to say that `WAIT` is not a go.
 
 
+## 3r. The user chose retry-on-resume for the sweep (2026-08-26)
+
+§3p.4 declined to wire a per-cell retry and the hand-off recorded that as the one
+operational choice Fable had made without asking. It was put to the user on 2026-08-26,
+and the user chose **retry-on-resume**: a cell whose latest run is `failed` gets one more
+draw on a re-run, not none. That is the user's decision on a live experiment, not a
+revision of the reasoning in §3p.4 — the cost that paragraph named is real and is paid.
+Where this file and `DESIGN.md` disagree, `DESIGN.md` wins.
+
+Nothing in the harness changed. The flag already exists (`--retry-failed`,
+`src/exp2/experiment_cli.py:140`, read at `src/exp2/experiment.py:196`) and only the
+`decide` stage reads it; the other four stages accept it and ignore it. It is wired by
+launching the driver through the env var the driver already honours:
+`RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" nohup scripts/run_sweep.sh
+experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &`. argparse takes the flag before
+`--spec`, so the driver's own `--spec …` append is unaffected.
+
+What it does and does not buy. On the first launch the only cells with a `failed` run are
+the paid smoke's, so only those are re-attempted; a resume after a STOP gives every failed
+cell one more draw; and with no STOP there is a single `decide` invocation, so the ~900
+expected truncations are never re-drawn at all — the flag cannot re-draw a cell that
+completed, and it cannot reach a failure inside the invocation that produced it. The cost
+is §3p.4's: a second draw selects for compliant outputs, so the cells that survive are no
+longer a clean sample of the corpus, and at seed 0 side assignment and template order are
+identical on the second draw, so most of that spend reproduces the first failure. The
+write-up therefore **must** report how many cells were decided on a second draw. They are
+identifiable on disk: more than one directory under
+`outputs/experiments/sweep/cells/<cell>/runs/`.
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

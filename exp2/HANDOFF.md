@@ -343,10 +343,9 @@ latest run is `completed` *or* `failed`, and attempts only cells with no run or 
 `running` by a crash. So a re-run after a STOP finishes the sweep without giving any cell
 a second draw — which `LLM_NOTES.md` §3p.4 refused to wire as a retry because it selects
 for compliant outputs, and which at seed 0 mostly reproduces the same truncation anyway.
-`--retry-failed` opts back into re-attempting failed cells; do not use it for the sweep
-unless the user says so. (This default was chosen by Fable on 2026-08-26 on that
-reasoning; it is the one operational choice in this file the user has not explicitly
-confirmed — put it in the pre-run questionnaire.)
+`--retry-failed` opts back into re-attempting failed cells; the user confirmed
+retry-on-resume on 2026-08-26, so every driver launch carries `--retry-failed` via
+`RUN_SWEEP_CMD` — see `LLM_NOTES.md` §3r.
 
 | | |
 |---|---|
@@ -421,7 +420,9 @@ uv run exp2-experiment --spec experiments/sweep.toml --stage decide --limit 10 \
 #     is a stop. Read two transcript.md files before going on.
 
 # 3. the five stages (four paid; `analyse` makes no calls), sequentially, one driver:
-nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &
+RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+    nohup scripts/run_sweep.sh experiments/sweep.toml > outputs/sweep-driver.log 2>&1 &
+echo $! > outputs/sweep-driver.pid
 #    Per-stage logs land in outputs/sweep-<stage>.log. The driver halts at the first
 #    stage that exits non-zero and writes outputs/experiments/sweep/STOP.md; on success
 #    it writes DONE.md. Poll from a background shell; expect ~15 h.
