@@ -4,9 +4,20 @@
 # READ FIRST: ../HANDOFF.md section 5, which is the run order, the stop triggers and
 # what has to be checked afterwards. This file is only the parameters.
 #
-# Nothing in the decision path differs from `pilot-3.toml`. The models, both token caps,
-# the challenger's temperature, the provider pin and the grader are pilot 3's, unedited,
-# so pilot 3's measured rates are this run's priors:
+# Nothing in this SPEC's decision path differs from `pilot-3.toml`. The models, both
+# token caps, the challenger's temperature, the provider pin and the grader are pilot 3's,
+# unedited, so pilot 3's measured rates are this run's priors.
+#
+# That is a statement about the parameters, NOT about the code they are fed to. Two
+# commits in the decision path post-date every paid run this experiment has made:
+# `ce51cbc` (a critique cut off past its own `Reasoning:` label is withheld instead of
+# killing the cell, LLM_NOTES §3o) and `1cacd0b` (a pinned 404 whose message says "no
+# endpoints found" is retried, §3p.1). Both are covered offline by `scripts/e2e_offline.py`
+# and the test suite, and neither has ever met the real client; HANDOFF.md §5 adds a small
+# `--limit` paid smoke before the sweep for exactly that reason. Read the priors below as
+# priors from a slightly different program.
+#
+# The priors:
 #
 #   * $0.00537 per DECIDED cell  ->  ~$34 for 6,330 cells, ~$44 with 1.3x headroom.
 #   * 26.0 min per 207 cells at 16/8  ->  ~13 h of `decide`. The other four stages ran
@@ -83,8 +94,13 @@ challenger_temperature = 0.7
 # run -- a GMICloud blip must not kill every remaining cell -- but it means a WRONG slug
 # dies slowly instead of fast, burning max_attempts on every cell. No dry-run can catch
 # that; one real pinned call can, and is the only guard. Run
-#     uv run python records/derivations/sweep-1-provider-check.py
-# and require "VERDICT: PASS". The endpoints API path takes the model id with the slash
+#     uv run python records/derivations/sweep-1-provider-check.py experiments/sweep.toml
+# and require "VERDICT: PASS" (exit 0). The script reads the model and the pin out of the
+# spec named on that command line, so it checks THESE two slugs and not a copy of them.
+# PASS now means served by the FIRST slug, gmicloud/fp8. "VERDICT: WAIT" (exit 4) means
+# the pin routed but CoreWeave answered -- the pin is healthy and GMICloud is not, and
+# starting here measures the fallback, which is the n=20 row with no signal. That is a
+# reason to wait, not a go. The endpoints API path takes the model id with the slash
 # UNESCAPED. records/logs/sweep-provider-check.log is a passing run;
 # records/logs/pilot-3-provider-check.log additionally shows the wrong-slug control.
 [debate.provider_order]

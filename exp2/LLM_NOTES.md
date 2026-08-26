@@ -1602,6 +1602,166 @@ one on the printed text, one asserting the field is still referenced only in `co
 so wiring it forces both documents to be rewritten first.
 
 
+## 3q. Three fixes from the third hand-off review (2026-08-26)
+
+A third fresh agent read the hand-off against the code. All three findings are in the
+path of the sweep and two of them would have cost money silently, so they are recorded
+rather than just fixed. **344 tests pass** after them (337 before; +1 driver, +4 resume,
++2 header and flag).
+
+### 1. A signal to the driver did not stop the stage
+
+`scripts/run_sweep.sh` trapped INT and TERM, but ran each stage as a **foreground
+pipeline** — and bash defers a trap until the foreground command returns. So `kill
+<driver pid>`, which is the only stop button an operator has for a detached run, wrote
+nothing and killed nothing until the stage finished on its own. On the sweep that stage
+is `decide`: **thirteen hours of billed calls after the kill**, and a `STOP.md` that
+would appear at the end of them. The trap existed and read as a working stop; that is
+worse than no trap, because a poller sees `STOP.md` absent and concludes the run is fine.
+
+The stage now runs in a backgrounded subshell under `set -m` — so it is the leader of
+its own process group — and the driver `wait`s on it. `wait` *is* interruptible: a caught
+signal returns from it at once and the trap runs. The handler kills the group
+(`kill -TERM -$STAGE_PID`, which reaches `uv`, the python under it, and the `tee`), polls
+for up to 5 s, escalates to `SIGKILL`, `wait`s for the corpse, and only then writes
+`STOP.md` naming `signal:TERM` (or `INT`) and exits 143. The stage dies **before** the
+bookkeeping, deliberately: a driver that recorded a stop while `decide` kept spending
+would be the same lie in a different file.
+
+`tee -a` and the exit-status logic are unchanged — the subshell re-exports
+`${PIPESTATUS[0]}` as its own exit status, so the chain still halts on the *stage's*
+code and not on `tee`'s. The per-attempt `=== run_sweep: <stage> <time> ===` start line
+was already printed inside the loop and still is; it is how wall-clock is read after a
+resume, so a test now holds it.
+
+The test drives a stub stage that `exec`s a 300 s sleep, sends SIGTERM to the driver's
+pid **alone** (reaching the stage is the driver's job, not the sender's) and asserts the
+stage pid is gone within 5 s, `STOP.md` says `signal:TERM`, and the driver exited 143.
+Against the pre-fix driver it fails in 20 s. Two details were needed to make it a test
+rather than a hang: the stub `exec`s the sleep, so the pid on disk *is* the sleeping
+process (bash does not exec it otherwise, and killing the wrapper left an orphan); and
+the driver is spawned with `start_new_session=True` so the cleanup can `killpg` the lot
+— without that, a regression leaves the sleep holding the test's read pipe open and the
+suite blocks forever instead of failing.
+
+### 2. A resume was a per-cell retry, by the back door
+
+`existing_decision` treats anything that is not `status == "completed"` as "not decided".
+So re-running `decide` after a crash re-attempted every cell that had **failed** —
+truncation, a reply still malformed after its repair — as well as every cell the crash
+had interrupted. That is exactly the per-cell retry §3p.4 declined to wire, arriving
+without anyone choosing it, and its two objections both still hold:
+
+* it **selects for compliant outputs**. The sweep expects to lose ~900 cells to
+  truncation (§7's 14.5%). Re-drawing them until they parse means the cells that survive
+  are no longer a sample of the corpus but a sample of the corpus *filtered by whether
+  the model could stay inside 8,192 tokens on it* — and the filter correlates with the
+  thing being measured, since the runaway shape is a debater on the pro-flaw side of a
+  *sound* item.
+* at `seed = 0` it is mostly **wasted money**. `make_sides` seeds side assignment and
+  template order per item, so the second draw starts from the same configuration; only
+  sampling noise differs.
+
+`latest_run_status()` now reads the newest run directory's manifest. `RunWriter` writes
+exactly three values and they mean different things to a resume:
+
+| status | written where | resume |
+|---|---|---|
+| `"running"` | `RunWriter.create`, at claim time | **attempted** — the process was killed mid-flight (crash, ENOSPC, a SIGTERM to the driver). Nothing was learned about the model. |
+| `"completed"` | `finish("completed")` | skipped — `existing_decision` already had this one |
+| `"failed"` | `finish("failed")`, `persistence.py:216` | **skipped as attempted** — the cell was tried and the model's outcome recorded |
+| *no run dir* | — | **attempted** — never tried |
+
+`--retry-failed` on `exp2-experiment` opts back into re-attempting failed cells, for the
+case where the failures were the *harness's* fault rather than the model's — a bad
+provider slug, a full disk — and the run is being repaired rather than resumed. It is
+read by `decide` only. `completed` still wins over the flag.
+
+The dry-run header states the rule, because it is read at the one moment a $34 run is
+being approved:
+
+```
+one attempt per cell per invocation, and one per cell across a resume: re-run the stage
+to resume, and a cell whose latest run is completed or failed is skipped while only a
+cell with no run — or one left running by a crash — is attempted. --retry-failed
+re-attempts failed cells too. Client transport retries and at most one format repair per
+generation are on top.
+```
+
+(one line in the log; wrapped here). `config.WHY["max_decision_attempts"]` says the same.
+`records/logs/sweep-dryrun.log` was re-recorded with
+
+    uv run exp2-experiment --spec experiments/sweep.toml --stage decide --dry-run \
+        2>&1 | tee outputs/sweep-dryrun.log
+
+and differs from the previous copy in exactly those two lines — the corpus, the cell
+counts and the call estimate reproduce byte for byte, which is the thing that log exists
+to let a fresh pod check.
+
+**The other three stages were checked and left alone.** They do not have this hole, and
+two of them cannot have it:
+
+* `contest` resumes on an **artifact** (`challenge.json` exists), not on a status. A
+  contest that failed *after* writing the challenge — in the comprehension probe or the
+  ruling — is therefore already skipped, which is the desired behaviour arrived at by
+  accident. A contest that failed *before* writing it is re-attempted, which is a
+  narrower version of the same thing; it costs 2-3 calls rather than up to 7, and unlike
+  `decide` the re-draw is a genuine one, since the challenger runs at temperature 0.7.
+  Left as is, because closing it would mean giving `existing_contest` a second meaning
+  and that function is also the *locator* `agreement`, `grade` and `build_index` use to
+  find the contest directory. Flagged here so the choice is on record rather than
+  implied.
+* `agreement` and `grade` write no manifest at all — a failure returns
+  `{"status": "failed"}` to the caller and leaves nothing on disk — so there is no status
+  to key a skip on, and each costs exactly one short grader call. Their resume key is
+  `agreement.json` / `grade.json` existing, which is right.
+
+### 3. The provider check passed on the fallback, and on a spec it had not read
+
+`records/derivations/sweep-1-provider-check.py` hard-coded `MODEL` and `PIN` at lines
+40-41. A check whose subject is hard-coded cannot detect the one substitution it exists
+to rule out — that `experiments/sweep.toml` says something else. Both now come from the
+spec named on the command line (default `experiments/sweep.toml`): `[debate]
+debater_model`, the strong model and the only one this experiment pins, and that model's
+entry in `[debate.provider_order]`.
+
+And it passed on **either** pinned provider. `order` is a *preference* list, so being
+served by `coreweave/fp8` is a pass as far as OpenRouter is concerned — but the whole
+routing argument in `sweep.toml` is about GMICloud, the only provider with a significant
+format-repair effect (1/48, p < 0.0001 against the 25.5% pool), while CoreWeave is second
+at n = 20 with **no signal**, there because nothing disqualifies it. A thirteen-hour run
+served by the fallback measures something nobody chose. Three verdicts now:
+
+| verdict | exit | when |
+|---|---|---|
+| `VERDICT: PASS — non-empty content, served by <X>, the primary pinned provider (<slug>)` | 0 | the **first** pinned slug served it |
+| `VERDICT: WAIT — served by <X>, not the primary <Y> (<slug>). The pin routes, but a 13-hour run started now would be measured on the fallback.` | 4 | another pinned provider served it |
+| `VERDICT: FAIL — <reason>` | 1 / 2 / 3 / 5 | non-200 / empty content or served outside the pin / the body no longer matches the run's / the spec pins nothing |
+
+The endpoints read is also no longer allowed to fall back to hard-coded display names
+(`or {"GMICloud", "CoreWeave"}`): without it the primary's display name cannot be known,
+so that is a FAIL rather than a guess.
+
+No paid call was made for this. All seven branches were driven offline with `httpx.get`
+and `httpx.post` stubbed and the real script run through `runpy`
+(`outputs/sweep-provider-check-offline.log`). `records/logs/sweep-provider-check.log` was
+recorded by the previous version, so its four header lines and its final `VERDICT:` line
+are re-typed into the new format and `records/README.md` now carries that as a named
+exception to its "nothing here was edited"; the endpoints table, the request body, the
+HTTP response and `SERVED BY: GMICloud` are untouched, and the verdict is unchanged in
+substance — GMICloud *is* `gmicloud/fp8`, the primary.
+
+### A fourth thing, in `sweep.toml`'s own words
+
+Its header said "Nothing in the decision path differs from `pilot-3.toml`". True of the
+**spec** and not of the **code**: `ce51cbc` (§3o, a critique cut off past its own label
+is withheld instead of killing the cell) and `1cacd0b` (§3p.1, the pinned 404 is retried)
+both post-date every paid run this experiment has made. The comment now says which
+statement it is making, names both commits, and points at the small `--limit` paid smoke
+the hand-off adds for exactly that gap. The provider-check paragraph in the same file was
+updated to pass the spec as an argument and to say that `WAIT` is not a go.
+
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later
