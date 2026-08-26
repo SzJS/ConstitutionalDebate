@@ -1792,6 +1792,230 @@ identifiable on disk: more than one directory under
 `outputs/experiments/sweep/cells/<cell>/runs/`.
 
 
+## 3s. The first full sweep (2026-08-26)
+
+**Written after the run and before any hand check. No paid call was made for this
+section; every number is quoted from `records/experiments/sweep/CHECKLIST.md`,
+`checks.log` or `metrics.json`, all three of which are now in git.** This section
+**reports**. It does not conclude that debate is or is not more contestable, and the two
+reasons it cannot are in "The comparison that is not available" below.
+
+### What ran, and what it cost
+
+`experiments/sweep.toml` over `data/cases/ftf-all.jsonl` — 2,110 items × 3 conditions ×
+1 repeat = **6,330 cells** — launched 2026-08-26T01:14:17Z and finished 18:30:34Z:
+**17 h 16 m**, five stages sequentially, every stage exit 0, `DONE.md` written. Against
+`HANDOFF.md` §5's projection of ~15 h and ~$34, it took 17 h and spent **$32.1326** —
+$0.00561 per decided cell against pilot 3's $0.00537. deepseek $20.5874 (64.1%), Haiku
+$6.2418 (19.4%), nano $5.3033 (16.5%).
+
+**0 non-200 responses in 53,966 attempts.** Not a 404, not a 429, not a 5xx, over
+seventeen hours at `max_concurrency 16 / max_runs_in_flight 8`. The pin held: 33,591 of
+34,586 strong-model calls (97.1%) served by GMICloud, 989 (2.9%) by CoreWeave, both
+pinned and the primary first. Stop trigger 1 wanted under 25% pinned-provider failures
+and got zero; trigger 2 wanted `decide` under ~39 h; triggers 3 and 4 never came near.
+
+**5,724 of 6,330 cells decided = 90.4%**, so the loss is **9.6%** against the **14.5%**
+budgeted. §3o predicted the sweep would come in below pilot 3's rate and declined to say
+by how much; it is 4.9 points below, and the mechanism is visible: the shape that killed
+**13 of pilot 3's 30** lost cells — a critique truncating past its own `Reasoning:`
+label — killed **0 of the sweep's 606**.
+
+The 606 by condition: **debate 466, self_critique 94, single 46**. By subset: python800
+369, gpqa 91, theoremqa 59, medqa 41, surgery 26, lojban 14, law 6. Every one is a
+truncation or a truncation's failed repair, bar two. 321 are a debater truncating in
+round 1 (170 of them again after a budget repair), 139 a solo stage stopping on length,
+70 a debater in round 2 and 27 in round 3; 48 cells died malformed *after* their repair
+(pilot 3: 0, pilot 2: 15), 47 of those on the budget route that a truncation opened and
+one on a format repair; and one died on a judge returning `finish_reason='error'`.
+1,699 of 53,966 attempts truncated (3.1%), 1,689 of them at exactly 8,192 completion
+tokens. The budget route recovered 852.
+
+### Accuracy, and the wrong-sets that follow from it
+
+| condition | n | accuracy | wrong |
+|---|---|---|---|
+| single | 2,064 | **88.3%** | 241 |
+| self_critique | 2,016 | **84.4%** | 315 |
+| debate | 1,644 | **58.2%** | **688** |
+
+Debate's wrong-set is **688 cells — 2.9× `single`'s 241** — and they are not the same
+items. `metrics.json` says why, in its own words, and it is quoted rather than
+re-derived:
+
+> NOT INTERSECTED — read this before the rates. Each condition's P(revised | initially
+> incorrect) is computed over that condition's OWN wrong decisions, and those sets are
+> not the same items (single n=241, self_critique n=315, debate n=688; wrong in every
+> condition: 62). A condition that errs only on hard items is being compared against one
+> that errs on easy ones, so a between-condition difference is confounded with item
+> difficulty.
+
+> The debate condition is adjudicated by the WEAK judge while single and self_critique
+> are decided by the STRONG model, so the wrong-sets differ in size and character by
+> construction. There is no weak_alone condition, so a debate-vs-single difference
+> cannot separate the mechanism from model strength.
+
+62 items are wrong in all three conditions. That is the only intersected sample the run
+contains, and it is too small to carry a funnel.
+
+### The funnel per condition
+
+| | single | self_critique | debate |
+|---|---|---|---|
+| detection given incorrect | **25/241 = 10%** | **113/315 = 36%** | **170/688 = 25%** |
+| false alarm given correct | 310/1,823 = 17% | 241/1,701 = 14% | 270/956 = 28% |
+| revised given incorrect | **1/241 = 0.4%** | **46/315 = 15%** | **98/688 = 14%** |
+| revised given **correct** | **0/1,823 = 0%** | **30/1,701 = 2%** | **125/956 = 13%** |
+
+**`debate` revises a correct decision at 13% and a wrong one at 14%.** The two are within
+a point of each other, on 956 and 688 cells. Whatever moves debate's re-decider is not
+tracking correctness. That is `HANDOFF.md`'s "persuasion cuts both ways" — pilot 3 saw it
+as 4 of 26 corrected against 2 of 31 broken, denominators too small to lean on — arriving
+at scale with denominators that are not.
+
+`single` moved **0 of 1,823** correct decisions and 1 of 241 wrong ones. Pilot 3's
+expectation 3 said `single` would move ≤2 of 68 and it moved 0; at thirty times the size
+it is 1 of 2,064.
+
+The per-subset and per-`label_basis` tables are in
+`records/experiments/sweep/CHECKLIST.md` and are not repeated here. Two things in them
+are worth flagging and neither should be leaned on: `debate / law` reads 3/3 = 100% valid
+objections on **three rows**, and every gpqa `valid|graded` cell reads 0% because gpqa is
+clamped there by §3g, not because gpqa objections fail.
+
+### Phantom contests: 51.8%, and worse than pilot 3
+
+**585 of 1,129 contests are phantom** — the `Decision:` line says REVERSE and the prose
+argues the decision was right. Per condition: `single` **185/335 = 55.2%**,
+`self_critique` **152/354 = 42.9%**, `debate` **248/440 = 56.4%**. Pilot 3's pooled rate
+was 43.3% on 30 contests; on 1,129 it is **51.8%**, so the instrument that found it at
+pilot scale did not find a small-sample artifact.
+
+**The consequence is blunt: the raw `contests` counts are roughly double the true
+detections.** `single` reads 335 contests and means about 150; `debate` reads 440 and
+means about 192. Any figure in this experiment that says "contests" without saying
+"phantom" is overstating detection by about a factor of two. The `agreement` stage exists
+for exactly this and it is the only reason the number is knowable.
+
+The **mirror** error is rare, which is the one comfortable finding here: only **192 of
+4,595 declines** argue for reversal (4.2%), and only **12 of debate's 1,204** (1.0%).
+When the challenger declines, it means it. `unclear` is **0 of 5,724** — every reply
+carried a parsable `Decision:` line.
+
+**The 20-reply line-vs-prose hand check `HANDOFF.md` §5 requires has not been done.**
+Until it is, the 51.8% rests on Haiku alone; pilot 3's audit agreed with Haiku 19 times
+out of 20, on 30 contests.
+
+### Grading is n = 99, and `single` is n = 5
+
+**99 rows reached the grade stage: identified 74, characterised 46, valid 46, and 17
+clamped as ungradable on characterisation** (all 17 gpqa, §3g). By condition:
+`self_critique` 50, `debate` 44, **`single` 5**. Coverage against the eligible false
+negatives is 99 of 561 overall and **5 of 100 for `single`** — the rest declined, and a
+decline is a detection failure that lives in the `objection_raised` row, not this one
+(§3f).
+
+**Every valid-objection rate in this run is provisional and `single`'s is barely a
+number.** `single` has one gradable row. `debate / law` has three. `debate / theoremqa`
+has one. And none of the 99 has been hand-checked against its `flaw.json`, which
+`HANDOFF.md` §5 makes the only thing standing between the rate and a grader nobody
+audited. Pilot 3 hand-checked both of its two and dissented on one.
+
+**The two denominators disagree and both are in the repo.** `checks.log`'s funnel puts
+the 17 clamped rows in the denominator as False and reads **46/99 = 46%** overall,
+`single` **1/5 = 20%**; `metrics.json`'s `valid_objection` drops them and reads
+**46/82 = 56.1%**, `single` **1/1 = 100%**. Same numerator, and `metrics.json` is right
+on §3g's own reasoning — a clamped False "would read as an objection that failed rather
+than one that could not be measured". Quote whichever; say which; never quote `single`'s
+100% without its n = 1.
+
+### 25 damaged self_critique records
+
+**26 of 6,117 critique steps were withheld (0.4%), in 25 runs — so 25 of 2,016
+`self_critique` challengers were shown a placeholder where a critique should be.**
+Pilot 3 had **0** of 166, and expectation 6 asked for 0.
+
+This is §3o's accepted degradation arriving, and it is the right way round: a critique cut
+off past its own label is now withheld instead of killing the cell, which is why the
+critique-past-label fatal count is 0 where pilot 3's was 13. 25 damaged records bought
+back a comparable number of whole cells. But it is the §3d confound with a second cause,
+in the one condition whose record is *defined* by its critiques, and **those 25 cells are
+not comparable with the other 1,991**. §3o said any run that withholds a critique must
+report the count beside its funnel; 25, and it is beside it.
+
+### Containment held, and the repair rate did not move
+
+**0 occurrences of a `Thinking:` label in published argument or step text, across 6,230
+challenger-visible decision records. 0 reasoning billed but withheld.** The §3d and §3i
+leaks stayed shut over 54,000 calls.
+
+Native reasoning on GMICloud: 5,526 of 33,591 calls = **16.5%** (pilot 3: 16.0% on
+n=1,078), and 0 on every other provider.
+
+**The format-repair rate on the strong model is 22.5% — 6,360 of 28,226 original calls —
+against a pre-registered <10%.** Pilot 3 measured 22.5% on n=881. The sweep reproduces it
+to the decimal on 32× the traffic, which settles the question §3n.5 left open: it was not
+an n=881 accident. It is a property of this model on this routing, and it costs about a
+fifth again in calls. Which instruction was sent: aimed misplaced-label 4,200, budget
+1,113, aimed no-public-label 865, per-role fallback 206. 6,384 of 6,384 repairs paired to
+the call that failed.
+
+### §3r's obligation, discharged
+
+**Exactly 1 cell of 6,330 was decided on a second draw: `gpqa-157-flawed__debate__r1`.**
+Run-directory distribution `{1: 6329, 2: 1}`.
+
+§3r predicted this shape and the prediction was right: with no STOP there is a single
+`decide` invocation, `--retry-failed` cannot reach a failure inside the invocation that
+produced it, and the only cells with a prior `failed` run were the paid smoke's. The
+selection effect §3p.4 refused to buy is real, and it touches one cell. Nothing in this
+run's rates needs to be discounted for it.
+
+### The comparison that is not available
+
+Two things must be said before anyone reads the funnel as a result.
+
+**There is no `weak_alone` arm.** `debate` is judged by nano and the two solo conditions
+are decided by deepseek, so debate's 58.2% accuracy and its 688-cell wrong-set are
+properties of the judge as much as of the mechanism. §4 recorded this as an accepted
+limitation before the run; the screening calls are on disk, so the reference could be
+added without re-spending.
+
+**There is no specious-objection control.** `debate` revising 14% of its wrong decisions
+and 13% of its right ones is exactly the pattern a re-decider that folds under any
+pushback would produce, and this design cannot tell that apart from a re-decider
+responding to argument quality. §4 recorded that too.
+
+And a third, from `metrics.json`'s last caveat: natural errors only, so a weak judge errs
+where the correct side argued *badly* — debate's incorrect cell selects the debates in
+which debate worked worst. The direction understates debate; `single` has no equivalent
+filter, so the selection is asymmetric.
+
+What the run does establish, without any comparison: the harness ran seventeen hours at
+16 concurrent with zero routing failures, decided 90.4% of a 6,330-cell grid for $32, and
+its instrumentation caught two distortions large enough to change a reading — a 51.8%
+phantom-contest rate and a grading cell of 99 with one condition at 5.
+
+### What is still owed on this run
+
+- The **20-reply line-vs-prose hand check**, stratified by stance × parent verdict.
+- **All 99 graded rows hand-checked** against their `flaw.json`.
+- The **four transcripts read by hand** — `checks.log` Row 10 names and paths them:
+  `gpqa-115-sound__single__r1`, `gpqa-106-flawed__self_critique__r1`,
+  `gpqa-100-sound__debate__r1`, and the decline `gpqa-0-sound__debate__r1`.
+
+Until the first two exist, the phantom rate rests on an unaudited Haiku and the
+valid-objection rate on an unaudited grader.
+
+### A small thing found while reconciling, recorded so it is not re-found
+
+Seven contest runs are `failed` with a challenge written and no ruling — the re-decider
+truncated at `max_tokens=16384` — yet they carry `ruling_form: null` into `index.jsonl`
+and are counted in `revised_given_*` as **not revised**. That is an absent ruling being
+read as a ruling that the decision stood. It is 7 of 5,724 and moves no rate, but it is a
+default that should be an explicit `null` in the funnel rather than a False. The seven are
+named in `records/experiments/sweep/CHECKLIST.md`.
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

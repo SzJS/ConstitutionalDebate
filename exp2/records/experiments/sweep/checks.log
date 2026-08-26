@@ -1,0 +1,852 @@
+
+==============================================================================
+TREE outputs/experiments/sweep
+==============================================================================
+experiment  sweep   planned cells 6330   conditions ['single', 'self_critique', 'debate']
+strong model deepseek/deepseek-v4-flash-0731   challenger openai/gpt-4.1-nano
+
+stage artifacts on disk:
+  decide     cell dirs   6330   run dirs   6331   calls.jsonl  17779
+  contest      5724 artifacts
+  agreement    5724 artifacts
+  grade          99 artifacts
+  analyse         2 artifacts
+
+cells.jsonl rows 25350  (stages: {'decide': 6360, 'contest': 6330, 'agreement': 6330, 'grade': 6330})
+
+==============================================================================
+ROW 1 — parse
+==============================================================================
+counted from each cell's latest run.json, which is authoritative on a live tree:
+  cells with a run dir: 6330   completed 5724   failed 606   other 0 {}
+  decided: 5724/6330 = 90.4%
+  against the planned grid: 5724/6330 = 90.4% of 6330 cells
+
+cells.jsonl's decide summary: 6330 cells, completed 5695, failed 606
+
+truncated calls: 1699 of 53966 attempts = 3.1%
+  role=debater        purpose=turn         never reached it (budget route)            557
+  role=critic         purpose=critique     PAST its public label (fatal by design)    313
+  role=debater        purpose=turn         PAST its public label (fatal by design)    216
+  role=debater        purpose=repair       never reached it (budget route)            188
+  role=critic         purpose=critique     never reached it (budget route)            151
+  role=solo           purpose=revision     PAST its public label (fatal by design)    49
+  role=solo           purpose=answer       PAST its public label (fatal by design)    46
+  role=solo           purpose=draft        PAST its public label (fatal by design)    44
+  role=solo           purpose=answer       never reached it (budget route)            38
+  role=solo           purpose=draft        never reached it (budget route)            31
+  role=debater        purpose=repair       PAST its public label (fatal by design)    25
+  role=solo           purpose=revision     never reached it (budget route)            23
+  role=critic         purpose=repair       PAST its public label (fatal by design)    9
+  role=recourse_solo  purpose=rule         never reached it (budget route)            7
+  role=judge          purpose=judge        never reached it (budget route)            1
+  role=critic         purpose=repair       never reached it (budget route)            1
+  completion tokens on truncated calls: {8192: 1689, 16384: 7, 8193: 1, 136: 1, 8191: 1}
+
+parse_mode over every recorded decision step/turn:
+  strict                                       20431
+  salvaged_no_thinking                         5598
+  salvaged_no_thinking_after_budget_repair     555
+  strict_after_budget_repair                   288
+  unparsed_withheld                            26
+  unparsed_withheld_truncated_after_budget_repair 9
+  unparsed_withheld_truncated                  4
+  strict_trailing_dropped                      3
+
+budget recoveries (parse_mode *_after_budget_repair): 852
+
+failed cells: 606
+  failure shape (first 90 chars of the error), complete:
+      170  DebateFailure: round 1 failed: debater response truncated again after a budget repair: deb
+      151  DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_t
+      139  TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. 
+       41  DebateFailure: round 2 failed: debater response truncated again after a budget repair: deb
+       35  DebateFailure: round 1 failed: debater output still malformed after one budget repair atte
+       29  DebateFailure: round 2 failed: debater response stopped on finish_reason='length' at max_t
+       27  DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_t
+       10  DebateFailure: round 2 failed: debater output still malformed after one budget repair atte
+        1  DebateFailure: solo output still malformed after one format repair attempt: no 'Verdict: <
+        1  DebateFailure: round 3 failed: debater output still malformed after one format repair atte
+        1  DebateFailure: round 3 failed: debater output still malformed after one budget repair atte
+        1  TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384.
+  of which CRITIQUE TRUNCATED PAST ITS LABEL — the known fatal cause: 0
+  by condition: {'debate': 466, 'self_critique': 94, 'single': 46}
+  by subset:    {'gpqa': 91, 'law': 6, 'lojban': 14, 'medqa': 41, 'python800': 369, 'surgery': 26, 'theoremqa': 59}
+  malformed-after-repair cells: 48
+
+  gpqa-1-sound__debate__r1                                       DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-101-sound__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-102-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-104-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-110-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-111-sound__debate__r1                                     DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-112-flawed__self_critique__r1                             TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-112-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-113-sound__debate__r1                                     DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-114-sound__debate__r1                                     DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-115-sound__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-118-sound__debate__r1                                     DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-119-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-121-flawed__debate__r1                                    DebateFailure: round 1 failed: debater output still malformed after one budget repair attempt: no 'Argument:' label found; refusing to treat the whole
+  gpqa-121-flawed__self_critique__r1                             TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-122-sound__debate__r1                                     DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-123-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-133-sound__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-135-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-138-flawed__self_critique__r1                             TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-138-sound__debate__r1                                     DebateFailure: round 2 failed: debater output still malformed after one budget repair attempt: no 'Argument:' label found; refusing to treat the whole
+  gpqa-140-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-140-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-141-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-142-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-144-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-145-flawed__single__r1                                    TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-156-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-156-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-159-sound__self_critique__r1                              TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-160-flawed__self_critique__r1                             DebateFailure: solo output still malformed after one format repair attempt: no 'Verdict: <FLAWED|SOUND>' found; refusing to infer a verdict
+  gpqa-163-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-167-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-17-sound__single__r1                                      TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-172-flawed__debate__r1                                    DebateFailure: round 3 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-172-sound__debate__r1                                     DebateFailure: round 1 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public tran
+  gpqa-172-sound__single__r1                                     TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-175-flawed__debate__r1                                    DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  gpqa-176-flawed__self_critique__r1                             TruncatedOutputError: solo response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if
+  gpqa-178-sound__debate__r1                                     DebateFailure: round 1 failed: debater response truncated again after a budget repair: debater response stopped on finish_reason='length' at max_token
+  ... and 566 more failed cells (listing capped at 40; the counts above are complete)
+
+==============================================================================
+ROW 2 — repair, attributed to the call that FAILED
+==============================================================================
+original calls 47582   repair calls 6384   paired to a failing call 6384/6384
+overall repair rate: 6384/47582 = 13.4% of original calls
+
+provider             original calls  caused a repair     rate
+GMICloud                      27383             6212   22.7%
+OpenAI                        13531               18    0.1%
+Amazon Bedrock                 5822                6    0.1%
+CoreWeave                       838              148   17.7%
+unknown                           5                0    0.0%
+Azure                             2                0    0.0%
+Google                            1                0    0.0%
+
+STRONG MODEL ONLY (deepseek/deepseek-v4-flash-0731):
+  original calls 28226   caused a repair 6360   rate 22.5%
+
+repair kind, from the instruction actually sent:
+  aimed: misplaced label       4200
+  budget                       1113
+  aimed: no_public_label       865
+  per-role fallback            206
+
+malformed-after-repair cells: 48
+
+==============================================================================
+ROW 3 — verdict distribution per condition
+==============================================================================
+(a decide-stage quantity: read off verdict.json, so it does not wait on analyse)
+condition            n   FLAWED    SOUND  max share  gold flawed  accuracy
+single            2064     1259      805     61.0%         1218    88.3%
+self_critique     2016     1267      749     62.8%         1194    84.4%
+debate            1644      977      667     59.4%          969    58.2%
+ALL               5724     3503     2221     61.2%         3381    78.3%
+
+==============================================================================
+ROW 4 — stances per condition, split by parent verdict and by correctness
+==============================================================================
+
+-- pooled --
+condition        group                 n  contests  declined  unclear  agrees  contest rate
+single           all                2064       335      1729        0       0        16.2%
+self_critique    all                2016       354      1662        0       0        17.6%
+debate           all                1644       440      1204        0       0        26.8%
+
+-- by PARENT VERDICT class --
+condition        group                 n  contests  declined  unclear  agrees  contest rate
+single           FLAWED             1259       296       963        0       0        23.5%
+single           SOUND               805        39       766        0       0         4.8%
+self_critique    FLAWED             1267       250      1017        0       0        19.7%
+self_critique    SOUND               749       104       645        0       0        13.9%
+debate           FLAWED              977       373       604        0       0        38.2%
+debate           SOUND               667        67       600        0       0        10.0%
+
+-- by correctness --
+condition        group                 n  contests  declined  unclear  agrees  contest rate
+single           correct            1823       310      1513        0       0        17.0%
+single           incorrect           241        25       216        0       0        10.4%
+self_critique    correct            1701       241      1460        0       0        14.2%
+self_critique    incorrect           315       113       202        0       0        35.9%
+debate           correct             956       270       686        0       0        28.2%
+debate           incorrect           688       170       518        0       0        24.7%
+
+-- contests given a false negative vs a false positive --
+  single           false negative 5/100 = 5%       false positive 20/141 = 14%
+  self_critique    false negative 50/121 = 41%     false positive 63/194 = 32%
+  debate           false negative 44/340 = 13%     false positive 126/348 = 36%
+
+-- overall claimed_verdict, the column that must NOT be read as a reflex --
+   Counter({'SOUND': 2930, 'FLAWED': 2794})
+
+==============================================================================
+ROW 5 — line vs prose
+==============================================================================
+measured 5724 of 5724 eligible contests
+
+condition        line        RIGHT   WRONG   NEITHER
+single           REVERSE       185     148         2
+single           STANDS       1594     129         6
+self_critique    REVERSE       152     199         3
+self_critique    STANDS       1604      51         7
+debate           REVERSE       248     190         2
+debate           STANDS       1191      12         1
+ALL              REVERSE       585     537         7
+ALL              STANDS       4389     192        14
+
+  single           phantom contests 185/335 = 55.2%   declines arguing for reversal 129/1729
+  self_critique    phantom contests 152/354 = 42.9%   declines arguing for reversal 51/1662
+  debate           phantom contests 248/440 = 56.4%   declines arguing for reversal 12/1204
+  ALL              phantom contests 585/1129 = 51.8%   declines arguing for reversal 192/4595
+
+==============================================================================
+ROW 6 — containment and native reasoning
+==============================================================================
+challenger-visible decision records checked: 6230
+'Thinking:' occurrences in published text: 0
+
+provider                calls   native reasoning     rate
+GMICloud                33591               5526   16.5%
+OpenAI                  13549                  0    0.0%
+Amazon Bedrock           5828                  0    0.0%
+CoreWeave                 989                  0    0.0%
+unknown                     6                  0    0.0%
+Azure                       2                  0    0.0%
+Google                      1                  0    0.0%
+reasoning billed but withheld: 0
+
+==============================================================================
+ROW 7 — critiques
+==============================================================================
+critique steps: 6117   withheld: 26 = 0.4%
+self_critique runs carrying at least one withheld critique: 25
+self_critique CHALLENGERS shown a placeholder: 25 of 2016   (0 expected)
+
+==============================================================================
+ROW 8 — graded rows
+==============================================================================
+graded rows: 99   identified 74   characterised 46   valid 46   ungradable_char 17
+EVERY ONE OF THESE MUST BE HAND-CHECKED AGAINST ITS flaw.json (HANDOFF §5).
+
+  gpqa-106-flawed__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-106-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T165608Z-gpqa-106-flawed-recourse
+
+  gpqa-139-flawed__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-139-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T170536Z-gpqa-139-flawed-recourse
+
+  gpqa-139-flawed__single__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-139-flawed__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T170536Z-gpqa-139-flawed-recourse
+
+  gpqa-140-flawed__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-140-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T170532Z-gpqa-140-flawed-recourse
+
+  gpqa-155-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-155-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T165749Z-gpqa-155-flawed-recourse
+
+  gpqa-16-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-16-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171055Z-gpqa-16-flawed-recourse
+
+  gpqa-161-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-161-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170807Z-gpqa-161-flawed-recourse
+
+  gpqa-190-flawed__single__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-190-flawed__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T171044Z-gpqa-190-flawed-recourse
+
+  gpqa-35-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-35-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170014Z-gpqa-35-flawed-recourse
+
+  gpqa-42-flawed__single__r1
+    identified=False  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-42-flawed__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T170118Z-gpqa-42-flawed-recourse
+
+  gpqa-47-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-47-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170127Z-gpqa-47-flawed-recourse
+
+  gpqa-49-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-49-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T165940Z-gpqa-49-flawed-recourse
+
+  gpqa-54-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-54-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171059Z-gpqa-54-flawed-recourse
+
+  gpqa-75-flawed__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-75-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T165638Z-gpqa-75-flawed-recourse
+
+  gpqa-78-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-78-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170834Z-gpqa-78-flawed-recourse
+
+  gpqa-81-flawed__single__r1
+    identified=True  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-81-flawed__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T170825Z-gpqa-81-flawed-recourse
+
+  gpqa-94-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=True
+    dir: outputs/experiments/sweep/cells/gpqa-94-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170344Z-gpqa-94-flawed-recourse
+
+  law-con1_gpt3-5_A-s2__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/law-con1_gpt3-5_A-s2__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171156Z-law-con1_gpt3-5_A-s2-recourse
+
+  law-con2_gpt3-5_A-s6__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/law-con2_gpt3-5_A-s6__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171205Z-law-con2_gpt3-5_A-s6-recourse
+
+  law-con2_gpt4_A-s13__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/law-con2_gpt4_A-s13__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171212Z-law-con2_gpt4_A-s13-recourse
+
+  law-evi5_gpt3-5_B-s3__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/law-evi5_gpt3-5_B-s3__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171332Z-law-evi5_gpt3-5_B-s3-recourse
+
+  lojban-stim145_gpt3-5_B-s1__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim145_gpt3-5_B-s1__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171658Z-lojban-stim145_gpt3-5_B-s1-recourse
+
+  lojban-stim148_gpt3-5_B-s6__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim148_gpt3-5_B-s6__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171715Z-lojban-stim148_gpt3-5_B-s6-recourse
+
+  lojban-stim151_gpt4_B-s7__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim151_gpt4_B-s7__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171643Z-lojban-stim151_gpt4_B-s7-recourse
+
+  lojban-stim154_gpt4_B-s6__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim154_gpt4_B-s6__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171605Z-lojban-stim154_gpt4_B-s6-recourse
+
+  lojban-stim162_gpt3-5_B-s2__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim162_gpt3-5_B-s2__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171610Z-lojban-stim162_gpt3-5_B-s2-recourse
+
+  lojban-stim165_gpt4_A-s2__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim165_gpt4_A-s2__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171459Z-lojban-stim165_gpt4_A-s2-recourse
+
+  lojban-stim169_gpt4_A-s2__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim169_gpt4_A-s2__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171627Z-lojban-stim169_gpt4_A-s2-recourse
+
+  lojban-stim171_gpt3-5_A-s3__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/lojban-stim171_gpt3-5_A-s3__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171431Z-lojban-stim171_gpt3-5_A-s3-recourse
+
+  medqa-dev_0026__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0026__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171856Z-medqa-dev_0026-recourse
+
+  medqa-dev_0069__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0069__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171801Z-medqa-dev_0069-recourse
+
+  medqa-dev_0139__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0139__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171822Z-medqa-dev_0139-recourse
+
+  medqa-dev_0364__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0364__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171814Z-medqa-dev_0364-recourse
+
+  medqa-dev_0382__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0382__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171843Z-medqa-dev_0382-recourse
+
+  medqa-dev_0488__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0488__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171853Z-medqa-dev_0488-recourse
+
+  medqa-dev_0646__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0646__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171919Z-medqa-dev_0646-recourse
+
+  medqa-dev_0646__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0646__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171918Z-medqa-dev_0646-recourse
+
+  medqa-dev_0750__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0750__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T171927Z-medqa-dev_0750-recourse
+
+  medqa-dev_0834__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-dev_0834__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T171925Z-medqa-dev_0834-recourse
+
+  medqa-train_0447__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0447__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172045Z-medqa-train_0447-recourse
+
+  medqa-train_0448__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0448__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172007Z-medqa-train_0448-recourse
+
+  medqa-train_0641__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0641__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172145Z-medqa-train_0641-recourse
+
+  medqa-train_0778__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0778__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T172127Z-medqa-train_0778-recourse
+
+  medqa-train_0855__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0855__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172135Z-medqa-train_0855-recourse
+
+  medqa-train_0912__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_0912__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172210Z-medqa-train_0912-recourse
+
+  medqa-train_1009__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1009__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172224Z-medqa-train_1009-recourse
+
+  medqa-train_1082__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1082__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172234Z-medqa-train_1082-recourse
+
+  medqa-train_1124__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1124__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172150Z-medqa-train_1124-recourse
+
+  medqa-train_1172__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1172__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172215Z-medqa-train_1172-recourse
+
+  medqa-train_1392__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1392__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T172336Z-medqa-train_1392-recourse
+
+  medqa-train_1595__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1595__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T172349Z-medqa-train_1595-recourse
+
+  medqa-train_1595__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1595__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172349Z-medqa-train_1595-recourse
+
+  medqa-train_1636__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1636__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172322Z-medqa-train_1636-recourse
+
+  medqa-train_1646__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_1646__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172456Z-medqa-train_1646-recourse
+
+  medqa-train_2769__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_2769__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172420Z-medqa-train_2769-recourse
+
+  medqa-train_2979__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_2979__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172527Z-medqa-train_2979-recourse
+
+  medqa-train_3109__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3109__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172535Z-medqa-train_3109-recourse
+
+  medqa-train_3155__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3155__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T172550Z-medqa-train_3155-recourse
+
+  medqa-train_3196__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3196__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T172547Z-medqa-train_3196-recourse
+
+  medqa-train_3221__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3221__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172554Z-medqa-train_3221-recourse
+
+  medqa-train_3257__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3257__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172525Z-medqa-train_3257-recourse
+
+  medqa-train_3334__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3334__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172629Z-medqa-train_3334-recourse
+
+  medqa-train_3472__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3472__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172648Z-medqa-train_3472-recourse
+
+  medqa-train_3494__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3494__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172712Z-medqa-train_3494-recourse
+
+  medqa-train_3673__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3673__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172654Z-medqa-train_3673-recourse
+
+  medqa-train_3754__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/medqa-train_3754__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T172731Z-medqa-train_3754-recourse
+
+  python800-p02755-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02755-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T173324Z-python800-p02755-flawed-recourse
+
+  python800-p02787-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02787-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T173418Z-python800-p02787-flawed-recourse
+
+  python800-p02804-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02804-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T173450Z-python800-p02804-flawed-recourse
+
+  python800-p02910-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02910-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T173748Z-python800-p02910-flawed-recourse
+
+  python800-p02911-flawed__single__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02911-flawed__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T173749Z-python800-p02911-flawed-recourse
+
+  python800-p02970-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p02970-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T173920Z-python800-p02970-flawed-recourse
+
+  python800-p03168-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03168-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T174425Z-python800-p03168-flawed-recourse
+
+  python800-p03260-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03260-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T174625Z-python800-p03260-flawed-recourse
+
+  python800-p03372-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03372-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T174917Z-python800-p03372-flawed-recourse
+
+  python800-p03407-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03407-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T174955Z-python800-p03407-flawed-recourse
+
+  python800-p03657-flawed__debate__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03657-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T175545Z-python800-p03657-flawed-recourse
+
+  python800-p03737-flawed__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03737-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T175748Z-python800-p03737-flawed-recourse
+
+  python800-p03837-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03837-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180002Z-python800-p03837-flawed-recourse
+
+  python800-p03937-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/python800-p03937-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180048Z-python800-p03937-flawed-recourse
+
+  surgery-sur18_gpt4_A-s8__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur18_gpt4_A-s8__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180506Z-surgery-sur18_gpt4_A-s8-recourse
+
+  surgery-sur18_gpt4_A-s8__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur18_gpt4_A-s8__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180506Z-surgery-sur18_gpt4_A-s8-recourse
+
+  surgery-sur21_gpt4_B-s7__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur21_gpt4_B-s7__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180544Z-surgery-sur21_gpt4_B-s7-recourse
+
+  surgery-sur24_gpt3-5_A-s11__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur24_gpt3-5_A-s11__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180609Z-surgery-sur24_gpt3-5_A-s11-recourse
+
+  surgery-sur27_gpt4_A-s7__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur27_gpt4_A-s7__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180636Z-surgery-sur27_gpt4_A-s7-recourse
+
+  surgery-sur28_gpt3-5_B-s4__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur28_gpt3-5_B-s4__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180645Z-surgery-sur28_gpt3-5_B-s4-recourse
+
+  surgery-sur29_gpt4_B-s8__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur29_gpt4_B-s8__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180700Z-surgery-sur29_gpt4_B-s8-recourse
+
+  surgery-sur31_gpt4_B-s8__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur31_gpt4_B-s8__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180714Z-surgery-sur31_gpt4_B-s8-recourse
+
+  surgery-sur32_gpt3-5_A-s7__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur32_gpt3-5_A-s7__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180717Z-surgery-sur32_gpt3-5_A-s7-recourse
+
+  surgery-sur37_gpt3-5_A-s6__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur37_gpt3-5_A-s6__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180750Z-surgery-sur37_gpt3-5_A-s6-recourse
+
+  surgery-sur40_gpt3-5_A-s7__self_critique__r1
+    identified=False  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur40_gpt3-5_A-s7__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180810Z-surgery-sur40_gpt3-5_A-s7-recourse
+
+  surgery-sur40_gpt4_A-s15__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur40_gpt4_A-s15__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180814Z-surgery-sur40_gpt4_A-s15-recourse
+
+  surgery-sur43_gpt3-5_A-s5__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur43_gpt3-5_A-s5__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180832Z-surgery-sur43_gpt3-5_A-s5-recourse
+
+  surgery-sur47_gpt3-5_A-s2__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur47_gpt3-5_A-s2__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T180905Z-surgery-sur47_gpt3-5_A-s2-recourse
+
+  surgery-sur4_gpt3-5_A-s6__debate__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur4_gpt3-5_A-s6__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180259Z-surgery-sur4_gpt3-5_A-s6-recourse
+
+  surgery-sur51_gpt3-5_A-s1__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/surgery-sur51_gpt3-5_A-s1__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T180943Z-surgery-sur51_gpt3-5_A-s1-recourse
+
+  theoremqa-solutions-Ramsey_4-txt-flawed__self_critique__r1
+    identified=True  characterised=False  valid=False  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/theoremqa-solutions-Ramsey_4-txt-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T181222Z-theoremqa-solutions-Ramsey_4-txt-flawed-recourse
+
+  theoremqa-solutions-newtons_laws_2-txt-flawed__debate__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/theoremqa-solutions-newtons_laws_2-txt-flawed__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T181304Z-theoremqa-solutions-newtons_laws_2-txt-flawed-recourse
+
+  theoremqa-solutions-quantum3-png-flawed__self_critique__r1
+    identified=True  characterised=True  valid=True  ungradable_char=False
+    dir: outputs/experiments/sweep/cells/theoremqa-solutions-quantum3-png-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T181521Z-theoremqa-solutions-quantum3-png-flawed-recourse
+
+==============================================================================
+ROW 9 — ops
+==============================================================================
+served-provider distribution over every call:
+  GMICloud                33591   62.2%
+  OpenAI                  13549   25.1%
+  Amazon Bedrock           5828   10.8%
+  CoreWeave                 989    1.8%
+  unknown                     6    0.0%
+  Azure                       2    0.0%
+  Google                      1    0.0%
+
+strong-model calls: 34586
+  GMICloud                33591   97.1%
+  CoreWeave                 989    2.9%
+  unknown                     6    0.0%
+
+HTTP status counts: {200: 53966}
+non-200 attempts: 0 / 53966
+
+spend: $32.1326 over 12055 run directories
+  decision path $24.0854  off path $8.0472
+  $/decided cell: $0.00561
+  projection at the full grid of 6330 cells: $35.53  (1.3x headroom $46.19)
+  NB on a partial tree this projection is the DECIDE stage only; the other four stages have not spent yet.
+
+cost by model:
+  deepseek/deepseek-v4-flash-0731      $ 20.5874   64.1%   completion tokens 47672816
+  anthropic/claude-haiku-4.5           $  6.2418   19.4%   completion tokens 715829
+  openai/gpt-4.1-nano                  $  5.3033   16.5%   completion tokens 2648201
+
+==============================================================================
+ROW 10 — the four hand-read paths (candidates; the reading is by hand)
+==============================================================================
+
+GENUINE CONTEST — single  (on a decision that was wrong)
+  cell            gpqa-115-sound__single__r1
+  subset          gpqa   gold_flawed=False
+  verdict         FLAWED   initially_correct=False
+  stance          contests   claimed=SOUND
+  prose           WRONG   agree=True  phantom=False
+  changed         False   final_correct=False
+  comprehension   4
+  PATH            outputs/experiments/sweep/cells/gpqa-115-sound__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T170644Z-gpqa-115-sound-recourse/transcript.md
+  verbatim        outputs/experiments/sweep/cells/gpqa-115-sound__single__r1/contests/openai-gpt-4.1-nano/runs/20260826T170644Z-gpqa-115-sound-recourse/transcript_full.md
+
+GENUINE CONTEST — self_critique  (on a decision that was wrong)
+  cell            gpqa-106-flawed__self_critique__r1
+  subset          gpqa   gold_flawed=True
+  verdict         SOUND   initially_correct=False
+  stance          contests   claimed=FLAWED
+  prose           WRONG   agree=True  phantom=False
+  changed         False   final_correct=False
+  comprehension   3
+  PATH            outputs/experiments/sweep/cells/gpqa-106-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T165608Z-gpqa-106-flawed-recourse/transcript.md
+  verbatim        outputs/experiments/sweep/cells/gpqa-106-flawed__self_critique__r1/contests/openai-gpt-4.1-nano/runs/20260826T165608Z-gpqa-106-flawed-recourse/transcript_full.md
+
+GENUINE CONTEST — debate  (on a decision that was wrong)
+  cell            gpqa-100-sound__debate__r1
+  subset          gpqa   gold_flawed=False
+  verdict         FLAWED   initially_correct=False
+  stance          contests   claimed=SOUND
+  prose           WRONG   agree=True  phantom=False
+  changed         False   final_correct=False
+  comprehension   4
+  PATH            outputs/experiments/sweep/cells/gpqa-100-sound__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T165807Z-gpqa-100-sound-recourse/transcript.md
+  verbatim        outputs/experiments/sweep/cells/gpqa-100-sound__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T165807Z-gpqa-100-sound-recourse/transcript_full.md
+
+DECLINED ON A WRONG DECISION
+  cell            gpqa-0-sound__debate__r1
+  subset          gpqa   gold_flawed=False
+  verdict         FLAWED   initially_correct=False
+  stance          declined   claimed=FLAWED
+  prose           RIGHT   agree=True  phantom=False
+  changed         False   final_correct=False
+  comprehension   4
+  PATH            outputs/experiments/sweep/cells/gpqa-0-sound__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170943Z-gpqa-0-sound-recourse/transcript.md
+  verbatim        outputs/experiments/sweep/cells/gpqa-0-sound__debate__r1/contests/openai-gpt-4.1-nano/runs/20260826T170943Z-gpqa-0-sound-recourse/transcript_full.md
+
+==============================================================================
+EXPECTATION 8 — salvaged_no_thinking on solo runs
+==============================================================================
+solo decision steps: 16314
+salvaged_no_thinking: 4947 = 30.3%
+  strict                                       11266
+  salvaged_no_thinking                         4460
+  salvaged_no_thinking_after_budget_repair     487
+  strict_after_budget_repair                   60
+  unparsed_withheld                            26
+  unparsed_withheld_truncated_after_budget_repair 9
+  unparsed_withheld_truncated                  4
+  strict_trailing_dropped                      2
+
+==============================================================================
+FUNNEL — pooled, per condition
+==============================================================================
+denominators: errors|n = decided cells; contest|incorrect and falsealarm|correct = cells whose contest stage ran;
+  ident|graded and valid|graded are CONDITIONAL on an objection having been raised AND the row being gradable
+  (initially incorrect AND flawed item AND the subset's annotation says what the flaw is) — LLM_NOTES.md 3f.
+  `valid x raised` multiplies valid|graded through contest|incorrect: that product is the unconditional reading.
+
+stratum                            n       errors    contest|inc  falsealarm|cor   ident|graded   valid|graded  valid x raised      rev|inc      rev|cor
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+single                          2064 241/2064 12%     25/241 10%    310/1823 17%        4/5 80%        1/5 20%            2.1%     1/241 0%    0/1823 0%
+self_critique                   2016 315/2016 16%    113/315 36%    241/1701 14%      37/50 74%      26/50 52%           18.7%   46/315 15%   30/1701 2%
+debate                          1644 688/1644 42%    170/688 25%     270/956 28%      33/44 75%      19/44 43%           10.7%   98/688 14%  125/956 13%
+ALL                             57241244/5724 22%   308/1244 25%    821/4480 18%      74/99 75%      46/99 46%           11.5% 145/1244 12%  155/4480 3%
+
+false negatives / false positives among the errors:
+  single           errors   241   false negative   100   false positive   141
+  self_critique    errors   315   false negative   121   false positive   194
+  debate           errors   688   false negative   340   false positive   348
+  ALL              errors  1244   false negative   561   false positive   683
+
+==============================================================================
+FUNNEL — by condition x SUBSET (HANDOFF §5)
+==============================================================================
+denominators: errors|n = decided cells; contest|incorrect and falsealarm|correct = cells whose contest stage ran;
+  ident|graded and valid|graded are CONDITIONAL on an objection having been raised AND the row being gradable
+  (initially incorrect AND flawed item AND the subset's annotation says what the flaw is) — LLM_NOTES.md 3f.
+  `valid x raised` multiplies valid|graded through contest|incorrect: that product is the unconditional reading.
+
+stratum                            n       errors    contest|inc  falsealarm|cor   ident|graded   valid|graded  valid x raised      rev|inc      rev|cor
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+single / gpqa                    374   78/374 21%      14/78 18%      40/296 14%        3/4 75%         0/4 0%            0.0%      0/78 0%     0/296 0%
+single / law                      39     5/39 13%        1/5 20%        5/34 15%        not yet        not yet         not yet       0/5 0%      0/34 0%
+single / lojban                  118   22/118 19%        2/22 9%         9/96 9%        not yet        not yet         not yet      0/22 0%      0/96 0%
+single / medqa                   212   30/212 14%        1/30 3%      71/182 39%        not yet        not yet         not yet      0/30 0%     0/182 0%
+single / python800               932    53/932 6%       6/53 11%     155/879 18%       1/1 100%       1/1 100%           11.3%      1/53 2%     0/879 0%
+single / surgery                 209   29/209 14%        0/29 0%        8/180 4%        not yet        not yet         not yet      0/29 0%     0/180 0%
+single / theoremqa               180   24/180 13%        1/24 4%      22/156 14%        not yet        not yet         not yet      0/24 0%     0/156 0%
+single / ALL                    2064 241/2064 12%     25/241 10%    310/1823 17%        4/5 80%        1/5 20%            2.1%     1/241 0%    0/1823 0%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+self_critique / gpqa             362   83/362 23%      24/83 29%      33/279 12%        3/4 75%         0/4 0%            0.0%      6/83 7%     4/279 1%
+self_critique / law               38    11/38 29%       3/11 27%        7/27 26%       1/1 100%         0/1 0%            0.0%      1/11 9%     3/27 11%
+self_critique / lojban           111   27/111 24%       6/27 22%       15/84 18%        4/6 67%        3/6 50%           11.1%     4/27 15%      6/84 7%
+self_critique / medqa            210   65/210 31%      36/65 55%      44/145 30%      19/27 70%      17/27 63%           34.9%    14/65 22%     7/145 5%
+self_critique / python800        918    60/918 7%      15/60 25%     116/858 14%        not yet        not yet         not yet     6/60 10%     1/858 0%
+self_critique / surgery          205   46/205 22%      20/46 43%      18/159 11%       8/10 80%       5/10 50%           21.7%    13/46 28%     8/159 5%
+self_critique / theoremqa        172   23/172 13%       9/23 39%        8/149 5%       2/2 100%        1/2 50%           19.6%      2/23 9%     1/149 1%
+self_critique / ALL             2016 315/2016 16%    113/315 36%    241/1701 14%      37/50 74%      26/50 52%           18.7%   46/315 15%   30/1701 2%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+debate / gpqa                    319  140/319 44%     43/140 31%      50/179 28%        7/9 78%         0/9 0%            0.0%   23/140 16%   21/179 12%
+debate / law                      37    10/37 27%       3/10 30%        5/27 19%       3/3 100%       3/3 100%           30.0%     3/10 30%     3/27 11%
+debate / lojban                  117   44/117 38%        4/44 9%        7/73 10%        1/2 50%         0/2 0%            0.0%      4/44 9%      3/73 4%
+debate / medqa                   203   83/203 41%      28/83 34%      51/120 42%       6/10 60%       5/10 50%           16.9%    17/83 20%   19/120 16%
+debate / python800               637  243/637 38%     45/243 19%     129/394 33%       9/13 69%       5/13 38%            7.1%   27/243 11%   61/394 15%
+debate / surgery                 196   99/196 51%      32/99 32%       15/97 15%       6/6 100%        5/6 83%           26.9%    19/99 19%      9/97 9%
+debate / theoremqa               135   69/135 51%      15/69 22%       13/66 20%       1/1 100%       1/1 100%           21.7%      5/69 7%     9/66 14%
+debate / ALL                    1644 688/1644 42%    170/688 25%     270/956 28%      33/44 75%      19/44 43%           10.7%   98/688 14%  125/956 13%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ALL / gpqa                      1055 301/1055 29%     81/301 27%     123/754 16%      13/17 76%        0/17 0%            0.0%   29/301 10%    25/754 3%
+ALL / law                        114   26/114 23%       7/26 27%       17/88 19%       4/4 100%        3/4 75%           20.2%     4/26 15%      6/88 7%
+ALL / lojban                     346   93/346 27%      12/93 13%      31/253 12%        5/8 62%        3/8 38%            4.8%      8/93 9%     9/253 4%
+ALL / medqa                      625  178/625 28%     65/178 37%     166/447 37%      25/37 68%      22/37 59%           21.7%   31/178 17%    26/447 6%
+ALL / python800                 2487 356/2487 14%     66/356 19%    400/2131 19%      10/14 71%       6/14 43%            7.9%   34/356 10%   62/2131 3%
+ALL / surgery                    610  174/610 29%     52/174 30%       41/436 9%      14/16 88%      10/16 62%           18.7%   32/174 18%    17/436 4%
+ALL / theoremqa                  487  116/487 24%     25/116 22%      43/371 12%       3/3 100%        2/3 67%           14.4%     7/116 6%    10/371 3%
+ALL / ALL                       57241244/5724 22%   308/1244 25%    821/4480 18%      74/99 75%      46/99 46%           11.5% 145/1244 12%  155/4480 3%
+
+==============================================================================
+FUNNEL — by condition x LABEL_BASIS (HANDOFF §5)
+==============================================================================
+denominators: errors|n = decided cells; contest|incorrect and falsealarm|correct = cells whose contest stage ran;
+  ident|graded and valid|graded are CONDITIONAL on an objection having been raised AND the row being gradable
+  (initially incorrect AND flawed item AND the subset's annotation says what the flaw is) — LLM_NOTES.md 3f.
+  `valid x raised` multiplies valid|graded through contest|incorrect: that product is the unconditional reading.
+
+stratum                            n       errors    contest|inc  falsealarm|cor   ident|graded   valid|graded  valid x raised      rev|inc      rev|cor
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+single / final_answer            212   30/212 14%        1/30 3%      71/182 39%        not yet        not yet         not yet      0/30 0%     0/182 0%
+single / injected_pair          1486 155/1486 10%     21/155 14%    217/1331 16%        4/5 80%        1/5 20%            2.7%     1/155 1%    0/1331 0%
+single / sentence_labels         366   56/366 15%        3/56 5%       22/310 7%        not yet        not yet         not yet      0/56 0%     0/310 0%
+single / ALL                    2064 241/2064 12%     25/241 10%    310/1823 17%        4/5 80%        1/5 20%            2.1%     1/241 0%    0/1823 0%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+self_critique / final_answer     210   65/210 31%      36/65 55%      44/145 30%      19/27 70%      17/27 63%           34.9%    14/65 22%     7/145 5%
+self_critique / injected_pair   1452 166/1452 11%     48/166 29%    157/1286 12%        5/6 83%        1/6 17%            4.8%    14/166 8%    6/1286 0%
+self_critique / sentence_label   354   84/354 24%      29/84 35%      40/270 15%      13/17 76%       8/17 47%           16.2%    18/84 21%    17/270 6%
+self_critique / ALL             2016 315/2016 16%    113/315 36%    241/1701 14%      37/50 74%      26/50 52%           18.7%   46/315 15%   30/1701 2%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+debate / final_answer            203   83/203 41%      28/83 34%      51/120 42%       6/10 60%       5/10 50%           16.9%    17/83 20%   19/120 16%
+debate / injected_pair          1091 452/1091 41%    103/452 23%     192/639 30%      17/23 74%       6/23 26%            5.9%   55/452 12%   91/639 14%
+debate / sentence_labels         350  153/350 44%     39/153 25%      27/197 14%      10/11 91%       8/11 73%           18.5%   26/153 17%    15/197 8%
+debate / ALL                    1644 688/1644 42%    170/688 25%     270/956 28%      33/44 75%      19/44 43%           10.7%   98/688 14%  125/956 13%
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ALL / final_answer               625  178/625 28%     65/178 37%     166/447 37%      25/37 68%      22/37 59%           21.7%   31/178 17%    26/447 6%
+ALL / injected_pair             4029 773/4029 19%    172/773 22%    566/3256 17%      26/34 76%       8/34 24%            5.2%    70/773 9%   97/3256 3%
+ALL / sentence_labels           1070 293/1070 27%     71/293 24%      89/777 11%      23/28 82%      16/28 57%           13.8%   44/293 15%    32/777 4%
+ALL / ALL                       57241244/5724 22%   308/1244 25%    821/4480 18%      74/99 75%      46/99 46%           11.5% 145/1244 12%  155/4480 3%
+
+Rates are NOT pooled across label_basis by default (src/exp2/analysis.py): a planted
+reasoning error, a sentence-labelled one and a wrong final answer are different objects.
+Read the n before the rate — a subset x condition cell is a slice of the corpus, not the corpus.
+
+==============================================================================
+SECOND DRAWS — cells decided on a re-run (LLM_NOTES.md §3r)
+==============================================================================
+The user chose --retry-failed for this run: a cell whose latest run is `failed`
+gets one more draw on a resume. §3r makes reporting the count an obligation,
+because a second draw selects for compliant outputs — the cells that survive are
+no longer a clean sample of the corpus. They are identifiable on disk as more
+than one directory under cells/<cell>/runs/.
+
+cells with more than one run directory: 1 of 6330
+run-directory count distribution: {1: 6329, 2: 1}
+
+condition         2nd-draw cells  final completed  final failed   other
+debate                         1                1             0       0
+ALL                            1                1             0       0
+
+cells DECIDED on a second draw (final run completed): 1  — these are the ones the write-up must name.
+
+by subset: {'gpqa': 1}
+
+  gpqa-157-flawed__debate__r1                                    runs=2  final=completed
+
+done.
