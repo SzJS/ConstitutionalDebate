@@ -497,13 +497,25 @@ This is the published record.
 # was right or wrong (LLM_NOTES §3n). Without it the `contests` column is
 # unfalsifiable.
 #
-# The wording deliberately does not presuppose a section: gpt-4.1-nano writes no
-# `Thinking:`/`Argument:` labels at all — 118 of pilot 1's 120 replies and all 108 of
-# pilot 2's parsed via `salvaged_no_labels` — and an instruction that says "begin the
-# Argument section" is addressed to a format the challenger does not use.
+# Until the first re-contest smoke this wording deliberately did NOT name a section:
+# gpt-4.1-nano wrote no `Thinking:`/`Argument:` labels at all — 118 of pilot 1's 120
+# replies and all 108 of pilot 2's parsed via `salvaged_no_labels` — so an instruction
+# that said "begin the Argument section" was addressed to a format the challenger did
+# not use. **Moving the decision line to the end changed that**, and the smoke measured
+# it: 10 of 18 replies opened a `Thinking:` block and never closed it with `Argument:`,
+# which the parser refuses rather than guess where the private text ends, so the repair
+# rate went from ~0% to 56%. "Give your reasons" reads as an invitation to think aloud
+# in the section the system prompt has just named. The naming sentence below is
+# therefore the *new* justification for the same care: the challenger is told where the
+# published text goes, so that reasoning at length cannot leave the boundary unmarked.
+# It names the labels rather than demanding both sections — a reply with no labels at
+# all is still salvaged, and that is still the commonest shape.
 CHALLENGE_DECISION_INSTRUCTION = """
 You are deciding whether the **verdict** above should stand. The decision was that \
 {decision_phrase}.
+
+Put your reasons under `Argument:` — they are published. Use `Thinking:` only for \
+private working, and close it with `Argument:`.
 
 Give your reasons, then end your response with one line, exactly:
 

@@ -297,9 +297,17 @@ def test_the_challenger_answers_one_line_stated_relative_to_the_decision():
     assert "FLAWED" not in tail and "SOUND" not in tail
     assert "Verdict should be:" not in instruction
     assert "rests on an error" not in instruction
-    # and it must not presuppose a section the challenger does not write: 118 of the
-    # pilot's 120 replies carried no Thinking:/Argument: labels at all.
+    # It names where the published text goes, and it must, since the line moved to the
+    # end: the first re-contest smoke measured 10 of 18 replies opening a `Thinking:`
+    # block and never closing it with `Argument:`, which the parser refuses rather than
+    # guess where the private text ends — a 56% repair rate against the pilots' ~0%.
+    assert "Put your reasons under `Argument:`" in instruction
+    assert "close it with `Argument:`" in instruction
+    # ... but it still does not DEMAND both sections. A reply with no labels at all is
+    # salvaged and is the commonest shape the challenger writes, so an instruction that
+    # required the two-section format would refuse the format the model produces.
     assert "Begin the Argument section" not in instruction
+    assert "exactly two labelled sections" not in instruction
     # the system prompt says both verdicts are contestable, and says how each is
     system = messages[0]["content"]
     assert "Either verdict can be wrong." in system
