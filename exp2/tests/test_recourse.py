@@ -8,7 +8,7 @@ from helpers import make_config
 from recording import contest, decided
 
 from exp2.arms import DECIDERS
-from exp2.recourse import RECOURSERS, run_recourse
+from exp2.recourse import RECOURSERS, recoursers_for, run_recourse
 from exp2.types import FLAWED, SOUND
 
 
@@ -19,6 +19,55 @@ async def test_every_condition_has_exactly_one_recourse_mechanism():
     assert set(RECOURSERS) == set(DECIDERS)
     assert RECOURSERS["debate"].__name__ == "_rule_by_judge"
     assert RECOURSERS["single"] is RECOURSERS["self_critique"]
+
+
+async def test_each_recourse_form_covers_every_condition():
+    """A form that omitted a condition would fail at the cell rather than at the config,
+    hours into a sweep."""
+    for form in ("per_condition", "third_party", "in_conversation"):
+        assert set(recoursers_for(form)) == set(DECIDERS)
+    assert recoursers_for("per_condition") is RECOURSERS
+    with pytest.raises(ValueError, match="unknown recourse_form"):
+        recoursers_for("whatever")
+
+
+async def test_third_party_sends_a_solo_objection_to_the_recourse_judge(tmp_path):
+    """The settled protocol: the appeal is heard by a weak party that did not decide.
+    Under the historical routing this same cell is re-decided by the model that decided
+    it, and the sweep measured the two forms disagreeing about 20 points of the phantom
+    objections they were handed."""
+    config = make_config(recourse_form="third_party")
+    outcome, client, _, _ = await contest(tmp_path, "single", config=config)
+    assert outcome.ruling.form == "uphold_overturn"
+    assert outcome.ruling.protocol == "judge_only"
+    assert "recourse_judge" in client.roles()
+    assert "recourse_solo" not in client.roles()
+    # and the judge is shown the SOLO record, not a debate it never had
+    sent = "".join(m["content"] for m in client.sent_to("recourse_judge"))
+    assert "No debaters were assigned and nobody argued a position" in sent
+
+
+async def test_third_party_leaves_the_debate_condition_where_it_already_was(tmp_path):
+    config = make_config(recourse_form="third_party")
+    outcome, client, _, _ = await contest(tmp_path, "debate", config=config)
+    assert outcome.ruling.form == "uphold_overturn"
+    assert "recourse_judge" in client.roles()
+
+
+async def test_in_conversation_refuses_the_debate_condition(tmp_path):
+    """There is no single decider whose conversation could be replayed. Falling back to
+    the judge would make the ablation mean "third_party for debate", which is the
+    conflation the form exists to separate."""
+    config = make_config(recourse_form="in_conversation")
+    with pytest.raises(ValueError, match="no single decider"):
+        await contest(tmp_path, "debate", config=config)
+
+
+async def test_in_conversation_keeps_the_solo_conditions_in_their_conversation(tmp_path):
+    config = make_config(recourse_form="in_conversation")
+    outcome, client, _, _ = await contest(tmp_path, "self_critique", config=config)
+    assert outcome.ruling.form == "restated_verdict"
+    assert "recourse_solo" in client.roles()
 
 
 async def test_debate_is_ruled_by_a_judge_who_did_not_decide(tmp_path):
@@ -99,7 +148,7 @@ async def test_a_solo_contest_without_a_conversation_is_refused(tmp_path):
 # --- declining -----------------------------------------------------------------------
 
 
-DECLINE = "Thinking: I read it.\nArgument: Decision: STANDS\nThe grounds check out."
+DECLINE = "Thinking: I read it.\nArgument: The grounds check out.\nDecision: STANDS"
 
 
 async def test_a_decline_seeks_no_ruling_and_writes_no_ruling_file(tmp_path):
@@ -133,10 +182,10 @@ async def test_comprehension_is_still_asked_after_a_decline(tmp_path):
 # exists.
 
 # The measured shape: no Thinking:/Argument: labels anywhere (118 of 120 pilot replies).
-CONTESTS = ("Decision: REVERSE\n"
-            "The claimed flaw in step 2 is not one; the identity holds.")
-DECLINES = ("Decision: STANDS\n"
-            "The decision correctly identifies the error in step 2.")
+CONTESTS = ("The claimed flaw in step 2 is not one; the identity holds.\n"
+            "Decision: REVERSE")
+DECLINES = ("The decision correctly identifies the error in step 2.\n"
+            "Decision: STANDS")
 UNCLEAR = "I have several concerns about how this decision was reached."
 
 

@@ -74,6 +74,12 @@ max_decision_attempts = 2
 # --- contest -----------------------------------------------------------------------
 # Judge-only recourse. Validated: see config.DebateConfig.__post_init__.
 recourse_rounds = 0
+# Who rules on an objection. "per_condition" is the historical routing (debate → a
+# third-party judge, single/self_critique → the decider re-deciding in its own
+# conversation), kept as the default so specs written before this field mean what they
+# ran. The re-contest specs set "third_party" — the settled protocol, where nobody
+# adjudicates their own appeal.
+recourse_form = "per_condition"
 challenger_may_decline = true
 challenger_model = "openai/gpt-4.1-nano"
 # challenger_model     — unset would mean the debater model, which would put a strong

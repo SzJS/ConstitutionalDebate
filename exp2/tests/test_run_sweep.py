@@ -53,7 +53,8 @@ exit 0
 """
 
 
-def drive(tmp_path: Path, *, fail_at: str | None = None, name: str = "sweep-test"):
+def drive(tmp_path: Path, *, fail_at: str | None = None, name: str = "sweep-test",
+          stages: str | None = None):
     spec = tmp_path / "spec.toml"
     spec.write_text(f'name = "{name}"\ncases = "nowhere.jsonl"\n', encoding="utf-8")
     stub = tmp_path / "stub.sh"
@@ -76,6 +77,7 @@ def drive(tmp_path: Path, *, fail_at: str | None = None, name: str = "sweep-test
             "RUN_SWEEP_OUTPUTS": str(tmp_path / "experiments"),
             "RAN_LOG": str(ran),
             "FAIL_AT": str(fail_marker),
+            **({"RUN_SWEEP_STAGES": stages} if stages else {}),
         },
     )
     stages = ran.read_text(encoding="utf-8").split() if ran.exists() else []
@@ -91,12 +93,34 @@ def test_all_five_stages_run_in_order_and_leave_done(tmp_path: Path):
     assert stages == ALL_FIVE
     assert not (root / "STOP.md").exists()
     done = (root / "DONE.md").read_text(encoding="utf-8")
-    assert "All five stages completed" in done
+    assert "All stages completed: decide contest agreement grade analyse" in done
     # Completing is not succeeding, and the file has to say so where it is read.
     assert "metrics.json" in done
     for stage in ALL_FIVE:
         log = tmp_path / "logs" / f"sweep-test-{stage}.log"
         assert f"stub running stage {stage}" in log.read_text(encoding="utf-8")
+
+
+def test_the_stage_list_can_be_narrowed_for_a_re_contest(tmp_path: Path):
+    """A spec with `decisions_from` contests decisions it did not make, so `decide` must
+    not run — and the driver, not a hand-typed chain of four commands, is still what
+    sequences the rest and writes STOP.md."""
+    four = "contest agreement grade analyse"
+    proc, stages, root = drive(tmp_path, stages=four)
+    assert proc.returncode == 0, proc.stderr
+    assert stages == four.split()
+    assert "decide" not in stages
+    done = (root / "DONE.md").read_text(encoding="utf-8")
+    assert f"All stages completed: {four}" in done
+    assert not (tmp_path / "logs" / "sweep-test-decide.log").exists()
+
+
+def test_a_narrowed_chain_still_halts_at_the_first_failure(tmp_path: Path):
+    proc, stages, root = drive(tmp_path, stages="contest agreement grade analyse",
+                               fail_at="agreement")
+    assert stages == ["contest", "agreement"]
+    assert proc.returncode == 7
+    assert "`agreement`" in (root / "STOP.md").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("fail_at", ["decide", "agreement", "analyse"])

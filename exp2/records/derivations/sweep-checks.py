@@ -7,6 +7,14 @@ pilot 3's. Reads only what a run left behind: `cells.jsonl`, every `calls.jsonl`
 every `challenge.json` / `agreement.json` / `grade.json`, and `index.jsonl`.
 
     uv run python records/derivations/sweep-checks.py [tree]     # default outputs/experiments/sweep
+    uv run python records/derivations/sweep-checks.py outputs/experiments/recontest \
+        --decisions outputs/experiments/sweep
+
+**`--decisions <root>` splits the two trees.** A re-contest reads its decisions out of a
+tree it never writes to (`decisions_from` in the spec), so the decision-side rows — 1, 2,
+3, 6, 7 and the second-draw table — must be read from THERE, while the contest-side rows
+— 4, 5, 8, 10 and the funnels — are read from the tree named first. Without the flag both
+are the same tree and every row reads what it always did.
 
 The one derivation worth restating: a format repair is attributed to the call that
 **failed**, not to the call that served the repair. Pilot 2's first provider table did
@@ -46,7 +54,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, "src")
 from exp2.prompts import _ANY_THINKING_RE, _LABEL_RE  # noqa: E402
 
-ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "outputs/experiments/sweep")
+_args = [a for a in sys.argv[1:]]
+_decisions_arg = None
+if "--decisions" in _args:
+    i = _args.index("--decisions")
+    if i + 1 >= len(_args):
+        print("--decisions needs a path")
+        raise SystemExit(2)
+    _decisions_arg = _args[i + 1]
+    del _args[i:i + 2]
+ROOT = Path(_args[0] if _args else "outputs/experiments/sweep")
+# Where the DECISIONS live. The same tree unless this is a re-contest, in which case the
+# decisions belong to another run and this tree holds only what was done to them.
+DECISIONS = Path(_decisions_arg) if _decisions_arg else ROOT
+SPLIT = DECISIONS != ROOT
 SOLO_ROLES = {"solo", "critic", "recourse_solo"}
 CONDS = ("single", "self_critique", "debate")
 MAX_LIST = 40          # per-cell listings are capped; the counts above them are not
@@ -108,8 +129,12 @@ def capped(items, label):
 if not ROOT.is_dir():
     print(f"no such tree: {ROOT}")
     raise SystemExit(1)
+if not DECISIONS.is_dir():
+    print(f"no such decision tree: {DECISIONS}")
+    raise SystemExit(1)
 
-experiment = load_json(ROOT / "experiment.json") or {}
+experiment = (load_json(ROOT / "experiment.json")
+              or load_json(DECISIONS / "experiment.json") or {})
 config = experiment.get("config") or {}
 STRONG = config.get("debater_model") or "deepseek/deepseek-v4-flash-0731"
 CHALLENGER = config.get("challenger_model") or "openai/gpt-4.1-nano"
@@ -138,7 +163,7 @@ HAVE_INDEX = bool(index)
 # once `analyse` has run.
 disk_rows = {}
 run_dirs_by_cell = {}
-cells_dir = ROOT / "cells"
+cells_dir = DECISIONS / "cells"
 for cell_dir in sorted(cells_dir.iterdir()) if cells_dir.is_dir() else []:
     if not cell_dir.is_dir():
         continue
@@ -230,40 +255,50 @@ decided_rows = [r for r in disk_rows.values()
                 if r["status"] == "completed" and r["verdict"]]
 
 decision_calls, contest_calls = [], []
-for path in sorted(ROOT.rglob("calls.jsonl")):
-    if "parent" in path.parts:
-        continue
-    bucket = contest_calls if "contests" in path.parts else decision_calls
-    run = str(path.parent)
-    try:
-        handle = path.open(encoding="utf-8")
-    except OSError:
-        continue
-    with handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                call = json.loads(line)
-            except ValueError:
-                continue          # a line still being appended under us
-            call["_run"] = run
-            bucket.append(call)
+# Two passes rather than one partition, because the two kinds of call can now live in
+# different trees. With no --decisions the two roots are the same path and the
+# `contests` test partitions exactly as it always did.
+for root, want_contests, bucket in ((DECISIONS, False, decision_calls),
+                                    (ROOT, True, contest_calls)):
+    for path in sorted(root.rglob("calls.jsonl")):
+        if "parent" in path.parts:
+            continue
+        if ("contests" in path.parts) != want_contests:
+            continue
+        run = str(path.parent)
+        try:
+            handle = path.open(encoding="utf-8")
+        except OSError:
+            continue
+        with handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    call = json.loads(line)
+                except ValueError:
+                    continue          # a line still being appended under us
+                call["_run"] = run
+                bucket.append(call)
 all_calls = decision_calls + contest_calls
 
 challenges = sorted(ROOT.glob("cells/*/contests/*/runs/*/challenge.json"))
 agreements = sorted(ROOT.glob("cells/*/contests/*/runs/*/agreement.json"))
 grades = sorted(ROOT.glob("cells/*/contests/*/runs/*/grade.json"))
 
-rule(f"TREE {ROOT}")
+rule(f"TREE {ROOT}" + (f"\nDECISIONS {DECISIONS}  (read-only source)" if SPLIT else ""))
+if SPLIT:
+    print("split trees: the decision-side rows (1, 2, 3, 6, 7, second draws) are read "
+          "from\nthe source tree; the contest-side rows (4, 5, 8, 10, funnels) from this "
+          "one.\n")
 print(f"experiment  {experiment.get('name', '?')}   planned cells {PLANNED_CELLS}   "
       f"conditions {experiment.get('conditions')}")
 print(f"strong model {STRONG}   challenger {CHALLENGER}")
 print("\nstage artifacts on disk:")
 print(f"  decide     cell dirs {len(run_dirs_by_cell):>6}   run dirs "
       f"{sum(len(v) for v in run_dirs_by_cell.values()):>6}   "
-      f"calls.jsonl {len(list(ROOT.rglob('calls.jsonl'))):>6}")
+      f"calls.jsonl {len(list(DECISIONS.rglob('calls.jsonl'))):>6}")
 for label, found, why in (
     ("contest  ", len(challenges), "no challenge.json anywhere under cells/*/contests/"),
     ("agreement", len(agreements), "no agreement.json anywhere"),
@@ -509,20 +544,20 @@ else:
 
 rule("ROW 6 — containment and native reasoning")
 leaks = []
-for path in sorted(ROOT.rglob("transcript.json")):
+for path in sorted(DECISIONS.rglob("transcript.json")):
     if "parent" in path.parts:
         continue
     for turn in (load_json(path) or {}).get("turns", []):
         if _ANY_THINKING_RE.search(turn["argument"]):
             leaks.append((str(path), turn["speaker"], turn["round"]))
-for path in sorted(ROOT.rglob("trace.json")):
+for path in sorted(DECISIONS.rglob("trace.json")):
     if "parent" in path.parts:
         continue
     for step in (load_json(path) or {}).get("steps", []):
         if _ANY_THINKING_RE.search(step["text"]):
             leaks.append((str(path), step["stage"], step["index"]))
-n_records = len(list(ROOT.glob("cells/*/runs/*/transcript.json"))) + \
-    len(list(ROOT.glob("cells/*/runs/*/trace.json")))
+n_records = len(list(DECISIONS.glob("cells/*/runs/*/transcript.json"))) + \
+    len(list(DECISIONS.glob("cells/*/runs/*/trace.json")))
 print(f"challenger-visible decision records checked: {n_records}")
 print(f"'Thinking:' occurrences in published text: {len(leaks)}")
 capped([f"  LEAK {leak}" for leak in leaks], "leaks")
@@ -545,7 +580,7 @@ print(f"reasoning billed but withheld: {withheld}")
 rule("ROW 7 — critiques")
 crit_steps = withheld_steps = 0
 runs_with_withheld = set()
-for path in sorted(ROOT.glob("cells/*/runs/*/trace.json")):
+for path in sorted(DECISIONS.glob("cells/*/runs/*/trace.json")):
     for step in (load_json(path) or {}).get("steps", []):
         if step["stage"] != "critique":
             continue
@@ -625,6 +660,11 @@ else:
     from exp2.accounting import aggregate_tree  # noqa: E402
     spend = aggregate_tree(ROOT)
     print(f"\nspend: ${spend['cost_usd']:.4f} over {spend['runs']} run directories")
+    if SPLIT:
+        source_spend = aggregate_tree(DECISIONS)
+        print(f"  (the decisions were paid for by {DECISIONS}: "
+              f"${source_spend['cost_usd']:.4f} over {source_spend['runs']} run "
+              f"directories, already spent and not re-spent here)")
     print(f"  decision path ${spend['decision_path']['cost_usd']:.4f}  "
           f"off path ${spend['off_path']['cost_usd']:.4f}")
     if done:
@@ -711,7 +751,7 @@ else:
 
 rule("EXPECTATION 8 — salvaged_no_thinking on solo runs")
 solo_modes = Counter()
-for path in sorted(ROOT.glob("cells/*/runs/*/trace.json")):
+for path in sorted(DECISIONS.glob("cells/*/runs/*/trace.json")):
     for step in (load_json(path) or {}).get("steps", []):
         solo_modes[step["parse_mode"]] += 1
 tot_solo = sum(solo_modes.values())

@@ -41,8 +41,21 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
         "challenge_word_limit",
         "comprehension_model",
         "challenger_temperature",
+        "recourse_form",
     }
 )
+
+# Who rules on an objection, per condition.
+#
+#   per_condition   debate → a third-party recourse judge; single / self_critique → the
+#                   decider re-deciding in its own conversation. What every paid run up
+#                   to and including the first full sweep did, and therefore the default:
+#                   an old spec must keep meaning what it ran.
+#   third_party     the recourse judge rules in every condition. DESIGN.md's settled
+#                   protocol.
+#   in_conversation the decider re-decides in every condition it can — the ablation, and
+#                   an error for `debate`, which has no conversation to replay.
+RECOURSE_FORMS: tuple[str, ...] = ("per_condition", "third_party", "in_conversation")
 
 
 def _default_config_path() -> Path:
@@ -156,8 +169,9 @@ class DebateConfig:
     # rounds here would assign advocates to a solo decision that never had any, and
     # the contest step has to be the constant across conditions.
     recourse_rounds: int = 0
-    # None means the judge model. Only the debate condition uses it; single and
-    # self_critique are re-decided in-conversation by the model that decided.
+    # None means the judge model. Used by whichever conditions `recourse_form` routes
+    # to the judge — every condition under "third_party", debate alone under the
+    # historical "per_condition".
     recourse_judge_model: str | None = None
     # None means the debater model; in practice this is set to the weak model.
     challenger_model: str | None = None
@@ -171,6 +185,9 @@ class DebateConfig:
     # line for it. Placed among the contest settings, with a default, because the fields
     # above it are required and a defaulted field cannot precede them.
     challenger_temperature: float = 0.7
+    # Who rules on an objection; see RECOURSE_FORMS. The default is the historical
+    # routing, so a spec written before this field existed still describes what it ran.
+    recourse_form: str = "per_condition"
     # None means the challenger model — the probe asks the challenger about the
     # record it just read, so it must be the same reader.
     comprehension_model: str | None = None
@@ -255,6 +272,11 @@ class DebateConfig:
                     f"provider_order[{model!r}] must contain provider slugs as "
                     f"non-empty strings, got {order!r}"
                 )
+        if self.recourse_form not in RECOURSE_FORMS:
+            raise ConfigError(
+                f"recourse_form must be one of {RECOURSE_FORMS}, got "
+                f"{self.recourse_form!r}"
+            )
         if not 0.0 <= self.challenger_temperature <= 2.0:
             raise ConfigError(
                 f"challenger_temperature must be in [0, 2], got "
@@ -333,7 +355,8 @@ WHY: dict[str, str] = {
     "debater_model_b": "unset means self-play; setting it is the different-model-families ablation.",
     "critic_model": "unset means the debater model; a different critic would confound capability with procedure.",
     "recourse_rounds": "0 — judge-only recourse, so the contest step is identical across all three conditions.",
-    "recourse_judge_model": "unset means the judge model: debate's recourse is ruled by the same weak judge that decided.",
+    "recourse_judge_model": "unset means the judge model. Under recourse_form=third_party every condition's objection is ruled by it, so it is the one weak party the design trusts to hear an appeal; the residual asymmetry — it also decided the debate condition — is stated in the analysis caveat.",
+    "recourse_form": "per_condition by default, which is what every paid run before 2026-08-26 did (debate ruled by a third-party judge, single/self_critique re-decided by the model that decided). The sweep measured the cost: the weak judge overturned 24% of phantom objections and the strong re-decider 0-4%, so most of self_critique's edge was the routing, not the record. third_party makes the recourse judge a weak third party in every condition — nobody adjudicates their own appeal — and is what the re-contest specs set; in_conversation is the opposite-corner ablation and refuses debate, which has no conversation to replay.",
     "challenger_model": "the weak model — a stakeholder standing in for a human reader, not a second expert.",
     "challenge_word_limit": "unset means the run's word limit; an objection has to quote the record back.",
     "challenger_reasoning_effort": "unset means the run's setting; challenger deliberation is an experimental axis.",

@@ -437,41 +437,60 @@ def test_an_inline_thinking_label_anywhere_in_the_argument_is_refused():
 
 def test_the_objection_parser_layers_on_the_debater_parser():
     thinking, word, body, _ = parse_objection_output(
-        "Thinking: private\nArgument: Decision: REVERSE\nStep 2 divides by zero.")
+        "Thinking: private\nArgument: Step 2 divides by zero.\nDecision: REVERSE")
     assert thinking == "private" and word == "REVERSE"
     assert body == "Step 2 divides by zero."
 
 
 def test_a_decline_keeps_its_body_as_evidence():
-    """The text after a decline is the only evidence for whether the challenger
+    """The text before a decline is the only evidence for whether the challenger
     declined having understood the record or having skimmed it."""
     _, word, body, _ = parse_objection_output(
-        "Thinking: t\nArgument: Decision: STANDS\nThe judge checked the algebra.")
+        "Thinking: t\nArgument: The judge checked the algebra.\nDecision: STANDS")
     assert word == "STANDS" and body == "The judge checked the algebra."
 
 
 def test_the_decision_line_is_taken_out_of_the_body():
     """The body becomes ``Challenge.text``, which is handed to the recourse judge — a
-    challenge opening "Decision: REVERSE" would be an instruction to the judge about
-    what to answer rather than an argument for it."""
+    challenge that carries "Decision: REVERSE" would be an instruction to the judge
+    about what to answer rather than an argument for it."""
     _, word, body, mode = parse_objection_output(
-        "Decision: REVERSE\n"
-        "The claimed flaw in step 2 is not one: the identity holds for all real x.")
+        "The claimed flaw in step 2 is not one: the identity holds for all real x.\n"
+        "Decision: REVERSE")
     assert word == "REVERSE" and mode == "salvaged_no_labels"
     assert body == (
         "The claimed flaw in step 2 is not one: the identity holds for all real x.")
     assert "Decision" not in body
 
 
-def test_the_first_decision_line_wins_not_the_last():
-    """The opposite of every other matcher in this module, and deliberately so: this
-    line is required at the HEAD of the reply, so a later one is the model restating or
-    reconsidering aloud rather than deciding again. Only the decisive line is stripped;
-    a restatement stays in the body where a reader can see it."""
+def test_the_last_decision_line_wins_not_the_first():
+    """The same rule as every other matcher in this module, and since 2026-08-26 for the
+    same reason: the line is required at the END of the reply, so an earlier one is the
+    model rehearsing the format rather than deciding early. Only the decisive line is
+    stripped; the rehearsal stays in the body where a reader can see it."""
     _, word, body, _ = parse_objection_output(
-        "Decision: REVERSE\nThe judge misread step 2.\nDecision: STANDS")
+        "Decision: STANDS\nThe judge misread step 2.\nDecision: REVERSE")
     assert word == "REVERSE"
-    assert body == "The judge misread step 2.\nDecision: STANDS"
+    assert body == "Decision: STANDS\nThe judge misread step 2."
+
+
+def test_a_line_at_the_very_end_and_nothing_after_it_parses():
+    """The shape the instruction now asks for, verbatim: reasons, then the line."""
+    _, word, body, mode = parse_objection_output(
+        "The record never checks the divisor, so step 2 may divide by zero.\n\n"
+        "Decision: REVERSE")
+    assert word == "REVERSE" and mode == "salvaged_no_labels"
+    assert body == (
+        "The record never checks the divisor, so step 2 may divide by zero.")
+
+
+def test_prose_that_never_writes_the_line_is_refused_rather_than_read():
+    """A phantom is a label that disagrees with its prose; the cure for one is not to
+    infer the label from the prose instead."""
+    with pytest.raises(MalformedOutputError, match="Decision") as excinfo:
+        parse_objection_output(
+            "Thinking: t\nArgument: The verdict is right and I would not disturb it.")
+    assert excinfo.value.kind == "missing_decision_line"
 
 
 def test_the_decision_line_does_not_match_the_comprehension_prompts_sentence():
@@ -479,7 +498,8 @@ def test_the_decision_line_does_not_match_the_comprehension_prompts_sentence():
     "Setting aside whether you agree with the decision: how well could you follow the
     reasoning behind it?" — 126 occurrences in pilot 2's prompts, and the colon lands
     exactly where the pattern looks. It is saved by requiring STANDS or REVERSE
-    immediately after."""
+    immediately after. Unchanged by the move to last-match: the near-misses must not
+    match in any position."""
     from exp2.prompts import COMPREHENSION_USER, _DECISION_RE
 
     assert _DECISION_RE.search(COMPREHENSION_USER) is None
@@ -500,14 +520,14 @@ def test_the_one_line_reply_the_challenger_actually_writes_still_salvages():
     """The measured shape: no Thinking:/Argument: labels anywhere, the decision line,
     then prose. 118 of pilot 1's 120 replies and all 108 of pilot 2's parsed this way."""
     thinking, word, body, mode = parse_objection_output(
-        "Decision: STANDS\nThe decision correctly identifies the error in step 4.")
+        "The decision correctly identifies the error in step 4.\nDecision: STANDS")
     assert mode == "salvaged_no_labels" and thinking == ""
     assert word == "STANDS"
     assert body == "The decision correctly identifies the error in step 4."
 
 
 def test_a_reversal_with_no_body_is_refused():
-    with pytest.raises(MalformedOutputError, match="no argument after it"):
+    with pytest.raises(MalformedOutputError, match="no argument beside it"):
         parse_objection_output("Thinking: t\nArgument: Decision: REVERSE")
 
 
@@ -517,18 +537,18 @@ def test_a_missing_decision_line_is_refused_rather_than_guessed():
 
 
 def test_a_label_less_challenger_reply_is_salvaged():
-    """The shape the first probe measured 70/70 times on ling-3.0-flash: the decision
-    line, then the reasoning, and no Thinking/Argument wrapper at all. Nothing was
-    marked private, so nothing can leak by publishing all of it."""
+    """The shape the first probe measured 70/70 times on ling-3.0-flash: the reasoning
+    and the decision line, and no Thinking/Argument wrapper at all. Nothing was marked
+    private, so nothing can leak by publishing all of it."""
     thinking, word, body, mode = parse_objection_output(
-        "Decision: STANDS\nThe decision is sound because the derivation is complete.")
+        "The decision is sound because the derivation is complete.\nDecision: STANDS")
     assert word == "STANDS"
     assert thinking == ""
     assert body == "The decision is sound because the derivation is complete."
     assert mode == "salvaged_no_labels"
 
     _, word, body, mode = parse_objection_output(
-        "Decision: REVERSE\nSentence 8 assumes the contract was fulfilled.")
+        "Sentence 8 assumes the contract was fulfilled.\nDecision: REVERSE")
     assert word == "REVERSE" and mode == "salvaged_no_labels"
     assert body == "Sentence 8 assumes the contract was fulfilled."
 
@@ -536,18 +556,19 @@ def test_a_label_less_challenger_reply_is_salvaged():
 def test_the_salvage_refuses_anything_that_marked_text_private():
     # a Thinking: label with no Argument: label — the boundary is unknown
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Thinking: private\nDecision: STANDS\nlooks fine")
+        parse_objection_output("Thinking: private\nlooks fine\nDecision: STANDS")
     # ... including one that is not at the head of a line
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Decision: STANDS it is fine. Thinking: but actually no")
+        parse_objection_output("It is fine. Thinking: but actually no\nDecision: STANDS")
     # a one-line "Argument: Thinking:" is still refused by the debater parser
     with pytest.raises(MalformedOutputError):
-        parse_objection_output("Argument: Thinking: private\nDecision: STANDS\nfine")
-    # the salvage does not weaken the other rules
-    with pytest.raises(MalformedOutputError, match="no argument after it"):
+        parse_objection_output("Argument: Thinking: private\nfine\nDecision: STANDS")
+    # the salvage does not weaken the other rules: a bare line with no argument before
+    # it is still an empty public objection
+    with pytest.raises(MalformedOutputError, match="no argument beside it"):
         parse_objection_output("Decision: REVERSE")
     with pytest.raises(MalformedOutputError, match="Decision"):
-        parse_objection_output("Decision: <STANDS|REVERSE>\nsomething is wrong")
+        parse_objection_output("something is wrong\nDecision: <STANDS|REVERSE>")
     with pytest.raises(MalformedOutputError):
         parse_objection_output("This decision seems wrong but I cannot say why.")
 

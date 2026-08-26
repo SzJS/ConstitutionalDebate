@@ -18,11 +18,20 @@ The deciders are scripted to answer SOUND, because that is what makes the flawed
 *incorrectly* decided — the grade stage is confined to the metric's own denominator, so
 without a wrong decision it would skip everything and the grading path would go
 unexercised.
+
+The contest runs under ``recourse_form = "third_party"``, which is what the re-contest
+specs set and what DESIGN.md settled on: every condition's objection is ruled by a judge
+that did not decide. It is exercised here rather than only in the unit tests because it
+changes a **document** — a solo cell's ``transcript.md`` now closes with "Ruled on by a
+judge who did not make the original decision", and whether that reads correctly over a
+real solo record is exactly what this script is for. The challenger's reply is in its
+new shape too: reasons first, the decision line last.
 """
 
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import os
 import sys
@@ -79,8 +88,8 @@ DECIDER_REPLIES = {
     # whatever the decision was — the decisions above are all SOUND, so this asks for
     # FLAWED. Written in the shape the weak model actually produces: no
     # Thinking:/Argument: labels at all.
-    "challenger": ("Decision: REVERSE\n"
-                   "Step 2 does not follow from step 1; the decision took it on trust."),
+    "challenger": ("Step 2 does not follow from step 1; the decision took it on "
+                   "trust.\nDecision: REVERSE"),
     # The line-vs-prose instrument. WRONG matches the REVERSE line above, so the offline
     # run exercises the agreeing branch end to end.
     "agreement": "It argues the verdict was mistaken.\nProse: WRONG",
@@ -119,6 +128,9 @@ def install_fake_client() -> list[FakeClient]:
 
 async def main() -> int:
     config, client_config = load_config(SPEC)
+    # `pilot.toml` predates the field and so loads the historical routing. The contest
+    # is run under the settled one; the decision stages do not read it.
+    config = dataclasses.replace(config, recourse_form="third_party")
     grading = load_grading_config(SPEC)
 
     by_id = {case.item.item_id: case for case in load_cases(CASES)}
@@ -132,7 +144,9 @@ async def main() -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
     print(f"outputs: {ROOT}")
     print(f"cells: {len(grid)}  items: {len(ITEMS)}  conditions: {CONDITIONS}")
-    print("client: tests.conftest.FakeClient — no network, OPENROUTER_KEY unset\n")
+    print("client: tests.conftest.FakeClient — no network, OPENROUTER_KEY unset")
+    print(f"recourse_form: {config.recourse_form} — every condition's objection is "
+          "ruled by a judge that did not decide\n")
 
     stages = {
         "decide": lambda: run_stage_decide(
@@ -176,7 +190,27 @@ async def main() -> int:
     print(f"fake clients built: {len(clients)}  "
           f"calls: {sum(len(c.calls) for c in clients)}")
 
-    return report_documents()
+    # Under `third_party` there must be no `restated_verdict` anywhere, in any condition
+    # — that form is the decider re-deciding its own appeal, which is what the change
+    # removes. Reported per condition, because the solo ones are where it would survive.
+    forms: dict[str, dict[str, int]] = {}
+    for path in sorted(ROOT.glob("cells/*/contests/*/runs/*/ruling.json")):
+        condition = path.parents[4].name.split("__")[1]
+        form = json.loads(path.read_text(encoding="utf-8")).get("form")
+        forms.setdefault(condition, {})
+        forms[condition][form] = forms[condition].get(form, 0) + 1
+    print(f"ruling forms per condition: {forms}")
+    stray = {c: f for c, f in forms.items() if set(f) != {"uphold_overturn"}}
+    print(f"rulings NOT made by a third-party judge: {stray}")
+    # And the challenger's line really is last: the parser strips the decisive match, so
+    # a body that still ends in one would mean an earlier line was taken instead.
+    still_labelled = sum(
+        1 for path in ROOT.glob("cells/*/contests/*/runs/*/challenge.json")
+        if "Decision:" in json.loads(path.read_text(encoding="utf-8"))["text"])
+    print(f"objections whose published text still carries a decision line: "
+          f"{still_labelled}")
+
+    return report_documents() or (1 if stray else 0)
 
 
 def report_documents() -> int:

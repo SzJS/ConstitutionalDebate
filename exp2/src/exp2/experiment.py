@@ -228,13 +228,21 @@ async def run_stage_decide(
 async def run_stage_contest(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     client_config: ClientConfig, api_key: str, rule: bool = True,
+    decision_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Challenge, comprehension probe, and ruling — one coroutine, one resume key.
 
     They share a stage because the comprehension probe is asked inside the challenger's
     live conversation. Splitting it out would mean replaying that conversation from disk
     to ask one question, and a replay can diverge from what was actually sent.
+
+    ``decision_root`` is where the DECISIONS live and defaults to ``root``. They differ
+    when a spec sets ``decisions_from``: the contest then reads a tree it never writes
+    to — the sweep's 5,724 decisions are re-contested under a new protocol without
+    regenerating one of them, and without an overwritten ``experiment.json`` or an
+    ambiguous append to the source's ``cells.jsonl``.
     """
+    decisions = decision_root or root
     challenger = config.challenger_model_for()
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
 
@@ -242,7 +250,7 @@ async def run_stage_contest(
         if existing_contest(root, cell, challenger) is not None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "already contested"}
-        record = existing_decision(root, cell)
+        record = existing_decision(decisions, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "no decision to contest"}
@@ -256,7 +264,13 @@ async def run_stage_contest(
                 config=config, client_config=client_config, condition=cell.condition,
                 copy_parent=client_config.copy_parent,
             )
-        writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger)
+        # `recourse_form` is recorded here rather than trusted to config.json:
+        # create_recourse copies the DECISION's config.json and ignores the config it is
+        # handed, so the contest run's own config.json is the decider's — and a contest
+        # that routed the appeal differently from the decision would otherwise leave no
+        # trace of it on disk.
+        writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger,
+                               recourse_form=config.recourse_form)
         try:
             async with OpenRouterClient(api_key, client_config,
                                         sink=writer.record_call,
@@ -283,6 +297,7 @@ async def run_stage_contest(
 async def run_stage_agreement(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     grading: GradingConfig, client_config: ClientConfig, api_key: str,
+    decision_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """The line-vs-prose instrument, one grader call per readable contest.
 
@@ -294,7 +309,14 @@ async def run_stage_agreement(
 
     The calls carry ``role="agreement"``, which ``accounting.OFF_PATH_ROLES`` keeps out
     of every decision-path total.
+
+    ``decision_root`` is where the DECISIONS live and defaults to ``root``. They differ
+    when a spec sets ``decisions_from``: the contest then reads a tree it never writes
+    to — the sweep's 5,724 decisions are re-contested under a new protocol without
+    regenerating one of them, and without an overwritten ``experiment.json`` or an
+    ambiguous append to the source's ``cells.jsonl``.
     """
+    decisions = decision_root or root
     challenger = config.challenger_model_for()
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
 
@@ -310,7 +332,7 @@ async def run_stage_agreement(
         if challenge.stance not in ("contests", "declined"):
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": f"stance is {challenge.stance}; no line to compare"}
-        record = existing_decision(root, cell)
+        record = existing_decision(decisions, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "no decision"}
@@ -339,9 +361,18 @@ async def run_stage_agreement(
 async def run_stage_grade(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     grading: GradingConfig, client_config: ClientConfig, api_key: str,
+    decision_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Concurrent against a bounded fleet. exp1's equivalent was a serial await loop
-    whose semaphore could never be contended."""
+    whose semaphore could never be contended.
+
+    ``decision_root`` is where the DECISIONS live and defaults to ``root``. They differ
+    when a spec sets ``decisions_from``: the contest then reads a tree it never writes
+    to — the sweep's 5,724 decisions are re-contested under a new protocol without
+    regenerating one of them, and without an overwritten ``experiment.json`` or an
+    ambiguous append to the source's ``cells.jsonl``.
+    """
+    decisions = decision_root or root
     challenger = config.challenger_model_for()
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
 
@@ -361,7 +392,7 @@ async def run_stage_grade(
             # is the pilot's defect, in the one place it would have been priced.
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": f"stance is {challenge.stance}, not contests"}
-        record = existing_decision(root, cell)
+        record = existing_decision(decisions, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "no decision to grade against"}
@@ -432,16 +463,24 @@ def _sink_to(path: Path):
 
 
 def build_index(cells: Sequence[Cell], *, root: Path,
-                challenger_model: str) -> list[dict[str, Any]]:
+                challenger_model: str,
+                decision_root: Path | None = None) -> list[dict[str, Any]]:
     """One flat row per cell, joining every stage's artifact.
 
     A missing stage leaves nulls rather than dropping the row: "not yet graded" and
     "graded as a miss" are different facts and the analysis must be able to tell them
     apart.
+
+    ``decision_root`` is where the DECISIONS live and defaults to ``root``. They differ
+    when a spec sets ``decisions_from``: the contest then reads a tree it never writes
+    to — the sweep's 5,724 decisions are re-contested under a new protocol without
+    regenerating one of them, and without an overwritten ``experiment.json`` or an
+    ambiguous append to the source's ``cells.jsonl``.
     """
+    decisions = decision_root or root
     rows = []
     for cell in cells:
-        record = existing_decision(root, cell)
+        record = existing_decision(decisions, cell)
         if record is None:
             continue
         item = cell.case.item

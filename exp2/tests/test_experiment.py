@@ -87,8 +87,8 @@ def make_decisions_wrong(client) -> None:
         # is the whole point of the third rewrite. A reply with no parsable line is
         # `unclear` and seeks no ruling.
         "challenger": ("Thinking: I read the record.\n"
-                       "Argument: Decision: REVERSE\n"
-                       "Step 2 divides by zero and the decision missed it."),
+                       "Argument: Step 2 divides by zero and the decision missed "
+                       "it.\nDecision: REVERSE"),
     })
 
 
@@ -362,7 +362,7 @@ async def test_a_correctly_decided_item_is_not_graded(tmp_path, no_network):
 
 async def test_a_declined_objection_is_not_graded(tmp_path, no_network):
     no_network.replies = {"challenger":
-                          "Thinking: t\nArgument: Decision: STANDS\nLooks sound."}
+                          "Thinking: t\nArgument: Looks sound.\nDecision: STANDS"}
     grid = build_grid(cases(2), ["debate"])
     await decide(tmp_path, grid)
     await contest(tmp_path, grid)
@@ -373,8 +373,8 @@ async def test_a_declined_objection_is_not_graded(tmp_path, no_network):
 async def test_a_decline_indexes_its_derived_verdict_and_is_not_graded(tmp_path, no_network):
     """`Decision: STANDS` against a FLAWED verdict derives a claimed FLAWED — the
     challenger no longer names it, so it cannot name it wrongly."""
-    no_network.replies = {"challenger": ("Decision: STANDS\n"
-                                         "The decision correctly identifies the error.")}
+    no_network.replies = {"challenger": ("The decision correctly identifies the "
+                                         "error.\nDecision: STANDS")}
     grid = build_grid(cases(2), ["debate"])
     await decide(tmp_path, grid)
     results = await contest(tmp_path, grid)
@@ -406,11 +406,12 @@ async def test_an_unreadable_challenger_reply_is_unclear(tmp_path, no_network):
 
 
 async def test_the_agreement_stage_catches_a_phantom_contest(tmp_path, no_network):
-    """REVERSE at the top of a response that then argues the verdict was right. With one
-    relative line nothing mechanical can catch this, which is why the stage exists."""
+    """REVERSE on a response whose prose argues the verdict was right. With one relative
+    line nothing mechanical can catch this, which is why the stage exists — and moving
+    the line to the end of the reply reduces the rate but cannot make it unreachable."""
     no_network.replies = {
-        "challenger": ("Decision: REVERSE\n"
-                       "The decision correctly identified the flaw in step 2."),
+        "challenger": ("The decision correctly identified the flaw in step 2.\n"
+                       "Decision: REVERSE"),
         "agreement": "It endorses the verdict throughout.\nProse: RIGHT",
     }
     grid = build_grid(cases(1), ["debate"])
@@ -444,7 +445,7 @@ async def test_a_decline_is_measured_too_not_only_a_contest(tmp_path, no_network
     checking: a decline whose prose argues for reversal is as much a mismatch as a
     contest whose prose endorses the verdict."""
     no_network.replies = {
-        "challenger": "Decision: STANDS\nThough step 2 does look wrong to me.",
+        "challenger": "Though step 2 does look wrong to me.\nDecision: STANDS",
         "agreement": "It argues the verdict got it wrong.\nProse: WRONG",
     }
     grid = build_grid(cases(1), ["debate"])
@@ -508,7 +509,7 @@ async def test_the_index_joins_every_stage_and_leaves_nulls_for_missing_ones(tmp
 
 async def test_a_decline_indexes_as_not_revised_but_keeps_the_distinction(tmp_path, no_network):
     no_network.replies = {"challenger":
-                          "Thinking: t\nArgument: Decision: STANDS\nLooks sound."}
+                          "Thinking: t\nArgument: Looks sound.\nDecision: STANDS"}
     grid = build_grid(cases(1), ["debate"])
     await decide(tmp_path, grid)
     await contest(tmp_path, grid)
@@ -517,3 +518,124 @@ async def test_a_decline_indexes_as_not_revised_but_keeps_the_distinction(tmp_pa
     assert row["challenge_declined"] is True
     assert row["changed_the_decision"] is False
     assert "ruling_form" not in row      # no ruling was sought
+
+
+# --- a tree that contests another tree's decisions ------------------------------------
+
+
+def _tree_fingerprint(root) -> list[tuple[str, str]]:
+    """Every file under ``root``, with its sha256. The whole guarantee in one list."""
+    import hashlib
+
+    return sorted(
+        (str(p.relative_to(root)), hashlib.sha256(p.read_bytes()).hexdigest())
+        for p in root.rglob("*") if p.is_file()
+    )
+
+
+async def test_a_contest_tree_reads_decisions_elsewhere_and_never_writes_there(tmp_path):
+    """The re-contest's whole safety property: the sweep's 5,724 decisions are contested
+    under a changed protocol and not one byte of the tree holding them changes.
+
+    `experiment.json` is overwritten on every invocation and `cells.jsonl` is
+    append-only with no run discriminator, so a second contest inside the source tree
+    would silently rewrite the record of what the first one ran.
+    """
+    decisions, contests = tmp_path / "A", tmp_path / "B"
+    grid = build_grid(cases(2), ["debate", "single"])
+    await run_stage_decide(grid, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    before = _tree_fingerprint(decisions)
+    assert before
+
+    for stage in (
+        lambda: run_stage_contest(grid, root=contests, config=make_config(),
+                                  client_config=client_config(), api_key="k",
+                                  decision_root=decisions),
+        lambda: run_stage_agreement(grid, root=contests, config=make_config(),
+                                    grading=GradingConfig(),
+                                    client_config=client_config(), api_key="k",
+                                    decision_root=decisions),
+        lambda: run_stage_grade(grid, root=contests, config=make_config(),
+                                grading=GradingConfig(),
+                                client_config=client_config(), api_key="k",
+                                decision_root=decisions),
+    ):
+        results = await stage()
+        assert not any(r.get("reason") in ("no decision to contest", "no decision",
+                                           "no decision to grade against")
+                       for r in results)
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=decisions)
+    assert len(rows) == 4
+    assert all(row["challenge_raised"] is True for row in rows)
+    assert all(row["prose_stance"] == "WRONG" for row in rows)
+
+    assert _tree_fingerprint(decisions) == before
+    # ... and the contests really are in the other tree
+    assert (contests / "cells").is_dir()
+    assert any((contests / "cells").rglob("challenge.json"))
+    assert not any((decisions / "cells").rglob("challenge.json"))
+
+
+async def test_a_contest_tree_without_the_decision_root_finds_no_decisions(tmp_path):
+    """The failure the flag prevents, shown: pointed at its own empty tree, the same
+    stage silently contests nothing rather than reading the source."""
+    decisions, contests = tmp_path / "A", tmp_path / "B"
+    grid = build_grid(cases(1), ["debate"])
+    await run_stage_decide(grid, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    results = await run_stage_contest(grid, root=contests, config=make_config(),
+                                      client_config=client_config(), api_key="k")
+    assert all(r["reason"] == "no decision to contest" for r in results)
+
+
+def test_a_contest_trees_experiment_json_names_the_tree_it_contested(tmp_path,
+                                                                    monkeypatch):
+    """A record that says "the sweep's decisions" and nothing else would be a path that
+    may since have been re-run under the same name. The hash pins which run it was."""
+    import hashlib
+
+    from exp2.experiment_cli import main
+
+    source = tmp_path / "outputs" / "experiments" / "sweep"
+    source.mkdir(parents=True)
+    (source / "experiment.json").write_text('{"name": "sweep"}', encoding="utf-8")
+    cases_path = tmp_path / "cases.jsonl"
+    cases_path.write_text(
+        "\n".join(json.dumps(c.to_dict()) for c in cases(1)),
+        encoding="utf-8")
+    spec = tmp_path / "recontest.toml"
+    spec.write_text(
+        'name = "recontest-x"\n'
+        f'cases = "{cases_path}"\n'
+        'conditions = ["debate"]\n'
+        f'decisions_from = "{source}"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["--spec", str(spec), "--stage", "analyse"]) == 0
+    written = json.loads(
+        (tmp_path / "outputs" / "experiments" / "recontest-x" / "experiment.json")
+        .read_text())
+    assert written["decisions_from"] == str(source)
+    assert written["decisions_from_experiment_sha256"] == hashlib.sha256(
+        (source / "experiment.json").read_bytes()).hexdigest()
+    # and the source tree still holds exactly the one file it started with
+    assert [p.name for p in source.rglob("*")] == ["experiment.json"]
+
+
+def test_a_spec_that_contests_another_tree_refuses_to_decide(tmp_path, monkeypatch):
+    """`decide` would build a second, differently-decided grid under the new name — and
+    the point of the re-contest is that the decisions are the sweep's, unchanged."""
+    from exp2.experiment_cli import main
+
+    spec = tmp_path / "recontest.toml"
+    spec.write_text(
+        'name = "recontest-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        f'decisions_from = "{tmp_path / "A"}"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "decide"])
+    assert "it does not decide" in str(excinfo.value)

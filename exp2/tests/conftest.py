@@ -36,8 +36,8 @@ DEFAULT_REPLIES: dict[str, str] = {
     # which seeks no ruling — so every recourse test would silently stop exercising the
     # ruling path if this default lost its line.
     "challenger": ("Thinking: I read the record.\n"
-                   "Argument: Decision: REVERSE\n"
-                   "Step 2 does not divide by zero; the decision misread it."),
+                   "Argument: Step 2 does not divide by zero; the decision misread "
+                   "it.\nDecision: REVERSE"),
     "comprehension": "I followed most of it.\nComprehension: 4",
     "recourse_solo": "Thinking: reconsidering.\nReasoning: I was wrong.\nVerdict: SOUND",
     "grader": ("It points at the right step and says what is wrong.\n"

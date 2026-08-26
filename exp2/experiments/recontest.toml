@@ -1,0 +1,98 @@
+# The full re-contest: the sweep's whole corpus, contested again under the settled protocol.
+#
+# This spec CONTESTS decisions; it does not make any. `decisions_from` names the tree
+# whose decisions are read — nothing under it is ever written to — and this run writes
+# only its own contests, agreements, grades and index. `--stage decide` refuses on a
+# spec with that key.
+#
+#     RUN_SWEEP_STAGES="contest agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/recontest.toml > outputs/recontest-driver.log 2>&1 &
+#
+# Two things changed since the sweep produced those decisions, and this run measures
+# both (DESIGN.md, commit `e46ada3`):
+#
+#   1. The challenger now decides LAST — reasons first, `Decision: STANDS|REVERSE` on
+#      the final line. 51.8% of the sweep's objections were phantoms: a REVERSE label
+#      over prose arguing the verdict was right, written by a weak model that had been
+#      told to state its decision before it reasoned.
+#   2. Recourse is symmetric — `recourse_form = "third_party"`, below.
+#
+# READ FIRST: ../HANDOFF.md section 5 for the run order and the stop triggers.
+#
+# 2,110 items x 3 conditions = 6,330 cells, of which the sweep decided 5,724; the
+# rest were lost to truncation there and are skipped here with `no decision to
+# contest`. Nothing is regenerated: the cost is the measurement layers only —
+# contest $5.32 + agreement $5.85 + grade $0.39 = ~$11.6, ~1.6 h.
+#
+name = "recontest"
+cases = "data/cases/ftf-all.jsonl"
+decisions_from = "outputs/experiments/sweep"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# The decision-path models are copied from `sweep.toml` unedited, even though this run
+# makes no decisions: they are what `config.json` will say a re-contested cell was
+# decided by, and a spec that quietly differed from the tree it reads would make the
+# record wrong about its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# THE CHANGE. Every condition's objection is ruled by a third party — the weak recourse
+# judge — so no decider adjudicates its own appeal. The sweep ran the historical
+# `per_condition` routing: `debate` by that judge, `single` and `self_critique` by the
+# strong model re-deciding in its own conversation. The two are not the same instrument.
+# The judge overturned 24% of *phantom* objections and the re-decider 0-4%, so most of
+# self_critique's measured edge was the routing rather than the record.
+recourse_form = "third_party"
+
+# Stated rather than inherited, because under `third_party` it is no longer debate's
+# judge alone: it is the one party that hears every appeal in the experiment. Unset it
+# would mean `judge_model`, which is this same weak model — the value is identical and
+# the point is that it is now visible.
+recourse_judge_model = "openai/gpt-4.1-nano"
+
+# Unchanged from `sweep.toml`. The cap for the roles that emit a decision line -- judge,
+# challenger, recourse judge, comprehension probe -- none of which has truncated in four
+# runs.
+max_tokens = 16384
+
+# Unchanged from `sweep.toml`. The cap for the roles that produce record text: debaters,
+# the solo stages, the critic. Nothing here generates record text, but the value is what
+# the copied decision was made under and is kept for that reason.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+# Copied from `sweep.toml` unedited. It binds the strong model, which this run does not
+# call; the challenger and the recourse judge are gpt-4.1-nano and are unpinned, as they
+# were in every run so far. Verify the slugs before any run that does call the strong
+# model:
+#     uv run python records/derivations/sweep-1-provider-check.py <spec>
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# 16/8, as the sweep proved. The contest stages are two or three short nano calls per
+# cell where `decide` was up to seven strong-model ones, so this is if anything
+# conservative here.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each contest directory carries a full copy of the decision it contests — read out of
+# the SOURCE tree and written into this one. That is what makes a contest record
+# self-contained, and it is why this tree costs disk although it decides nothing.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint, for the grader and for the
+# `agreement` stage that reads line against prose. The `agreement` reading is how the
+# phantom rate is measured, so this must not change between the sweep and the
+# re-contest: it is the instrument the two runs are compared with.
+grader_model = "anthropic/claude-haiku-4.5"

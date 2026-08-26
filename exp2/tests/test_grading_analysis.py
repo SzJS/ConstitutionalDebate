@@ -283,6 +283,29 @@ def test_the_caveats_name_every_accepted_limitation():
     assert "agreed_with_decision" in text and "phantom_contest" in text
 
 
+def test_the_specious_objection_caveat_is_read_off_the_rulings_that_happened():
+    """Under the historical routing the solo conditions re-decide their own appeal, and
+    the caveat says so. Under `recourse_form="third_party"` nothing does, so that
+    sentence would be false — and the residual asymmetry (the recourse judge also
+    DECIDED the debate condition) is the one that is true instead."""
+    historical = " ".join(caveats(
+        [row(ruling_form="uphold_overturn"), row(ruling_form="restated_verdict")],
+        ["debate", "single"]))
+    assert "contradict itself in its own conversation" in historical
+
+    third_party = " ".join(caveats(
+        [row(ruling_form="uphold_overturn"), row(ruling_form="uphold_overturn")],
+        ["debate", "single"]))
+    assert "contradict itself in its own conversation" not in third_party
+    assert "no condition adjudicates its own appeal" in third_party
+    assert "DECIDED the debate condition" in third_party
+
+    # an index with no rulings at all keeps the historical text: no evidence that every
+    # appeal went to a third party is not evidence that it did
+    assert "contradict itself in its own conversation" in " ".join(
+        caveats([row(), row()], ["debate", "single"]))
+
+
 def test_analyse_puts_the_caveats_and_the_overlaps_in_the_output(tmp_path):
     index = tmp_path / "index.jsonl"
     index.write_text("\n".join(json.dumps(r) for r in [

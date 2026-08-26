@@ -201,6 +201,38 @@ def test_recourse_rounds_must_be_zero():
     assert "judge-only" in str(excinfo.value)
 
 
+def test_recourse_form_defaults_to_what_every_paid_run_actually_did():
+    """The default is historical on purpose: `sweep.toml` and the pilots were written
+    before this field existed, and a default of "third_party" would silently restate
+    what they ran."""
+    from exp2.config import RECOURSE_ONLY_KEYS
+
+    assert DebateConfig(**debate_kwargs()).recourse_form == "per_condition"
+    # it describes how a decision is CONTESTED, so a contest must not inherit the
+    # decision run's value for it
+    assert "recourse_form" in RECOURSE_ONLY_KEYS
+    for form in ("per_condition", "third_party", "in_conversation"):
+        assert DebateConfig(**debate_kwargs(recourse_form=form)).recourse_form == form
+    with pytest.raises(ConfigError) as excinfo:
+        DebateConfig(**debate_kwargs(recourse_form="whoever_is_free"))
+    assert "recourse_form must be one of" in str(excinfo.value)
+
+
+def test_the_dry_run_table_prints_the_recourse_form_and_its_reason(capsys):
+    """The repo rule is the FULL set of values with a reason each, before the run. A
+    field that decides who hears the appeal and does not appear in the table would make
+    two different experiments look identical on the terminal."""
+    from exp2.experiment_cli import print_hyperparameters
+
+    debate, client = load_config()
+    print_hyperparameters(
+        DebateConfig(**{**debate.to_dict(), "recourse_form": "third_party"}),
+        client, load_grading_config())
+    printed = capsys.readouterr().out
+    assert "recourse_form" in printed and "third_party" in printed
+    assert WHY["recourse_form"][:40] in printed
+
+
 def test_the_challenger_must_be_allowed_to_decline():
     with pytest.raises(ConfigError) as excinfo:
         DebateConfig(**debate_kwargs(challenger_may_decline=False))

@@ -347,6 +347,42 @@ def matched_items(rows: Sequence[dict], conditions: Sequence[str]) -> dict[str, 
     }
 
 
+# The two shapes the specious-objection caveat can take. Which one is true of a run is a
+# property of the run, not of the module: under the historical `per_condition` routing
+# the solo conditions are re-decided by the model that decided, and asking a model to
+# contradict itself is where "folds under any pushback" bites hardest; under
+# `third_party` nobody re-decides their own appeal and that sentence is simply false.
+# The rows say which happened — `ruling_form` is `restated_verdict` for an in-
+# conversation re-decision and `uphold_overturn` for a judge's ruling — so the caveat is
+# read off the index rather than asserted.
+_SPECIOUS_CAVEAT_IN_CONVERSATION = (
+    "There is no specious-objection control, so a high revision rate cannot be "
+    "distinguished from a re-decider that folds under any pushback. This bites "
+    "hardest on single and self_critique, whose contest asks a model to contradict "
+    "itself in its own conversation."
+)
+_SPECIOUS_CAVEAT_THIRD_PARTY = (
+    "There is no specious-objection control, so a high revision rate cannot be "
+    "distinguished from a judge that overturns under any pushback. Every ruling here "
+    "was made by the third-party recourse judge, so no condition adjudicates its own "
+    "appeal — but one asymmetry survives it: that judge is the same weak model that "
+    "DECIDED the debate condition and decided neither single nor self_critique, so it "
+    "is ruling on its own decision in one condition of three."
+)
+
+
+def _specious_objection_caveat(rows: Sequence[dict]) -> str:
+    """Which form of the caveat this run's rulings make true.
+
+    An index with no rulings at all gets the historical text: the absence of evidence
+    that every appeal went to a third party is not evidence that it did.
+    """
+    forms = {row.get("ruling_form") for row in rows} - {None}
+    if forms and forms <= {"uphold_overturn"}:
+        return _SPECIOUS_CAVEAT_THIRD_PARTY
+    return _SPECIOUS_CAVEAT_IN_CONVERSATION
+
+
 def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
     matching = matched_items(rows, conditions)
     sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
@@ -361,10 +397,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         "self_critique are decided by the STRONG model, so the wrong-sets differ in "
         "size and character by construction. There is no weak_alone condition, so a "
         "debate-vs-single difference cannot separate the mechanism from model strength.",
-        "There is no specious-objection control, so a high revision rate cannot be "
-        "distinguished from a re-decider that folds under any pushback. This bites "
-        "hardest on single and self_critique, whose contest asks a model to contradict "
-        "itself in its own conversation.",
+        _specious_objection_caveat(rows),
         "Rates are not pooled across label_basis: injected_pair, sentence_labels and "
         "final_answer are three different claims about what 'flawed' means. medqa's "
         "final_answer basis in particular labels a badly-reasoned solution 'sound' "

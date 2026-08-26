@@ -269,7 +269,13 @@ async def judge_prose_stance(
 async def _rule_by_judge(
     record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient
 ) -> Ruling:
-    """Debate: a recourse judge rules on the objection. The verdict is derived."""
+    """A third party rules on the objection; the verdict is derived from the ruling.
+
+    Reached by `debate` under the historical `per_condition` routing and by every
+    condition under `third_party`. The judge is shown the record the challenger was
+    shown, whichever shape it has, so a solo cell ruled here is ruled on the decision
+    that was actually made.
+    """
     messages = build_recourse_judge_messages(
         record.item, record.sides, record.challenger_view(),
         decision_verdict=record.verdict.verdict, objection=challenge.text,
@@ -359,12 +365,68 @@ async def _rule_in_conversation(
 
 
 # Mirrors arms.DECIDERS: one table, so a condition cannot be decided one way and
-# contested another by accident.
+# contested another by accident. This is the **historical** routing — what every paid
+# run up to and including the first full sweep did — and `config.recourse_form`
+# selects it by name, `"per_condition"`.
 RECOURSERS = {
     "debate": _rule_by_judge,
     "single": _rule_in_conversation,
     "self_critique": _rule_in_conversation,
 }
+
+# The settled protocol (DESIGN.md): the appeal is heard by a weak third party in every
+# condition, so no decider ever adjudicates its own appeal. The sweep is why — the
+# recourse judge overturned 24% of *phantom* objections and the strong re-decider 0-4%,
+# so the two forms are not the same instrument and running one per condition made the
+# routing part of the result.
+_THIRD_PARTY_RECOURSERS = {
+    "debate": _rule_by_judge,
+    "single": _rule_by_judge,
+    "self_critique": _rule_by_judge,
+}
+
+
+def _no_conversation_to_replay(
+    record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient
+) -> Ruling:
+    raise ValueError(
+        "recourse_form='in_conversation' cannot rule on a debate decision: there is no "
+        "single decider whose conversation could be replayed. Use 'third_party', or "
+        "run the ablation on the solo conditions only."
+    )
+
+
+# The opposite-corner ablation DESIGN.md keeps as a separately-reported form: the
+# decider re-decides wherever there is a conversation to replay. Wired and tested, not
+# run. `debate` raises rather than falling back to the judge, because a silent fallback
+# would make this form mean "third_party for debate" and the whole point of naming it is
+# that the two forms are different instruments.
+_IN_CONVERSATION_RECOURSERS = {
+    "debate": _no_conversation_to_replay,
+    "single": _rule_in_conversation,
+    "self_critique": _rule_in_conversation,
+}
+
+_RECOURSER_TABLES = {
+    "per_condition": RECOURSERS,
+    "third_party": _THIRD_PARTY_RECOURSERS,
+    "in_conversation": _IN_CONVERSATION_RECOURSERS,
+}
+
+
+def recoursers_for(recourse_form: str) -> dict[str, Any]:
+    """The condition → ruler table named by ``config.recourse_form``.
+
+    A lookup rather than a branch at the call site, so the three forms are visible
+    together and the historical one keeps its own name in the record.
+    """
+    try:
+        return _RECOURSER_TABLES[recourse_form]
+    except KeyError:
+        raise ValueError(
+            f"unknown recourse_form {recourse_form!r}; expected one of "
+            f"{tuple(_RECOURSER_TABLES)}"
+        ) from None
 
 
 async def run_recourse(
@@ -376,7 +438,8 @@ async def run_recourse(
     writer: Any | None = None,
 ) -> RecourseOutcome:
     """Generate an objection, ask about comprehension, and rule if there is anything to."""
-    if record.condition not in RECOURSERS:
+    recoursers = recoursers_for(config.recourse_form)
+    if record.condition not in recoursers:
         raise ValueError(f"no recourse mechanism for condition {record.condition!r}")
 
     challenge, conversation = await generate_challenge(
@@ -397,7 +460,7 @@ async def run_recourse(
         return RecourseOutcome(challenge=challenge, ruling=None,
                                comprehension=comprehension)
 
-    ruling = await RECOURSERS[record.condition](record, challenge, config, client)
+    ruling = await recoursers[record.condition](record, challenge, config, client)
     if writer is not None:
         writer.record_ruling(ruling)
     return RecourseOutcome(challenge=challenge, ruling=ruling,

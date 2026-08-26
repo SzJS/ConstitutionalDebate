@@ -7,12 +7,20 @@
 with the reason it is what it is**. The repo's practice rule says that table has to be
 shown and confirmed before a run; building it into the tool means it cannot drift from
 the values actually used, and nobody has to retype it.
+
+A spec may set ``decisions_from = "<path>"``. The run then reads its decisions out of
+that tree and writes its contests, agreements, grades and index into its own — which is
+how a finished experiment's decisions get re-contested under a changed protocol without
+regenerating them and without touching the tree that holds them. ``--stage decide``
+refuses on such a spec: it has nothing to decide, and running it would build a second,
+differently-decided grid under the new name.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -129,6 +137,20 @@ def print_estimate(grid, config: DebateConfig) -> None:
           "transport retries and at most one format repair per generation are on top.")
 
 
+def _tree_fingerprint(path: Path) -> str | None:
+    """sha256 of the source tree's ``experiment.json``, or None if it has none.
+
+    Provenance, not a checksum of the decisions: it pins WHICH run's decisions were
+    contested — its name, its cases, its config — in a file the new tree owns. The
+    decisions themselves are already hashed per cell by ``RunWriter.create_recourse``,
+    which records a ``parent_sha256`` of the directory it copied.
+    """
+    source = path / "experiment.json"
+    if not source.is_file():
+        return None
+    return hashlib.sha256(source.read_bytes()).hexdigest()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The argument parser, out of ``main`` so a test can assert on the real flags."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -163,6 +185,17 @@ def main(argv: list[str] | None = None) -> int:
     config, client_config = load_config(args.spec)
     grading = load_grading_config(args.spec)
 
+    # The decision source. `None` — the ordinary case — means this tree decides for
+    # itself and every stage reads and writes the same root.
+    decisions_from = spec.get("decisions_from")
+    decision_root = Path(decisions_from) if decisions_from else None
+    if decision_root is not None and args.stage == "decide":
+        raise SystemExit(
+            f"this spec contests decisions in {decision_root}; it does not decide. "
+            "Run --stage contest / agreement / grade / analyse against it, or drop "
+            "decisions_from to make a tree that decides for itself."
+        )
+
     cases = load_cases(Path(spec["cases"]))
     if args.limit:
         cases = cases[: args.limit]
@@ -172,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
     root.mkdir(parents=True, exist_ok=True)
 
     print(f"experiment: {name}   stage: {args.stage}   outputs: {root}")
+    if decision_root is not None:
+        print(f"decisions read from: {decision_root}   (never written to)")
     print_estimate(grid, config)
     print_hyperparameters(config, client_config, grading)
 
@@ -182,12 +217,20 @@ def main(argv: list[str] | None = None) -> int:
     (root / "experiment.json").write_text(json.dumps({
         "name": name, "conditions": conditions, "repeats": repeats,
         "cases": spec["cases"], "cells": len(grid),
+        # Null unless this tree contests another's decisions. The hash is of the source
+        # tree's experiment.json: without it a re-contest's records would name a path
+        # that may since have been re-run under the same name.
+        "decisions_from": str(decision_root) if decision_root else None,
+        "decisions_from_experiment_sha256": (
+            _tree_fingerprint(decision_root) if decision_root else None),
         "config": config.to_dict(), "client_config": client_config.to_dict(),
         "grading": grading.to_dict(),
     }, indent=2), encoding="utf-8")
 
     if args.stage == "analyse":
-        rows = build_index(grid, root=root, challenger_model=config.challenger_model_for())
+        rows = build_index(grid, root=root,
+                           challenger_model=config.challenger_model_for(),
+                           decision_root=decision_root)
         index = root / "index.jsonl"
         index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
         metrics = analyse(index, conditions)
@@ -207,13 +250,15 @@ def main(argv: list[str] | None = None) -> int:
             api_key=api_key, retry_failed=args.retry_failed),
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
-            api_key=api_key),
+            api_key=api_key, decision_root=decision_root),
         "agreement": lambda: run_stage_agreement(
             grid, root=root, config=config, grading=grading,
-            client_config=client_config, api_key=api_key),
+            client_config=client_config, api_key=api_key,
+            decision_root=decision_root),
         "grade": lambda: run_stage_grade(
             grid, root=root, config=config, grading=grading,
-            client_config=client_config, api_key=api_key),
+            client_config=client_config, api_key=api_key,
+            decision_root=decision_root),
     }[args.stage]
 
     results = asyncio.run(runner())
