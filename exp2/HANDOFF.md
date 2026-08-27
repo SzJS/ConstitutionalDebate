@@ -239,14 +239,23 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$54.97** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+Total spent so far: **$62.95** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
 decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
 re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
 validation slice (**$0.38**), the re-rule's **$3.0887** (a three-variant prompt smoke
 **$0.0202**, a 69-ruling smoke **$0.1205**, `rerule-recontest` **$0.8109**, `rerule-sweep`
 **$2.1371**), the three partisan pilots' **$1.2234** (`advocate` **$0.4345**, `assigned`
-**$0.4026**, `auditor` **$0.3863**), and a few cents of provider checks that nothing
-itemises.
+**$0.4026**, `auditor` **$0.3863**), the judgment-challenge slice's **$1.6429**, the
+auditor probe's **$6.3415** (its run plus the $0.43 correction of 2026-08-27), and a few
+cents of provider checks and liveness calls that nothing itemises.
+
+**One figure to read carefully.** The probe's own report prints **$4.15** and the
+correction **$0.43**, both computed from the rows, and a row carries the cost of the
+completion it kept. The wire log carries every attempt, including the 292 format repairs
+`qwen/qwen3-32b` and `gpt-4.1-nano` needed, and it says **$6.3415**. Every other figure
+on this page is the wire's, so the wire's is the one totalled here; the report's number
+is not wrong, it is answering "what did an audit cost" rather than "what was spent".
+
 Nothing below needs re-running, and section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
@@ -543,6 +552,93 @@ not an agent's.**
 
 `records/derivations/partisan-vs-neutral.py` reproduces the whole comparison from four
 committed `index.jsonl` files, no run tree and no key.
+
+### The judgment variant (2026-08-27) — built, sliced, probed, and NOT run
+
+**The judgment-challenge variant is in the code and must not be run at scale.** No
+challenger model has cleared `records/pick-auditor/RULES.md`, and until one does,
+`experiments/judgment.toml` stays unrun. Write-up: `LLM_NOTES.md` **§3w**; decision and
+evidence: [`records/pick-auditor/`](records/pick-auditor/DECISION.md).
+
+**What the variant is.** `challenger_variant = "judgment"` swaps the challenger's whole
+task: instead of "is this verdict right", it audits the **judgment** — the reasoning given
+for the decision — against the published record, for a contradiction, a misstatement or an
+omission, quoting both sides of each. The grader that reads it checks each alleged defect
+**against the record** and never opens `flaw.json`, which is why every subset is gradable
+(gpqa included) and why validity is defined on sound items and on CORRECT decisions. The
+`Decision: STANDS|REVERSE` line, `challenge_stance`, the `agreement` stage and the whole
+recourse machinery are unchanged.
+
+**What the slice found** (`outputs/experiments/judgment-pilot`, the 194 pilot-3 cells,
+**$1.6429**, 920 wire calls, all HTTP 200): `gpt-4.1-nano` raises objections on **111/194 =
+57%** against the neutral challenger's 9.8% on the same cells — `debate` 46/60, `single`
+32/68, `self_critique` 33/66 — and **7 of the 111 are graded valid (6%)**, from 315 alleged
+defects of which 8 held up. In a hand read of 66 of its `Judgment says:` quotations, **34
+were not in the judgment at all**. The grader itself came out well: it rejects 94% and for
+the right reasons. The read is a capability limit, not a prompt one, and it is what the
+probe was commissioned to fix.
+
+**The quote check is harness-wide and applies to any future judgment run.**
+`parse_defects(text, judgment)` decides at parse time whether each defect's `Judgment
+says:` quotations are really in `RunRecord.decision_grounds`; the grader is never asked
+about one that fails and makes **no call at all** when none survives; `index.jsonl` gains
+`challenge_defects_n` and `challenge_defects_misattributed_n`, and the analysis a
+`misattributed_quote` rate over defects. It is three-valued — `None` where the check does
+not apply — so an omission, a defect that quoted nothing, and every `challenge.json`
+written before it grade exactly as they did. The nano slice was **not** re-graded on
+purpose. The check was corrected once after the probe (it stripped only the outer quotation
+marks, so a nested quote read as a fabrication); both the bug and its before/after are in
+`RULES.md` under *Instrument corrections after the run*.
+
+**How to re-run the probe** — it is offline until the last step and cheap:
+
+```bash
+cd exp2
+# the fixture and every table, no network, no key, nothing sent:
+uv run python scripts/pick_auditor.py --dry-run 2>&1 | tee outputs/pick-auditor-dryrun.log
+# re-derive every table from the rows already on disk, re-checking the quote check
+# from the fixture text — no calls, this is how a fixed checker is re-applied:
+uv run python scripts/pick_auditor.py --report-only 2>&1 | tee outputs/pick-auditor-rescored.log
+# rebuild the fixture after changing an injector (KEEP a copy of the old one first):
+cp outputs/pick-auditor/fixture.jsonl outputs/pick-auditor/fixture.before-<what>.jsonl
+uv run python scripts/pick_auditor.py --dry-run --rebuild-fixture
+# the paid run, ~$6 for six candidates; refuses to send anything if RULES.md is missing:
+uv run python scripts/pick_auditor.py 2>&1 | tee outputs/pick-auditor.log
+```
+
+**Resume is keyed on `judgment_sha`, not on the file.** Every audit row carries the
+sha256 of the judgment it was audited against. A re-run keeps every row whose sha still
+matches the fixture, re-audits exactly the items whose text moved (and any fixture item
+with no row at all), and writes what it replaced to
+`rows-audit-<model>.superseded.jsonl` — a paid measurement is evidence about the
+instrument that made it and is never deleted. The correction of 2026-08-27 re-bought 20
+items per candidate out of 251 for **$0.43** rather than re-running 1,500 audits. The
+control false-alarm gradings are reused wherever the surviving-defect set is unchanged.
+
+**The result: NO MODEL PICKED.** Six candidates — `gpt-4.1-nano` (the floor, not
+eligible), `qwen/qwen3-32b`, `google/gemini-2.5-flash`, `openai/gpt-4.1-mini`,
+`openai/gpt-4.1`, `openai/gpt-5.6-luna` — over 251 audits each on 60 real judgments with
+injected defects. Two cells in the whole table clear a floor; every candidate fails at
+least three. **No Gemini Pro is in the pool**: every Pro-class Gemini, `gemini-3.7-flash`
+and `x-ai/grok-4.6` answer with `HTTP 400: Reasoning is mandatory for this endpoint and
+cannot be disabled`, and this experiment runs `reasoning_effort = "off"` so that the
+challenger's private channel is the published `Thinking:` block. `anthropic/*` is excluded
+because Haiku is the grader.
+
+**Where the evidence lives.** `records/pick-auditor/` — `RULES.md` (the thresholds,
+committed before any candidate was called, plus the two instrument corrections),
+`DECISION.md`, `fixture-manifest.jsonl` (one line per fixture item: cell, variant, span,
+deleted sentence, alteration, `copies_edited`). In `outputs/` (git-ignored, rebuildable):
+`pick-auditor.log` with the re-scored table appended beneath the original,
+`pick-auditor-rescored.log`, `pick-auditor-by-condition.log`,
+`pick-auditor-fixture-check.log`, `pick-auditor-sample4.log`, and `pick-auditor/` with the
+fixture, the rows, the superseded rows and every wire call.
+
+**Do not** re-grade the nano slice, edit `RULES.md`'s thresholds after seeing numbers, or
+run `experiments/judgment.toml`. If the audit prompt is revised — a verification procedure
+is the obvious candidate, see §3w(e) — the house rule applies (read it on ~6 examples
+first) and the floors must be restated as kept or changed **in `RULES.md`, before the
+run**, because a re-run under a new prompt is a new measurement.
 
 ### The open findings the write-up must carry
 

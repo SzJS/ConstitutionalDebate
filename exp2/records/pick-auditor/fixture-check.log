@@ -1,0 +1,9 @@
+items checked: {'misattribution': 49, 'contradiction': 59, 'omission': 45, 'misquote': 38}
+misquote alterations: {'negation': 21, 'swap': 12, 'number': 5}
+solo record shape: {'shape Answer...': 20, 'shape Draft/Critique/Revision...': 20, 'solo items': 40}
+judgment openings present in the solo record: {'1': 29, '2': 6, '3': 4, '4': 1}
+copies of the judgment edited, per solo variant: {'contradiction:1': 39, 'misattribution:1': 22, 'misattribution:2': 5, 'misattribution:3': 6, 'misquote:1': 13, 'misquote:2': 3, 'misquote:3': 2, 'misquote:4': 6, 'omission:1': 20, 'omission:2': 4, 'omission:3': 2}
+violations: none
+
+judgments: 60   audits per candidate: 251
+manifest rows: 251 (matches: True)

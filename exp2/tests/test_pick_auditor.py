@@ -667,6 +667,87 @@ def test_rows_survive_a_round_trip_through_disk(tmp_path):
     assert json.loads(json.dumps(back[0].to_dict()))["variant"] == "misquote"
 
 
+# --- re-scoring after an instrument fix ---------------------------------------------
+
+
+def _fixture_entry(judgment="J1", control_judgment="C1"):
+    entry = _entry()
+    entry["variants"] = {
+        "control": {"judgment": control_judgment, "span": ""},
+        "misquote": {"judgment": judgment, "span": "s", "alteration": "number",
+                     "edit": {"old": "a", "new": "b"}},
+    }
+    return entry
+
+
+def test_a_row_is_stale_only_when_the_judgment_it_was_audited_against_changed():
+    """What makes a fixture correction cheap. A row whose sha still matches measures the
+    same thing it always did and stands; only the items whose text moved are bought
+    again — and an item the fixture has gained, which no row covers, is a hole rather
+    than a saving."""
+    entry = _fixture_entry()
+    rows = [
+        pa.Row(model="m", variant="misquote", cell_id="c1", condition="debate",
+               subset="law", item_id="i", judgment_sha=pa.judgment_sha("J1")),
+        pa.Row(model="m", variant="control", cell_id="c1", condition="debate",
+               subset="law", item_id="i", judgment_sha=pa.judgment_sha("STALE")),
+        pa.Row(model="m", variant="omission", cell_id="c1", condition="debate",
+               subset="law", item_id="i", judgment_sha=pa.judgment_sha("gone")),
+    ]
+    kept, stale = pa.stale_rows(rows, [entry])
+    assert [r.variant for r in kept] == ["misquote"]
+    # the control's text moved, and the omission is not in the fixture at all
+    assert sorted(r.variant for r in stale) == ["control", "omission"]
+
+
+def test_rescoring_recomputes_the_quote_check_and_never_touches_detection():
+    """The check is a pure function of the objection and the judgment, both on disk, so
+    a fixed checker re-decides every defect ever alleged without a call. Detection is
+    the scorer's judgement about where a quote landed — a different question, unaffected
+    by the bug, and re-deriving it here would be re-scoring what the probe measured."""
+    judgment = 'The judge wrote: "the log was kept for 15 years" and stopped.'
+    entry = _fixture_entry(judgment=judgment)
+    row = pa.Row(
+        model="m", variant="misquote", cell_id="c1", condition="debate", subset="law",
+        item_id="i", detected=True, judgment_sha=pa.judgment_sha(judgment),
+        # as the run stored it: the nested-quote shape, wrongly marked misattributed
+        defects=[dict(_defect(judgment_says=['"The judge wrote: \'the log was kept for '
+                                             '15 years\'"']), quote_in_judgment=False)])
+    stats, regrade = pa.rescore_rows([row], [entry])
+
+    assert row.defects[0]["quote_in_judgment"] is True
+    assert (row.quotes_n, row.misattributed_n) == (1, 0)
+    assert row.detected is True                 # untouched
+    assert regrade == []
+    assert stats["rows whose quote counts changed"] == 1
+
+
+async def test_a_control_whose_defects_now_all_fail_needs_no_grader_call():
+    entry = _fixture_entry(control_judgment="The judgment says nothing of the kind.")
+    row = pa.Row(model="m", variant="control", cell_id="c1", condition="debate",
+                 subset="law", item_id="i", false_alarm=False, grader_called=True,
+                 judgment_sha=pa.judgment_sha(entry["variants"]["control"]["judgment"]),
+                 defects=[dict(_defect(judgment_says=['"invented entirely"']),
+                               quote_in_judgment=True)])
+    _, regrade = pa.rescore_rows([row], [entry])
+    assert row.false_alarm is True and row.grader_called is False
+    assert regrade == []          # settled by the check, so nothing is bought
+
+
+async def test_a_control_whose_surviving_set_grew_is_sent_back_to_the_grader():
+    judgment = "The record shows the loop is exhaustive over every input given."
+    entry = _fixture_entry(control_judgment=judgment)
+    row = pa.Row(model="m", variant="control", cell_id="c1", condition="debate",
+                 subset="law", item_id="i", false_alarm=True,
+                 judgment_sha=pa.judgment_sha(judgment),
+                 defects=[dict(_defect(judgment_says=[
+                     '"The record shows the loop is exhaustive over every input given"']),
+                     quote_in_judgment=False)])
+    _, regrade = pa.rescore_rows([row], [entry])
+    assert row.defects[0]["quote_in_judgment"] is True
+    assert regrade == [row]       # the grader is now shown a defect it never saw
+
+
 def test_the_estimate_is_a_forecast_and_says_so_where_it_cannot_make_one(capsys):
     """The dry run's cost estimate is priced from a table; every number the REPORT
     prints comes off `usage.cost` on the wire. A model with no price on file is said to

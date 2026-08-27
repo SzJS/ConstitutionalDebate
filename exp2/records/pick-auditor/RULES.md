@@ -182,6 +182,72 @@ debates, and a challenger auditing a record it generated is a confound of its ow
 With no Pro in the pool, a "no model picked" outcome means *the weakest reliable auditor
 is above `openai/gpt-4.1`*, which is what rung 2 stands for here.
 
+## Instrument corrections after the run — 2026-08-27
+
+The probe ran on 2026-08-27 (`outputs/pick-auditor.log`, $4.15, 1,500 audits, no
+candidate clearing every floor). Reading the raw replies turned up **two bugs in the
+instrument**. Both are recorded here because this file is the pre-registration and a
+correction made after the numbers exist has to be visible beside them.
+
+**Neither bug touches the detection scorer, and no threshold in this file changed.** The
+detection failures are real: `openai/gpt-4.1` answers "I find no defects" to a judgment
+that quotes the record's `-2-one` as `-3-one`.
+
+**1. The quote check stripped only the outer quotation marks.** `prompts.normalise_quote`
+removed the outer pair and nothing else, so a challenger quoting a judgment that itself
+quotes something — `Judgment says: "The sentence states: 'X'"` — had the judgment's own
+double quotes nested as single ones and an *accurate* quotation was recorded as a
+fabrication (difflib ratio 0.97–0.99 against the judgment sentence it was quoting). Every
+quotation mark and markdown emphasis character (`"` `'` `“` `”` `‘` `’` `«` `»`
+`` ` `` `*` `_`) now comes off **both** sides after whitespace collapse; the parenthetical
+rule and the 80-character rule are unchanged. The check is a pure function of two texts
+that are both on disk, so every defect ever alleged was re-decided without a single call:
+
+| model | misattributed quotes, as run | re-checked |
+|---|---|---|
+| `google/gemini-2.5-flash` | 30/155 (0.19) | **8/154 (0.05)** |
+| `openai/gpt-4.1` | 20/66 (0.30) | **0/66 (0.00)** |
+| `openai/gpt-4.1-mini` | 28/77 (0.36) | **10/77 (0.13)** |
+| `openai/gpt-4.1-nano` | 31/50 (0.62) | **21/50 (0.42)** |
+| `openai/gpt-5.6-luna` | 10/95 (0.11) | **8/95 (0.08)** |
+| `qwen/qwen3-32b` | 150/295 (0.51) | **65/295 (0.22)** |
+
+This is the harness check every future judgment run uses — `grading._grade_judgment`
+skips a defect that fails it — so the fix matters well beyond this probe.
+
+**2. The decision line was not recognised in bold.** `_VERDICT_LINE` did not match
+`**Verdict: SOUND**`, so `strip_verdict_line` found no line to lift off and, on **17 of
+the 59** contradiction items, the appended sentence was placed after the decision line
+instead of before it — where a reader of the judgment has stopped looking. The regex now
+accepts optional markdown emphasis and the fixture was rebuilt. Exactly **19** variants
+changed and were re-audited for all six candidates (plus one misquote the quote-mark fix
+newly made injectable): the 17 contradictions, and 2 misquotes whose first
+verbatim-in-the-evidence quotation changed under the corrected check. Contradiction
+detection on those 17 items, before and after, with the other 42 unchanged for reference:
+
+| model | those 17, before | after | the other 42 |
+|---|---|---|---|
+| `google/gemini-2.5-flash` | 14/17 | 16/17 | 36/42 |
+| `openai/gpt-4.1` | 10/17 | 15/17 | 30/42 |
+| `openai/gpt-4.1-mini` | 13/17 | 13/17 | 35/42 |
+| `openai/gpt-4.1-nano` | 1/17 | 3/17 | 1/42 |
+| `openai/gpt-5.6-luna` | 5/17 | 10/17 | 23/42 |
+| `qwen/qwen3-32b` | 12/17 | 11/17 | 37/42 |
+
+**What was re-bought, and what was not.** Every audit row carries the sha256 of the
+judgment it was audited against, so the correction re-bought exactly the 20 items per
+candidate whose text moved — 120 audits, $0.31 — and kept the other 231 as measured. The
+rows they replace are in `rows-audit-<model>.superseded.jsonl`; the fixture as it was is
+`outputs/pick-auditor/fixture.before-bold-fix.jsonl`. 15 controls whose surviving-defect
+set changed under the corrected check were graded again by the same Haiku call ($0.12);
+the rest reuse the ruling already paid for. Re-scored tables:
+`outputs/pick-auditor-rescored.log`, and appended to `outputs/pick-auditor.log` beneath
+the original.
+
+**What it changed in the verdict: nothing.** `google/gemini-2.5-flash` now clears
+contradiction (0.88) and `openai/gpt-4.1` clears the misattribution floor (0.00), but
+every candidate still fails at least three floors and **no model is picked**.
+
 ## What this file does not decide
 
 Nothing. The probe prints a table and a decision line; the choice, the evidence and any

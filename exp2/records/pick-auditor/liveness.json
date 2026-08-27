@@ -1,0 +1,9 @@
+{
+  "openai/gpt-4.1-nano": "live",
+  "qwen/qwen3-32b": "live",
+  "google/gemini-2.5-flash": "live",
+  "openai/gpt-4.1-mini": "live",
+  "openai/gpt-4.1": "live",
+  "openai/gpt-5.6-luna": "live",
+  "anthropic/claude-haiku-4.5": "live"
+}

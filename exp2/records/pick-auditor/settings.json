@@ -1,0 +1,71 @@
+{
+  "models": [
+    "openai/gpt-4.1-nano",
+    "qwen/qwen3-32b",
+    "google/gemini-2.5-flash",
+    "openai/gpt-4.1-mini",
+    "openai/gpt-4.1",
+    "openai/gpt-5.6-luna"
+  ],
+  "per_condition": 20,
+  "seed": 0,
+  "limit": 0,
+  "spec": "experiments/judgment-pilot.toml",
+  "sweep": "outputs/experiments/sweep",
+  "judgments": 60,
+  "audits_per_candidate": 251,
+  "config": {
+    "debater_model": "deepseek/deepseek-v4-flash-0731",
+    "judge_model": "openai/gpt-4.1-nano",
+    "n_rounds": 3,
+    "turn_style": "simultaneous",
+    "word_limit": 400,
+    "debater_temperature": 0.7,
+    "judge_temperature": 0.0,
+    "max_tokens": 16384,
+    "reasoning_effort": "off",
+    "judge_cot": true,
+    "seed": 0,
+    "frequency_penalty": 0.0,
+    "max_decision_attempts": 2,
+    "generation_max_tokens": 8192,
+    "n_critique_rounds": 3,
+    "provider_order": {
+      "deepseek/deepseek-v4-flash-0731": [
+        "gmicloud/fp8",
+        "coreweave/fp8"
+      ]
+    },
+    "provider_allow_fallbacks": false,
+    "debater_model_b": null,
+    "critic_model": null,
+    "recourse_rounds": 0,
+    "recourse_judge_model": "openai/gpt-4.1-nano",
+    "challenger_model": "openai/gpt-4.1-nano",
+    "challenge_word_limit": null,
+    "challenger_reasoning_effort": null,
+    "challenger_temperature": 0.7,
+    "recourse_form": "third_party",
+    "comprehension_model": null,
+    "challenger_may_decline": true,
+    "challenger_variant": "judgment"
+  },
+  "grading": {
+    "grader_model": "anthropic/claude-haiku-4.5",
+    "grader_temperature": 0.0,
+    "max_tokens": 4096
+  },
+  "thresholds": {
+    "min_detection": {
+      "misquote": 0.85,
+      "misattribution": 0.85,
+      "contradiction": 0.85,
+      "omission": 0.5
+    },
+    "pooled_multiple": 2.0,
+    "max_misattributed": 0.05,
+    "max_false_alarm": 0.15,
+    "min_overlap": 20,
+    "floor_model": "openai/gpt-4.1-nano"
+  }
+}

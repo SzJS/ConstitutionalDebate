@@ -46,6 +46,7 @@ import asyncio
 import collections
 import difflib
 import functools
+import hashlib
 import json
 import random
 import re
@@ -75,6 +76,7 @@ from exp2.grading import grade_objection  # noqa: E402
 from exp2.persistence import load_run_record  # noqa: E402
 from exp2.prompts import (  # noqa: E402
     build_challenger_messages,
+    defect_quote_in_judgment,
     parse_defects,
     parse_objection_output,
     quote_in_text,
@@ -242,6 +244,11 @@ class Row:
     cost_usd: float = 0.0
     grader_cost_usd: float = 0.0
     span: str = ""
+    # The sha256 of the exact judgment this row was audited against. It is what makes a
+    # fixture correction cheap: when an instrument bug is fixed and the fixture rebuilt,
+    # the rows whose sha still matches are measurements of the same thing and stand,
+    # and only the rows whose text changed are bought again.
+    judgment_sha: str = ""
     alteration: str = ""               # misquote only: number | negation | swap
     copies_edited: int = 0             # copies of the judgment the edit went into
     objection: str = ""
@@ -249,6 +256,10 @@ class Row:
 
     def to_dict(self) -> dict:
         return self.__dict__
+
+
+def judgment_sha(judgment: str) -> str:
+    return hashlib.sha256(judgment.encode("utf-8")).hexdigest()
 
 
 def save_rows(outputs: Path, model: str, rows: list[Row]) -> None:
@@ -268,8 +279,12 @@ def load_rows(outputs: Path, model: str) -> list[Row] | None:
 
 
 def models_on_disk(outputs: Path) -> list[str]:
+    """Every model with a rows file. The `.superseded` sidecars are NOT models: they
+    hold rows a fixture correction replaced, kept as evidence about the instrument, and
+    a report that read them back would count the same audit twice."""
     return sorted(path.name[len("rows-audit-"):-len(".jsonl")]
-                  for path in outputs.glob("rows-audit-*.jsonl"))
+                  for path in outputs.glob("rows-audit-*.jsonl")
+                  if not path.name.endswith(".superseded.jsonl"))
 
 
 # --------------------------------------------------------------------------- #
@@ -440,7 +455,15 @@ def record_body_for(entry: dict, variant: dict) -> tuple[str, int]:
 
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
-_VERDICT_LINE = re.compile(r"(?im)^\s*Verdict\s*:\s*(FLAWED|SOUND)\s*$")
+# The decision line, however the judge dressed it. The emphasis is optional and matters:
+# 17 of the 59 contradiction items in the first fixture were built against a judgment
+# whose line reads `**Verdict: SOUND**`, which this pattern did not match, so the
+# appended sentence landed AFTER the decision line instead of before it — where a reader
+# of the judgment stops looking. Detection on those items ran about ten points below the
+# rest for every model measured.
+_VERDICT_LINE = re.compile(
+    r"(?im)^\s*(?:\*\*|\*|__|_)?\s*Verdict\s*:\s*(FLAWED|SOUND)\s*"
+    r"(?:\*\*|\*|__|_)?\s*$")
 # A quotation long enough that a corrupted copy of it is still a span an auditor can
 # quote back: 25 characters is five or six words, comfortably above the 20 the scorer
 # needs to credit an overlap. Shorter "quotations" in these judgments are mostly single
@@ -1008,6 +1031,7 @@ async def audit(model: str, items: list[tuple[dict, str]], config, client_config
             row = Row(model=model, variant=variant, cell_id=entry["cell_id"],
                       condition=entry["condition"], subset=entry["subset"],
                       item_id=entry["item_id"], span=span,
+                      judgment_sha=judgment_sha(judgment),
                       alteration=shape.get("alteration", ""),
                       copies_edited=shape.get("copies_edited", 0))
             started = time.monotonic()
@@ -1128,6 +1152,75 @@ def _grade_cost(path: Path, call_id: str) -> float:
         if record.get("call_id") == call_id:
             return float((record.get("usage") or {}).get("cost") or 0.0)
     return 0.0
+
+
+def superseded_path(outputs: Path, model: str) -> Path:
+    return outputs / f"rows-audit-{model.replace('/', '-')}.superseded.jsonl"
+
+
+def stale_rows(rows: list[Row], entries: list[dict]) -> tuple[list[Row], list[Row]]:
+    """``(rows still measuring the current fixture, rows that are not)``.
+
+    Keyed on the sha of the judgment text, so a fixture correction re-buys exactly the
+    items whose text changed and nothing else. A row for a variant the fixture no longer
+    has is stale too — it measures something that is not in the instrument any more.
+    """
+    shas = {(e["cell_id"], name): judgment_sha(v["judgment"])
+            for e in entries for name, v in e["variants"].items()}
+    current, stale = [], []
+    for row in rows:
+        want = shas.get((row.cell_id, row.variant))
+        (current if want is not None and row.judgment_sha == want else stale).append(row)
+    return current, stale
+
+
+def rescore_rows(rows: list[Row], entries: list[dict]) -> tuple[dict[str, int],
+                                                               list[Row]]:
+    """Recompute the quote check on every stored defect, from the fixture's own text.
+
+    Never trusts the flag the run stored: the check is a pure function of the objection
+    and the judgment, both of which are on disk, so a fixed checker re-decides every
+    defect ever alleged without a single call. `detected` is NOT touched — detection is
+    the scorer's judgement about where a quote landed, it is not affected by this bug,
+    and re-deriving it here would be re-scoring the thing the probe measured.
+
+    Returns the counts of what moved and the control rows whose surviving-defect set
+    changed, which are the only ones whose false-alarm ruling has to be bought again.
+    """
+    variants = {(e["cell_id"], name): v
+                for e in entries for name, v in e["variants"].items()}
+    stats: dict[str, int] = collections.Counter()
+    regrade: list[Row] = []
+    for row in rows:
+        variant = variants.get((row.cell_id, row.variant))
+        if variant is None:
+            stats["rows with no fixture item"] += 1
+            continue
+        surviving = lambda ds: {i for i, d in enumerate(ds)
+                                if d.get("quote_in_judgment") is not False}
+        before = surviving(row.defects)
+        for defect in row.defects:
+            defect["quote_in_judgment"] = defect_quote_in_judgment(
+                defect, variant["judgment"])
+        after = surviving(row.defects)
+        was = (row.quotes_n, row.misattributed_n)
+        row.quotes_n, row.misattributed_n = quote_counts(row.defects)
+        if (row.quotes_n, row.misattributed_n) != was:
+            stats["rows whose quote counts changed"] += 1
+        stats["quotes re-checked"] += row.quotes_n
+        if row.variant != "control":
+            continue
+        if not row.defects:
+            row.false_alarm = False
+        elif not after:
+            # Every alleged defect fails the check, so the harness makes no call at all
+            # and the objection is a false alarm by the quote check alone.
+            row.false_alarm = True
+            row.grader_called = False
+        elif before != after:
+            stats["controls needing a new grader ruling"] += 1
+            regrade.append(row)
+    return dict(stats), regrade
 
 
 # --------------------------------------------------------------------------- #
@@ -1459,7 +1552,22 @@ def main(argv: list[str] | None = None) -> int:
         if not rows:
             print(f"no rows-audit-*.jsonl under {args.outputs}")
             return 1
-        print(f"report-only: {len(rows)} audits already on disk. Nothing was sent.")
+        entries, _ = build_fixture(args.sweep, args.outputs,
+                                   per_condition=args.per_condition, seed=args.seed)
+        # The quote check is a pure function of two texts that are both on disk, so a
+        # report re-derives it rather than trusting what the run happened to store.
+        stats, regrade = rescore_rows(rows, entries)
+        print(f"report-only: {len(rows)} audits already on disk, re-scored from the "
+              "fixture. Nothing was sent.")
+        print(f"  {stats}")
+        if regrade:
+            print(f"  NOTE: {len(regrade)} control(s) would need a new grader ruling; "
+                  "their stored false-alarm ruling is kept here, and a full run is what "
+                  "buys the new one.")
+        stale = stale_rows(rows, entries)[1]
+        if stale:
+            print(f"  NOTE: {len(stale)} row(s) were audited against a judgment the "
+                  "fixture no longer holds and are reported as measured.")
         print_thresholds()
         print_report(rows, args.outputs)
         return 0
@@ -1568,8 +1676,35 @@ def main(argv: list[str] | None = None) -> int:
         for model in usable:
             cached = load_rows(args.outputs, model)
             if cached is not None:
-                print(f"\n{model}: already audited ({len(cached)} rows) — skipping")
-                rows += cached
+                kept, stale = stale_rows(cached, entries)
+                if not stale:
+                    print(f"\n{model}: already audited ({len(cached)} rows) — skipping")
+                    rows += cached
+                    continue
+                # An instrument correction, not a re-run. The rows whose judgment text
+                # is unchanged measure the same thing they always did and stand; only
+                # the items whose text moved are bought again, and what they replace is
+                # written to a sidecar rather than dropped — a paid measurement is
+                # evidence about the instrument that made it.
+                path = superseded_path(args.outputs, model)
+                with path.open("a", encoding="utf-8") as fh:
+                    for row in stale:
+                        fh.write(json.dumps(row.to_dict(), ensure_ascii=False) + "\n")
+                # The stale items, PLUS any fixture item this model has no row for at
+                # all — a correction can add an item as well as change one, and a
+                # variant that exists in the instrument and in no measurement is a hole
+                # in the table rather than a saving.
+                have = {(r.cell_id, r.variant) for r in kept}
+                again = [(entry, name) for entry, name in items
+                         if (entry["cell_id"], name) not in have]
+                print(f"\n{model}: {len(kept)} rows still measure the current fixture; "
+                      f"re-auditing {len(again)} whose judgment changed "
+                      f"(superseded rows -> {path.name})")
+                fresh = await audit(model, again, config, client_config, api_key,
+                                    args.outputs)
+                merged = kept + fresh
+                save_rows(args.outputs, model, merged)
+                rows += merged
                 continue
             print(f"\n{model}: auditing {len(items)} judgments...")
             fresh = await audit(model, items, config, client_config, api_key,
@@ -1581,6 +1716,26 @@ def main(argv: list[str] | None = None) -> int:
                                  api_key, args.outputs)
             save_rows(args.outputs, model, fresh)
             rows += fresh
+
+        # Every stored defect re-checked against the fixture with the current checker,
+        # and the controls whose surviving-defect set moved graded again — the same
+        # Haiku call the run makes, on the objections whose defect list the grader would
+        # now be shown differently.
+        stats, regrade = rescore_rows(rows, entries)
+        print(f"\nre-scored from the fixture: {stats}")
+        if regrade:
+            by_model: dict[str, list[Row]] = collections.defaultdict(list)
+            for row in regrade:
+                by_model[row.model].append(row)
+            for model, group in sorted(by_model.items()):
+                print(f"  {model}: re-grading {len(group)} control(s) whose surviving "
+                      "defects changed")
+                await grade_controls(model, group, by_cell, config, grading,
+                                     client_config, api_key, args.outputs)
+        for model in usable:
+            model_rows = [r for r in rows if r.model == model]
+            if model_rows:
+                save_rows(args.outputs, model, model_rows)
 
         (args.outputs / "rows.jsonl").write_text(
             "\n".join(json.dumps(r.to_dict(), ensure_ascii=False) for r in rows) + "\n",

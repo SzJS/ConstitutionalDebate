@@ -2478,7 +2478,19 @@ def _defect_field(pattern: re.Pattern[str], block: str) -> list[str]:
 # surrounding quotation marks stripped, and only the first 80 characters compared — a
 # challenger that quotes accurately and then trails off, or that closes a long quote
 # with an ellipsis, still matches.
-_QUOTE_MARKS = "\"'“”‘’«»`"
+# Removed from BOTH sides before comparing: every quotation mark, and the markdown
+# characters a model uses to emphasise. The probe measured why this has to be every mark
+# and not just the outer pair — models routinely write
+#
+#     Judgment says: "The sentence states: 'the log was kept for 15 years'"
+#
+# nesting the judgment's own double quotes as single ones inside their own. Stripping
+# only the outer pair left needle and source differing at exactly those characters, at a
+# difflib ratio of 0.97-0.99, and an accurate quotation was recorded as a fabrication.
+# Same for `**emphasis**`: a judgment that bolds a phrase and a challenger that quotes it
+# unbolded are quoting the same words.
+_QUOTE_MARKS = "\"'“”‘’«»`*_"
+_STRIPPED_RE = re.compile(f"[{re.escape(_QUOTE_MARKS)}]")
 QUOTE_MATCH_CHARS = 80
 
 # A quote that is not a quote: the prompt asks an omission for `Judgment says: (the
@@ -2489,14 +2501,16 @@ _PARENTHETICAL_RE = re.compile(r"^\(.*\)$", re.S)
 
 
 def normalise_quote(text: str) -> str:
-    """Whitespace collapsed, quotation marks stripped, case folded.
+    """Whitespace collapsed, quotation marks and emphasis removed, case folded.
 
-    Both sides of the comparison go through this, so the judgment is normalised the same
-    way the quote is — a judgment that wrapped a line at column 80 must not make an
-    accurate quotation of it unfindable.
+    Both sides of the comparison go through this — the judgment is normalised exactly as
+    the quotation of it is — so a judgment that wrapped a line at column 80, or bolded a
+    phrase, or was quoted with its own double quotes nested as single ones, does not make
+    an accurate quotation of it unfindable. See `_QUOTE_MARKS` for what the probe
+    measured when only the outer pair came off.
     """
     collapsed = re.sub(r"\s+", " ", text).strip()
-    return collapsed.strip(_QUOTE_MARKS).strip().casefold()
+    return _STRIPPED_RE.sub("", collapsed).strip().casefold()
 
 
 def quote_in_text(quote: str, source: str) -> bool:
@@ -2508,7 +2522,7 @@ def quote_in_text(quote: str, source: str) -> bool:
     needle = normalise_quote(quote)[:QUOTE_MATCH_CHARS]
     if not needle:
         return False
-    return needle in re.sub(r"\s+", " ", source).strip().casefold()
+    return needle in normalise_quote(source)
 
 
 def defect_quote_in_judgment(defect: dict[str, Any], judgment: str) -> bool | None:

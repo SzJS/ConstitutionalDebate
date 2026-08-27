@@ -1,0 +1,80 @@
+candidates (6):
+  - openai/gpt-4.1-nano         $0.100/$0.400 per Mtok — THE FLOOR, measured but not eligible
+  - qwen/qwen3-32b              $0.080/$0.280 per Mtok
+  - google/gemini-2.5-flash     $0.300/$2.500 per Mtok
+  - openai/gpt-4.1-mini         $0.400/$1.600 per Mtok
+  - openai/gpt-4.1              $2.000/$8.000 per Mtok
+  - openai/gpt-5.6-luna         $0.200/$1.200 per Mtok
+
+building the fixture from outputs/experiments/sweep (read only)
+  using cached fixture outputs/pick-auditor/fixture.jsonl
+
+Fixture — 60 judgments, 251 audits per candidate
+==============================================================================================================
+  judgments per condition: debate=20, self_critique=20, single=20
+  judgments per subset:    gpqa=9, law=9, lojban=9, medqa=9, python800=9, surgery=9, theoremqa=6
+  audits per variant:      control=60, misquote=38, misattribution=49, contradiction=59, omission=45
+  misquote alterations:    number=5, negation=21, swap=12
+  copies of the judgment edited, per solo injected item: 1=94, 2=12, 3=10, 4=6
+  debate         per variant: control=20, misquote=14, misattribution=16, contradiction=20, omission=19
+  self_critique  per variant: control=20, misquote=12, misattribution=17, contradiction=20, omission=17
+  single         per variant: control=20, misquote=12, misattribution=16, contradiction=19, omission=9
+  variants a judgment could not carry (counted, not resampled): contradiction=1, misattribution=11, misquote=22, omission=15
+  cells excluded: none   (cells tried: 60)
+  median judgment length: 1580 characters
+==============================================================================================================
+
+Hyperparameters for the probe
+==============================================================================================================
+  challenger_variant           judgment   the arm being measured; selects the audit prompt and the defect format
+  challenger_temperature       0.7        0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.
+  challenger_reasoning_effort  unset      unset means the run's setting; challenger deliberation is an experimental axis.
+  reasoning_effort             off        off, so the private channel is the published Thinking block rather than a provider channel no reader can see.
+  challenge_word_limit         400        the run's cap on the objection, so replies are the length the run gets
+  max_tokens                   16384      a ceiling, not a spend; must leave room for the private Thinking block. Truncation is fatal and unretryable.
+  grader_model                 anthropic/claude-haiku-4.5 the run's judgment grader; it rules on false alarms and on nothing else
+  grader_temperature           0.0        the run's
+  seed                         0          the draw, shared across candidates: a paired comparison
+  per_condition                20         20 x 3 conditions = 60 judgments, so each detection rate has n=60
+  min_overlap                  20         characters a flagged quote must share with the injected span to count
+  min_grounds_chars            200        a judgment shorter than this has nothing to audit
+
+  [client], from the spec
+  max_concurrency              16
+  max_attempts                 4
+  read_timeout_s               300.0
+  run_timeout_s                1800.0
+  backoff_base_s               1.0
+  backoff_cap_s                30.0
+==============================================================================================================
+
+Pre-registered thresholds — records/pick-auditor/RULES.md, committed before any candidate was called
+==============================================================================================================
+  detection: misquote         >= 85%   the injected span overlaps a flagged `Judgment says:` quote — code
+  detection: misattribution   >= 85%   the injected span overlaps a flagged `Judgment says:` quote — code
+  detection: contradiction    >= 85%   the injected span overlaps a flagged `Judgment says:` quote — code
+  detection: omission         >= 50%   a flagged `Record says:` quote overlaps the deleted point — code
+  detection, pooled          >= 2x the floor model's pooled detection on the same fixture (openai/gpt-4.1-nano)
+  misattributed quotes       <= 5% of checkable `Judgment says:` quotes not verbatim in the judgment — code
+  false alarms on controls   <= 15% of controls carrying an alleged defect that fails the
+                                  quote check OR that the Haiku judgment grader rejects against the record
+  overlap that counts as a hit: 20 characters, whitespace and case folded
+
+  DECISION RULE: the cheapest candidate clearing EVERY floor, by measured $/task, then p95
+  latency. If none clears all floors, NO MODEL IS PICKED — the probe is the finding ('the
+  weakest reliable auditor is above rung 2') and the full run does not happen. openai/gpt-4.1-nano
+  is the floor: measured, reported first, and NOT eligible to be picked.
+==============================================================================================================
+
+Estimated cost of one full pass per candidate, from the fixture's own token counts
+  251 audits, ~1.00M prompt tokens and ~0.10M completion tokens each
+  openai/gpt-4.1-nano          $  0.14   ($0.100/$0.400 per Mtok)
+  qwen/qwen3-32b               $  0.11   ($0.080/$0.280 per Mtok)
+  google/gemini-2.5-flash      $  0.55   ($0.300/$2.500 per Mtok)
+  openai/gpt-4.1-mini          $  0.56   ($0.400/$1.600 per Mtok)
+  openai/gpt-4.1               $  2.81   ($2.000/$8.000 per Mtok)
+  openai/gpt-5.6-luna          $  0.32   ($0.200/$1.200 per Mtok)
+  anthropic/claude-haiku-4.5   $  2.84   the false-alarm grader, at most 60 calls per candidate
+  TOTAL                        $  7.33   (upper bound: every control alleges something and every audit runs)
+
+dry run — nothing was sent.

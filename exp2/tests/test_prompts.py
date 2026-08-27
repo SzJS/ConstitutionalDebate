@@ -558,6 +558,17 @@ def test_the_quote_check_is_lenient_about_form_and_strict_about_substance():
     # a line wrapped in the judgment must not hide an accurate quotation of it
     assert quote_in_text("to step 2, and Alice never returned", judgment)
 
+    # THE SHAPE THE PROBE MEASURED. A model quoting a judgment that itself quotes
+    # something writes the inner pair as single quotes — the same words, differing at
+    # exactly the quotation marks, which cost 31 of nano's 51 quotes their check until
+    # every mark came off both sides rather than only the outer pair.
+    quoting = ('The judgment says: "the log was kept for 15 years" and stops there.')
+    assert quote_in_text('"The judgment says: \'the log was kept for 15 years\'"',
+                         quoting)
+    # and markdown emphasis is not a difference in what was said
+    assert quote_in_text("the log was **kept** for 15 years", quoting)
+    assert quote_in_text("the log was kept for 15 years", "the log was _kept_ for 15 years")
+
     assert not quote_in_text("Bob conceded step 2", judgment)
     assert not quote_in_text("", judgment)       # no evidence is not a match
     assert not quote_in_text("   ", judgment)

@@ -1,0 +1,10 @@
+{
+  "cells_tried": 60,
+  "no_misquote": 22,
+  "judgments_debate": 20,
+  "no_misattribution": 11,
+  "no_omission": 15,
+  "judgments_self_critique": 20,
+  "judgments_single": 20,
+  "no_contradiction": 1
+}

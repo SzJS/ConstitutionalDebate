@@ -1,0 +1,26 @@
+Detection and control false alarms by model x condition x variant (re-scored rows)
+model                      cond             misquote  misattrib  contradic   omission   pooled   ctrl-FA
+openai-gpt-4.1-nano        debate           0/14 0.00   1/16 0.06   3/20 0.15   2/19 0.11   0.09    4/20
+openai-gpt-4.1-nano        self_critique    1/12 0.08   0/17 0.00   1/20 0.05   0/17 0.00   0.03    1/20
+openai-gpt-4.1-nano        single           1/12 0.08   2/16 0.12   0/19 0.00   0/9  0.00   0.05    2/20
+
+qwen-qwen3-32b             debate           8/14 0.57  11/16 0.69  13/20 0.65  12/19 0.63   0.64   18/20
+qwen-qwen3-32b             self_critique    6/12 0.50   2/17 0.12  16/20 0.80   6/17 0.35   0.45   14/20
+qwen-qwen3-32b             single          10/12 0.83   6/16 0.38  19/19 1.00   2/9  0.22   0.66    7/20
+
+google-gemini-2.5-flash    debate          10/14 0.71  15/16 0.94  19/20 0.95   6/19 0.32   0.72    6/20
+google-gemini-2.5-flash    self_critique    7/12 0.58   4/17 0.24  19/20 0.95   4/17 0.24   0.52    5/20
+google-gemini-2.5-flash    single           5/12 0.42   2/16 0.12  14/19 0.74   0/9  0.00   0.38    0/20
+
+openai-gpt-4.1-mini        debate           4/14 0.29   2/16 0.12  15/20 0.75   2/19 0.11   0.33    5/20
+openai-gpt-4.1-mini        self_critique    1/12 0.08   1/17 0.06  17/20 0.85   2/17 0.12   0.32    1/20
+openai-gpt-4.1-mini        single           2/12 0.17   0/16 0.00  16/19 0.84   0/9  0.00   0.32    0/20
+
+openai-gpt-4.1             debate           4/14 0.29   4/16 0.25  17/20 0.85   3/19 0.16   0.41    2/20
+openai-gpt-4.1             self_critique    0/12 0.00   0/17 0.00  17/20 0.85   2/17 0.12   0.29    0/20
+openai-gpt-4.1             single           2/12 0.17   0/16 0.00  11/19 0.58   0/9  0.00   0.23    0/20
+
+openai-gpt-5.6-luna        debate          11/14 0.79  11/16 0.69  12/20 0.60   0/19 0.00   0.49    3/20
+openai-gpt-5.6-luna        self_critique    3/12 0.25   0/17 0.00  12/20 0.60   0/17 0.00   0.23    1/20
+openai-gpt-5.6-luna        single           3/12 0.25   0/16 0.00   9/19 0.47   0/9  0.00   0.21    0/20
+
