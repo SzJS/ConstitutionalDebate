@@ -1,0 +1,246 @@
+================================================================================================
+RERULE COMPARE — the same objections, ruled by two different ruling lines
+================================================================================================
+SOURCE  records/experiments/recontest/index.jsonl   (experiment 'recontest')
+RERULE  outputs/experiments/rerule-recontest/index.jsonl
+cross-check tree  outputs/experiments/rerule-recontest
+
+CAVEAT — what passes through a ruling line, and what the instrument says
+------------------------------------------------------------------------------------------------
+Detection-side numbers (challenge_stance, prose_stance, phantom_contest, the
+agreement instrument) are IDENTICAL in the two trees by construction: the
+re-rule copies the objection and re-makes only the ruling. They are asserted
+cell by cell above and are not affected by anything below.
+
+Everything that passes through the ruling line — changed_the_decision,
+final_correct, fixed/broken/net, the end-to-end rate, and the discrimination
+figures in (c) — is exactly what the re-rule was run to re-measure. In the
+SOURCE column these come from the line whose failure mode is being corrected:
+  464 of the 464 joined rulings are `uphold_overturn`, the weak third-party judge's
+  relative line — the one the re-contest hand check found contradicting the
+  judge's own reasoning on 8 of 12 FLAWED parents. Treat every SOURCE number
+  below on a FLAWED parent as unreliable, not as a baseline.
+
+The RERULE column's residual is measured: ruling_line_mismatch fires on 27/464 5.8% of the
+re-rulings — Haiku reads the judge's prose alone and disagrees with the
+conclusion line it wrote. That rate is the bound on every RERULE number that
+passes through a ruling; section (b) splits it by parent verdict and
+condition, which is where a residual collision would show.
+The SOURCE tree carries no ruling_line_mismatch column: the instrument did
+not exist when it ran, so its residual is NOT MEASURED ON THE SOURCE. The
+re-contest's 12-ruling hand check is the only reading of it.
+
+The dataset labels themselves are the outer bound on `correct`, unchanged by
+any of this: a re-ruling that agrees with a wrong label counts as wrong.
+
+================================================================================================
+JOIN
+================================================================================================
+source rows                       5724
+rerule rows                       5724
+cells in both indices             5724
+  of those, re-ruled              464
+    with a SOURCE ruling to pair  464   <- every paired table below
+    with NO source ruling         0   <- excluded from the paired tables
+  in both, no ruling in rerule    5260
+source rulings NOT re-ruled       0
+cells only in the rerule index    0
+
+identity asserted cell by cell on verdict, initially_correct, gold_flawed,
+challenge_stance, prose_stance: 464/464 identical.
+
+source is the sweep: no  (neither)  -> section (g) skipped
+
+re-ruled cells by condition:
+  single             216
+  self_critique      194
+  debate              54
+  POOLED             464
+
+================================================================================================
+(a) RULINGS MADE, by ruling_form
+================================================================================================
+The source may mix forms (the sweep's `debate` cells were ruled by the weak
+third-party judge, its solo cells by the strong re-decider). The rerule tree is
+asserted to hold `stated_conclusion` and nothing else.
+
+condition            n   SOURCE                                      RERULE
+------------------------------------------------------------------------------------------------
+single             216   uphold_overturn=216                         stated_conclusion=216
+self_critique      194   uphold_overturn=194                         stated_conclusion=194
+debate              54   uphold_overturn=54                          stated_conclusion=54
+POOLED             464   uphold_overturn=464                         stated_conclusion=464
+
+================================================================================================
+(b) THE NEW INSTRUMENT — the ruling line vs the judge's own prose
+================================================================================================
+Haiku reads the judge's REASONING ONLY, with the conclusion line stripped, and
+says whether that prose concludes the text under review contains a flaw. A
+mismatch is a ruling whose line contradicts the reasoning that produced it —
+the exact failure the re-rule was run to remove, measured rather than assumed.
+
+condition       parent         n          mismatch    prose FLAWED   prose SOUND   NEITHER
+------------------------------------------------------------------------------------------------
+single          FLAWED       189        7/189 3.7%             161            28         0
+                SOUND         27        5/27 18.5%              14            12         1
+                both         216       12/216 5.6%             175            40         1
+------------------------------------------------------------------------------------------------
+self_critique   FLAWED       106       10/106 9.4%              62            43         1
+                SOUND         88         3/88 3.4%              55            32         1
+                both         194       13/194 6.7%             117            75         2
+------------------------------------------------------------------------------------------------
+debate          FLAWED        40         1/40 2.5%              19            21         0
+                SOUND         14         1/14 7.1%              10             4         0
+                both          54         2/54 3.7%              29            25         0
+------------------------------------------------------------------------------------------------
+POOLED          FLAWED       335       18/335 5.4%             242            92         1
+                SOUND        129        9/129 7.0%              79            48         2
+                both         464       27/464 5.8%             321           140         3
+------------------------------------------------------------------------------------------------
+
+A residual collision would appear as a mismatch rate concentrated on FLAWED
+parents — that is what the old line did (it read as OVERTURN whenever the
+objection was any good). A flat, low rate across both parents is the fix
+working; it is not zero and every RERULE rate below inherits it.
+
+SOURCE ruling_line_mismatch: NOT MEASURED ON THE SOURCE — the
+ruling_agreement stage did not exist when the source tree was built, so
+there is no per-ruling reading of its prose to compare against. The only
+reading of the source line is the 12-ruling hand check in
+records/experiments/recontest/HANDCHECK-ruling-line.md.
+
+================================================================================================
+(c) OVERTURN RATE BY WHAT WAS ACTUALLY OBJECTED TO
+================================================================================================
+phantom       the objection's line said REVERSE and its own prose endorsed the
+              verdict (prose_stance RIGHT). A ruler that reads the objection
+              rather than its line should overturn almost none of these.
+genuine|wrong prose_stance WRONG on a decision that was in fact incorrect —
+              the objections a working recourse channel is FOR.
+genuine|corr  prose_stance WRONG on a decision that was in fact correct — the
+              specious objections it must resist.
+discrimination = overturn rate on genuine|wrong minus overturn on genuine|corr.
+It is the only figure here that a ruler cannot raise by overturning everything.
+
+condition      bucket             n     SOURCE overturn     RERULE overturn
+------------------------------------------------------------------------------------------------
+single         phantom           46         41/46 89.1%           1/46 2.2%
+               genuine|wrong      6           2/6 33.3%           4/6 66.7%
+               genuine|corr     164       117/164 71.3%        49/164 29.9%
+               DISCRIMINATION                 -38.0 pts           +36.8 pts
+------------------------------------------------------------------------------------------------
+self_critique  phantom            8           5/8 62.5%            0/8 0.0%
+               genuine|wrong     58         40/58 69.0%         39/58 67.2%
+               genuine|corr     127       100/127 78.7%        63/127 49.6%
+               other/NEITHER      1            0/1 0.0%            0/1 0.0%
+               DISCRIMINATION                  -9.8 pts           +17.6 pts
+------------------------------------------------------------------------------------------------
+debate         phantom            8           6/8 75.0%           2/8 25.0%
+               genuine|wrong     21         12/21 57.1%         17/21 81.0%
+               genuine|corr      25         16/25 64.0%         14/25 56.0%
+               DISCRIMINATION                  -6.9 pts           +25.0 pts
+------------------------------------------------------------------------------------------------
+POOLED         phantom           62         52/62 83.9%           3/62 4.8%
+               genuine|wrong     85         54/85 63.5%         60/85 70.6%
+               genuine|corr     316       233/316 73.7%       126/316 39.9%
+               other/NEITHER      1            0/1 0.0%            0/1 0.0%
+               DISCRIMINATION                 -10.2 pts           +30.7 pts
+------------------------------------------------------------------------------------------------
+
+================================================================================================
+(d) NET EFFECT ON ACCURACY  (sweep-phantom-corrected.py's definitions)
+================================================================================================
+A cell's final verdict is the ruling's if the contest produced one, else the
+decision's own. fixed = wrong decision made right; broken = right decision made
+wrong; net = fixed - broken. Cells with no dataset label are excluded and
+counted separately.
+
+d1 — over the RE-RULED CELLS ONLY (the paired comparison; same decisions, same
+     objections, the two ruling lines side by side)
+
+condition           n   acc before     SRC after      RE after      SRC f/b/net       RE f/b/net  unlabelled
+------------------------------------------------------------------------------------------------
+single            216        96.8%         25.5%         75.5%       3/157/-154         4/50/-46           0
+self_critique     194        69.1%         37.6%         56.7%       42/103/-61        39/63/-24           0
+debate             54        57.4%         46.3%         59.3%         14/20/-6         17/16/+1           0
+POOLED            464        80.6%         33.0%         65.7%      59/280/-221       60/129/-69           0
+
+d2 — PROJECTED ONTO THE WHOLE SOURCE GRID (5724 cells): a re-ruled cell
+     takes the new tree's outcome, every other cell keeps the source's.
+     464 cells substituted (464 paired re-rulings); the
+     rest of the grid is identical in both columns, so ACC BEFORE is the same
+     and the whole of the change is attributable to the ruling line.
+
+condition           n   acc before     SRC after      RE after      SRC f/b/net       RE f/b/net  unlabelled
+------------------------------------------------------------------------------------------------
+single           2064        88.3%         80.9%         86.1%       3/157/-154         4/50/-46           0
+self_critique    2016        84.4%         81.3%         83.2%       42/103/-61        39/63/-24           0
+debate           1644        58.2%         57.8%         58.2%         14/20/-6         17/16/+1           0
+POOLED           5724        78.3%         74.4%         77.1%      59/280/-221       60/129/-69           0
+
+================================================================================================
+(e) END-TO-END — own wrong decisions genuinely contested AND overturned
+================================================================================================
+Of a condition's own incorrect decisions, the fraction where the challenger
+raised an objection whose PROSE argued the verdict was wrong and the ruler then
+overturned. Detection x revision, unconditional — the number the whole recourse
+channel exists to move.
+
+e1 — over the RE-RULED CELLS ONLY (denominator: incorrect decisions among them)
+
+condition        incorrect                SOURCE                RERULE
+------------------------------------------------------------------------------------------------
+single                   7             2/7 28.6%             4/7 57.1%
+self_critique           60           40/60 66.7%           39/60 65.0%
+debate                  23           12/23 52.2%           17/23 73.9%
+POOLED                  90           54/90 60.0%           60/90 66.7%
+
+e2 — PROJECTED ONTO THE WHOLE SOURCE GRID (denominator: every incorrect
+     decision in the source index, contested or not)
+
+condition        incorrect                SOURCE                RERULE
+------------------------------------------------------------------------------------------------
+single                 241            2/241 0.8%            4/241 1.7%
+self_critique          315          40/315 12.7%          39/315 12.4%
+debate                 688           12/688 1.7%           17/688 2.5%
+POOLED                1244          54/1244 4.3%          60/1244 4.8%
+
+================================================================================================
+(f) PER-CELL RULING TRANSITIONS  (source outcome -> rerule outcome)
+================================================================================================
+condition            n   UPHOLD->UPH   UPHOLD->OVT   OVT->UPHOLD    OVT->OVT         changed
+------------------------------------------------------------------------------------------------
+single             216            42            14           120          40   134/216 62.0%
+self_critique      194            24            25            68          77    93/194 47.9%
+debate              54             2            18            19          15     37/54 68.5%
+POOLED             464            68            57           207         132   264/464 56.9%
+
+the same, as the VERDICT each ruling settled on (derived: the parent verdict
+when upheld, the other verdict when overturned)
+
+condition            n   FLAWED->FLAWED   FLAWED->SOUND   SOUND->FLAWED   SOUND->SOUND
+------------------------------------------------------------------------------------------------
+single             216               51              12             122             31
+self_critique      194               72              51              42             29
+debate              54               13              21              16              4
+POOLED             464              136              84             180             64
+
+================================================================================================
+(g) STRONG RE-DECIDER vs WEAK THIRD-PARTY JUDGE
+================================================================================================
+skipped — this section needs the sweep as the source, whose solo conditions
+were ruled by the strong re-decider (`restated_verdict`). Force it with
+--sweep-source yes.
+
+================================================================================================
+CROSS-CHECK against the rerule run tree (optional; no table above uses it)
+================================================================================================
+tree outputs/experiments/rerule-recontest
+
+cells checked                464
+cells with no ruling.json    0
+disagreements                0
+every index-derived value matches the record on disk.
+
+================================================================================================
+end

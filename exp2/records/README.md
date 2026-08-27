@@ -14,7 +14,8 @@ exception to 'nothing here was edited'" below, which names every line that diffe
 why.
 
 Nothing here is an input to any stage. No code reads this directory; deleting it would
-break no command. It is evidence, and it is small (≈4 MB).
+break no command. It is evidence, and it is small (≈31 MB — the sweep, the re-contest
+and the three re-rule trees are most of it).
 
 The one thing here that is meant to be *run* again is `derivations/`. What each script
 does now is **not** the same across the ten, so the blanket "none of them work" that
@@ -31,6 +32,9 @@ installed package under `uv run` and needs the root `.env`).
 | `sweep-1-checks2.py` | same, default `outputs/experiments/sweep-1`. The follow-up pass: truncation shape, repair scar, revision rates. |
 | `sweep-1-funnel.py` | same, default `outputs/experiments/sweep-1`. Reads only `metrics.json` and `index.jsonl`, so it runs against any analysed run. |
 | `pilot-3-paths.py`, `pilot-3-handcheck-sample.py` | same, both take a `ROOT` (the sample script also takes `N`). They pick the cells for a hand read, which the sweep needs too. |
+| `recontest-vs-sweep.py` | **runs on a bare `git clone`** for sections (a)–(g): it joins `experiments/sweep/index.jsonl` and `experiments/recontest/index.jsonl` on `cell_id`, asserts cell by cell that the decisions are the same generations, and prints the two runs side by side. Section (h) needs the re-contest's run tree and prints what it could not read. `experiments/recontest/recontest-vs-sweep.log` is its output. |
+| `rerule-compare.py` | **runs on a bare `git clone`.** It takes a SOURCE index and a RERULE index (`--source`, `--rerule`) and prints the same objections under two ruling lines: the join, the ruling forms, the new `ruling_line_mismatch` instrument split by parent verdict, overturn rates by what was actually objected to, discrimination, the net effect on accuracy in `sweep-phantom-corrected.py`'s definitions, the per-cell ruling transitions, and — when the source is the sweep — the paired **strong re-decider vs weak third-party judge** table on its 682 solo objections. A cross-check against the run tree runs when the tree is there and no table uses it. The three `rerule-compare-*.log` files beside it are its output, copied into `experiments/rerule/`. |
+| `rerule-smoke-pick.py` | read-only. Draws the items of the re-contest's 62 phantom cells out of `experiments/recontest/index.jsonl` into the smoke's case file. Runs on a bare clone. |
 | `pilot-2-shapes.py`, `pilot-3-checks2.py` | **hard-coded** to `outputs/experiments/pilot-2` and `-pilot-3`, which were wiped. One line each to re-point; until then they are a record of a derivation, not a runnable script. `sweep-1-checks2.py` is the generalised `pilot-3-checks2.py`, so prefer it. |
 
 Two `.log` files there have no `.py` beside them — `pilot-3-funnel.log` (superseded by

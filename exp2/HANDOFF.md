@@ -44,6 +44,13 @@ checkable.
 > re-contest's 464 rulings and the sweep's 440 `debate` rulings under the same caveat and
 > leaves the sweep's `restated_verdict` rulings untouched. The next step is a prompt fix
 > plus a re-rule of those 904 rulings for cents — smoke first, and it is the user's call.
+>
+> **That fix was made and every objection re-ruled on 2026-08-27** — the judge now states
+> its own conclusion about the text under review instead of an `UPHOLD|OVERTURN` word, all
+> 464 + 1,129 rulings were re-made for **$3.09**, and a new `ruling_agreement` stage puts a
+> **measured ~6% residual** where an unmeasured failure used to be; evidence in
+> [`records/experiments/rerule/`](records/experiments/rerule/README.md), write-up
+> `LLM_NOTES.md` **§3u**, and §4 below.
 
 ---
 
@@ -226,10 +233,12 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$50.66** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+Total spent so far: **$53.75** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
 decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
 re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
-validation slice (**$0.38**), and a few cents of provider checks that nothing itemises.
+validation slice (**$0.38**), the re-rule's **$3.0887** (a three-variant prompt smoke
+**$0.0202**, a 69-ruling smoke **$0.1205**, `rerule-recontest` **$0.8109**, `rerule-sweep`
+**$2.1371**), and a few cents of provider checks that nothing itemises.
 Nothing below needs re-running, and section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
@@ -404,6 +413,69 @@ python800), `HANDCHECK-graded.md` (valid 21/46 = 45.7%, or 21/41 excluding gpqa)
 `records/derivations/recontest-vs-sweep.py` reproduces the whole comparison from the two
 committed `index.jsonl` files on a bare clone.
 
+### The re-rule (2026-08-27) — done
+
+**The ruling line was fixed and every objection either full run ever raised was re-ruled,
+for $3.09.** Nothing was decided and nothing was contested: the three specs carry
+`decisions_from` **and** `contests_from`, which make `decide`, `contest`, `agreement` and
+`grade` all refuse and route every lookup into a finished tree that is read and never
+written. Both source trees were hashed before and after every run and are byte-identical
+(`sweep 5e2eb4d6…`, `recontest 518bd5d9…`). Evidence:
+[`records/experiments/rerule/`](records/experiments/rerule/README.md) — one directory,
+three subtrees; write-up `LLM_NOTES.md` **§3u**. 392 tests pass.
+
+**What changed, commit `dfad084`, from a `DESIGN.md` paragraph in the same commit.** The
+recourse judge is no longer asked for `Ruling: UPHOLD|OVERTURN`. It is told it rules on the
+**original text under review** — the text in `<solution>`, not the objection, not the
+decision's reasoning, and **not the program or proof that text may itself be assessing** —
+and ends with an absolute `Conclusion:` line, from which UPHOLD/OVERTURN is derived by
+comparison with the decision. `Ruling.form` gains **`stated_conclusion`**; a new
+**`ruling_agreement`** stage has Haiku read the judge's prose with the line stripped and
+reports the mismatch, mirroring what `agreement` does for the challenger; and the spec key
+**`contests_from`** re-rules another tree's finished objections into a tree of its own.
+The wording is variant C of a 20-cell three-variant smoke ($0.0202): line-vs-own-prose
+contradictions **old 8/20, A 7/20, B 5/19, C 1/20**; correct against gold **8 → 14/20**.
+
+**Three runs**, all `RUN_SWEEP_STAGES="rerule ruling_agreement analyse"`, three stages,
+every stage exit 0, every wire attempt HTTP 200:
+
+| | rulings | spend | wall | mismatch |
+|---|---|---|---|---|
+| `rerule-smoke` — the 62 known-failure phantoms + 7 controls | 69 | $0.1205 | 54 s | 1/69 = 1.4% |
+| `rerule-recontest` — all of the re-contest's | 464 | $0.8109 | 5.5 min | 27/464 = 5.8% |
+| `rerule-sweep` — all of the sweep's | 1,129 | $2.1371 | 13 min | 68/1,129 = 6.0% |
+
+**The numbers, reported and not concluded from.** On the smoke the old line overturned
+**52 of 62** phantoms and the new one overturns **1**; Fable read all 69 by eye and found
+**0** line-vs-prose contradictions. On the re-contest's 464 objections, pooled
+discrimination goes **−10.2 → +30.7 pts** and net accuracy **−221 → −69 cells**. On the
+sweep's `debate`, net **−27 → +4** and discrimination **+9.9 → +21.7 pts**. And on the
+sweep's **682 solo objections**, ruled by the strong re-decider in the sweep and by the
+weak third-party judge here — identical decisions, identical objections, two rulers — the
+weak judge overturns **73%** of genuine objections to wrong decisions against the
+re-decider's **42%**, and **35%** against **12%** on genuine objections to correct ones:
+discrimination **+37.9 vs +30.4**, net **−24 vs +17**. The re-decider overturned **1 of
+334** `single` rulings, so the sweep's solo recourse advantage was substantially **a ruler
+that never moved**.
+
+**The residual is measured now, not assumed** — about **6%**, **flat** across parent
+verdicts where the old line's failure was concentrated on FLAWED, and concentrated in
+**python800** (51 of `rerule-sweep`'s 68 mismatches; 10.9% there against 2.6% elsewhere)
+with a known direction: on a text that correctly reports a bug the line over-calls FLAWED,
+which biases against correcting wrong FLAWED decisions. Three hand checks in
+[`records/experiments/rerule/HANDCHECK-ruling-line.md`](records/experiments/rerule/HANDCHECK-ruling-line.md)
+— the smoke's 69/69, a 20-read of `rerule-recontest` (instrument 19/20 correct, 9 of 10
+alarms real) and a 10-read of `rerule-sweep`'s worst cell (10/10 alarms real). Four
+transcripts in `transcripts/`, three of them the **same cells** the sweep's own
+`transcripts/` holds.
+
+**Still owed** (§3u): the python800 phrasing, which is a design decision; a hand read of
+the **145 of 682** cells where the two rulers disagree; the specious-objection control; and
+the fact that phantoms are a challenger property the re-rule does not touch.
+
+`records/derivations/rerule-compare.py` reproduces all three comparisons from the committed
+`index.jsonl` files; the cross-check against the run tree is optional and no table uses it.
+
 ### The open findings the write-up must carry
 
 These are not bugs to fix. They are known properties of the measurement, and a reader
@@ -571,6 +643,26 @@ echo $! > outputs/sweep-driver.pid
 #    stage that exits non-zero and writes outputs/experiments/sweep/STOP.md; on success
 #    it writes DONE.md. Poll from a background shell; expect ~15 h.
 ```
+
+**`RUN_SWEEP_STAGES` is how a subset of the stages runs, and it is how the later passes
+ran.** The driver's default is the full list; setting the variable overrides it, and the
+stages still run sequentially with the same per-stage logs, `STOP.md` and `DONE.md`:
+
+```bash
+# the re-contest (2026-08-26): decisions read from the sweep tree, everything else re-made
+RUN_SWEEP_STAGES="contest agreement grade analyse" \
+    nohup scripts/run_sweep.sh experiments/recontest.toml > outputs/recontest-driver.log 2>&1 &
+
+# a re-rule (2026-08-27): decisions AND objections read from finished trees, only the
+# ruling re-made. `contests_from` in the spec makes contest/agreement/grade refuse, so
+# these three stages are the whole of it — this is how all three rerule-* runs ran.
+RUN_SWEEP_STAGES="rerule ruling_agreement analyse" \
+    nohup scripts/run_sweep.sh experiments/rerule-sweep.toml > outputs/rerule-sweep-driver.log 2>&1 &
+```
+
+A re-rule is minutes and cents, not hours and dollars, because no decision and no
+objection is generated — the dry-run's ruling term is **counted, not bounded**, and prints
+exactly how many rulings the pass will make before it makes them.
 
 **Measuring the stop triggers while it runs** — from a background shell, hourly:
 provider failures are the non-`200 OK` lines in `outputs/sweep-decide.log` against the

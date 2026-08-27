@@ -1,0 +1,366 @@
+{"stage": "rerule", "cell_id": "gpqa-122-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "gpqa-122-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-122-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-191-sound__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": true}
+{"stage": "rerule", "cell_id": "gpqa-191-sound__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-191-sound__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "gpqa-144-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "gpqa-144-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-144-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-108-sound__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-108-sound__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "gpqa-108-sound__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "law-evi2_gpt3-5_B-s6__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "law-evi2_gpt3-5_B-s6__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "law-evi2_gpt3-5_B-s6__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "lojban-stim161_gpt4_B-s1__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "lojban-stim161_gpt4_B-s1__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "lojban-stim161_gpt4_B-s1__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-dev_0026__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-dev_0026__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-dev_0026__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-dev_0841__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-dev_0841__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-dev_0841__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_0614__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-train_0614__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_0614__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_1102__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-train_1102__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_1102__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_1511__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-train_1511__self_critique__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_1511__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_3556__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "medqa-train_3556__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "medqa-train_3556__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p00001-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p00001-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p00001-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02573-flawed__single__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02573-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02573-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02580-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02580-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02580-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02583-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02583-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02583-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02600-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02600-flawed__self_critique__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02600-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02707-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02707-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02707-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02814-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02814-flawed__self_critique__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02814-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02820-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02820-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02820-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02842-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02842-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02842-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02891-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02891-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02891-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02901-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02901-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02901-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02910-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02910-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02910-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02918-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02918-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02918-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02928-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02928-flawed__self_critique__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02928-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02947-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02947-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02947-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02970-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02970-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02970-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02971-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02971-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02971-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02990-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02990-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02990-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02995-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p02995-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p02995-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03003-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03003-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03003-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03059-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03059-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03059-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03068-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03068-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03068-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03074-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03074-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03074-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03075-sound__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03075-sound__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03075-sound__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03078-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03078-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03078-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03136-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03136-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03136-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03151-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03151-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03151-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03162-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03162-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03162-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03210-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03210-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03210-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03228-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03228-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03228-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03262-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03262-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03262-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03265-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03265-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03265-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03273-sound__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03273-sound__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03273-sound__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03324-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03324-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03324-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03345-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03345-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03345-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03416-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": true}
+{"stage": "rerule", "cell_id": "python800-p03416-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03416-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03478-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03478-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03478-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03479-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03479-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03479-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03488-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03488-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03488-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03523-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03523-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03523-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03576-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03576-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03576-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03608-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03608-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03608-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03636-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03636-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03636-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03774-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03774-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03774-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03803-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03803-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03803-flawed__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03828-flawed__single__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03828-flawed__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03828-flawed__debate__r1", "status": "skipped", "reason": "no source contest to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03838-flawed__single__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "python800-p03838-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "python800-p03838-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__self_critique__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__debate__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__single__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__self_critique__r1", "status": "completed", "was": "uphold_overturn", "now": "stated_conclusion", "changed": false}
+{"stage": "rerule", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__debate__r1", "status": "skipped", "reason": "no objection to re-rule"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-122-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-122-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-122-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-191-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-191-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-191-sound__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-144-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-144-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-144-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-108-sound__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-108-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-108-sound__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt3-5_B-s6__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt3-5_B-s6__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt3-5_B-s6__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim161_gpt4_B-s1__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim161_gpt4_B-s1__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim161_gpt4_B-s1__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0026__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0026__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0026__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0841__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0841__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0841__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_0614__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_0614__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_0614__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1102__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1102__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1102__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1511__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1511__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1511__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3556__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3556__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3556__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p00001-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p00001-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p00001-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02573-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02573-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02573-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02580-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02580-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02580-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02583-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02583-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02583-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02600-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02600-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02600-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02707-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02707-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02707-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02814-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02814-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02814-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02820-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02820-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02820-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02842-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02842-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02842-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02891-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02891-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02891-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02901-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02901-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02901-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02910-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02910-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02910-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02918-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02918-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02918-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02928-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02928-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02928-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02947-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02947-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02947-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02970-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02970-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02970-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02971-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02971-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02971-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02990-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02990-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02990-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02995-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02995-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02995-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03003-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03003-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03003-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03059-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03059-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03059-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03068-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03068-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03068-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03074-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03074-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03074-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03075-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03075-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03075-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03078-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03078-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03078-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03136-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03136-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03136-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03151-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03151-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03151-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03162-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03162-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03162-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03210-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03210-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03210-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03228-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03228-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03228-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03262-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03262-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03262-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03265-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03265-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03265-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03273-sound__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03273-sound__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03273-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03324-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03324-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03324-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03345-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03345-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03345-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03416-flawed__single__r1", "status": "completed", "line": "SOUND", "prose": "FLAWED", "mismatch": true, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03416-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03416-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03478-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03478-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03478-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03479-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03479-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03479-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03488-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03488-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03488-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03523-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03523-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03523-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03576-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03576-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03576-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03608-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03608-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03608-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03636-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03636-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03636-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03774-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03774-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03774-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03803-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03803-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03803-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03828-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03828-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03828-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03838-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03838-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03838-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_algebra_3_2-png-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-force_and_power1-png-sound__debate__r1", "status": "skipped", "reason": "no contest"}
