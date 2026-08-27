@@ -1806,6 +1806,13 @@ the phantom-corrected funnel and the four transcripts. Two paragraphs written be
 existed are marked as superseded where they stand; nothing else above was rewritten, so
 read the later sub-part as the current reading wherever the two differ.
 
+**Amended 2026-08-27, again with no paid call.** §3t(d) reports a hand check of the
+recourse judge's `Ruling:` line which changes how this section's `debate` recourse numbers
+must be read — the 92%/82% overturn split, the 24% phantom overturn and the net −27. Those
+three places are marked **SUPERSEDED — see §3t(d)** in place; the numbers stand, the
+reading does not. `single` and `self_critique` were ruled by `restated_verdict` and are
+unaffected.
+
 ### What ran, and what it cost
 
 `experiments/sweep.toml` over `data/cases/ftf-all.jsonl` — 2,110 items × 3 conditions ×
@@ -1994,7 +2001,10 @@ added without re-spending.
 **There is no specious-objection control.** `debate` revising 14% of its wrong decisions
 and 13% of its right ones is exactly the pattern a re-decider that folds under any
 pushback would produce, and this design cannot tell that apart from a re-decider
-responding to argument quality. §4 recorded that too.
+responding to argument quality. §4 recorded that too. **Amended 2026-08-27 — see §3t(d):**
+there is now a third candidate the design also cannot tell apart, and it is the one the
+evidence favours — a **ruling line** that does not report the judge's own conclusion when
+the parent verdict was FLAWED.
 
 And a third, from `metrics.json`'s last caveat: natural errors only, so a weak judge errs
 where the correct side argued *badly* — debate's incorrect cell selects the debates in
@@ -2147,10 +2157,29 @@ as conclusions about debate.**
   produce, and **the missing specious-objection control is exactly what cannot rule it
   out**. The uncorrected 14%-vs-13% reported earlier is the same fact seen through the
   phantoms; stripping them raises both numbers and does not separate them.
+
+  > **SUPERSEDED — see §3t(d).** A hand check of the recourse judge's `Ruling:` line
+  > (2026-08-27, `records/experiments/recontest/HANDCHECK-ruling-line.md`) found the line
+  > contradicting the judge's *own reasoning* in **8 of 12** sampled rulings on a **FLAWED**
+  > parent verdict, and in **0 of 8** on a SOUND one. These `debate` rulings are
+  > `uphold_overturn` from that same judge and that same prompt, so **the 92%/82% split is
+  > a property of the ruling line on FLAWED parents before it is a property of the judge's
+  > judgement**, and "a re-decider folding under pushback" is no longer the best available
+  > explanation of it. The numbers stand as recorded; the reading does not. The sweep's
+  > `single`/`self_critique` rulings are `restated_verdict` — an absolute verdict from the
+  > strong re-decider, with no uphold/overturn word to collide — and are **not** affected.
 - **The contest process is net-NEGATIVE for debate and net-positive only for
   `self_critique`.** Debate's contests fix 98 wrong decisions and break 125 right ones:
   **−27 cells, 58.2% → 56.5%**. `self_critique` is **+16**. `single` is **+1** — one cell
   in 2,064, and 0 correct decisions broken out of 1,823.
+
+  > **SUPERSEDED — see §3t(d).** Debate's **−27** is the only one of the three that passes
+  > through the `uphold_overturn` ruling line, so it is the only one under the hand check's
+  > caveat: it is a statement about that line on FLAWED parents before it is a statement
+  > about what contesting a debate costs. `self_critique`'s **+16** and `single`'s **+1**
+  > come from `restated_verdict` rulings and are unaffected — which means **part of the gap
+  > between debate and the two solo conditions in this table is an artefact of which
+  > recourse form each condition used**, and that is the asymmetry §3t was built to remove.
 
 **One caveat this recomputation inherits.** The 7 cells whose re-decider truncated carry
 `ruling_form: null`, and **both `metrics.json` and this recomputation treat them as "not
@@ -2189,7 +2218,10 @@ The three items `HANDOFF.md` §5 named are done. What replaces them:
   showed is an over-count. Until it exists, 192/4,595 is a ceiling, not a measurement.
 - The **`weak_alone` arm** and the **specious-objection control**, both recorded as
   accepted limitations in §4 before the run and both now load-bearing: the first for
-  debate's 58.2%, the second for the 92%-vs-82% in (b).
+  debate's 58.2%, the second for the 92%-vs-82% in (b). **Amended 2026-08-27:** the
+  92%-vs-82% now needs the ruling-line fix of §3t(d) *before* it needs the
+  specious-objection control — a control cannot separate argument quality from folding if
+  the recorded ruling word is not what the judge concluded.
 - Making the 7 null rulings an explicit `null` in the funnel rather than a default False.
 
 ### A small thing found while reconciling, recorded so it is not re-found
@@ -2200,6 +2232,452 @@ and are counted in `revised_given_*` as **not revised**. That is an absent rulin
 read as a ruling that the decision stood. It is 7 of 5,724 and moves no rate, but it is a
 default that should be an explicit `null` in the funnel rather than a False. The seven are
 named in `records/experiments/sweep/CHECKLIST.md`.
+
+## 3t. The re-contest (2026-08-26): a challenger that decides last, and a weak third-party recourse judge in every condition
+
+**Written after the run. No paid call was made for this section; every number is quoted
+from `records/experiments/recontest/CHECKLIST.md`, `checks.log`,
+`recontest-vs-sweep.log` or `metrics.json`, all four of which are now in git.** This
+section **reports**. It does not conclude that the re-contest measures contestability
+better than the sweep did, and the reason it cannot is at the end, under "What is still
+owed".
+
+**Extended 2026-08-27, still with no paid call**, by "The four hand checks, done". Read
+**(d)** before quoting any recourse-stage number from this section *or from §3s's `debate`
+condition*: the recourse judge's `Ruling:` line contradicts the judge's own reasoning on
+FLAWED parent verdicts about half the time, so the overturn rates and the net-accuracy
+change below characterise that line and not the judge's judgement. The sub-part on the
+judge's rulings is annotated where it stands rather than rewritten.
+
+§3s reported two defects in the sweep's **measurement** rather than in its records: 51.8%
+of its objections were phantoms — a `Decision: REVERSE` line over prose arguing the
+verdict was right — and recourse was asymmetric, `debate` heard by a weak third-party
+judge and the two solo conditions by the strong decider re-deciding in its own
+conversation. The user settled both in `DESIGN.md` (commit **`e46ada3`**): the recourse
+judge is a weak third party in **every** condition, the in-conversation form survives as a
+separately-reported ablation, and the challenger must decide **last**. This run applies
+that to the sweep's own 5,724 decisions and **regenerates nothing**.
+
+### What changed, in three commits
+
+**`6a911f3`** — the two changes the design asked for. `CHALLENGE_DECISION_INSTRUCTION`
+asks for reasons first and the `Decision:` line at the **end**, each word glossed in the
+phrases of *this* decision (never the tokens FLAWED/SOUND, which collided with the
+challenger's own vocabulary in pilot 2 — §3n); `parse_objection_output` takes the
+**last** match and strips that one. `recourse_form` is a config field whose default,
+`per_condition`, is exactly what every earlier paid run did, so `sweep.toml` and the
+`pilot-*.toml` keep meaning what they ran; the new specs set `third_party`. And a spec may
+now carry `decisions_from = "<path>"`, which makes `--stage decide` refuse and routes the
+other four stages' decision lookups into a tree this run never writes to.
+
+**`41f6a65`** — the cost estimate charges nothing for decisions it reads elsewhere, and
+`e2e_offline.py` exercises both recourse forms.
+
+**`6af26bb`** — one sentence added to the challenger instruction: *"Put your reasons under
+`Argument:` — they are published. Use `Thinking:` only for private working, and close it
+with `Argument:`."* That sentence exists because of smoke 1.
+
+### Two smokes, 18 cells each, before any slice
+
+Six items drawn from the sweep's index — four whose sweep contest was a phantom, one
+genuine REVERSE on a wrong decision, one decline — contested three times on the same
+decisions. `records/experiments/recontest/SMOKE-2-review.md` is the cell-by-cell table.
+
+| | sweep | smoke 1 | smoke 2 |
+|---|---|---|---|
+| REVERSE lines | 6/18 | **0/18** | 3/18 |
+| **phantom contests** | **5/18** | **0/18** | **1/18** |
+| **format repairs** | ~0 | **10/18** | **2/18** |
+
+Smoke 1 resolved every phantom and **withdrew every objection**, which was the worrying
+half of the result, and it sent format repairs from ~0 to 10 of 18 — the reply opened
+`Thinking:` and never closed it with `Argument:`. Smoke 2 changed one sentence and nothing
+else: repairs 10 → 2, and objections came back at 3 of 18 with 2 of the 3 genuine. Both
+smokes cost $0.03 each, **$0.06** together.
+
+### The 207-cell validation slice ($0.3750)
+
+`experiments/recontest-pilot.toml` — pilot 3's 69 items × 3 conditions, already decided in
+the sweep tree, contested again. `records/experiments/recontest/PILOT-207-review.md` is
+the write-up. The phantom rate fell **43.9% → 5.9%** (18/41 → 1/17). All 17 rulings were
+`uphold_overturn`, as `third_party` requires. Parse failures: 0.
+
+It also exposed the two things the full run then confirmed at scale. **Phantom-corrected
+detection given a wrong decision fell 25.0% → 12.5% pooled** — the number the correction
+was supposed to leave alone, because it counts only objections whose *prose* argued the
+verdict was wrong — with `debate` going 6/24 → **1/24** and raising 1 objection in 60
+cells against the sweep's 16. And the instruction's own gloss leaked into **5 of 194**
+published objections: the parser strips `Decision: STANDS` and nothing else, so a
+challenger that copies the whole menu line leaves `— you agree: …` in `Challenge.text`,
+which is the text the recourse judge reads.
+
+The user read four rendered records and the dry-run table, and gave the word.
+
+### What ran, and what it cost
+
+`experiments/recontest.toml` over the same 2,110 items, launched 2026-08-26T22:14:22Z and
+finished 23:38:34Z: **84 min**, **four** stages (`contest agreement grade analyse`, under
+`RUN_SWEEP_STAGES`), every stage exit 0, `DONE.md` written. **5,724 of 5,724 decisions
+contested.** **$10.8942**, $0.00190 per contested cell, against the plan's ~$11.6 and
+~1.6 h. This run's own calls: **18,430 attempts, 18,427 of them HTTP 200** and three that
+recorded no status at all — client-side `ReadTimeout` on the first attempt, all three
+retried and their cells completed. No strong-model call was made; nothing was decided.
+
+The sweep tree was hashed before and after and is byte-identical: `find outputs/experiments/sweep -type f | sort | xargs sha256sum | sha256sum` gives `5e2eb4d69ecabcce77533fd84a75e6d8d7c6a7676a00b05701737229bdfd2d2f` both times.
+
+### The two runs side by side, on identical decisions
+
+`records/derivations/recontest-vs-sweep.py` joins the two committed `index.jsonl` files on
+`cell_id` and asserts, cell by cell, that condition, item, subset, verdict and correctness
+are the same in both — they are the same generations. The full output is
+`records/experiments/recontest/recontest-vs-sweep.log`, reproduced verbatim in that
+directory's `CHECKLIST.md`. The numbers this section leans on, all with their n:
+
+| | sweep | recontest |
+|---|---|---|
+| objections raised | **1,129/5,724 = 19.7%** | **464/5,724 = 8.1%** |
+| — `single` | 335/2,064 = 16.2% | 216/2,064 = 10.5% |
+| — `self_critique` | 354/2,016 = 17.6% | 194/2,016 = 9.6% |
+| — `debate` | **440/1,644 = 26.8%** | **54/1,644 = 3.3%** |
+| phantom share of objections | **585/1,129 = 51.8%** | **62/464 = 13.4%** |
+| — `single` / `self_critique` / `debate` | 55.2% / 42.9% / 56.4% | 21.3% / 4.1% / 14.8% |
+| declines whose prose argues for reversal | 192/5,724 = 3.4% | **365/5,724 = 6.4%** |
+| raw detection \| wrong decision | 308/1,244 = 24.8% | 90/1,244 = 7.2% |
+| **true detection \| wrong decision** | **186/1,244 = 15.0%** | **85/1,244 = 6.8%** |
+| — `single` / `self_critique` / `debate` | 7.5% / 26.3% / 12.4% | 2.5% / 18.4% / 3.1% |
+| genuine false alarms \| correct decision | 351/4,480 = 7.8% | 316/4,480 = 7.1% |
+| — `single` / `self_critique` / `debate` | 7.1% / 6.8% / 11.0% | **9.0% / 7.5% / 2.6%** |
+| overturn on **phantom** objections | 65/585 = 11.1% | **52/62 = 83.9%** |
+| overturn on genuine, wrong decision | 120/186 = 64.5% | 54/85 = 63.5% |
+| overturn on genuine, **correct** decision | 114/351 = 32.5% | **233/316 = 73.7%** |
+| discrimination (wrong − correct) | **+32.0pp** (186 vs 351) | **−10.2pp** (85 vs 316) |
+| net effect on accuracy | −10 cells, 78.3% → 78.1% | **−221 cells, 78.3% → 74.4%** |
+| — fixed / broken, `single` | 1 / 0 | **3 / 157** |
+| — fixed / broken, `self_critique` | 46 / 30 | 42 / 103 |
+| — fixed / broken, `debate` | 98 / 125 | 14 / 20 |
+| end-to-end (own wrong decisions, genuinely contested and overturned) | 120/1,244 = 9.6% | 54/1,244 = 4.3% |
+
+The sweep's rulings were `restated_verdict` for `single` (334) and `self_critique` (348)
+and `uphold_overturn` for `debate` (440), with 7 contests that wrote a challenge and no
+ruling at all. **All 464 of this run's rulings are `uphold_overturn`**, and none is
+missing. So the overturn rows above compare two different mechanisms, not two readings of
+one.
+
+**Every row in that table from "overturn on phantom objections" down is under the caveat
+in (d) below**: it passes through the recourse judge's `Ruling:` line, which a hand check
+found contradicting the judge's own reasoning on **FLAWED** parent verdicts (8 of 12
+sampled; 0 of 8 on SOUND parents; 52 of 62 phantom rulings, all of them on FLAWED
+parents). The rows above it — raised, phantom share, declines, raw and true detection,
+false alarms — come from the challenger and the `agreement` stage and never touch that
+line. **The sweep's `debate` rulings carry the same caveat and its `restated_verdict`
+rulings do not.**
+
+The phantom counts were re-derived a second time straight from the run tree — 5,724
+`challenge.json` + `agreement.json` pairs, ignoring `index.jsonl` entirely — and agree
+exactly: raised 216/194/54, phantom 46/8/8, declines-with-prose-WRONG 208/98/59. The
+`line_word` the `agreement` stage recorded disagrees with the challenger's own parsed
+stance on **0 of 5,724** replies.
+
+### The finding, and the two readings of it that the data does not choose between
+
+**Objections fell from 1,129 to 464, and the phantom share from 51.8% to 13.4%.** Those
+are two facts and this run cannot say which one caused the other.
+
+**Reading A — the phantoms were removed, and that is most of the fall.** The change was
+aimed at exactly one failure mode and hit it: the phantom share fell by a factor of four,
+and per condition the fall is largest where the sweep's phantom rate was worst. What
+disappeared is concentrated on *correct* decisions, which is where a challenger with
+nothing real to say used to write REVERSE anyway: raw objections to correct decisions fell
+**18.3% → 8.3%** while *genuine* objections to correct decisions barely moved,
+**7.8% → 7.1%**. Smoke 2 showed the line tracking the prose on the same 18 replies the
+sweep got wrong. On this reading, 464 is closer to the number of real objections than
+1,129 ever was.
+
+**Reading B — genuine objections fell too, and most of the loss is `debate`.** The
+phantom-corrected detection rate already excludes phantoms, and it **halved**:
+**186/1,244 = 15.0% → 85/1,244 = 6.8%**. The per-cell transition table says the same
+thing directly. Of the sweep's 537 genuine objections, **438 (81.6%) were not raised
+again**; of its 585 phantoms, 536 (91.6%) were not. Both halves collapsed. And the
+collapse is not spread evenly: `debate` withdrew **421 of its 440** objections and raised
+35 new ones, against `single`'s 277 withdrawn / 158 new and `self_critique`'s 282 / 122.
+`debate`'s true detection went **12.4% → 3.1%** and its genuine false alarms
+**11.0% → 2.6%** — quieter in both directions, on the same transcripts.
+
+Both readings are consistent with every number above. Choosing between them needs the
+20-reply hand check on *this* tree's replies, which is not done.
+
+### A debate record is a two-sided record, and a challenger that reasons first tends to side with it
+
+The observation, recorded as an observation: **a challenger asked to reason before it
+commits, reading a record that already contains both sides, tends to narrate the dispute
+and then land on the side the adjudication landed on.** The sweep's challenger, which
+wrote its line first, did not have the opportunity.
+
+Two cells from the 207-cell slice, both `debate`, both decisions that were **wrong**
+(`gold_flawed=True`, verdict `SOUND`), both of which the sweep genuinely contested and the
+recourse judge then **overturned to the correct answer**:
+
+`gpqa-161-flawed__debate__r1` — the sweep's objection (line REVERSE, prose WRONG):
+
+> The verdict claims that because the author explicitly states "let's assume the
+> contribution from the singularity cancels out and approximates to zero near the
+> boundary," there is no flaw… However, this is incorrect because the integrand
+> \(\frac{32r}{4-r^2}\) approaches \(+\infty\) as \(r \to 2\), and the integral… diverges
+> to infinity.
+
+The re-contest's reply on the same record (line STANDS, prose RIGHT):
+
+> Bob argues that this assumption is false because the integrand tends to infinity at
+> \(r=2\)… Alice counters that the author explicitly states an assumption, and the problem
+> is ill-posed, so the author's choice to treat the boundary contribution as zero is a
+> legitimate convention, not a flaw. The key point is whether the assumption is a false
+> statement or a legitimate, transparent hypothesis. Since the author…
+
+`law-con2_gpt4_A-s13__debate__r1` — the sweep's objection:
+
+> The verdict should be reversed… Alice correctly argues that acceptance by performance in
+> a unilateral contract is effective upon commencement, per Restatement (Second) §54,
+> unless the offer expressly requires notice.
+
+The re-contest's reply:
+
+> The verdict that the sentence does not contain a flaw is correct… Under the general
+> rule, acceptance by performance requires reasonable notification unless the offer
+> explicitly states otherwise, which the note does not.
+
+In both cells the re-contest's challenger reproduces the debate accurately — it can name
+what each debater said — and then declines. In the sweep both objections carried the
+decision to the right answer; in the re-contest both cells end wrong and unchallenged.
+This is two cells, chosen because they are legible, not sampled; the pooled version of the
+same shape is `debate`'s 421 withdrawn objections and its 12.4% → 3.1% true detection.
+
+Whether that is a better-calibrated stakeholder or a silenced one is exactly what this run
+cannot settle, and it is the question the missing specious-objection control was always
+going to be needed for.
+
+### The third-party judge's rulings, as recorded — and why they are not a measurement of recourse
+
+**Written first, then corrected by a hand check.** The numbers in this sub-part are what
+the `Ruling:` line says. Sub-part **(d)** below shows that on a **FLAWED** parent verdict
+that line contradicts the judge's own reasoning about half the time, so what follows
+describes an instrument and not a judge's judgement. It is left standing because the
+numbers are real and are what `metrics.json` and `index.jsonl` contain; read it with (d)
+in hand.
+
+As recorded, the weak third-party judge overturns:
+
+* **52 of 62 phantom objections (83.9%)** — objections whose own prose says the verdict
+  was right. The sweep's strong re-deciders overturned 0/185 and 6/152 of theirs; the weak
+  judge overturned 59/248 = 23.8% of `debate`'s, and now it does the same job in all three
+  conditions. **All 62 phantoms sit on FLAWED parents**, which is exactly the stratum (d)
+  finds unreliable.
+* **233 of 316 genuine objections to a CORRECT decision (73.7%)**, against 114/351 = 32.5%
+  in the sweep.
+* **54 of 85 genuine objections to a wrong decision (63.5%)** — *lower* than the rate at
+  which it overturns correct ones.
+
+Discrimination is therefore **−10.2pp pooled** (85 vs 316 cells), where the sweep's mixed
+mechanism gave +32.0pp. The accuracy row follows: `single`, which under the sweep broke
+**0 of 1,823** correct decisions, breaks **157** of them here; the whole contest process is
+**−221 cells**, 78.3% → 74.4%.
+
+**The reading these numbers invite is the wrong one.** The obvious story — the party that
+hears every appeal folds under most of them — is not what the transcripts show. The judge's
+*prose* discriminates; its *last line* does not, on FLAWED parents. So the honest statement
+is not "removing the asymmetry moved the confound" but: **the re-contest replaced a
+mechanism whose failure mode was known (a decider defending its own decision) with one
+whose failure mode was not measured until after the run (a ruling word that collides with
+the task's own vocabulary), and that second failure is what the −221 is made of.**
+
+### The `metrics.json` caveat that fired
+
+`analysis.py` was changed to read the `ruling_form` values actually present and emit the
+matching text. Because all 464 rulings here are `uphold_overturn`, it emitted the residual
+rather than the sweep's:
+
+> There is no specious-objection control, so a high revision rate cannot be distinguished
+> from a judge that overturns under any pushback. Every ruling here was made by the
+> third-party recourse judge, so no condition adjudicates its own appeal — but one
+> asymmetry survives it: that judge is the same weak model that DECIDED the debate
+> condition and decided neither single nor self_critique, so it is ruling on its own
+> decision in one condition of three.
+
+That caveat's first sentence — no specious-objection control, so a high revision rate
+cannot be distinguished from a judge that overturns under any pushback — is the one to
+keep. But (d) below adds a possibility the caveat does not name and that this run cannot
+exclude either: a ruling **line** that does not report the judge's own conclusion. The
+83.9% is evidence for the second before it is evidence for the first, and the experiment
+has an instrument for neither.
+
+### The residual gloss leak
+
+The 207-cell slice found the instruction's own menu text in 5 of 194 published objections
+(2.6%). At full scale it is **65 of 5,724 = 1.1%** — replies whose `Challenge.text`
+contains `you agree:` or `you disagree:`, copied out of the line the model was asked to
+end with. **48 of the 65 are `self_critique`**, 10 `debate`, 7 `single`. No `Decision:`
+string and no bare STANDS/REVERSE token survives anywhere, so the strip itself is working;
+what leaks is the gloss that shares the line with it. The fix is one line — widen the
+strip to the end of that line, or move the gloss off it — and it is **not applied**,
+because applying it after the run would make this tree unreproducible by its own code.
+
+### Parse and repair, for the record
+
+Challenger replies: **4,982 `strict` (87.0%)**, 742 `salvaged_no_thinking` (13.0%);
+**742 of 5,724 = 13.0% needed one format repair**, none needed two, and 0 cells were lost
+to a parse failure. The 207-cell slice measured 17.0%; the smoke, after `6af26bb`, 2/18.
+The sweep's challenger, writing its line first, parsed `salvaged_no_labels` on essentially
+all of them — a different shape, not a comparable rate.
+
+### The four hand checks, done (2026-08-27)
+
+`HANDOFF.md` §5 asks for three after a full run. All three were done the next day, and
+reading them produced a fourth that was not asked for and that changes how this run is
+read. All four files are in `records/experiments/recontest/`.
+
+#### (a) The 20-reply line-vs-prose hand check — 11/20, and worse than the sweep's
+
+`HANDCHECK-agreement.md`. Twenty replies read by hand, the prose judged independently,
+compared with the `agreement` stage's `prose_stance`. Seed 11, stratified by (line word ×
+parent verdict × prose stance), so the rare strata are heavily over-represented against the
+corpus (STANDS/RIGHT 4,873; REVERSE/WRONG 401; STANDS/WRONG 365; REVERSE/RIGHT 62; NEITHER
+23). It bounds the failure; it does not measure a corpus rate.
+
+**11 agree, 1 defensible, 8 misreads**, against the sweep's 14/20. **All eight misreads are
+on STANDS lines whose prose endorses the verdict**; not one is on a REVERSE line, and both
+phantoms in the sample were read correctly. So the same split as the sweep, more sharply:
+**the phantom count (62/464 = 13.4%) is audited and supported**, and **the 365
+"declines arguing for reversal" must not be reported as measured** — an over-count of
+unknown but large size, always in the direction of over-calling disagreement.
+
+The failure mode has a name and a location. It is §3n's SOUND/flaw vocabulary collision one
+layer down, and **seven of the eight misreads are python800**, whose *text under review* is
+itself an analysis of whether some code is correct. A reply saying "the analysis correctly
+identifies the bug… the verdict that the review is SOUND stands" is read as arguing there
+*is* a bug — but the bug is in the code, the analysis is right, and the verdict on the
+analysis is SOUND. python800 is 45% of the corpus. A python800-targeted audit of the
+STANDS/WRONG stratum is the way to bound the mirror statistic.
+
+Also recorded: **8 declines of 5,260 have an empty objection body** — only the decision
+line was written. The instrument correctly returns NEITHER on them.
+
+#### (b) All 46 graded rows — valid 21/46, and the sweep's three defects again
+
+`HANDCHECK-graded.md`. Every graded row read against the objection, the sweep's
+`flaw.json` annotation, and the grader's own reasoning.
+
+**valid = 21/46 = 45.7%**, or **21/41 = 51%** excluding gpqa's five rows, which cannot be
+valid by construction (§3g). Both denominators, never one alone. **Three grades carry no
+reasoning at all**, all three with `repairs=1` — the format repair produced a bare two-line
+reply — and **one of them is `valid=True`**, so 1 of the 21 valid grades is unexplained
+(4.8%, against the sweep's 3 of 46 = 6.5%). **Two rows would be graded differently, both in
+the challenger's favour** (`theoremqa-…quantum3-png-flawed__self_critique`, identification;
+`python800-p03993-flawed__single`, characterisation), which would give 22–23/46 — four
+points on n=46. Where it reasons, the grader is careful.
+
+**`single` is n=3, `debate` n=8.** The graded cell is half the sweep's 99 because 464
+objections were raised instead of 1,129: the valid *rate* is comparable between the runs,
+the valid *count* is not.
+
+#### (c) Four transcripts, and one of them is the same cell as the sweep's
+
+Read and copied to `records/experiments/recontest/transcripts/`, to the sweep's stricter
+brief — a genuine contest that **overturned** a wrong decision, one per condition, plus a
+decline on a wrong decision.
+
+| file | cell | |
+|---|---|---|
+| `single-python800-p03450-sound.md` | `python800-p03450-sound__single__r1` | contests, prose WRONG, overturned FLAWED → SOUND, final correct. **One of only two `single` cells in the run where a genuine contest overturned a wrong decision** — 2 of 241, against the sweep's 1 of 241 |
+| `self_critique-law-evi2_gpt3-5_B-s6.md` | `law-evi2_gpt3-5_B-s6__self_critique__r1` | overturned SOUND → FLAWED, final correct, graded valid. The sweep's challenger **declined** here |
+| `debate-python800-p02684-flawed.md` | `python800-p02684-flawed__debate__r1` | overturned SOUND → FLAWED, final correct, graded valid. The sweep's challenger also declined here |
+| `decline-debate-law-con2_gpt3-5_A-s6.md` | `law-con2_gpt3-5_A-s6__debate__r1` | declined on a wrong decision |
+
+**That last cell is the same one `records/experiments/sweep/transcripts/debate-law-con2_gpt3-5_A-s6.md`
+holds up in §3s(c) as `debate`'s exemplary overturn.** In the sweep the challenger objected,
+the judge overturned, the decision came out correct. On the identical record, with the
+decide-last prompt, the re-contest's challenger narrates both debaters and declines, and
+the cell ends wrong and unchallenged. That one file is the two runs' difference, legible
+without a table.
+
+These files carry a `## Ground truth` section and **must never be shown to a model** (§3e).
+
+#### (d) The recourse judge's line does not track its reasoning
+
+`HANDCHECK-ruling-line.md`. **This was not on the list, it came out of reading the
+transcripts, and it is the most consequential thing either run produced.**
+
+**The finding: the recourse judge's `Ruling: UPHOLD|OVERTURN` line frequently contradicts
+the judge's own reasoning, and specifically when the parent verdict was FLAWED.** It is
+§3n's collision one layer further down. "Flawed" names both the object-level claim ("the
+text under review is flawed") and the verdict itself, and gpt-4.1-nano maps "the objection
+is valid / the text is flawed" onto OVERTURN regardless of which way the decision went.
+**An instrument failure in the ruling line, not a judge that folds.**
+
+*Evidence 1 — the 62 phantoms.* All 62 sit on FLAWED parents; the judge **overturned 52 of
+them (83.9%)**, reversing verdicts the objections themselves endorsed. Three read in full
+(`gpqa-108-sound__debate`, `gpqa-191-sound__debate`, `law-evi2_gpt3-5_B-s6__single`): each
+judge reasoning agrees that the text is flawed, and each ends `Ruling: OVERTURN`, flipping
+FLAWED → SOUND. `gpqa-108`'s reasoning closes **"Final decision: The text under review
+contains a flaw."** and is followed by OVERTURN. **The gloss leak is not the cause**: 51 of
+the 60 gloss-free phantoms were overturned too. Only 5 of the 52 flips ended correct, by
+accident.
+
+*Evidence 2 — 20 non-phantom rulings*, stratified by (ruling × parent × condition), seed 5:
+**11 consistent, 1 ambiguous, 8 contradictions**, and **every contradiction is on a FLAWED
+parent — 8 of 12, against 0 of 8 on SOUND parents.** Both directions occur: OVERTURN over a
+"the text is flawed" conclusion, and UPHOLD over a "the text is fine" one. In one
+(`gpqa-135-sound__self_critique`) the judge visibly misread which verdict it was ruling on.
+Three of the eight ended `correct` by accident. The sample over-weights rare strata, so it
+**bounds** the rate rather than measuring it; with Evidence 1 the honest statement is: **on
+FLAWED parents the ruling line is wrong in something like half of all rulings; on SOUND
+parents it tracks the prose.** **273 of this run's 464 rulings are on FLAWED parents.**
+
+Four consequences, and the second reaches back into §3s:
+
+1. **This run's recourse numbers are not a measurement of recourse.** Phantom overturn
+   83.9%, genuine-on-correct overturn 73.7%, discrimination −10.2pp, net −221 cells,
+   `single` breaking 157 correct decisions — all pass through this line and characterise
+   the instrument on FLAWED parents.
+2. **The sweep's `debate` rulings came from the same judge and the same prompt**, so its
+   92% / 82% overturn split, its 24% phantom overturn and its net −27 are under the same
+   caveat. §3s is annotated in place. The sweep's `single`/`self_critique` rulings were
+   `restated_verdict` — the strong model re-deciding, parsed as an **absolute** verdict with
+   no uphold/overturn word to collide — and are **not** affected. That is one more reason
+   those two conditions looked better than `debate` in the sweep, and it is a reason of the
+   same kind as the one this whole re-contest was built to remove.
+3. **The detection side is unaffected.** Objection counts, phantom shares, true detection
+   and false alarms come from the challenger plus `agreement` and never touch the ruling
+   line. Everything under "The finding, and the two readings" above stands as written.
+4. **The fix is the one already applied to the challenger** — instantiate each word's
+   meaning for *this* decision in `RECOURSE_JUDGE_USER`, keep the line last, and add a
+   Haiku *ruling-agreement* reading of the judge's prose as the instrument that measures
+   the residual, exactly as `agreement` does for the challenger.
+
+**Nothing in `src/` was changed for this.** The finding is in the record; the prompt change
+is a paid decision and is the user's.
+
+### What is still owed
+
+The three checks `HANDOFF.md` §5 requires are done — (a), (b) and (c) above — and (d) is
+what they turned up. What is owed now:
+
+- **The ruling-line fix.** Instantiate UPHOLD/OVERTURN per decision in
+  `RECOURSE_JUDGE_USER` ("UPHOLD — the decision stands: the text under review contains a
+  flaw. OVERTURN — the decision is reversed: the text under review does not contain a
+  flaw."), with the line **last** — the challenger's own fix, applied to the judge.
+- **A Haiku ruling-agreement instrument**, reading the judge's prose the way the
+  `agreement` stage reads the challenger's, so the residual contradiction rate is measured
+  rather than hand-sampled. Without it there is no number to report, only a bound.
+- **A re-rule of the 464 + 440 rulings.** This run's 464 and the sweep's 440 `debate`
+  rulings can both be re-ruled for **cents**, because the objections already exist and only
+  the nano ruling call is repeated. It is a prompt change, so: **smoke first, and it is the
+  user's call.** Until it happens, no overturn rate, `revised_*` figure or net-accuracy
+  number from either run's `uphold_overturn` rulings should be quoted without (d).
+- **A python800-targeted audit of the STANDS/WRONG stratum**, to bound the mirror rate (a)
+  showed is an over-count. Until it exists, 365/5,260 is a ceiling, not a measurement.
+- **The gloss leak**, 65 of 5,724, to go with the same prompt pass — though it is not the
+  cause of (d).
+- Carried forward from §3s, unchanged and now more pressing: the **`weak_alone` arm** and
+  the **specious-objection control**.
 
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 

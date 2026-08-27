@@ -1,0 +1,382 @@
+================================================================================================
+SWEEP vs RECONTEST — paired on cell_id, same decisions, contest layer re-run
+================================================================================================
+sweep     index : records/experiments/sweep/index.jsonl
+recontest index : outputs/experiments/recontest/index.jsonl
+
+(a) THE JOIN — 5724 cell_ids, identical in both trees; verdict, correctness,
+    item and subset asserted equal cell by cell. The decision side IS the same
+    generation: the re-contest read it out of the sweep tree and never re-decided.
+
+condition           n decided        attempted       errors (not decided)
+--------------------------------------------------------------------------
+single                2064             2110               46   (2.2% of the condition)
+self_critique         2016             2110               94   (4.5% of the condition)
+debate                1644             2110              466   (22.1% of the condition)
+POOLED                5724             6330              606   (9.6% of the sweep)
+Errors are identical by construction — both trees index exactly the decisions the
+sweep made — and the assert above is what checks it rather than the arithmetic.
+
+================================================================================================
+(b) OBJECTIONS RAISED, PHANTOM SHARE, AND THE MIRROR-IMAGE FAILURE
+================================================================================================
+------------------------------------------------------------------------------------------------
+OBJECTIONS RAISED — the `Decision:` line said REVERSE (all decisions, right or wrong)
+condition      | SWEEP                                 | RECONTEST                             
+               raised/n            rate                raised/n            rate                
+------------------------------------------------------------------------------------------------
+single         | 335/2064            16.2%             | 216/2064            10.5%             
+self_critique  | 354/2016            17.6%             | 194/2016            9.6%              
+debate         | 440/1644            26.8%             | 54/1644             3.3%              
+POOLED         | 1129/5724           19.7%             | 464/5724            8.1%              
+
+------------------------------------------------------------------------------------------------
+PHANTOM SHARE OF RAISED — line REVERSE, prose read RIGHT (denominator: ALL objections)
+  This is the defect the re-contest was built to remove. The sweep's challenger was
+  asked for the line FIRST; the re-contest's writes it LAST, after its reasons.
+condition      | SWEEP                                 | RECONTEST                             
+               phantom/raised      share               phantom/raised      share               
+------------------------------------------------------------------------------------------------
+single         | 185/335             55.2%             | 46/216              21.3%             
+self_critique  | 152/354             42.9%             | 8/194               4.1%              
+debate         | 248/440             56.4%             | 8/54                14.8%             
+POOLED         | 585/1129            51.8%             | 62/464              13.4%             
+
+------------------------------------------------------------------------------------------------
+NON-GENUINE SHARE OF RAISED — (raw - genuine)/raw; adds the `NEITHER` prose readings
+condition      | SWEEP                                 | RECONTEST                             
+               non-genuine/raised  share               non-genuine/raised  share               
+------------------------------------------------------------------------------------------------
+single         | 187/335             55.8%             | 46/216              21.3%             
+self_critique  | 155/354             43.8%             | 9/194               4.6%              
+debate         | 250/440             56.8%             | 8/54                14.8%             
+POOLED         | 592/1129            52.4%             | 63/464              13.6%             
+
+------------------------------------------------------------------------------------------------
+DECLINES ARGUING FOR REVERSAL — line STANDS over prose the agreement stage read WRONG
+  The mirror image of a phantom, and NOT corrected anywhere: the sweep's hand check
+  (records/experiments/sweep/HANDCHECK-agreement.md) found every one of its six
+  agreement misreads on a STANDS line, always over-calling disagreement. Read this
+  row as an upper bound on lost detections, not as a count of them.
+condition      | SWEEP                                 | RECONTEST                             
+               declines_wrong/n    rate                declines_wrong/n    rate                
+------------------------------------------------------------------------------------------------
+single         | 129/2064            6.2%              | 208/2064            10.1%             
+self_critique  | 51/2016             2.5%              | 98/2016             4.9%              
+debate         | 12/1644             0.7%              | 59/1644             3.6%              
+POOLED         | 192/5724            3.4%              | 365/5724            6.4%              
+
+================================================================================================
+(c) DETECTION GIVEN A WRONG DECISION, AND FALSE ALARMS ON CORRECT ONES
+================================================================================================
+------------------------------------------------------------------------------------------------
+RAW DETECTION | the decision was WRONG — any REVERSE line, phantom or not
+condition      | SWEEP                                 | RECONTEST                             
+               raw/incorrect       rate                raw/incorrect       rate                
+------------------------------------------------------------------------------------------------
+single         | 25/241              10.4%             | 7/241               2.9%              
+self_critique  | 113/315             35.9%             | 60/315              19.0%             
+debate         | 170/688             24.7%             | 23/688              3.3%              
+POOLED         | 308/1244            24.8%             | 90/1244             7.2%              
+
+------------------------------------------------------------------------------------------------
+TRUE DETECTION | the decision was WRONG — REVERSE line AND prose read WRONG
+condition      | SWEEP                                 | RECONTEST                             
+               genuine/incorrect   rate                genuine/incorrect   rate                
+------------------------------------------------------------------------------------------------
+single         | 18/241              7.5%              | 6/241               2.5%              
+self_critique  | 83/315              26.3%             | 58/315              18.4%             
+debate         | 85/688              12.4%             | 21/688              3.1%              
+POOLED         | 186/1244            15.0%             | 85/1244             6.8%              
+
+------------------------------------------------------------------------------------------------
+GENUINE FALSE ALARMS | the decision was CORRECT — REVERSE line AND prose read WRONG
+condition      | SWEEP                                 | RECONTEST                             
+               genuine/correct     rate                genuine/correct     rate                
+------------------------------------------------------------------------------------------------
+single         | 130/1823            7.1%              | 164/1823            9.0%              
+self_critique  | 116/1701            6.8%              | 127/1701            7.5%              
+debate         | 105/956             11.0%             | 25/956              2.6%              
+POOLED         | 351/4480            7.8%              | 316/4480            7.1%              
+
+------------------------------------------------------------------------------------------------
+RAW FALSE ALARMS | the decision was CORRECT — any REVERSE line
+condition      | SWEEP                                 | RECONTEST                             
+               raw/correct         rate                raw/correct         rate                
+------------------------------------------------------------------------------------------------
+single         | 310/1823            17.0%             | 209/1823            11.5%             
+self_critique  | 241/1701            14.2%             | 134/1701            7.9%              
+debate         | 270/956             28.2%             | 31/956              3.2%              
+POOLED         | 821/4480            18.3%             | 374/4480            8.3%              
+
+================================================================================================
+(d) WHAT THE RECOURSE JUDGE DID WITH EACH KIND OF OBJECTION
+================================================================================================
+The two trees do not use the same recourse mechanism, and that is the second thing
+under test. In the SWEEP, `debate` was ruled by a weak third-party judge
+(`uphold_overturn`) while `single`/`self_critique` were ruled by the strong decider
+re-deciding inside its own conversation (`restated_verdict`). In the RECONTEST,
+`recourse_form = "third_party"` sends EVERY condition to the weak judge, so every
+ruling is `uphold_overturn`. The counts:
+
+condition      | SWEEP ruling_form                          | RECONTEST ruling_form                 
+------------------------------------------------------------------------------------------------
+single         | none (no ruling written)=1730, restated_verdict=334| none (no ruling written)=1848, uphold_overturn=216
+self_critique  | none (no ruling written)=1668, restated_verdict=348| none (no ruling written)=1822, uphold_overturn=194
+debate         | none (no ruling written)=1204, uphold_overturn=440| none (no ruling written)=1590, uphold_overturn=54
+POOLED         | none (no ruling written)=4602, restated_verdict=682, uphold_overturn=440| none (no ruling written)=5260, uphold_overturn=464
+
+The sweep's 7 `none` rows on contested cells are contests that wrote a challenge and
+no ruling (the re-decider truncated at max_tokens); they carry
+`changed_the_decision: false` and are counted below as NOT overturned, exactly as
+`metrics.json` and `sweep-phantom-corrected.py` count them. The re-contest has none:
+every one of its objections got a ruling.
+
+------------------------------------------------------------------------------------------------
+OVERTURN RATE ON **PHANTOM** OBJECTIONS (line REVERSE, prose RIGHT)
+  An objection whose own prose says the verdict was right. Anything above 0 here is
+  the recourse judge moving a decision on pushback that argued for no such thing.
+condition      | SWEEP                                 | RECONTEST                             
+               overturned/phantom  rate                overturned/phantom  rate                
+------------------------------------------------------------------------------------------------
+single         | 0/185               0.0%              | 41/46               89.1%             
+self_critique  | 6/152               3.9%              | 5/8                 62.5%             
+debate         | 59/248              23.8%             | 6/8                 75.0%             
+POOLED         | 65/585              11.1%             | 52/62               83.9%             
+
+------------------------------------------------------------------------------------------------
+OVERTURN RATE ON **GENUINE** OBJECTIONS TO A **WRONG** DECISION
+condition      | SWEEP                                 | RECONTEST                             
+               overturned/genuine  rate                overturned/genuine  rate                
+------------------------------------------------------------------------------------------------
+single         | 1/18                5.6%              | 2/6                 33.3%             
+self_critique  | 41/83               49.4%             | 40/58               69.0%             
+debate         | 78/85               91.8%             | 12/21               57.1%             
+POOLED         | 120/186             64.5%             | 54/85               63.5%             
+
+------------------------------------------------------------------------------------------------
+OVERTURN RATE ON **GENUINE** OBJECTIONS TO A **CORRECT** DECISION
+condition      | SWEEP                                 | RECONTEST                             
+               overturned/genuine  rate                overturned/genuine  rate                
+------------------------------------------------------------------------------------------------
+single         | 0/130               0.0%              | 117/164             71.3%             
+self_critique  | 28/116              24.1%             | 100/127             78.7%             
+debate         | 86/105              81.9%             | 16/25               64.0%             
+POOLED         | 114/351             32.5%             | 233/316             73.7%             
+
+------------------------------------------------------------------------------------------------
+DISCRIMINATION — overturn rate on genuine-on-WRONG minus genuine-on-CORRECT
+  A recourse judge that reads the record discriminates; one that folds under any
+  pushback scores near zero. The sign is what matters; the n's are small.
+condition      | SWEEP                                 | RECONTEST                             
+               difference          ns                  difference          ns                  
+------------------------------------------------------------------------------------------------
+single         | +5.6pp      (n=18 vs 130)             | -38.0pp     (n=6 vs 164)              
+self_critique  | +25.3pp     (n=83 vs 116)             | -9.8pp      (n=58 vs 127)             
+debate         | +9.9pp      (n=85 vs 105)             | -6.9pp      (n=21 vs 25)              
+POOLED         | +32.0pp     (n=186 vs 351)            | -10.2pp     (n=85 vs 316)             
+
+================================================================================================
+(e) NET EFFECT OF THE WHOLE CONTEST PROCESS ON ACCURACY
+================================================================================================
+Definitions copied from `records/derivations/sweep-phantom-corrected.py`: a cell's
+final verdict is the ruling if the contest produced one and the decision otherwise;
+`fixed` = wrong before and right after, `broken` = right before and wrong after.
+`acc before` is identical in the two trees by construction (same decisions).
+
+condition      | SWEEP                                 | RECONTEST                             
+               before  after   fix  brk   net          before  after   fix  brk   net          
+------------------------------------------------------------------------------------------------
+single         |  88.3%   88.4%     1    0    +1       |  88.3%   80.9%     3  157  -154       
+self_critique  |  84.4%   85.2%    46   30   +16       |  84.4%   81.3%    42  103   -61       
+debate         |  58.2%   56.5%    98  125   -27       |  58.2%   57.8%    14   20    -6       
+POOLED         |  78.3%   78.1%   145  155   -10       |  78.3%   74.4%    59  280  -221       
+
+  single         n=2064   correct before = 1823/2064  sweep after = 1824/2064  recontest after = 1669/2064
+  self_critique  n=2016   correct before = 1701/2016  sweep after = 1717/2016  recontest after = 1640/2016
+  debate         n=1644   correct before = 956/1644  sweep after = 929/1644  recontest after = 950/1644
+  POOLED         n=5724   correct before = 4480/5724  sweep after = 4470/5724  recontest after = 4259/5724
+
+================================================================================================
+(f) END-TO-END — of a condition's OWN wrong decisions, genuinely contested AND overturned
+================================================================================================
+Detection x revision, unconditional, over that condition's own incorrect cell. The
+denominators differ between conditions (see metrics.json's first caveat): these are
+not the same items and the comparison is confounded with item difficulty.
+
+------------------------------------------------------------------------------------------------
+END-TO-END
+condition      | SWEEP                                 | RECONTEST                             
+               fixed_genuinely/inc rate                fixed_genuinely/inc rate                
+------------------------------------------------------------------------------------------------
+single         | 1/241               0.4%              | 2/241               0.8%              
+self_critique  | 41/315              13.0%             | 40/315              12.7%             
+debate         | 78/688              11.3%             | 12/688              1.7%              
+POOLED         | 120/1244            9.6%              | 54/1244             4.3%              
+
+================================================================================================
+(g) PER-CELL TRANSITIONS — what happened to the SAME decision under the two layers
+================================================================================================
+STANCE: the challenger's `Decision:` line word, sweep -> recontest.
+
+  single  (n=2064)
+    contests   -> contests       58      2.8%
+    contests   -> declined      277     13.4%
+    declined   -> contests      158      7.7%
+    declined   -> declined     1571     76.1%
+    net: 277 objections dropped, 158 newly raised, 58 raised in both  (17.3% of the sweep's objections survive)
+
+  self_critique  (n=2016)
+    contests   -> contests       72      3.6%
+    contests   -> declined      282     14.0%
+    declined   -> contests      122      6.1%
+    declined   -> declined     1540     76.4%
+    net: 282 objections dropped, 122 newly raised, 72 raised in both  (20.3% of the sweep's objections survive)
+
+  debate  (n=1644)
+    contests   -> contests       19      1.2%
+    contests   -> declined      421     25.6%
+    declined   -> contests       35      2.1%
+    declined   -> declined     1169     71.1%
+    net: 421 objections dropped, 35 newly raised, 19 raised in both  (4.3% of the sweep's objections survive)
+
+  POOLED  (n=5724)
+    contests   -> contests      149      2.6%
+    contests   -> declined      980     17.1%
+    declined   -> contests      315      5.5%
+    declined   -> declined     4280     74.8%
+    net: 980 objections dropped, 315 newly raised, 149 raised in both  (13.2% of the sweep's objections survive)
+
+STANCE x PROSE: the same transition counted on the GENUINE definition
+(line REVERSE and the agreement stage reading the prose as WRONG).
+
+  single  (n=2064)
+    genuine       -> genuine           28
+    genuine       -> no objection     113
+    genuine       -> phantom            7
+    no objection  -> genuine          133
+    no objection  -> no objection    1571
+    no objection  -> phantom           25
+    objection/NEITHER -> no objection       2
+    phantom       -> genuine            9
+    phantom       -> no objection     162
+    phantom       -> phantom           14
+
+  self_critique  (n=2016)
+    genuine       -> genuine           54
+    genuine       -> no objection     144
+    genuine       -> phantom            1
+    no objection  -> genuine          117
+    no objection  -> no objection    1540
+    no objection  -> objection/NEITHER      1
+    no objection  -> phantom            4
+    objection/NEITHER -> genuine            1
+    objection/NEITHER -> no objection       2
+    phantom       -> genuine           13
+    phantom       -> no objection     136
+    phantom       -> phantom            3
+
+  debate  (n=1644)
+    genuine       -> genuine            9
+    genuine       -> no objection     181
+    no objection  -> genuine           29
+    no objection  -> no objection    1169
+    no objection  -> phantom            6
+    objection/NEITHER -> no objection       2
+    phantom       -> genuine            8
+    phantom       -> no objection     238
+    phantom       -> phantom            2
+
+  POOLED  (n=5724)
+    genuine       -> genuine           91
+    genuine       -> no objection     438
+    genuine       -> phantom            8
+    no objection  -> genuine          279
+    no objection  -> no objection    4280
+    no objection  -> objection/NEITHER      1
+    no objection  -> phantom           35
+    objection/NEITHER -> genuine            1
+    objection/NEITHER -> no objection       6
+    phantom       -> genuine           30
+    phantom       -> no objection     536
+    phantom       -> phantom           19
+
+RULING OUTCOME, on the cells RULED IN BOTH trees (both raised an objection and both
+got a ruling written). `overturn` = `changed_the_decision`.
+
+  single  (ruled in both: n=58)
+    sweep overturn  -> recontest uphold         1      1.7%
+    sweep uphold    -> recontest overturn      48     82.8%
+    sweep uphold    -> recontest uphold         9     15.5%
+    ruled in the sweep only: 276      ruled in the recontest only: 158
+
+  self_critique  (ruled in both: n=71)
+    sweep overturn  -> recontest overturn      20     28.2%
+    sweep overturn  -> recontest uphold        11     15.5%
+    sweep uphold    -> recontest overturn      30     42.3%
+    sweep uphold    -> recontest uphold        10     14.1%
+    ruled in the sweep only: 277      ruled in the recontest only: 123
+
+  debate  (ruled in both: n=19)
+    sweep overturn  -> recontest overturn       8     42.1%
+    sweep overturn  -> recontest uphold         3     15.8%
+    sweep uphold    -> recontest overturn       2     10.5%
+    sweep uphold    -> recontest uphold         6     31.6%
+    ruled in the sweep only: 421      ruled in the recontest only: 35
+
+  POOLED  (ruled in both: n=148)
+    sweep overturn  -> recontest overturn      28     18.9%
+    sweep overturn  -> recontest uphold        15     10.1%
+    sweep uphold    -> recontest overturn      80     54.1%
+    sweep uphold    -> recontest uphold        25     16.9%
+    ruled in the sweep only: 974      ruled in the recontest only: 316
+
+================================================================================================
+(h) THE RE-CONTEST CHALLENGER: REPAIRS, PARSE MODE, AND THE RESIDUAL GLOSS LEAK
+================================================================================================
+index.jsonl carries repair/parse_mode fields: NO — deriving from the run tree
+challenge.json read: 5724/5724
+
+parse_mode        n        share
+----------------------------------
+salvaged_no_thinking   742       13.0%
+strict            4982       87.0%
+
+repair_attempts   n        share
+----------------------------------
+0                 4982       87.0%
+1                  742       13.0%
+replies needing >=1 repair: 742/5724 = 13.0%
+
+RESIDUAL INSTRUCTION GLOSS — the new decision instruction spells the two words out
+as "you agree: …" / "you disagree: …". A reply containing either phrase is echoing
+the prompt's own gloss into its public text, where the agreement stage then reads it.
+  Challenge.text containing 'you disagree:' or 'you agree:': 65/5724 = 1.1%
+    single             7
+    self_critique     48
+    debate            10
+    e.g. gpqa-108-sound__debate__r1
+    e.g. gpqa-11-sound__debate__r1
+    e.g. gpqa-112-sound__self_critique__r1
+    e.g. gpqa-151-sound__single__r1
+    e.g. gpqa-180-sound__self_critique__r1
+    e.g. gpqa-197-flawed__self_critique__r1
+    e.g. gpqa-23-sound__self_critique__r1
+    e.g. gpqa-53-flawed__self_critique__r1
+    e.g. gpqa-60-sound__self_critique__r1
+    e.g. gpqa-80-flawed__self_critique__r1
+    e.g. gpqa-81-flawed__self_critique__r1
+    e.g. law-con5_gpt4_A-s7__self_critique__r1
+    e.g. lojban-stim145_gpt4_B-s1__self_critique__r1
+    e.g. lojban-stim147_gpt3-5_B-s4__self_critique__r1
+    e.g. lojban-stim147_gpt4_B-s1__self_critique__r1
+    e.g. lojban-stim151_gpt4_B-s7__self_critique__r1
+    e.g. lojban-stim154_gpt4_B-s6__self_critique__r1
+    e.g. lojban-stim155_gpt4_B-s5__self_critique__r1
+    e.g. lojban-stim156_gpt3-5_A-s10__self_critique__r1
+    e.g. lojban-stim169_gpt3-5_A-s1__self_critique__r1
+    ... and 45 more
+
+================================================================================================
+END
+================================================================================================

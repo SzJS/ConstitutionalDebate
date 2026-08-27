@@ -29,6 +29,21 @@ checkable.
 > future sweep the user opens — but the run it describes is done.** Do not execute it
 > because it is written in the imperative. Running it again costs $32 and re-decides
 > cells that are already decided.
+>
+> **The re-contest also ran, on 2026-08-26 22:14–23:38Z**: the same 5,724 decisions
+> contested again with the challenger deciding last and a weak third-party recourse judge
+> in every condition, **$10.89**, four stages, nothing regenerated — evidence in
+> [`records/experiments/recontest/`](records/experiments/recontest/README.md), write-up in
+> `LLM_NOTES.md` **§3t**, and §4 below.
+>
+> **Before quoting any recourse-stage number from EITHER run — overturn rates, `revised_*`,
+> net accuracy — read `LLM_NOTES.md` §3t(d) and
+> [`records/experiments/recontest/HANDCHECK-ruling-line.md`](records/experiments/recontest/HANDCHECK-ruling-line.md):**
+> a hand check found the recourse judge's `Ruling:` line contradicting its own reasoning in
+> 8 of 12 sampled rulings on a FLAWED parent verdict (0 of 8 on SOUND), which puts the
+> re-contest's 464 rulings and the sweep's 440 `debate` rulings under the same caveat and
+> leaves the sweep's `restated_verdict` rulings untouched. The next step is a prompt fix
+> plus a re-rule of those 904 rulings for cents — smoke first, and it is the user's call.
 
 ---
 
@@ -211,10 +226,11 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$39.33** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
-decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, and
-a few cents of provider checks that nothing itemises. Nothing below needs re-running, and
-section 6 says why.
+Total spent so far: **$50.66** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
+re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
+validation slice (**$0.38**), and a few cents of provider checks that nothing itemises.
+Nothing below needs re-running, and section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
 
@@ -318,6 +334,75 @@ the mirror statistic "192 of 4,595 declines argue for reversal" is an over-count
 unknown size. And of the 99 graded rows, **6 carry no reasoning at all and 3 of those are
 `valid=True`** — 3 of the 46 valid objections rest on an unexplained YES. Both are written
 up in `records/experiments/sweep/HANDCHECK-agreement.md` and `HANDCHECK-graded.md`.
+
+### The re-contest (2026-08-26) — done
+
+**The sweep's 5,724 decisions contested a second time, and nothing regenerated.**
+`experiments/recontest.toml` carries `decisions_from = "outputs/experiments/sweep"`, which
+makes `--stage decide` refuse and routes every decision lookup into the sweep tree; the
+run wrote a new tree and left the old one byte-identical (whole-tree fingerprint
+`5e2eb4d6…` before and after). Launched 22:14:22Z, finished 23:38:34Z: **84 min**, four
+stages (`contest agreement grade analyse`, under `RUN_SWEEP_STAGES`), every stage exit 0,
+**$10.8942**, $0.00190 per contested cell, **5,724/5,724 contested**, 18,427 of 18,430
+attempts HTTP 200 and three client-side `ReadTimeout`s retried to completion. 361 tests
+pass. Evidence: [`records/experiments/recontest/`](records/experiments/recontest/README.md);
+write-up `LLM_NOTES.md` **§3t**.
+
+It tests three changes and nothing else, all settled by the user in `DESIGN.md` commit
+**`e46ada3`**: the challenger **decides last** (reasons first, `Decision:` line at the end,
+each word glossed in the phrases of that decision); recourse is a **weak third party in
+every condition** (`recourse_form = "third_party"`, so all 464 rulings are
+`uphold_overturn`, where the sweep ruled the two solo conditions by the strong decider
+re-deciding in its own conversation); and the challenger is told where its published
+reasons go. Three commits carry it: **`6a911f3`** (both design changes plus
+`decisions_from`), **`41f6a65`** (the estimate charges nothing for decisions it reads
+elsewhere; the e2e renders both recourse forms), **`6af26bb`** (the instruction sentence
+that took format repairs from 10 of 18 back to 2 of 18). Two 18-cell smokes ($0.06) and a
+207-cell validation slice ($0.38) preceded it, each read by the user before the next.
+
+The numbers, **reported and not concluded from** — §3t says so in its own first paragraph.
+**The phantom fix worked**: the phantom share of objections fell **585/1,129 = 51.8% →
+62/464 = 13.4%**. **But objections fell with it**: 1,129 → 464, and phantom-corrected true
+detection given a wrong decision **halved**, 186/1,244 = 15.0% → 85/1,244 = 6.8%. The
+per-cell transition table says 980 of the sweep's objections were withdrawn and 315 newly
+raised; of its 537 *genuine* objections, 438 were not raised again. The loss is heaviest in
+`debate` — 421 of 440 objections withdrawn, true detection 12.4% → 3.1%, genuine false
+alarms 11.0% → 2.6%. §3t states both readings ("the phantoms were removed" and "genuine
+objections fell too") and the evidence for each, and says the choice between them needs the
+hand check.
+
+**The second change has a result of its own, and it is not the one the design hoped for.**
+The weak third-party judge overturns **52 of 62 phantom objections (83.9%)** and **233 of
+316 genuine objections to a CORRECT decision (73.7%)**, against **54 of 85 (63.5%)** on
+genuine objections to a wrong one — discrimination **−10.2pp**, where the sweep's mixed
+mechanism gave **+32.0pp**. `single`, which under the sweep broke **0 of 1,823** correct
+decisions, breaks **157**. The net effect of the whole contest process on accuracy is
+**−221 cells**, 78.3% → 74.4%, against the sweep's −10. Removing the asymmetry did not
+remove the confound; it moved it, and `metrics.json`'s own caveat now says so.
+
+**And then the hand checks moved it again.** `LLM_NOTES.md` §3t(d) and
+`records/experiments/recontest/HANDCHECK-ruling-line.md`: the recourse judge's
+`Ruling: UPHOLD|OVERTURN` line contradicts the judge's *own reasoning* in **8 of 12**
+sampled rulings whose parent verdict was **FLAWED** and **0 of 8** whose parent was SOUND,
+and **52 of the 62 phantom rulings** — all on FLAWED parents — were "overturned". 273 of
+the 464 rulings are on FLAWED parents. So every number in the paragraph above that came out
+of the recourse stage, **and the sweep's `debate` 92%/82% and net −27 with it**, describes
+that line rather than the judge's judgement; the sweep's `single`/`self_critique`
+`restated_verdict` rulings are unaffected, and the detection side of both runs is untouched.
+**The next step is the challenger's own fix applied to the judge** — instantiate
+UPHOLD/OVERTURN per decision in `RECOURSE_JUDGE_USER` with the line last, add a Haiku
+ruling-agreement instrument, and re-rule the 464 + 440 rulings for cents since the
+objections already exist; a prompt change, so smoke first and the user decides. Nothing in
+`src/` was changed for it.
+
+The three checks §5 asks for after a run are done for this one:
+`HANDCHECK-agreement.md` (11/20, all eight misreads on STANDS lines, seven of them
+python800), `HANDCHECK-graded.md` (valid 21/46 = 45.7%, or 21/41 excluding gpqa) and four
+`transcripts/` — one of which is the same cell the sweep's `transcripts/` holds as
+`debate`'s exemplary overturn, and on which the re-contest's challenger declined.
+
+`records/derivations/recontest-vs-sweep.py` reproduces the whole comparison from the two
+committed `index.jsonl` files on a bare clone.
 
 ### The open findings the write-up must carry
 
