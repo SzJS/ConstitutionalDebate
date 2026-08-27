@@ -42,6 +42,7 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
         "comprehension_model",
         "challenger_temperature",
         "recourse_form",
+        "challenger_variant",
     }
 )
 
@@ -56,6 +57,28 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
 #   in_conversation the decider re-decides in every condition it can — the ablation, and
 #                   an error for `debate`, which has no conversation to replay.
 RECOURSE_FORMS: tuple[str, ...] = ("per_condition", "third_party", "in_conversation")
+
+# Which standpoint the challenger is written from. The clauses themselves live in
+# ``prompts.CHALLENGER_ARMS`` — this is the vocabulary, kept here because the config
+# field is validated against it and ``prompts`` imports ``config`` rather than the other
+# way round. A test asserts the two agree.
+#
+#   neutral            a stakeholder reading the record, not required to find fault.
+#                      What every paid run up to and including the first full sweep did,
+#                      and therefore the default: an old spec must keep meaning what it
+#                      ran. The design's primary measurement.
+#   partisan_advocate  \
+#   partisan_assigned   >  the planned ablation: the challenger is assigned the answer
+#   partisan_auditor   /   the decision went against and argues the decision was
+#                          mistaken, and may still report finding no grounds. Three
+#                          wordings of the same standpoint, compared on a 207-cell slice
+#                          before one of them is run at scale.
+CHALLENGER_VARIANTS: tuple[str, ...] = (
+    "neutral",
+    "partisan_advocate",
+    "partisan_assigned",
+    "partisan_auditor",
+)
 
 
 def _default_config_path() -> Path:
@@ -197,6 +220,11 @@ class DebateConfig:
     # of what this experiment measures. It is a field rather than a constant only so
     # that config.json states it.
     challenger_may_decline: bool = True
+    # The challenger's standpoint; see CHALLENGER_VARIANTS. "neutral" is what every paid
+    # run before 2026-08-27 did, so a spec written before this field existed still
+    # describes what it ran. A partisan value is the planned ablation and has to be
+    # asked for.
+    challenger_variant: str = "neutral"
 
     def __post_init__(self) -> None:
         if self.turn_style not in TURN_STYLES:
@@ -276,6 +304,14 @@ class DebateConfig:
             raise ConfigError(
                 f"recourse_form must be one of {RECOURSE_FORMS}, got "
                 f"{self.recourse_form!r}"
+            )
+        if self.challenger_variant not in CHALLENGER_VARIANTS:
+            raise ConfigError(
+                f"challenger_variant must be one of {CHALLENGER_VARIANTS}, got "
+                f"{self.challenger_variant!r}. The variant decides which standpoint "
+                "paragraph the challenger is written from, and an unknown name would "
+                "silently fall through to whichever clause the prompt module happened "
+                "to hold."
             )
         if not 0.0 <= self.challenger_temperature <= 2.0:
             raise ConfigError(
@@ -363,6 +399,7 @@ WHY: dict[str, str] = {
     "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",
     "comprehension_model": "unset means the challenger model — the probe asks the reader about what it just read.",
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
+    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision.",
 }
 
 

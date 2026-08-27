@@ -444,6 +444,24 @@ def test_line_and_prose_are_compared_through_one_table():
                   parse_mode="strict", raw="x", call_id="c", finish_reason="stop")
 
 
+def test_a_challenges_arm_is_validated_and_old_records_still_load():
+    """`arm` was a free string set to "neutral" by the only writer. It is now the column
+    that tells a reader whether a raise rate is a stakeholder's or an advocate's, so an
+    unknown value has to be an error rather than a label nothing checks. Every
+    challenge.json on disk carries "neutral"; a supplied challenge carries nothing."""
+    from exp2.config import CHALLENGER_VARIANTS
+
+    for variant in CHALLENGER_VARIANTS:
+        assert Challenge(text="t", origin="generated", raised=True,
+                         arm=variant).arm == variant
+    assert Challenge(text="t", origin="file", raised=True).arm is None
+    assert Challenge.from_dict(
+        {"text": "t", "origin": "generated", "raised": True, "arm": "neutral"}
+    ).arm == "neutral"
+    with pytest.raises(ValueError, match="arm must be one of"):
+        Challenge(text="t", origin="generated", raised=True, arm="partisan")
+
+
 def test_a_challenge_written_before_stances_existed_still_loads():
     """Every challenge.json on disk predates the field. Empty means derive from
     ``raised``, which is exactly what the pipeline did before."""

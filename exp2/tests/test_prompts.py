@@ -8,11 +8,14 @@ is a bool, which cannot be grepped for, so the guarantee has to be a property te
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from helpers import SECRET_THINKING, full_transcript, make_config, make_item, make_sides
 
 from exp2.prompts import (
     _round_instructions,
+    CHALLENGER_ARMS,
     FLAW_DEFINITION,
     FLAW_PHRASE,
     SOLO_CRITIQUE_INSTRUCTION,
@@ -61,6 +64,14 @@ def every_message_list(item, sides, config):
         ("challenger-solo", build_challenger_messages(
             item, config, solo_record, sides=sides, decision_verdict=SOUND,
             decision_grounds="The reviewer's grounds.")),
+        # The partisan arms are prompts in their own right and get the same guarantees
+        # as every other role: no ground-truth label, and the flaw definition present.
+        *[(f"challenger-{variant}", build_challenger_messages(
+            item, dataclasses.replace(config, challenger_variant=variant), record,
+            sides=sides, decision_verdict=FLAWED,
+            decision_grounds="The judge's grounds."))
+          for variant in ("partisan_advocate", "partisan_assigned",
+                          "partisan_auditor")],
         ("recourse-judge", build_recourse_judge_messages(
             item, sides, record, decision_verdict=FLAWED, objection="An objection.")),
     ]
@@ -95,7 +106,9 @@ def test_all_five_roles_are_told_what_a_flaw_is_and_told_the_same_thing():
         item, flaw_location="2", annotation="a", grades_characterisation=True,
         objection="obj")
 
-    for name in ("debater-a-r1", "judge", "solo-answer", "challenger-debate", "grader"):
+    challengers = [name for name in built if name.startswith("challenger-")]
+    assert len(challengers) == 5  # the two records x neutral, plus the three partisan arms
+    for name in ("debater-a-r1", "judge", "solo-answer", "grader", *challengers):
         system = built[name][0]
         assert system["role"] == "system", name
         assert FLAW_DEFINITION in system["content"], (
@@ -316,6 +329,84 @@ def test_the_challenger_answers_one_line_stated_relative_to_the_decision():
     # a challenger told to search has a ready-made flaw in a debate transcript and none
     # in a solo record, which would raise the false-alarm rate for prompt reasons.
     assert "examine it yourself" not in system
+
+
+# --- the challenger's arms -----------------------------------------------------------
+
+
+def _challenger_system(variant, decision_verdict=FLAWED):
+    return build_challenger_messages(
+        make_item(), make_config(challenger_variant=variant),
+        DecisionRecord.for_solo_body("b"), sides=make_sides(),
+        decision_verdict=decision_verdict, decision_grounds="g")
+
+
+def test_the_four_arms_differ_in_the_standpoint_paragraph_and_nothing_else():
+    """The ablation's whole validity rests on this. exp1's neutral and partisan arms
+    differed only in their standpoint paragraphs, and a partisan run whose prompt also
+    changed the length rule, the format or the decision instruction would measure the
+    difference between two prompts rather than between two standpoints."""
+    built = {variant: _challenger_system(variant) for variant in CHALLENGER_ARMS}
+    neutral = built["neutral"][0]["content"]
+    clauses = {
+        variant: CHALLENGER_ARMS[variant].format(contrary_phrase=SOUND_PHRASE)
+        for variant in CHALLENGER_ARMS
+    }
+    for variant, messages in built.items():
+        system = messages[0]["content"]
+        assert clauses[variant] in system, variant
+        # every arm's system prompt is the neutral one with its paragraph swapped in
+        assert system == neutral.replace(clauses["neutral"], clauses[variant]), variant
+        # ... and the user turn — record, grounds, decision instruction — is untouched
+        assert messages[1]["content"] == built["neutral"][1]["content"], variant
+    # the four paragraphs really are four
+    assert len(set(clauses.values())) == 4
+
+
+def test_every_arm_carries_the_shared_instructions():
+    for variant in CHALLENGER_ARMS:
+        messages = _challenger_system(variant)
+        system, user = messages[0]["content"], messages[1]["content"]
+        assert FLAW_DEFINITION in system, variant
+        assert "Either verdict can be wrong." in system, variant
+        assert "quote the part of the record you are objecting to" in system, variant
+        assert "Write at most 400 words per response" in system, variant
+        assert "Thinking:" in system and "Argument:" in system, variant
+        # the decide-last instruction, both outcomes, stated as this decision
+        assert "`Decision: STANDS`" in user and "`Decision: REVERSE`" in user, variant
+        assert "Put your reasons under `Argument:`" in user, variant
+        # and no arm invites the challenger to verify the text for itself in those
+        # words — the phrase the neutral prompt was deliberately kept free of
+        assert "examine it yourself" not in system, variant
+
+
+def test_a_partisan_arm_is_assigned_the_side_the_decision_went_against():
+    """By phrase, never by token. The challenger uses FLAWED/SOUND for the verdict and
+    for the text interchangeably — 93 replies in 108 in pilot 2 — so an advocacy clause
+    that named a token would be assigning a position the model cannot read reliably."""
+    for variant in ("partisan_advocate", "partisan_assigned", "partisan_auditor"):
+        clause = CHALLENGER_ARMS[variant]
+        assert "FLAWED" not in clause and "SOUND" not in clause, variant
+        against_flawed = _challenger_system(variant, FLAWED)[0]["content"]
+        against_sound = _challenger_system(variant, SOUND)[0]["content"]
+        if "{contrary_phrase}" in clause:
+            # a FLAWED decision went against "the text does not contain a flaw"
+            assert SOUND_PHRASE in against_flawed, variant
+            assert FLAW_PHRASE in against_sound.split("Either verdict")[0], variant
+            assert against_flawed != against_sound, variant
+        # every partisan arm keeps the decline available: `challenger_may_decline` is
+        # validated True, and the decline rate under advocacy is a result
+        assert any(word in clause for word in ("Decline", "let it stand", "stand only")), variant
+
+
+def test_an_unknown_arm_is_refused_rather_than_falling_back_to_neutral():
+    """A run that asked for advocacy and silently got a stakeholder would be
+    indistinguishable in the record from one that asked for a stakeholder."""
+    from exp2.prompts import challenger_arm_clause
+
+    with pytest.raises(ValueError) as excinfo:
+        challenger_arm_clause("partisan", contrary_phrase=SOUND_PHRASE)
+    assert "unknown challenger variant" in str(excinfo.value)
 
 
 def test_comprehension_is_asked_in_the_challengers_own_conversation():

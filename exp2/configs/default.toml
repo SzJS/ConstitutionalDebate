@@ -87,6 +87,13 @@ challenger_model = "openai/gpt-4.1-nano"
 # recourse_judge_model — unset means judge_model.
 # comprehension_model  — unset means the challenger model.
 # challenge_word_limit — unset means word_limit.
+# challenger_variant   — unset means "neutral": a stakeholder reading the record, not
+#                        required to find fault, which is what every paid run before
+#                        2026-08-27 did. The partisan clauses ("partisan_advocate",
+#                        "partisan_assigned", "partisan_auditor") are the planned
+#                        ablation and are asked for by the spec that runs them, never
+#                        inherited:
+# challenger_variant = "neutral"
 
 [client]
 base_url = "https://openrouter.ai/api/v1"

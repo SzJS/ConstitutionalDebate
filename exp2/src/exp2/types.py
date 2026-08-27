@@ -33,7 +33,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from .config import TurnStyle
+from .config import CHALLENGER_VARIANTS, TurnStyle
 
 EMPTY_TRANSCRIPT = "[This is the first round; no arguments have been made yet.]"
 
@@ -888,7 +888,13 @@ class Challenge:
     # remain loadable.
     contradictory: bool = False
     source: str | None = None  # the path, when origin == "file"
-    arm: str | None = None  # "grounded" | "specious" | "neutral" | "stakeholder"
+    # The challenger variant this objection was written under; see
+    # config.CHALLENGER_VARIANTS. Validated, because it is what tells a reader of
+    # `index.jsonl` whether a raise rate is a stakeholder's or an advocate's, and the
+    # two must never be pooled. None means a supplied challenge, which was written by
+    # whoever wrote it and carries no variant. Every challenge.json written before
+    # 2026-08-27 carries "neutral", so old trees still load.
+    arm: str | None = None
     visibility: str | None = None  # "public" | "full" — what the generator saw
     model: str | None = None
     call_id: str | None = None
@@ -925,6 +931,10 @@ class Challenge:
         if self.raised != (self.stance == "contests"):
             raise ValueError(
                 f"stance {self.stance!r} disagrees with raised={self.raised}"
+            )
+        if self.arm is not None and self.arm not in CHALLENGER_VARIANTS:
+            raise ValueError(
+                f"arm must be one of {CHALLENGER_VARIANTS} or None, got {self.arm!r}"
             )
 
     @property

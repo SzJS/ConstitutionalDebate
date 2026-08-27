@@ -216,6 +216,41 @@ def test_recourse_rounds_must_be_zero():
     assert "judge-only" in str(excinfo.value)
 
 
+def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
+    """The default is historical for the same reason `recourse_form`'s is: every paid
+    run up to and including the first full sweep ran the neutral stakeholder, and a
+    default of anything else would silently restate what those specs ran.
+
+    It is validated because the variant decides which standpoint paragraph the
+    challenger is written from, and a typo that fell through to neutral would produce a
+    tree whose `challenge_arm` column said one thing and whose objections were written
+    under another."""
+    from exp2.config import CHALLENGER_VARIANTS, RECOURSE_ONLY_KEYS
+
+    assert DebateConfig(**debate_kwargs()).challenger_variant == "neutral"
+    # it describes how a decision is CONTESTED, so a contest must not inherit the
+    # decision run's value for it
+    assert "challenger_variant" in RECOURSE_ONLY_KEYS
+    assert CHALLENGER_VARIANTS == ("neutral", "partisan_advocate", "partisan_assigned",
+                                   "partisan_auditor")
+    for variant in CHALLENGER_VARIANTS:
+        assert DebateConfig(
+            **debate_kwargs(challenger_variant=variant)).challenger_variant == variant
+    with pytest.raises(ConfigError) as excinfo:
+        DebateConfig(**debate_kwargs(challenger_variant="partisan"))
+    assert "challenger_variant must be one of" in str(excinfo.value)
+
+
+def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
+    """Two modules hold the same set — the names, and the paragraphs they select — and
+    `prompts` imports `config` rather than the other way round, so nothing structural
+    keeps them equal."""
+    from exp2.config import CHALLENGER_VARIANTS
+    from exp2.prompts import CHALLENGER_ARMS
+
+    assert set(CHALLENGER_ARMS) == set(CHALLENGER_VARIANTS)
+
+
 def test_recourse_form_defaults_to_what_every_paid_run_actually_did():
     """The default is historical on purpose: `sweep.toml` and the pilots were written
     before this field existed, and a default of "third_party" would silently restate

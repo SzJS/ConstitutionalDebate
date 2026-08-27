@@ -1,0 +1,119 @@
+# Partisan pilot, assigned clause: pilot 3's 69 items, all seven subsets, 207 cells.
+#
+# THE ABLATION. The challenger is assigned the answer the decision went against and argues
+# the decision was mistaken; it may still report finding no grounds. The neutral
+# challenger objects on ~8% of cells, so the judge's discrimination and the grader's
+# valid-objection rate rest on tens of cells per condition; under advocacy every cell
+# yields an objection unless the advocate declines. What that costs is stated in the
+# analysis caveat this tree emits: detection and false-alarm rates become advocacy rates
+# and are NOT comparable with the neutral run's. The comparable quantities are the
+# recourse-stage ones, at higher n — plus one the neutral run cannot measure at all, the
+# rate at which an advocate declines when the record supports the decision.
+#
+# This is one of THREE wordings of that one standpoint, run on the same 207 cells and
+# compared before any of them is run at scale (DESIGN.md, `## Challenger/contester`).
+# `partisan_assigned` is the bare assignment: the challenger is given the position and told to SEARCH the
+# record for the strongest support for it, declining only if, having searched, it finds
+# nothing that supports it.
+#
+# This spec CONTESTS decisions; it does not make any. `decisions_from` names the tree
+# whose decisions are read — nothing under it is ever written to — and this run writes
+# only its own contests, rulings, agreements, grades and index. `--stage decide` refuses
+# on a spec with that key.
+#
+#     RUN_SWEEP_STAGES="contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/partisan-pilot-assigned.toml > outputs/partisan-pilot-assigned-driver.log 2>&1 &
+#
+# The neutral baseline on these same cells already exists and is `rerule-recontest`
+# restricted to them — neutral objections, the corrected ruling line, the
+# `ruling_agreement` instrument present. It is the only fair comparison; the re-contest's
+# original rulings are not.
+#
+# READ FIRST: ../HANDOFF.md section 5 for the run order and the stop triggers.
+#
+# 69 items x 3 conditions = 207 cells, of which the sweep decided 194; the rest were lost
+# to truncation there and are skipped here with `no decision to contest`.
+# `data/cases/pilot-3.jsonl` is a strict subset of `ftf-all.jsonl`, so every cell here is
+# already decided in the sweep tree. ~$1.2 and ~10 minutes.
+#
+name = "partisan-pilot-assigned"
+cases = "data/cases/pilot-3.jsonl"
+decisions_from = "outputs/experiments/sweep"
+conditions = ["single", "self_critique", "debate"]
+repeats = 1
+
+[debate]
+# The decision-path models are copied from `sweep.toml` unedited, even though this run
+# makes no decisions: they are what `config.json` will say a re-contested cell was
+# decided by, and a spec that quietly differed from the tree it reads would make the
+# record wrong about its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "openai/gpt-4.1-nano"
+
+# THE ABLATION, and the only setting in this file that differs from `recontest.toml`'s.
+# It selects the standpoint paragraph in `prompts.CHALLENGER_ARMS` and nothing else: the
+# flaw definition, "Either verdict can be wrong", the quote-the-record instruction, the
+# length rule, the two-section format and the decide-last `Decision: STANDS|REVERSE` line
+# are shared with the neutral arm, so a difference measured against it is a difference of
+# standpoint. It is written into every `challenge.json` as `arm` and into `index.jsonl`
+# as `challenge_arm`.
+challenger_variant = "partisan_assigned"
+
+# THE CHANGE. Every condition's objection is ruled by a third party — the weak recourse
+# judge — so no decider adjudicates its own appeal. The sweep ran the historical
+# `per_condition` routing: `debate` by that judge, `single` and `self_critique` by the
+# strong model re-deciding in its own conversation. The two are not the same instrument.
+# The judge overturned 24% of *phantom* objections and the re-decider 0-4%, so most of
+# self_critique's measured edge was the routing rather than the record.
+recourse_form = "third_party"
+
+# Stated rather than inherited, because under `third_party` it is no longer debate's
+# judge alone: it is the one party that hears every appeal in the experiment. Unset it
+# would mean `judge_model`, which is this same weak model — the value is identical and
+# the point is that it is now visible.
+recourse_judge_model = "openai/gpt-4.1-nano"
+
+# Unchanged from `sweep.toml`. The cap for the roles that emit a decision line -- judge,
+# challenger, recourse judge, comprehension probe -- none of which has truncated in four
+# runs.
+max_tokens = 16384
+
+# Unchanged from `sweep.toml`. The cap for the roles that produce record text: debaters,
+# the solo stages, the critic. Nothing here generates record text, but the value is what
+# the copied decision was made under and is kept for that reason.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+# Copied from `sweep.toml` unedited. It binds the strong model, which this run does not
+# call; the challenger and the recourse judge are gpt-4.1-nano and are unpinned, as they
+# were in every run so far. Verify the slugs before any run that does call the strong
+# model:
+#     uv run python records/derivations/sweep-1-provider-check.py <spec>
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# 16/8, as the sweep proved. The contest stages are two or three short nano calls per
+# cell where `decide` was up to seven strong-model ones, so this is if anything
+# conservative here.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each contest directory carries a full copy of the decision it contests — read out of
+# the SOURCE tree and written into this one. That is what makes a contest record
+# self-contained, and it is why this tree costs disk although it decides nothing.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint, for the grader and for the
+# `agreement` stage that reads line against prose. The `agreement` reading is how the
+# phantom rate is measured, so this must not change between the sweep and the
+# re-contest: it is the instrument the two runs are compared with.
+grader_model = "anthropic/claude-haiku-4.5"

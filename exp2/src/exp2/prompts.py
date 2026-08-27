@@ -382,6 +382,81 @@ Do not give a verdict in this response."""
 # challenger
 # --------------------------------------------------------------------------- #
 
+# The challenger's standpoint, and the ONLY thing that differs between the variants.
+#
+# One system prompt with an `{arm_clause}` slot, rather than one prompt per variant:
+# everything else the challenger is told — the flaw definition, "Either verdict can be
+# wrong", the quote-the-record instruction, the length rule, the two-section format, and
+# the decide-last `CHALLENGE_DECISION_INSTRUCTION` with both `Decision:` lines — is
+# shared, so a measured difference between two arms is a difference of standpoint and
+# not of anything else. exp1's arms were built the same way and for the same reason, and
+# a test diffs the four rendered prompts pairwise to keep it true.
+#
+# `neutral` is the paragraph the prompt carried until 2026-08-27, verbatim, so every
+# paid run before then is reproduced by the default.
+#
+# The three partisan clauses are the planned ablation (DESIGN.md, `## Challenger/
+# contester`): the challenger is assigned the answer the decision went against and
+# argues the decision was mistaken, and may still let it stand. They are three wordings
+# of one standpoint — an advocate, an assigned position, an auditor — compared on a
+# 207-cell slice before one of them is run at scale, because a prompt that changes the
+# objection rate by construction has to be read by hand before it is trusted at n.
+#
+# Each is formatted with `contrary_phrase` — the *phrase* for the side the decision went
+# against, never the FLAWED/SOUND token, for the reason
+# `CHALLENGE_DECISION_INSTRUCTION` gives at length: the challenger uses those two words
+# for the verdict and for the text interchangeably, and a prompt that hands it both
+# vocabularies gets replies that mean neither.
+#
+# None of them says "examine it yourself" — the phrase the neutral prompt was
+# deliberately kept free of, and a test still asserts its absence in every variant. The
+# partisan clauses *do* invite the challenger to look, which is the point of the
+# ablation; what they must not do is smuggle that invitation into the neutral arm.
+CHALLENGER_ARMS: dict[str, str] = {
+    "neutral": """\
+You are not required to find fault. Many decisions are correct, and saying so when it \
+is true is as useful as objecting when it is not. Object only if the record gives you \
+grounds to.""",
+    "partisan_advocate": """\
+You represent the side this decision went against. You stand for the view that \
+{contrary_phrase}, and your task is to argue that the decision was mistaken. Argue it \
+properly rather than merely asserting it: say what the error is, quote the part of the \
+record it lives in, and say why correcting it changes the decision rather than merely \
+improving the reasoning. You are an advocate, not a neutral reviewer — but you are not \
+obliged to manufacture a case. If the record genuinely supports the decision, say so \
+and let it stand: an objection you cannot support costs the credibility you need for \
+the ones you can.""",
+    "partisan_assigned": """\
+You have been assigned the position that {contrary_phrase}. Search the record for the \
+strongest support for that position — a false claim, an invalid inference, a flaw the \
+decision missed, or a claimed flaw that is not one — and argue it, quoting the part of \
+the record it lives in. Decline only if, having searched, you find nothing in the \
+record that supports your position.""",
+    "partisan_auditor": """\
+Your job is to find the best objection to this decision. Assume there is one until you \
+have looked: check every claim in the grounds against the text under review and the \
+problem, and check the text under review itself. Quote what you find. Let the decision \
+stand only if every claim in the grounds holds up and you find no flaw the decision \
+missed.""",
+}
+
+
+def challenger_arm_clause(variant: str, *, contrary_phrase: str) -> str:
+    """The standpoint paragraph for one variant, with its phrase filled in.
+
+    Raises rather than falling back to neutral: a run that asked for advocacy and
+    silently got a stakeholder would be indistinguishable in the record from one that
+    asked for a stakeholder, and `challenge_arm` would say the wrong thing about every
+    row.
+    """
+    if variant not in CHALLENGER_ARMS:
+        raise ValueError(
+            f"unknown challenger variant {variant!r}; known: "
+            f"{sorted(CHALLENGER_ARMS)}"
+        )
+    return CHALLENGER_ARMS[variant].format(contrary_phrase=contrary_phrase)
+
+
 CHALLENGER_SYSTEM = _with_flaw_definition("""\
 You are a stakeholder affected by the decision below. You did not make it and you were \
 not part of the process that produced it. You are reviewing the published record to \
@@ -389,9 +464,7 @@ judge whether the decision is sound.
 
 {flaw_definition}
 
-You are not required to find fault. Many decisions are correct, and saying so when it \
-is true is as useful as objecting when it is not. Object only if the record gives you \
-grounds to.
+{arm_clause}
 
 Either verdict can be wrong. A FLAWED verdict is contested by showing that the claimed \
 flaw is not one; a SOUND verdict is contested by showing a flaw the decision missed.
@@ -1048,7 +1121,15 @@ def build_challenger_messages(
             "content": CHALLENGER_SYSTEM.format(
                 length_rule=length_rule(
                     config.challenge_word_limit_for(), per_argument=False
-                )
+                ),
+                # The one thing that differs between the variants. The phrase is the
+                # side the decision went against — the same one the decision
+                # instruction offers as `Decision: REVERSE` — so an advocate is
+                # assigned exactly the position the reversal would grant.
+                arm_clause=challenger_arm_clause(
+                    config.challenger_variant,
+                    contrary_phrase=side_phrase(complement(decision_verdict)),
+                ),
             ),
         },
         {

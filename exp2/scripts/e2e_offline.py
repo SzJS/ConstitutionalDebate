@@ -41,6 +41,13 @@ byte — is asserted here with a hash before and after, over real records rather
 fixture. It also runs the `ruling_agreement` stage, the reading of the judge's own prose
 that bounds every revision number.
 
+**The fourth pass is the partisan arm**: the whole grid again with
+`challenger_variant = "partisan_advocate"`, which is the planned ablation. What it is for
+is the two ends of the wire — that the advocacy paragraph reaches the prompt the
+challenger is actually sent, and that `arm` / `challenge_arm` / the analysis caveat all
+say so afterwards. A partisan run whose records claimed to be neutral, or a neutral run
+filed under a partisan name, is the failure this pass exists to make impossible.
+
 **Every root is deleted first.** Each stage resumes on its own artifacts, which is what a
 real run needs and exactly wrong here: a tree left by an earlier version of this script
 would be skipped rather than re-made, and the assertions below would pass by describing
@@ -89,6 +96,9 @@ ROOT_PER_CONDITION = REPO / "outputs" / "e2e-offline-2-per-condition"
 # The third pass writes its own tree too: it re-rules ROOT's contests, and a re-rule must
 # never write into the tree it reads.
 ROOT_RERULE = REPO / "outputs" / "e2e-offline-2-rerule"
+# And the fourth: a cell is contested once, so the partisan arm cannot share a tree with
+# the neutral one either.
+ROOT_PARTISAN = REPO / "outputs" / "e2e-offline-2-partisan"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -246,7 +256,7 @@ async def main() -> int:
     # exactly wrong here: a tree left by an earlier version of this script would be
     # skipped rather than re-made, and every assertion below would then be describing
     # records the current code did not write.
-    for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE):
+    for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN):
         if root.exists():
             shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
@@ -299,8 +309,84 @@ async def main() -> int:
 
     first = report_documents(ROOT) or (1 if stray else 0)
     third = await rerule_pass(config, client_config, grading, grid)
+    fourth = await partisan_pass(config, client_config, grading, grid)
     return await per_condition_pass(
-        per_condition_config, client_config, grading, by_id) or first or third
+        per_condition_config, client_config, grading, by_id
+    ) or first or third or fourth
+
+
+async def partisan_pass(config, client_config, grading, grid) -> int:
+    """The planned ablation, end to end: the advocacy clause in, the arm out.
+
+    The challenger is assigned the answer the decision went against and argues the
+    decision was mistaken. Three things have to line up or the run is unreadable, and
+    each is checked here over real records rather than a fixture:
+
+      the PROMPT   the system message the challenger was sent carries the advocacy
+                   paragraph and not the neutral one — read back out of `calls.jsonl`,
+                   which is the wire log, not the template;
+      the RECORD   every `challenge.json` says `arm = "partisan_advocate"`, and
+                   `index.jsonl` carries it as `challenge_arm`;
+      the CAVEAT   `metrics.json` says in words that the detection and false-alarm rates
+                   in the same file are advocacy rates and are not the neutral run's.
+
+    A partisan run that wrote "neutral" into its records, or a neutral run filed under a
+    partisan name, would pass every other assertion in this script.
+    """
+    arm = "partisan_advocate"
+    config = dataclasses.replace(config, challenger_variant=arm)
+    ROOT_PARTISAN.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\nfourth pass — the partisan arm")
+    print(f"outputs: {ROOT_PARTISAN}")
+    print(f"cells: {len(grid)}  challenger_variant: {config.challenger_variant} — the "
+          "challenger is assigned the answer the decision went against\n")
+
+    await run_stages(ROOT_PARTISAN, grid, config, client_config, grading)
+
+    stray: dict[str, int] = {}
+    arms: dict[str, int] = {}
+    for path in sorted(ROOT_PARTISAN.glob("cells/*/contests/*/runs/*/challenge.json")):
+        value = json.loads(path.read_text(encoding="utf-8")).get("arm")
+        arms[str(value)] = arms.get(str(value), 0) + 1
+        if value != arm:
+            stray[f"a challenge recorded under arm {value!r}"] = 1
+    print(f"arms recorded on {sum(arms.values())} challenges: {arms}")
+
+    # The prompt that was actually sent, off the wire log.
+    clauses: dict[str, int] = {}
+    for path in sorted(ROOT_PARTISAN.glob("cells/*/contests/*/runs/*/calls.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            call = json.loads(line)
+            if call.get("role") != "challenger":
+                continue
+            system = call["request_body"]["messages"][0]["content"]
+            partisan = "You represent the side this decision went against" in system
+            neutral = "You are not required to find fault" in system
+            key = ("advocacy clause" if partisan and not neutral else
+                   "NEUTRAL clause" if neutral and not partisan else "neither/both")
+            clauses[key] = clauses.get(key, 0) + 1
+    print(f"challenger system prompts sent, by standpoint: {clauses}")
+    if set(clauses) != {"advocacy clause"}:
+        stray["a challenger was sent something other than the advocacy clause"] = 1
+
+    rows = build_index(grid, root=ROOT_PARTISAN,
+                       challenger_model=config.challenger_model_for())
+    index = ROOT_PARTISAN / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, CONDITIONS)
+    (ROOT_PARTISAN / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                                encoding="utf-8")
+    print(f"indexed {len(rows)} rows   challenge_arm counts: "
+          f"{metrics['challenge_arm']}")
+    if metrics["challenge_arm"] != {arm: sum(arms.values())}:
+        stray["the metrics do not count the arm the records carry"] = 1
+    caveat = next((c for c in metrics["caveats"] if "PARTISAN" in c), "")
+    print(f"partisan caveat: {caveat[:150]}...")
+    if not caveat or "advocacy rates" not in caveat:
+        stray["the metrics do not say the challenger was partisan"] = 1
+
+    print(f"partisan invariants violated: {stray}")
+    return report_documents(ROOT_PARTISAN) or (1 if stray else 0)
 
 
 async def rerule_pass(config, client_config, grading, grid) -> int:

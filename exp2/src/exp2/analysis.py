@@ -501,10 +501,57 @@ def _ruling_line_caveat(rows: Sequence[dict]) -> str:
     )
 
 
+def challenge_arms(rows: Sequence[dict]) -> dict[str, int]:
+    """``{arm: count}`` over the rows that carry a challenge, for `metrics.json`.
+
+    The denominator of every recourse rate depends on which challenger wrote the
+    objections, so the count is stated rather than left to be inferred from the spec
+    that produced the tree.
+    """
+    counts: dict[str, int] = {}
+    for row in rows:
+        arm = row.get("challenge_arm")
+        if arm is None:
+            continue
+        counts[arm] = counts.get(arm, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _partisan_arm_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only when an objection in this index was written by an advocate.
+
+    A partisan challenger is assigned the answer the decision went against, so it
+    objects unless it finds no grounds. Every rate whose denominator is "cells" — the
+    detection rate and both false-alarm rates above all — is then a measurement of
+    advocacy rather than of what a stakeholder noticed, and the number it should be
+    compared against is the neutral run's only at the recourse stage.
+    """
+    arms = sorted({row.get("challenge_arm") for row in rows} - {None})
+    partisan = [arm for arm in arms if arm.startswith("partisan")]
+    if not partisan:
+        return None
+    mixed = "" if len(arms) == len(partisan) else (
+        f" This index MIXES arms ({', '.join(arms)}) — split it before reading any "
+        "rate, since none of them has one population."
+    )
+    return (
+        f"THE CHALLENGER WAS PARTISAN ({', '.join(partisan)}). It was assigned the "
+        "answer the decision went against and asked to argue the decision was "
+        "mistaken, so `objection_raised_given_incorrect` is not a detection rate and "
+        "`false_alarm_given_correct` is not a false-alarm rate: both are advocacy "
+        "rates, high by construction, and neither is comparable with the neutral "
+        "run's. What IS comparable is the recourse stage — the judge's discrimination "
+        "between genuine objections on wrong and on correct decisions, the grader's "
+        "valid-objection rate, the phantom rate, and the rate at which an advocate "
+        "declines when the record supports the decision, which is the one quantity the "
+        "neutral run cannot measure at all." + mixed
+    )
+
+
 def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
     matching = matched_items(rows, conditions)
     sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
-    return [
+    stated = [
         "NOT INTERSECTED — read this before the rates. Each condition's "
         "P(revised | initially incorrect) is computed over that condition's OWN wrong "
         f"decisions, and those sets are not the same items ({sizes}; wrong in every "
@@ -531,7 +578,11 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         "debate's incorrect cell selects the debates in which debate worked worst. This "
         "understates debate; single has no equivalent filter, so it applies "
         "asymmetrically.",
+        # Conditional: it is a statement about the run, not a standing limitation, and a
+        # caveat that appears on every index is one nobody reads.
+        _partisan_arm_caveat(rows),
     ]
+    return [caveat for caveat in stated if caveat]
 
 
 def analyse(index_path: Path, conditions: Sequence[str]) -> dict[str, Any]:
@@ -545,6 +596,7 @@ def analyse(index_path: Path, conditions: Sequence[str]) -> dict[str, Any]:
     return {
         "rows": len(rows),
         "caveats": caveats(rows, conditions),
+        "challenge_arm": challenge_arms(rows),
         "small_cells": small,
         "matching": matched_items(rows, conditions),
         "overall": funnel(rows),

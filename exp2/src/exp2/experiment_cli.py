@@ -44,6 +44,7 @@ from .accounting import aggregate_tree
 from .analysis import analyse
 from .arms import CONDITIONS
 from .config import (
+    CHALLENGER_VARIANTS,
     CLIENT_WHY,
     GRADING_WHY,
     WHY,
@@ -261,6 +262,24 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(
             "a spec with `contests_from` also needs `decisions_from`: a ruling is made "
             "against the decision that was contested, and this tree decides nothing."
+        )
+
+    # A spec whose NAME claims a challenger variant has to STATE one. `challenger_variant`
+    # defaults to "neutral" — the historical value, so that specs written before the field
+    # existed still mean what they ran — which makes the failure silent in exactly the
+    # place it costs most: a spec called `partisan` with the field commented out would
+    # run the neutral challenger, write it into `outputs/experiments/partisan/`, and
+    # produce a tree whose every number is a neutral number under a partisan name. The
+    # `challenge_arm` column would say "neutral" and nobody would read it before the
+    # money was spent. `partisan.toml` ships with the field commented out on purpose —
+    # the winning clause is chosen by a pilot — so this is what stops it running as-is.
+    stated_variant = spec.get("debate", {}).get("challenger_variant")
+    if stated_variant is None and "partisan" in name:
+        raise SystemExit(
+            f"this spec is named {name!r} but sets no `challenger_variant`, so it would "
+            f"run the neutral challenger — `challenger_variant` defaults to "
+            f"{config.challenger_variant!r}. Set it in the spec's [debate] table to one "
+            f"of {CHALLENGER_VARIANTS[1:]}, or rename the spec."
         )
 
     cases = load_cases(Path(spec["cases"]))

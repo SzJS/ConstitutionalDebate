@@ -306,6 +306,39 @@ def test_the_specious_objection_caveat_is_read_off_the_rulings_that_happened():
         caveats([row(), row()], ["debate", "single"]))
 
 
+def test_the_partisan_caveat_fires_only_where_an_advocate_wrote_the_objections():
+    """It is a statement about the run, not a standing limitation: on a neutral index it
+    must be absent, because a caveat that appears on every index is one nobody reads."""
+    neutral = " ".join(caveats([row(challenge_arm="neutral"), row()], ["debate"]))
+    assert "PARTISAN" not in neutral
+
+    partisan = " ".join(caveats(
+        [row(challenge_arm="partisan_advocate") for _ in range(2)], ["debate"]))
+    assert "THE CHALLENGER WAS PARTISAN (partisan_advocate)" in partisan
+    # what the ablation does and does not measure, both stated
+    assert "not a detection rate" in partisan
+    assert "advocacy rates" in partisan
+    assert "declines when the record supports the decision" in partisan
+    assert "MIXES arms" not in partisan
+
+    # an index holding both is not one population, and no rate over it means anything
+    mixed = " ".join(caveats(
+        [row(challenge_arm="neutral"), row(challenge_arm="partisan_auditor")],
+        ["debate"]))
+    assert "MIXES arms" in mixed
+
+
+def test_the_arm_counts_are_stated_in_the_metrics(tmp_path):
+    index = tmp_path / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in [
+        row(item_id="i1", challenge_arm="partisan_advocate"),
+        row(item_id="i2", challenge_arm="partisan_advocate"),
+        row(item_id="i3"),  # decided, never contested: no arm, and not counted as one
+    ]), encoding="utf-8")
+    metrics = analyse(index, ["debate"])
+    assert metrics["challenge_arm"] == {"partisan_advocate": 2}
+
+
 def test_analyse_puts_the_caveats_and_the_overlaps_in_the_output(tmp_path):
     index = tmp_path / "index.jsonl"
     index.write_text("\n".join(json.dumps(r) for r in [

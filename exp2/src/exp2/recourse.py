@@ -164,7 +164,11 @@ async def generate_challenge(
     stance = challenge_stance(word)
     claimed = claimed_verdict_for(word, decision)
     challenge = Challenge(
-        text=text, origin="generated", raised=(stance == "contests"), arm="neutral",
+        text=text, origin="generated", raised=(stance == "contests"),
+        # The standpoint the objection was written from. Read off the config rather
+        # than hard-coded, so that `index.jsonl` can say which challenger wrote a row
+        # and the analysis can refuse to pool two of them.
+        arm=config.challenger_variant,
         claimed_verdict=claimed, stance=stance,
         # Unreachable with one line, and recorded as False rather than dropped: a
         # column that reads 0 says the shape did not occur, a column that is absent

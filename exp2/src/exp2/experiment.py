@@ -277,13 +277,16 @@ async def run_stage_contest(
                 config=config, client_config=client_config, condition=cell.condition,
                 copy_parent=client_config.copy_parent,
             )
-        # `recourse_form` is recorded here rather than trusted to config.json:
-        # create_recourse copies the DECISION's config.json and ignores the config it is
-        # handed, so the contest run's own config.json is the decider's — and a contest
-        # that routed the appeal differently from the decision would otherwise leave no
-        # trace of it on disk.
+        # `recourse_form` and `challenger_variant` are recorded here rather than trusted
+        # to config.json: create_recourse copies the DECISION's config.json and ignores
+        # the config it is handed, so the contest run's own config.json is the decider's
+        # — written before either field existed, and describing a run that made no
+        # objection at all. A contest that routed the appeal differently from the
+        # decision, or that ran an advocate where the decision's config says nothing,
+        # would otherwise leave no trace of it on the run.
         writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger,
-                               recourse_form=config.recourse_form)
+                               recourse_form=config.recourse_form,
+                               challenger_variant=config.challenger_variant)
         try:
             async with OpenRouterClient(api_key, client_config,
                                         sink=writer.record_call,
@@ -692,6 +695,10 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             # verdict they objected to; counting those as detections is counting
             # agreement as contestability. The other three stances get their own
             # columns so nothing is silently folded into "did not object".
+            # WHICH challenger wrote it. A neutral raise rate and a partisan one are
+            # not the same quantity, and without this column an index that pooled two
+            # runs would read as one population.
+            row["challenge_arm"] = challenge.arm
             row["challenge_stance"] = challenge.stance
             row["challenge_raised"] = challenge.stance == "contests"
             row["challenge_agreed"] = challenge.stance == "agrees"

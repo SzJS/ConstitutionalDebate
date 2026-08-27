@@ -277,8 +277,8 @@ async def test_cells_run_concurrently(tmp_path, no_network):
 # --- contest and grade ---------------------------------------------------------------
 
 
-async def contest(tmp_path, grid):
-    return await run_stage_contest(grid, root=tmp_path, config=make_config(),
+async def contest(tmp_path, grid, **kw):
+    return await run_stage_contest(grid, root=tmp_path, config=make_config(**kw),
                                    client_config=client_config(), api_key="k")
 
 
@@ -524,6 +524,8 @@ async def test_the_index_joins_every_stage_and_leaves_nulls_for_missing_ones(tmp
     assert rows[0]["comprehension"] == 4
     assert rows[0]["ruling_form"] == "stated_conclusion"
     assert rows[0]["changed_the_decision"] is True
+    # which challenger wrote it — "neutral" unless a spec asked for advocacy
+    assert rows[0]["challenge_arm"] == "neutral"
 
 
 async def test_a_decline_indexes_as_not_revised_but_keeps_the_distinction(tmp_path, no_network):
@@ -537,6 +539,32 @@ async def test_a_decline_indexes_as_not_revised_but_keeps_the_distinction(tmp_pa
     assert row["challenge_declined"] is True
     assert row["changed_the_decision"] is False
     assert "ruling_form" not in row      # no ruling was sought
+
+
+async def test_a_partisan_contest_records_its_arm_and_is_written_from_it(tmp_path,
+                                                                          no_network):
+    """The variant has to reach two places or the ablation is unreadable: the prompt the
+    challenger was actually sent, and the column that says so in `index.jsonl`. A run
+    that set the field and still sent the neutral paragraph would be a neutral run
+    filed under a partisan name."""
+    make_decisions_wrong(no_network)
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid, challenger_variant="partisan_advocate")
+
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["challenge_arm"] == "partisan_advocate"
+    challenge_path = next((tmp_path / "cells").rglob("challenge.json"))
+    assert json.loads(challenge_path.read_text())["arm"] == "partisan_advocate"
+    # and the run says so too: a contest's own config.json is the DECIDER's, copied,
+    # so the manifest is where a contest-only setting has to be written down
+    run = json.loads((challenge_path.parent / "run.json").read_text())
+    assert run["challenger_variant"] == "partisan_advocate"
+    sent = [c for c in no_network.calls if c["meta"].get("role") == "challenger"]
+    assert sent and all("You represent the side this decision went against"
+                        in c["messages"][0]["content"] for c in sent)
+    assert not any("You are not required to find fault" in c["messages"][0]["content"]
+                   for c in sent)
 
 
 # --- a tree that contests another tree's decisions ------------------------------------
@@ -889,6 +917,35 @@ def test_a_spec_that_re_rules_another_tree_refuses_to_contest(tmp_path, monkeypa
     with pytest.raises(SystemExit) as excinfo:
         main(["--spec", str(spec), "--stage", "decide"])
     assert "it does not decide" in str(excinfo.value)
+
+
+def test_a_spec_named_for_a_variant_must_state_it(tmp_path, monkeypatch):
+    """`challenger_variant` defaults to "neutral", so a spec called `partisan` with the
+    field commented out would run the neutral challenger into
+    `outputs/experiments/partisan/` and every number in that tree would be a neutral
+    number under a partisan name. `partisan.toml` ships that way on purpose — the clause
+    is chosen by a pilot — and this is what stops it running as-is."""
+    from exp2.experiment_cli import main
+
+    spec = tmp_path / "partisan.toml"
+    body = ('name = "partisan"\n'
+            'cases = "data/cases/does-not-matter.jsonl"\n'
+            f'decisions_from = "{tmp_path / "A"}"\n')
+    spec.write_text(body, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "contest", "--dry-run"])
+    message = str(excinfo.value)
+    assert "sets no `challenger_variant`" in message
+    assert "would run the neutral challenger" in message
+    assert "partisan_advocate" in message
+
+    # a neutrally-named spec is not second-guessed: the default IS what it means
+    neutral = tmp_path / "recontest.toml"
+    neutral.write_text(body.replace('"partisan"', '"recontest-x"'), encoding="utf-8")
+    with pytest.raises(FileNotFoundError):
+        # past the guard, and on to the cases file that does not exist here
+        main(["--spec", str(neutral), "--stage", "contest", "--dry-run"])
 
 
 def test_rerule_refuses_a_spec_that_names_no_contest_source(tmp_path, monkeypatch):
