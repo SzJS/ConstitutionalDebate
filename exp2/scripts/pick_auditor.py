@@ -149,6 +149,8 @@ CANDIDATES = [
     "google/gemini-2.5-flash",   # rung 1: the newest Flash that runs with reasoning off
     "openai/gpt-4.1-mini",       # rung 1
     "openai/gpt-4.1",            # rung 2
+    "openai/gpt-5.6-luna",       # rung 2, added at the user's go on 2026-08-27, before any
+                                 # candidate was called: no Gemini Pro runs with reasoning off
 ]
 
 # Per Mtok, in/out, for the DRY RUN's estimate only. Every number the report prints is
@@ -159,6 +161,7 @@ PRICES = {
     "google/gemini-2.5-flash": (0.30, 2.50),
     "openai/gpt-4.1-mini": (0.40, 1.60),
     "openai/gpt-4.1": (2.00, 8.00),
+    "openai/gpt-5.6-luna": (0.20, 1.20),
     "anthropic/claude-haiku-4.5": (1.00, 5.00),
 }
 

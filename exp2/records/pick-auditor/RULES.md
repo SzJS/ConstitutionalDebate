@@ -157,6 +157,7 @@ throughput and latency; those two are rendered client-side on the pages).
 | `google/gemini-2.5-flash` | 1 | 0.30 | 2.50 | 89 tok/s | 0.50 s | live |
 | `openai/gpt-4.1-mini` | 1 | 0.40 | 1.60 | 47 tok/s | 0.69 s | live |
 | `openai/gpt-4.1` | 2 | 2.00 | 8.00 | 78 tok/s | 0.72 s | live |
+| `openai/gpt-5.6-luna` | 2 | 0.20 | 1.20 | — | — | live |
 
 None is far slower than the rest. A candidate that fails its `liveness` call is out
 before any measurement and is recorded as such.
@@ -175,6 +176,8 @@ user wants that rung filled: `deepseek/deepseek-v4-pro-0813` ($1.12/$3.37),
 `moonshotai/kimi-k2.6` ($0.95/$4.00), `openai/gpt-5.6-luna` ($0.20/$1.20).
 `deepseek/deepseek-v4-flash-0731` is deliberately not among them — it wrote the sweep's
 debates, and a challenger auditing a record it generated is a confound of its own.
+
+**Added at the user's go on 2026-08-27, before any candidate was called:** `openai/gpt-5.6-luna` fills the second rung-2 slot, so that a ladder failing at `openai/gpt-4.1` still says something about the tier above it. Its throughput and latency were not read off the model page; its liveness call passed.
 
 With no Pro in the pool, a "no model picked" outcome means *the weakest reliable auditor
 is above `openai/gpt-4.1`*, which is what rung 2 stands for here.
