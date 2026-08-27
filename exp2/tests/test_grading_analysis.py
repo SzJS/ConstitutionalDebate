@@ -74,6 +74,100 @@ async def test_the_grader_is_off_the_decision_path():
     assert "grader" in OFF_PATH_ROLES
 
 
+# --- the judgment grader -------------------------------------------------------------
+
+
+async def judgment_grade(objection="1. Type: misstatement", *, client=None,
+                         gold_flawed=True, defects=None, record="Alice: step 2 holds."):
+    return await grade_objection(
+        case(gold_flawed=gold_flawed), objection, config=make_config(),
+        grading=GradingConfig(), client=client or FakeClient(), mode="judgment",
+        record=record, judgment="Bob conceded step 2.", decision_verdict="FLAWED",
+        defects=defects if defects is not None else [{"type": "misstatement"}],
+    )
+
+
+async def test_a_judgment_objection_is_graded_against_the_record_not_the_annotation():
+    """The variant's whole point: validity is a property of the objection against the
+    record, so no annotation is consulted and none is needed."""
+    from exp2.accounting import OFF_PATH_ROLES
+
+    client = FakeClient()
+    result = await judgment_grade(client=client)
+    assert result.mode == "judgment"
+    assert result.valid is True
+    assert [(d["index"], d["type"], d["valid"]) for d in result.defects] == [
+        (1, "misstatement", True)]
+    assert client.calls[0]["meta"]["role"] == "judgment_grader"
+    assert "judgment_grader" in OFF_PATH_ROLES
+    # the record and the judgment reached the prompt; the annotation did not
+    sent = "".join(m["content"] for m in client.calls[0]["messages"])
+    assert "Alice: step 2 holds." in sent and "Bob conceded step 2." in sent
+    assert "Step 2 miscounts." not in sent
+
+
+async def test_a_sound_item_is_gradable_under_the_judgment_mode():
+    """Where the flaw grader raises. There is no recorded flaw to grade against and none
+    is wanted: a judgment that misquotes the record is defective whether the solution it
+    was about was flawed or not — which is what makes every subset gradable."""
+    result = await judgment_grade(gold_flawed=False)
+    assert result.valid is True
+    assert result.mode == "judgment"
+
+
+async def test_the_judgment_grade_is_the_conjunction_of_its_per_defect_lines():
+    client = FakeClient(replies={"judgment_grader": (
+        "Neither quote checks out.\n"
+        "Defect 1: INVALID — the record does say that.\n"
+        "Defect 2: INVALID — this argues the physics.\n"
+        "Valid objection: NO")})
+    result = await judgment_grade(
+        client=client, defects=[{"type": "misstatement"}, {"type": "omission"}])
+    assert result.valid is False
+    assert result.line_mismatch is False
+    data = json.loads(json.dumps(result.to_dict()))
+    assert data["valid"] is False
+    assert data["defects_n"] == 2 and data["defects_valid_n"] == 0
+    assert data["mode"] == "judgment"
+    assert [d["type"] for d in data["defects"]] == ["misstatement", "omission"]
+
+
+async def test_the_graders_summary_line_is_checked_against_its_own_defect_lines():
+    """The same instrument as `ruling_line_mismatch`, one layer out. `valid` follows the
+    per-defect rulings — the judgements a reader can check against the record — and the
+    flag is what bounds how often the grader contradicted them."""
+    client = FakeClient(replies={"judgment_grader": (
+        "Defect 1: INVALID — the quote is accurate.\nValid objection: YES")})
+    result = await judgment_grade(client=client)
+    assert result.valid is False        # the per-defect line, not the summary
+    assert result.line_valid is True
+    assert result.line_mismatch is True
+    assert result.to_dict()["line_mismatch"] is True
+
+
+async def test_a_judgment_grade_with_no_defect_lines_falls_back_visibly():
+    """A grader that answered only the summary has ruled on nothing a reader can check,
+    so the fallback is recorded in parse_mode rather than left to look like a grade."""
+    client = FakeClient(replies={"judgment_grader":
+                                 "It alleges nothing of the kind.\nValid objection: NO"})
+    result = await judgment_grade(client=client, defects=[])
+    assert result.parse_mode == "summary_line_only"
+    assert result.defects == []
+    assert result.valid is False
+    assert result.line_mismatch is False
+
+
+async def test_a_judgment_grade_needs_the_record_to_check_quotes_against():
+    with pytest.raises(NotGradable, match="no record"):
+        await judgment_grade(record="")
+
+
+async def test_an_unknown_grading_mode_is_refused():
+    with pytest.raises(ValueError, match="unknown grading mode"):
+        await grade_objection(case(), "obj", config=make_config(),
+                              grading=GradingConfig(), client=FakeClient(), mode="vibes")
+
+
 # --- rates ---------------------------------------------------------------------------
 
 
@@ -325,6 +419,75 @@ def test_the_partisan_caveat_fires_only_where_an_advocate_wrote_the_objections()
     mixed = " ".join(caveats(
         [row(challenge_arm="neutral"), row(challenge_arm="partisan_auditor")],
         ["debate"]))
+    assert "MIXES arms" in mixed
+
+
+def judgment_row(**kw):
+    """A judgment-mode graded row, with the columns `build_index` writes for one."""
+    base = dict(challenge_arm="judgment", grade_mode="judgment", grade_valid=True,
+                grade_defects_n=2, grade_defects_valid_n=1, grade_line_mismatch=False,
+                identified_flaw=None)
+    base.update(kw)
+    return row(**base)
+
+
+def test_the_judgment_rate_is_over_every_graded_row_and_split_by_correctness():
+    """No `flaw.json` is consulted, so every contested cell is gradable — sound items and
+    CORRECT decisions included. A valid defect on a correct decision is a real finding
+    about the process, so the two halves are reported side by side rather than one of
+    them being conditioned away."""
+    rows = [
+        judgment_row(item_id="w1", initially_correct=False, initially_incorrect=True),
+        judgment_row(item_id="w2", initially_correct=False, initially_incorrect=True,
+                     grade_valid=False, grade_defects_valid_n=0),
+        judgment_row(item_id="c1", initially_correct=True, initially_incorrect=False),
+        judgment_row(item_id="c2", initially_correct=True, initially_incorrect=False,
+                     gold_flawed=False),
+    ]
+    summary = funnel(rows)
+    rates = summary["rates"]
+    assert summary["n_judgment_graded"] == 4
+    assert (rates["valid_objection_judgment"]["k"],
+            rates["valid_objection_judgment"]["n"]) == (3, 4)
+    assert rates["valid_objection_judgment_given_incorrect"]["n"] == 2
+    assert rates["valid_objection_judgment_given_correct"]["n"] == 2
+    assert rates["valid_objection_judgment_given_correct"]["k"] == 2
+    assert rates["judgment_grade_line_mismatch"]["k"] == 0
+    # the flaw grader's row is NOT computed over these: two different claims
+    assert rates["valid_objection"]["n"] == 0
+    assert rates["identified_flaw"]["n"] == 0
+    assert summary["judgment_defects"] == {
+        "objections_graded": 4, "defects_alleged": 8, "defects_valid": 3,
+        "objections_alleging_nothing": 0, "defects_per_objection": 2.0}
+
+
+def test_a_judgment_row_never_enters_the_flaw_graders_denominator():
+    """A mixed index must not average "found the recorded flaw" with "alleged a defect
+    that is really in the record"."""
+    rows = [row(item_id="flaw", grade_mode="flaw", grade_valid=True),
+            judgment_row(item_id="jm", grade_valid=False)]
+    rates = funnel(rows)["rates"]
+    assert (rates["valid_objection"]["k"], rates["valid_objection"]["n"]) == (1, 1)
+    assert rates["valid_objection_judgment"]["n"] == 1
+
+
+def test_the_judgment_caveat_says_which_validity_the_number_is():
+    """Two readings of `grade_valid` exist and they are not the same claim. A reader who
+    met 41% without this paragraph would take it for the flaw grader's number."""
+    absent = " ".join(caveats([row(), row(item_id="i2")], ["debate"]))
+    assert "JUDGMENT AUDIT" not in absent
+
+    stated = " ".join(caveats([judgment_row(), judgment_row(item_id="i2")], ["debate"]))
+    assert "THE GRADE HERE IS A JUDGMENT AUDIT" in stated
+    assert "PROCESS validity" in stated
+    assert "is NOT a false alarm" in stated
+    assert "`flaw.json` never opened" in stated
+    assert "not a detection rate" in stated
+    assert "MIXES arms" not in stated
+    # the partisan caveat is about a different thing and must not fire here
+    assert "THE CHALLENGER WAS PARTISAN" not in stated
+
+    mixed = " ".join(caveats([judgment_row(), row(challenge_arm="neutral")], ["debate"]))
     assert "MIXES arms" in mixed
 
 

@@ -37,7 +37,11 @@ from typing import Any, Iterable
 # thing it measures IS the decision path's last step and a reader billed to that step
 # would be measuring itself.
 OFF_PATH_ROLES: frozenset[str] = frozenset(
-    {"grader", "comprehension", "agreement", "ruling_reader"}
+    # `judgment_grader` is the judgment variant's grader — a role of its own rather than
+    # a purpose of `grader`, because it is repaired with a different format and must not
+    # be sent the flaw grader's correction. It is off the decision path for the same
+    # reason `grader` is: it grades a run and must never be able to inflate it.
+    {"grader", "judgment_grader", "comprehension", "agreement", "ruling_reader"}
 )
 
 

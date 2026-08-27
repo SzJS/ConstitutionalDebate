@@ -92,7 +92,11 @@ challenger_model = "openai/gpt-4.1-nano"
 #                        2026-08-27 did. The partisan clauses ("partisan_advocate",
 #                        "partisan_assigned", "partisan_auditor") are the planned
 #                        ablation and are asked for by the spec that runs them, never
-#                        inherited:
+#                        inherited. "judgment" is the judgment-challenge variant: the
+#                        challenger audits the decision's REASONING against the record
+#                        for a contradiction, a misstatement or an omission instead of
+#                        re-solving the problem, and is graded on whether the defect it
+#                        alleges is really in the record:
 # challenger_variant = "neutral"
 
 [client]

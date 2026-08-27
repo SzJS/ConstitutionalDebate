@@ -34,7 +34,7 @@ from typing import Any
 
 from .arms import _split_solo
 from .client import ChatClient
-from .config import DebateConfig, GradingConfig
+from .config import JUDGMENT_VARIANT, DebateConfig, GradingConfig
 from .engine import _complete_with_repair
 from .prompts import (
     build_agreement_messages,
@@ -47,6 +47,7 @@ from .prompts import (
     marks_private_text,
     parse_agreement_output,
     parse_comprehension_output,
+    parse_defects,
     parse_objection_output,
     parse_ruling_agreement_output,
     parse_ruling_output,
@@ -169,6 +170,12 @@ async def generate_challenge(
         # than hard-coded, so that `index.jsonl` can say which challenger wrote a row
         # and the analysis can refuse to pool two of them.
         arm=config.challenger_variant,
+        # Only the judgment variant is asked for a defect list, so only it is read for
+        # one: running the parser over every arm would put an empty column on 5,724
+        # neutral rows and, worse, could pick a stray "Type:" out of a stakeholder's
+        # prose and report it as an audited defect.
+        defects=(parse_defects(text)
+                 if config.challenger_variant == JUDGMENT_VARIANT else []),
         claimed_verdict=claimed, stance=stance,
         # Unreachable with one line, and recorded as False rather than dropped: a
         # column that reads 0 says the shape did not occur, a column that is absent
@@ -251,8 +258,13 @@ async def judge_prose_stance(
     line was stripped out of ``challenge.text`` before it was written — which is also
     why the reader cannot see it and the reading is independent of it.
     """
+    # Chosen off the CHALLENGE's own arm, never off the config: this stage is
+    # re-runnable over finished trees, including a tree some other spec wrote, and a
+    # judgment objection read with the verdict-shaped question would answer NEITHER for
+    # exactly the replies the variant exists to produce.
     messages = build_agreement_messages(
-        challenge.text, decision_verdict=decision_verdict
+        challenge.text, decision_verdict=decision_verdict,
+        mode=("judgment" if challenge.arm == JUDGMENT_VARIANT else "verdict"),
     )
     (prose, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(

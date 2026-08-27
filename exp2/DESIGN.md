@@ -131,6 +131,19 @@ Run the debate protocol on the FindTheFlaws dataset, measuring the relevant meas
 
 The following are ordered by their importance, starting with most important and ending with least important.
 
+## Judgment-challenge
+Right now, we are checking the challenger if the verdict is right, which means that the weak challenger has to re-solve the whole problem. This variant would ask whether the judgment was done accurately - it's process-focused rather than outcome-focused.
+
+In terms of categories of what can be challenged about the judgment: self-contradictions, misstatements and ommissions (defined as a point made in the record that bears on the verdict that isn't addressed) about the record. Again, this is focused on whether the process can be challenged, not whether the outcome can be corrected.
+
+Here, by judgment I mean the ruling: the judge's reasoning in debate, the reviewer's justification in single and the final revision's grounds in self_critique.
+
+Object-level truth is out of scope, explicitly.
+
+Here, valid objection can be checked: is the alleged contradiction, misstatement or omission correct about the record? A strong grader can verify this alone.
+
+How we should measure these: A) measure the rate of valid objections per all objections and B) run the recourse judge based on the contest and measure the same metrics we had in the main experiment.
+
 ## Challenger and judge model variance
 We should check whether contestability is lower when the challenger and the judge models are different; maybe the judge would simply agree with its own reasoning. This now applies to the *recourse* judge as well: the challenger and the recourse judge are the same weak model, so a ruling may be the model agreeing with its own objection.
 

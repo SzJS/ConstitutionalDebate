@@ -38,7 +38,7 @@ from typing import Any, Callable, Sequence
 from .accounting import aggregate_calls, split_calls
 from .arms import CONDITIONS, DECIDERS
 from .client import OpenRouterClient
-from .config import ClientConfig, DebateConfig, GradingConfig
+from .config import JUDGMENT_VARIANT, ClientConfig, DebateConfig, GradingConfig
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
 from .recourse import _rule_by_judge, judge_prose_stance, judge_ruling_prose, run_recourse
@@ -581,6 +581,45 @@ async def run_stage_grade(
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "no decision to grade against"}
+        # The MODE is read off the challenge, never off the config. A tree can hold
+        # objections this invocation's spec did not write — `decisions_from` trees are
+        # re-graded, and a mixed tree would otherwise be graded by whatever spec ran
+        # last, scoring a judgment audit against a flaw annotation or the reverse.
+        judgment_mode = challenge.arm == JUDGMENT_VARIANT
+        if judgment_mode:
+            # NONE of the three gates below applies. Validity here is a property of the
+            # objection against the record — is the alleged contradiction, misstatement
+            # or omission really there — so it needs no recorded flaw, is defined on
+            # sound items, and is defined on decisions that were CORRECT: a judgment
+            # that misquotes the record is defective whichever verdict it reached, and
+            # calling that a false alarm would be scoring the wrong thing. Every cell
+            # whose stance is `contests` is graded (DESIGN.md, `## Judgment-challenge`).
+            try:
+                async with OpenRouterClient(api_key, client_config,
+                                            sink=_sink_to(directory / "calls.jsonl"),
+                                            semaphore=semaphore) as client:
+                    grade_result = await grade_objection(
+                        cell.case, challenge.text, config=config, grading=grading,
+                        client=client, mode="judgment",
+                        # The same text the challenger was shown, so its quotes can be
+                        # looked for where it took them from.
+                        record=record.challenger_view().body,
+                        judgment=record.decision_grounds,
+                        decision_verdict=record.verdict.verdict,
+                        defects=challenge.defects,
+                    )
+            except NotGradable as error:
+                return {"cell_id": cell.cell_id, "status": "skipped",
+                        "reason": str(error)}
+            except Exception as error:
+                return {"cell_id": cell.cell_id, "status": "failed",
+                        "error": f"{type(error).__name__}: {error}"}
+            (directory / "grade.json").write_text(
+                json.dumps(grade_result.to_dict(), indent=2), encoding="utf-8")
+            return {"cell_id": cell.cell_id, "status": "completed",
+                    "mode": "judgment", "valid": grade_result.valid,
+                    "defects": len(grade_result.defects),
+                    "line_mismatch": grade_result.line_mismatch}
         if not cell.case.item.gold_flawed or cell.case.flaw is None:
             # A false positive: the challenger objected to a sound solution. Its
             # revision rate is reported; its validity is undefined by design.
@@ -743,9 +782,24 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             grade_path = contest / "grade.json"
             if grade_path.is_file():
                 grade = json.loads(grade_path.read_text())
-                row["identified_flaw"] = grade["identified_flaw"]
-                row["characterises_the_flaw"] = grade["characterises_the_flaw"]
+                # WHICH grader wrote it. `grade_valid` means "found the recorded flaw"
+                # under the flaw grader and "alleged a defect that is really in the
+                # record" under the judgment one — two different claims over two
+                # different denominators, and a column that did not say which would let
+                # them be pooled. Absent `mode` means the flaw grader: every grade.json
+                # written before 2026-08-27 was one.
+                row["grade_mode"] = grade.get("mode", "flaw")
                 row["grade_valid"] = grade["valid"]
+                if row["grade_mode"] == "judgment":
+                    row["grade_defects_n"] = grade.get("defects_n")
+                    row["grade_defects_valid_n"] = grade.get("defects_valid_n")
+                    # The grader's summary line against its own per-defect rulings —
+                    # the same kind of instrument as `ruling_line_mismatch`, one layer
+                    # further out, and the bound on every judgment-mode rate.
+                    row["grade_line_mismatch"] = grade.get("line_mismatch")
+                else:
+                    row["identified_flaw"] = grade["identified_flaw"]
+                    row["characterises_the_flaw"] = grade["characterises_the_flaw"]
         rows.append(row)
     return rows
 

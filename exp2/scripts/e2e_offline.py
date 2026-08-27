@@ -19,8 +19,10 @@ The deciders are scripted to answer SOUND, because that is what makes the flawed
 without a wrong decision it would skip everything and the grading path would go
 unexercised.
 
-**Three passes.** The first two are the two recourse forms, each of which writes a
-different document; the third is a `contests_from` re-rule over the first's tree.
+**Five passes.** The first two are the two recourse forms, each of which writes a
+different document; the third is a `contests_from` re-rule over the first's tree; the
+fourth and fifth are the two challenger variants — the partisan arm and the judgment
+one.
 
 **Two of them, because there are two recourse forms and each writes a different
 document.** The first is the whole grid under ``recourse_form = "third_party"`` — what
@@ -47,6 +49,15 @@ is the two ends of the wire — that the advocacy paragraph reaches the prompt t
 challenger is actually sent, and that `arm` / `challenge_arm` / the analysis caveat all
 say so afterwards. A partisan run whose records claimed to be neutral, or a neutral run
 filed under a partisan name, is the failure this pass exists to make impossible.
+
+**The fifth pass is the judgment variant**: the whole grid again with
+`challenger_variant = "judgment"`, the arm that audits the decision's own reasoning
+against the record instead of re-solving the problem. What it is for is the property no
+other pass can show — that the grade stage runs on **every contested cell**, including
+the sound item whose decision was CORRECT and which the flaw grader skips as off-metric,
+and that what it writes says `mode: "judgment"`. The challenger's scripted reply carries
+a numbered defect list, so `parse_defects` is exercised over a real record, and the
+grader's carries one line per defect and the summary line.
 
 **Every root is deleted first.** Each stage resumes on its own artifacts, which is what a
 real run needs and exactly wrong here: a tree left by an earlier version of this script
@@ -99,6 +110,8 @@ ROOT_RERULE = REPO / "outputs" / "e2e-offline-2-rerule"
 # And the fourth: a cell is contested once, so the partisan arm cannot share a tree with
 # the neutral one either.
 ROOT_PARTISAN = REPO / "outputs" / "e2e-offline-2-partisan"
+# And the fifth, for the same reason.
+ROOT_JUDGMENT = REPO / "outputs" / "e2e-offline-2-judgment"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -148,6 +161,58 @@ DECIDER_REPLIES = {
 }
 
 
+# The judgment variant's two scripted replies. The challenger writes a numbered defect
+# list in the shape its prompt asks for — no `Thinking:`/`Argument:` labels, which is
+# what the weak model actually produces — and the grader rules on the defects one at a
+# time and then summarises. `Defect 2: INVALID` beside `Defect 1: VALID` is deliberate:
+# `valid` is `any(defect valid)`, and a pass where every defect graded the same way could
+# not tell that conjunction from a copy of the summary line.
+JUDGMENT_REPLIES = {
+    "challenger": (
+        "1. Type: misstatement\n"
+        '   Judgment says: "step 2 follows from step 1"\n'
+        '   Record says: "step 2 does not follow from step 1"\n'
+        "   Why it matters: the verdict rests on a step the record disputes.\n"
+        "2. Type: omission\n"
+        "   Judgment says: (the judgment does not address this)\n"
+        '   Record says: "the objection to step 2 was never answered"\n'
+        "   Why it matters: it is the point the verdict turned on.\n"
+        "Decision: REVERSE"
+    ),
+    "judgment_grader": (
+        "The first quote is not in the record; the second point is genuinely "
+        "unaddressed.\n"
+        "Defect 1: INVALID — the judgment does say that and the record agrees.\n"
+        "Defect 2: VALID — the record raises it and the judgment is silent.\n"
+        "Valid objection: YES"
+    ),
+}
+
+# What every pass answers with, mutated for the length of one pass by `scripted` below.
+# `install_fake_client` reads it at each context entry rather than closing over a copy,
+# so a pass can script a role without rebuilding the client factory.
+ACTIVE_REPLIES: dict = dict(DECIDER_REPLIES)
+
+
+class scripted:
+    """One pass's replies, restored afterwards. A pass that leaked its script into the
+    next one would make the next one's assertions describe replies it never asked for."""
+
+    def __init__(self, **replies):
+        self.replies = replies
+        self.before: dict = {}
+
+    def __enter__(self):
+        self.before = dict(ACTIVE_REPLIES)
+        ACTIVE_REPLIES.update(self.replies)
+        return self
+
+    def __exit__(self, *exc):
+        ACTIVE_REPLIES.clear()
+        ACTIVE_REPLIES.update(self.before)
+        return False
+
+
 def install_fake_client() -> list[FakeClient]:
     """Replace ``experiment.OpenRouterClient`` with the fake, as the tests do.
 
@@ -163,7 +228,7 @@ def install_fake_client() -> list[FakeClient]:
 
     class Ctx:
         def __init__(self, *args, **kwargs):
-            self.client = FakeClient(replies=dict(DECIDER_REPLIES),
+            self.client = FakeClient(replies=dict(ACTIVE_REPLIES),
                                      sink=kwargs.get("sink"))
 
         async def __aenter__(self):
@@ -256,7 +321,7 @@ async def main() -> int:
     # exactly wrong here: a tree left by an earlier version of this script would be
     # skipped rather than re-made, and every assertion below would then be describing
     # records the current code did not write.
-    for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN):
+    for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN, ROOT_JUDGMENT):
         if root.exists():
             shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
@@ -310,9 +375,10 @@ async def main() -> int:
     first = report_documents(ROOT) or (1 if stray else 0)
     third = await rerule_pass(config, client_config, grading, grid)
     fourth = await partisan_pass(config, client_config, grading, grid)
+    fifth = await judgment_pass(config, client_config, grading, grid)
     return await per_condition_pass(
         per_condition_config, client_config, grading, by_id
-    ) or first or third or fourth
+    ) or first or third or fourth or fifth
 
 
 async def partisan_pass(config, client_config, grading, grid) -> int:
@@ -387,6 +453,136 @@ async def partisan_pass(config, client_config, grading, grid) -> int:
 
     print(f"partisan invariants violated: {stray}")
     return report_documents(ROOT_PARTISAN) or (1 if stray else 0)
+
+
+async def judgment_pass(config, client_config, grading, grid) -> int:
+    """The judgment variant, end to end: audit in, `mode: "judgment"` out.
+
+    The property no other pass can show is the GATE. Under the flaw grader a cell is
+    graded only if the item is flawed, the annotation says what is wrong, and the
+    decision was wrong; under this variant validity is a property of the objection
+    against the record, so every contested cell is graded — the sound item included, and
+    the cells whose decision was CORRECT included. This grid has both: the deciders all
+    answer SOUND, so `law-evi1_gpt4_A-s4` (a sound item) is decided correctly and is
+    skipped by every other pass in this script.
+
+    Checked here over real records rather than a fixture:
+
+      the PROMPT   the challenger was sent the audit instructions and not the
+                   stakeholder's, read back off `calls.jsonl` — the wire log, not the
+                   template;
+      the PARSE    the numbered defect list survived into `challenge.json`;
+      the GATE     every contested cell has a `grade.json`, and the ones on correctly
+                   decided cells are there too;
+      the RECORD   every grade says `mode: "judgment"` and every challenge says
+                   `arm: "judgment"`, in the files and in `index.jsonl`;
+      the CAVEAT   `metrics.json` says in words which validity its rate is.
+    """
+    arm = "judgment"
+    config = dataclasses.replace(config, challenger_variant=arm)
+    ROOT_JUDGMENT.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\nfifth pass — the judgment variant")
+    print(f"outputs: {ROOT_JUDGMENT}")
+    print(f"cells: {len(grid)}  challenger_variant: {config.challenger_variant} — the "
+          "challenger audits the judgment against the record\n")
+
+    with scripted(**JUDGMENT_REPLIES):
+        await run_stages(ROOT_JUDGMENT, grid, config, client_config, grading)
+
+    stray: dict[str, int] = {}
+
+    # The prompt that was actually sent, off the wire log.
+    prompts: dict[str, int] = {}
+    for path in sorted(ROOT_JUDGMENT.glob("cells/*/contests/*/runs/*/calls.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            call = json.loads(line)
+            if call.get("role") != "challenger":
+                continue
+            system = call["request_body"]["messages"][0]["content"]
+            audit = "auditing the **judgment**" in system
+            stakeholder = "You are not required to find fault" in system
+            key = ("audit instructions" if audit and not stakeholder else
+                   "STAKEHOLDER instructions" if stakeholder and not audit
+                   else "neither/both")
+            prompts[key] = prompts.get(key, 0) + 1
+    print(f"challenger system prompts sent, by task: {prompts}")
+    if set(prompts) != {"audit instructions"}:
+        stray["a challenger was sent something other than the audit instructions"] = 1
+
+    # The objections, their arms and their parsed defect lists.
+    arms: dict[str, int] = {}
+    defect_counts: dict[int, int] = {}
+    contested = 0
+    for path in sorted(ROOT_JUDGMENT.glob("cells/*/contests/*/runs/*/challenge.json")):
+        challenge = json.loads(path.read_text(encoding="utf-8"))
+        arms[str(challenge.get("arm"))] = arms.get(str(challenge.get("arm")), 0) + 1
+        if challenge.get("arm") != arm:
+            stray[f"a challenge recorded under arm {challenge.get('arm')!r}"] = 1
+        if challenge.get("stance") != "contests":
+            continue
+        contested += 1
+        defects = challenge.get("defects") or []
+        defect_counts[len(defects)] = defect_counts.get(len(defects), 0) + 1
+        types = [d.get("type") for d in defects]
+        if types != ["misstatement", "omission"]:
+            stray[f"a defect list parsed as {types}"] = 1
+        if not defects or not defects[0].get("record_says"):
+            stray["a defect with no record quote parsed out of a reply that gave one"] = 1
+    print(f"arms recorded on {sum(arms.values())} challenges: {arms}")
+    print(f"defects parsed per contested objection: {defect_counts}")
+
+    # THE GATE. Every contested cell is graded, and the grades say which instrument
+    # wrote them. The cells whose decision was CORRECT are counted separately because
+    # they are the ones every other pass in this script skips.
+    graded = sorted(ROOT_JUDGMENT.glob("cells/*/contests/*/runs/*/grade.json"))
+    modes: dict[str, int] = {}
+    for path in graded:
+        grade = json.loads(path.read_text(encoding="utf-8"))
+        modes[str(grade.get("mode"))] = modes.get(str(grade.get("mode")), 0) + 1
+        # `valid` is the conjunction of the per-defect lines: the script's grader marks
+        # defect 1 INVALID and defect 2 VALID, so a `valid` that merely copied the
+        # summary line would be indistinguishable here from one that read the list.
+        if (grade.get("defects_n"), grade.get("defects_valid_n")) != (2, 1):
+            stray["a grade that did not rule on the two defects separately"] = 1
+        if grade.get("valid") is not True or grade.get("line_mismatch") is not False:
+            stray["a grade whose validity does not follow its own defect lines"] = 1
+    print(f"contested cells: {contested}   graded: {len(graded)}   modes: {modes}")
+    if len(graded) != contested:
+        stray["a contested cell was not graded"] = 1
+    if set(modes) != {"judgment"}:
+        stray["a grade was written by the wrong instrument"] = 1
+
+    rows = build_index(grid, root=ROOT_JUDGMENT,
+                       challenger_model=config.challenger_model_for())
+    index = ROOT_JUDGMENT / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, CONDITIONS)
+    (ROOT_JUDGMENT / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                                encoding="utf-8")
+    on_correct = [r for r in rows
+                  if r.get("grade_mode") == "judgment" and r.get("initially_correct")]
+    print(f"indexed {len(rows)} rows   challenge_arm counts: {metrics['challenge_arm']}")
+    print(f"judgment grades on CORRECTLY decided cells (the flaw grader skips these): "
+          f"{len(on_correct)}")
+    if not on_correct:
+        stray["no correctly decided cell was graded — the gate did not change"] = 1
+    if metrics["challenge_arm"] != {arm: sum(arms.values())}:
+        stray["the metrics do not count the arm the records carry"] = 1
+    rates = metrics["overall"]["rates"]
+    print(f"valid_objection_judgment: {rates['valid_objection_judgment']['k']}/"
+          f"{rates['valid_objection_judgment']['n']}   on correct: "
+          f"{rates['valid_objection_judgment_given_correct']['k']}/"
+          f"{rates['valid_objection_judgment_given_correct']['n']}   "
+          f"defects: {metrics['overall']['judgment_defects']}")
+    if rates["judgment_grade_line_mismatch"]["k"]:
+        stray["the grader's summary line contradicted its own defect lines"] = 1
+    caveat = next((c for c in metrics["caveats"] if "JUDGMENT AUDIT" in c), "")
+    print(f"judgment caveat: {caveat[:150]}...")
+    if not caveat or "PROCESS validity" not in caveat:
+        stray["the metrics do not say which validity the rate is"] = 1
+
+    print(f"judgment invariants violated: {stray}")
+    return report_documents(ROOT_JUDGMENT) or (1 if stray else 0)
 
 
 async def rerule_pass(config, client_config, grading, grid) -> int:

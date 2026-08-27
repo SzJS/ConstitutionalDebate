@@ -47,6 +47,7 @@ from .config import (
     CHALLENGER_VARIANTS,
     CLIENT_WHY,
     GRADING_WHY,
+    JUDGMENT_VARIANT,
     WHY,
     ClientConfig,
     DebateConfig,
@@ -151,7 +152,15 @@ def print_estimate(grid, config: DebateConfig,
     agreement = 0 if contests_from is not None else len(grid)
     # One per ruling: the judge's line read against the judge's own prose.
     ruling_agreement = ruling
+    # Under the judgment variant the grading term is the GRID, not the gradable subset:
+    # that grader checks alleged defects against the record and opens no annotation, so
+    # every contested cell is graded — sound items and correctly decided cells included.
+    # Quoting the flaw grader's 87 for a run that makes up to 207 grader calls would
+    # understate the spend at the moment it is being agreed to, which is the one thing
+    # this line exists not to do.
+    judgment = config.challenger_variant == JUDGMENT_VARIANT
     gradable = (0 if contests_from is not None
+                else len(grid) if judgment
                 else sum(1 for cell in grid if cell.case.gradable))
     print(f"\ncells: {len(grid)}  " +
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
@@ -163,6 +172,11 @@ def print_estimate(grid, config: DebateConfig,
           f"ruling <= {ruling}, agreement <= {agreement}, "
           f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}  "
           f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable}")
+    if judgment:
+        print("the grading term is the whole grid: `challenger_variant = \"judgment\"` "
+              "grades every cell whose objection contests, against the RECORD rather "
+              "than the recorded flaw — so the annotation gates that hold the ordinary "
+              "grading term down do not apply.")
     if contests_from is not None:
         print(f"the ruling term is COUNTED, not bounded: {ruling} of the {len(grid)} "
               f"cells have a source objection whose stance is `contests`. The rest "
@@ -273,8 +287,13 @@ def main(argv: list[str] | None = None) -> int:
     # `challenge_arm` column would say "neutral" and nobody would read it before the
     # money was spent. `partisan.toml` ships with the field commented out on purpose —
     # the winning clause is chosen by a pilot — so this is what stops it running as-is.
+    #
+    # `judgment` is in the same trap for the same reason and is checked with it: a spec
+    # called `judgment-pilot` with the field missing would run the stakeholder arm, grade
+    # it against `flaw.json`, and produce a tree whose `grade_mode` said "flaw" under a
+    # name that promised an audit.
     stated_variant = spec.get("debate", {}).get("challenger_variant")
-    if stated_variant is None and "partisan" in name:
+    if stated_variant is None and ("partisan" in name or "judgment" in name):
         raise SystemExit(
             f"this spec is named {name!r} but sets no `challenger_variant`, so it would "
             f"run the neutral challenger — `challenger_variant` defaults to "

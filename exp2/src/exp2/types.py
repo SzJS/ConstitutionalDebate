@@ -895,6 +895,13 @@ class Challenge:
     # whoever wrote it and carries no variant. Every challenge.json written before
     # 2026-08-27 carries "neutral", so old trees still load.
     arm: str | None = None
+    # The judgment variant's structured findings, as `prompts.parse_defects` read them
+    # back: one dict per numbered defect, `{type, judgment_says, record_says, why}`.
+    # Empty for every other arm, and empty for a judgment objection that declined or
+    # whose list could not be read — a count of 0 beside a REVERSE line is a
+    # phantom-shaped reply, which the `agreement` stage is what catches, so it is
+    # recorded rather than repaired. The grader rules on these one at a time.
+    defects: list[dict[str, Any]] = field(default_factory=list)
     visibility: str | None = None  # "public" | "full" — what the generator saw
     model: str | None = None
     call_id: str | None = None

@@ -116,6 +116,14 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
     #              though those objections had failed rather than been unmeasurable.
     detectable = false_negative
     characterisable = [r for r in false_negative if r.get("gradable")]
+    # The judgment variant grades a different thing, so its rows are held out of both
+    # bars above and given their own below. `grade_valid` there means "the defect this
+    # objection alleged is really in the record" — process validity, checked against the
+    # record with no annotation involved — and averaging it with "found the recorded
+    # flaw" would produce a number that is about neither.
+    judgment_graded = [r for r in rows if r.get("grade_mode") == "judgment"]
+    detectable = [r for r in detectable if r.get("grade_mode") != "judgment"]
+    characterisable = [r for r in characterisable if r.get("grade_mode") != "judgment"]
 
     # `challenge_raised` is the CONTESTING stance, not the word the challenger wrote.
     # An objection that agrees with the verdict it objects to is not a detection, and
@@ -179,8 +187,30 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
               [r for r in ruled if r.get("verdict") == "SOUND"],
               "ruling_line_mismatch"),
     ]
+    if judgment_graded:
+        # The judgment variant's headline, and the reason it can have one at all: no
+        # `flaw.json` is consulted, so EVERY contested cell is gradable — sound items and
+        # correct decisions included. The split is by `initially_correct` rather than
+        # conditioned on it: a valid defect found in the reasoning of a decision that
+        # reached the right verdict is a real finding about the process, not a false
+        # alarm, and the two halves are reported side by side for exactly that reason.
+        rates += [
+            _rate("valid_objection_judgment", judgment_graded, "grade_valid"),
+            _rate("valid_objection_judgment_given_incorrect",
+                  _where(judgment_graded, initially_correct=False), "grade_valid"),
+            _rate("valid_objection_judgment_given_correct",
+                  _where(judgment_graded, initially_correct=True), "grade_valid"),
+            # The instrument that bounds the three above: the grader's own summary line
+            # against its own per-defect rulings. `valid` is the conjunction of the
+            # per-defect rulings, so a non-zero rate here is the grader disagreeing with
+            # itself and is read before any rate above it.
+            _rate("judgment_grade_line_mismatch", judgment_graded,
+                  "grade_line_mismatch"),
+        ]
     return {
         "n": len(rows),
+        "n_judgment_graded": len(judgment_graded),
+        "judgment_defects": _judgment_defects(judgment_graded),
         "n_incorrect": len(incorrect),
         "n_correct": len(correct),
         "n_false_negative": len(false_negative),
@@ -194,6 +224,67 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         "ruling_line_vs_prose": _ruling_line_vs_prose(ruled),
         "comprehension": _comprehension(rows),
     }
+
+
+def _judgment_defects(rows: Sequence[dict]) -> dict[str, Any]:
+    """How many defects the judgment objections alleged, and how many held up.
+
+    Counts rather than a rate, and reported even when every rate above is empty: the
+    slice's gate is "does the challenger raise objections against judgments at all, and
+    are any of them valid", which a rate over an empty denominator cannot answer.
+
+    ``objections_alleging_nothing`` is the shape to watch — a `Decision: REVERSE` with
+    no readable defect list is the judgment variant's phantom, and the `agreement` stage
+    is what says whether its prose alleged anything.
+    """
+    if not rows:
+        return {}
+    alleged = [r.get("grade_defects_n") for r in rows
+               if r.get("grade_defects_n") is not None]
+    valid = [r.get("grade_defects_valid_n") for r in rows
+             if r.get("grade_defects_valid_n") is not None]
+    return {
+        "objections_graded": len(rows),
+        "defects_alleged": sum(alleged),
+        "defects_valid": sum(valid),
+        "objections_alleging_nothing": sum(1 for n in alleged if not n),
+        "defects_per_objection": (sum(alleged) / len(alleged)) if alleged else None,
+    }
+
+
+def _judgment_mode_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where a judgment grade is present in this index.
+
+    Two readings of `grade_valid` exist in this codebase and they are not the same
+    claim. A reader who met "valid objection: 41%" without this paragraph would take it
+    for the flaw grader's number — objections that found the flaw the dataset recorded —
+    when it is the audit's: alleged defects that are really in the record.
+    """
+    graded = [r for r in rows if r.get("grade_mode") == "judgment"]
+    if not graded:
+        return None
+    arms = sorted({row.get("challenge_arm") for row in rows} - {None})
+    mixed = "" if arms == ["judgment"] else (
+        f" This index MIXES arms ({', '.join(arms)}) — split it on `challenge_arm` "
+        "before reading any rate, since none of them has one population."
+    )
+    return (
+        "THE GRADE HERE IS A JUDGMENT AUDIT (challenger_variant = \"judgment\"), so "
+        "`valid_objection_judgment` is PROCESS validity and not the flaw grader's "
+        "number: it is the share of objections alleging at least one defect — a "
+        "contradiction, a misstatement of the record, or an omission — that the grader "
+        "could verify **in the record**, with `flaw.json` never opened. Three things "
+        f"follow. Every contested cell is graded ({len(graded)} here), including sound "
+        "items and cells whose decision was CORRECT, because a judgment that misquotes "
+        "the record is defective whichever verdict it reached — a valid defect on a "
+        "correct decision is a real finding and is NOT a false alarm, which is why the "
+        "rate is split by `initially_correct` rather than conditioned on it. The "
+        "objection rate is not a detection rate: this challenger was not asked whether "
+        "the verdict is right and was forbidden the object level, so it is not "
+        "comparable with any neutral or partisan raise rate. And `identified_flaw` / "
+        "`characterises_the_flaw` are absent from these rows by construction, so "
+        "`valid_objection` above is computed over the flaw-graded rows only." + mixed
+    )
 
 
 def _stances(rows: Sequence[dict]) -> dict[str, Any]:
@@ -581,6 +672,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         # Conditional: it is a statement about the run, not a standing limitation, and a
         # caveat that appears on every index is one nobody reads.
         _partisan_arm_caveat(rows),
+        _judgment_mode_caveat(rows),
     ]
     return [caveat for caveat in stated if caveat]
 

@@ -58,8 +58,8 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
 #                   an error for `debate`, which has no conversation to replay.
 RECOURSE_FORMS: tuple[str, ...] = ("per_condition", "third_party", "in_conversation")
 
-# Which standpoint the challenger is written from. The clauses themselves live in
-# ``prompts.CHALLENGER_ARMS`` — this is the vocabulary, kept here because the config
+# Which standpoint the challenger is written from. The clauses for the first four live
+# in ``prompts.CHALLENGER_ARMS`` — this is the vocabulary, kept here because the config
 # field is validated against it and ``prompts`` imports ``config`` rather than the other
 # way round. A test asserts the two agree.
 #
@@ -73,12 +73,28 @@ RECOURSE_FORMS: tuple[str, ...] = ("per_condition", "third_party", "in_conversat
 #                          mistaken, and may still report finding no grounds. Three
 #                          wordings of the same standpoint, compared on a 207-cell slice
 #                          before one of them is run at scale.
+#   judgment           the judgment-challenge variant (DESIGN.md, `## Judgment-challenge`).
+#                      Not a standpoint paragraph at all, which is why it has no entry in
+#                      ``CHALLENGER_ARMS``: the challenger's TASK changes. It audits the
+#                      judgment — the judge's reasoning in `debate`, the reviewer's
+#                      justification in `single`, the final revision's grounds in
+#                      `self_critique` — against the published record for three defect
+#                      types (contradiction, misstatement, omission), is forbidden to
+#                      argue the object level, and writes a structured defect list. Its
+#                      own system prompt, its own `agreement` question and its own
+#                      grader; every one of them keyed off this name.
 CHALLENGER_VARIANTS: tuple[str, ...] = (
     "neutral",
     "partisan_advocate",
     "partisan_assigned",
     "partisan_auditor",
+    "judgment",
 )
+
+# The one variant that is a MODE rather than a clause. Named so that the three call
+# sites — challenger prompt, agreement prompt, grader — test against a constant instead
+# of a string literal each, and so a reader of any of them can find the other two.
+JUDGMENT_VARIANT = "judgment"
 
 
 def _default_config_path() -> Path:
@@ -399,7 +415,7 @@ WHY: dict[str, str] = {
     "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",
     "comprehension_model": "unset means the challenger model — the probe asks the reader about what it just read.",
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
-    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision.",
+    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above.",
 }
 
 

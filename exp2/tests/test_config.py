@@ -232,7 +232,7 @@ def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
     # decision run's value for it
     assert "challenger_variant" in RECOURSE_ONLY_KEYS
     assert CHALLENGER_VARIANTS == ("neutral", "partisan_advocate", "partisan_assigned",
-                                   "partisan_auditor")
+                                   "partisan_auditor", "judgment")
     for variant in CHALLENGER_VARIANTS:
         assert DebateConfig(
             **debate_kwargs(challenger_variant=variant)).challenger_variant == variant
@@ -244,11 +244,21 @@ def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
 def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
     """Two modules hold the same set — the names, and the paragraphs they select — and
     `prompts` imports `config` rather than the other way round, so nothing structural
-    keeps them equal."""
-    from exp2.config import CHALLENGER_VARIANTS
-    from exp2.prompts import CHALLENGER_ARMS
+    keeps them equal.
 
-    assert set(CHALLENGER_ARMS) == set(CHALLENGER_VARIANTS)
+    One name is deliberately NOT in the clause table: `judgment` is a mode, not a
+    standpoint. It has its own system prompt because the challenger's task changes, so a
+    clause selected by name would be the wrong shape for it — and the whole point of
+    `challenger_arm_clause` raising on an unknown name is that a mode which fell through
+    to a clause would be a judgment run wearing a stakeholder's prompt.
+    """
+    from exp2.config import CHALLENGER_VARIANTS, JUDGMENT_VARIANT
+    from exp2.prompts import CHALLENGER_ARMS, CHALLENGER_SYSTEM_JUDGMENT
+
+    assert set(CHALLENGER_ARMS) | {JUDGMENT_VARIANT} == set(CHALLENGER_VARIANTS)
+    assert JUDGMENT_VARIANT not in CHALLENGER_ARMS
+    assert JUDGMENT_VARIANT in CHALLENGER_VARIANTS
+    assert CHALLENGER_SYSTEM_JUDGMENT  # the prompt that stands in for the missing clause
 
 
 def test_recourse_form_defaults_to_what_every_paid_run_actually_did():

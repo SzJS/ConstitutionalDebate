@@ -26,6 +26,7 @@ from exp2.prompts import (
     build_debater_messages,
     build_grader_messages,
     build_judge_messages,
+    build_judgment_grader_messages,
     build_recourse_judge_messages,
     build_repair_messages,
     build_solo_opening,
@@ -72,6 +73,15 @@ def every_message_list(item, sides, config):
             decision_grounds="The judge's grounds."))
           for variant in ("partisan_advocate", "partisan_assigned",
                           "partisan_auditor")],
+        # The judgment variant is a prompt in its own right — its own system message and
+        # its own user turn — so it gets the same guarantees as every other role.
+        ("challenger-judgment", build_challenger_messages(
+            item, dataclasses.replace(config, challenger_variant="judgment"), record,
+            sides=sides, decision_verdict=FLAWED,
+            decision_grounds="The judge's grounds.")),
+        ("judgment-grader", build_judgment_grader_messages(
+            item, record="Alice: the record.", judgment="The judge's grounds.",
+            decision_verdict=FLAWED, objection="An objection.", n_defects=1)),
         ("recourse-judge", build_recourse_judge_messages(
             item, sides, record, decision_verdict=FLAWED, objection="An objection.")),
     ]
@@ -107,7 +117,8 @@ def test_all_five_roles_are_told_what_a_flaw_is_and_told_the_same_thing():
         objection="obj")
 
     challengers = [name for name in built if name.startswith("challenger-")]
-    assert len(challengers) == 5  # the two records x neutral, plus the three partisan arms
+    # the two records x neutral, the three partisan arms, and the judgment variant
+    assert len(challengers) == 6
     for name in ("debater-a-r1", "judge", "solo-answer", "grader", *challengers):
         system = built[name][0]
         assert system["role"] == "system", name
@@ -407,6 +418,226 @@ def test_an_unknown_arm_is_refused_rather_than_falling_back_to_neutral():
     with pytest.raises(ValueError) as excinfo:
         challenger_arm_clause("partisan", contrary_phrase=SOUND_PHRASE)
     assert "unknown challenger variant" in str(excinfo.value)
+
+
+# --- the judgment variant ------------------------------------------------------------
+
+
+def _judgment_messages(decision_verdict=FLAWED, grounds="The judge's grounds."):
+    return build_challenger_messages(
+        make_item(), make_config(challenger_variant="judgment"),
+        DecisionRecord.for_solo_body("The reviewer read step 2."), sides=make_sides(),
+        decision_verdict=decision_verdict, decision_grounds=grounds)
+
+
+def test_the_judgment_challenger_is_asked_to_audit_the_reasoning_not_the_problem():
+    """The whole variant is this instruction. A judgment prompt that let the challenger
+    argue the object level would be the neutral arm with extra words, and the comparison
+    against it would measure nothing."""
+    system, user = (m["content"] for m in _judgment_messages())
+
+    assert FLAW_DEFINITION in system            # the same question, for context
+    assert "auditing the **judgment**" in system
+    # object-level argument forbidden, in both messages
+    assert "you must not argue about the problem itself" in system
+    assert "an error the judgment inherits from the record is not a defect" in system
+    assert "Do not argue about whether the text in <solution> is flawed." in user
+    # the three defect types, named
+    for defect in ("contradiction", "misstatement", "omission"):
+        assert f"**{defect}**" in system, defect
+    # quotes are mandatory — that is what keeps it an audit rather than a re-solve
+    assert "Every defect must quote the judgment and quote the record." in system
+    assert "Judgment says:" in user and "Record says:" in user
+    # the same decide-last token, with the variant's gloss
+    assert "`Decision: REVERSE` — the judgment contains at least one defect" in user
+    assert "`Decision: STANDS` — the judgment is faithful to the record." in user
+    assert user.rstrip().endswith("the judgment is faithful to the record.")
+    # and the phrase the neutral prompt was kept free of stays out of this one too
+    assert "examine it yourself" not in system
+
+
+def test_the_judgment_challenger_is_shown_the_grounds_as_the_thing_under_audit():
+    """`{grounds}` is `RunRecord.decision_grounds` — the judge's reasoning for a debate
+    and the FINAL revision's grounds for self_critique. The neutral arm shows it as
+    <grounds>; here it is the document being audited and is labelled as one."""
+    _, user = (m["content"] for m in _judgment_messages(grounds="Step 2 was checked."))
+    assert "<judgment>\nStep 2 was checked.\n</judgment>" in user
+    assert "<grounds>" not in user
+    # the record, the problem and the solution are all still there: a quote cannot be
+    # checked against a record the challenger cannot read
+    assert "<problem>" in user and "<solution>" in user
+    assert "The reviewer read step 2." in user
+
+
+def test_the_judgment_prompt_never_assigns_the_challenger_a_side():
+    """The partisan arms hand the challenger the answer the decision went against. This
+    one must not: an audit that has been told which verdict it wants is an advocate."""
+    against_flawed = "".join(m["content"] for m in _judgment_messages(FLAWED))
+    against_sound = "".join(m["content"] for m in _judgment_messages(SOUND))
+    for text in (against_flawed, against_sound):
+        assert "You represent the side" not in text
+        assert "your task is to argue that the decision was mistaken" not in text
+    # the decision itself is still stated — it is what the judgment concluded — but the
+    # instruction that closes the reply is the same text either way
+    from exp2.prompts import CHALLENGE_DECISION_INSTRUCTION_JUDGMENT
+
+    assert "{" not in CHALLENGE_DECISION_INSTRUCTION_JUDGMENT
+    assert CHALLENGE_DECISION_INSTRUCTION_JUDGMENT in against_flawed
+    assert CHALLENGE_DECISION_INSTRUCTION_JUDGMENT in against_sound
+
+
+def test_the_judgment_reply_parses_through_the_unchanged_objection_parser():
+    """Reusing the `Decision:` token is what keeps the parser, the stance, the agreement
+    stage and the whole recourse machinery untouched."""
+    reply = (
+        "1. Type: misstatement\n"
+        '   Judgment says: "Alice conceded step 2"\n'
+        '   Record says: "Alice: step 2 holds"\n'
+        "   Why it matters: the concession is what the verdict rests on.\n"
+        "Decision: REVERSE"
+    )
+    thinking, word, body, mode = parse_objection_output(reply)
+    assert word == "REVERSE"
+    assert mode == "salvaged_no_labels"
+    assert "Decision:" not in body
+    assert "Type: misstatement" in body
+
+
+def test_parse_defects_reads_the_three_shapes_and_gives_up_quietly():
+    """Best-effort by design: nothing downstream gates on it, so a formatting slip must
+    cost a count and not a cell."""
+    from exp2.prompts import parse_defects
+
+    one_of_each = (
+        "1. Type: misstatement\n"
+        '   Judgment says: "the record shows Bob conceded"\n'
+        '   Record says: "Bob: I do not concede step 2"\n'
+        "   Why it matters: the concession is the verdict's only support.\n"
+        "2. Type: omission\n"
+        "   Judgment says: (the judgment does not address this)\n"
+        '   Record says: "Alice: the formula is C_n = binom(2n,n)/(n+1)"\n'
+        "   Why it matters: it answers the point the verdict turned on.\n"
+        "3. Type: contradiction\n"
+        '   Judgment says: "step 2 is correct"\n'
+        '   Judgment says: "step 2 divides by zero"\n'
+        '   Record says: "Alice: step 2 divides by zero"\n'
+        "   Why it matters: the verdict cannot follow from both.\n"
+    )
+    defects = parse_defects(one_of_each)
+    assert [d["type"] for d in defects] == ["misstatement", "omission", "contradiction"]
+    assert defects[0]["record_says"] == ['"Bob: I do not concede step 2"']
+    assert defects[1]["judgment_says"] == ["(the judgment does not address this)"]
+    # a contradiction quotes the judgment TWICE, and both survive
+    assert len(defects[2]["judgment_says"]) == 2
+    assert defects[2]["why"] == "the verdict cannot follow from both."
+
+    # a defect alleged with no quotes is kept — the grader is what rules it INVALID
+    bare = parse_defects("1. Type: omission\nDecision: REVERSE")
+    assert bare == [{"type": "omission", "judgment_says": [], "record_says": [],
+                     "why": ""}]
+
+    # and prose with no list at all is zero defects, not an exception
+    assert parse_defects("The judgment looks fine to me.\nDecision: STANDS") == []
+    assert parse_defects("Type: vibes\nJudgment says: \"x\"") == []
+
+
+def test_the_judgment_grader_is_given_the_record_the_challenger_saw():
+    """A misstatement is a claim about what the record does not say, and that cannot be
+    checked against a fragment. The grader gets the full challenger-view body, the
+    judgment, the problem, the solution and the objection — and never the annotation."""
+    messages = build_judgment_grader_messages(
+        make_item(), record="Alice: step 2 divides by zero.",
+        judgment="Bob conceded step 2.", decision_verdict=FLAWED,
+        objection="1. Type: misstatement", n_defects=1)
+    system, user = (m["content"] for m in messages)
+
+    assert "<record>\nAlice: step 2 divides by zero.\n</record>" in user
+    assert "<judgment>\nBob conceded step 2.\n</judgment>" in user
+    assert "1 numbered defect" in user
+    assert "Defect 1: <VALID|INVALID>" in user
+    assert "Valid objection: <YES|NO>" in user
+    # it grades the process, not the problem
+    assert "You are NOT judging whether the verdict was right" in system
+    assert "not a defect of the judgment" in system
+    # never the annotation: `flaw.json` has no door into this instrument at all
+    assert "recorded_flaw" not in user and "Identified the flaw" not in user
+
+    # an objection whose list could not be read is still graded, with the other closing
+    unnumbered = build_judgment_grader_messages(
+        make_item(), record="r", judgment="j", decision_verdict=SOUND,
+        objection="the judgment ignores Alice", n_defects=0)[1]["content"]
+    assert "did not number its defects" in unnumbered
+
+
+def test_the_judgment_grade_is_read_per_defect_and_the_summary_line_is_required():
+    from exp2.prompts import parse_judgment_grade_output
+
+    defects, line, reasoning, mode = parse_judgment_grade_output(
+        "The first quote checks out; the second does not.\n"
+        "Defect 1: VALID — the record does not say that.\n"
+        "Defect 2: INVALID — the quote is accurate and the point is addressed.\n"
+        "Valid objection: YES"
+    )
+    assert [(d["index"], d["valid"]) for d in defects] == [(1, True), (2, False)]
+    assert defects[0]["reason"] == "the record does not say that."
+    assert line is True and mode == "strict"
+    assert reasoning == "The first quote checks out; the second does not."
+
+    # the summary line alone parses, and says so in parse_mode rather than silently
+    defects, line, _, mode = parse_judgment_grade_output("Valid objection: NO")
+    assert defects == [] and line is False and mode == "summary_line_only"
+
+    # a restated list decides twice; the last ruling is the one it meant
+    defects, _, _, _ = parse_judgment_grade_output(
+        "Defect 1: VALID\nOn reflection:\nDefect 1: INVALID\nValid objection: NO")
+    assert [(d["index"], d["valid"]) for d in defects] == [(1, False)]
+
+    # the template echoed back is not an answer, and neither is a missing summary
+    for bad in ("Defect 1: <VALID|INVALID>\nValid objection: <YES|NO>",
+                "Defect 1: VALID\nThe objection is a good one.",
+                "I could not tell."):
+        with pytest.raises(MalformedOutputError):
+            parse_judgment_grade_output(bad)
+
+
+def test_the_judgment_grader_is_repaired_with_its_own_format():
+    """exp1's lesson, restated: a role repaired with another role's instruction is
+    asked for a reply its own parser refuses, and the one repair attempt is spent on a
+    prompt that could not have worked."""
+    from exp2.prompts import parse_judgment_grade_output
+
+    repair = repair_instruction_for("judgment_grader", 0)
+    assert "Valid objection: <YES|NO>" in repair
+    assert "Identified the flaw" not in repair
+    assert REPAIR_INSTRUCTIONS["judgment_grader"] is not REPAIR_INSTRUCTIONS["grader"]
+    # the challenger, by contrast, shares one repair across both modes — the closing
+    # line it owes is the same token — so the repaired reply still parses
+    assert parse_objection_output(
+        "Step 2 was misquoted.\nDecision: REVERSE")[1] == "REVERSE"
+    assert "Decision: <STANDS|REVERSE>" in repair_instruction_for("challenger", 400)
+    with pytest.raises(MalformedOutputError):
+        parse_judgment_grade_output(repair_instruction_for("grader", 0))
+
+
+def test_the_agreement_probe_asks_about_the_judgment_in_judgment_mode():
+    """A judgment objection argues nothing about the verdict, so the verdict-shaped
+    question would answer NEITHER for exactly the replies this variant produces — and
+    `phantom_contest` would stop measuring anything."""
+    from exp2.prompts import build_agreement_messages
+
+    verdict = build_agreement_messages("obj", decision_verdict=FLAWED)[1]["content"]
+    judgment = build_agreement_messages(
+        "obj", decision_verdict=FLAWED, mode="judgment")[1]["content"]
+    assert judgment != verdict
+    assert "audit those reasons — the judgment" in judgment
+    assert "identify at least one defect of that kind" in judgment
+    # the same three tokens and the same field names, so the arithmetic downstream is
+    # the same arithmetic
+    for token in ("`Prose: WRONG`", "`Prose: RIGHT`", "`Prose: NEITHER`"):
+        assert token in judgment and token in verdict
+    assert "<response>\nobj\n</response>" in judgment
+    with pytest.raises(ValueError, match="unknown agreement mode"):
+        build_agreement_messages("obj", decision_verdict=FLAWED, mode="vibes")
 
 
 def test_comprehension_is_asked_in_the_challengers_own_conversation():

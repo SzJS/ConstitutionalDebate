@@ -567,6 +567,115 @@ async def test_a_partisan_contest_records_its_arm_and_is_written_from_it(tmp_pat
                    for c in sent)
 
 
+# --- the judgment variant -------------------------------------------------------------
+
+JUDGMENT_OBJECTION = (
+    "1. Type: misstatement\n"
+    '   Judgment says: "the sound side answered the objection"\n'
+    '   Record says: "Bob: I do not answer step 2"\n'
+    "   Why it matters: the verdict rests on an answer nobody gave.\n"
+    "2. Type: omission\n"
+    "   Judgment says: (the judgment does not address this)\n"
+    '   Record says: "Alice: step 2 divides by zero"\n'
+    "   Why it matters: it is the point the verdict turned on.\n"
+    "Decision: REVERSE"
+)
+
+JUDGMENT_GRADE = (
+    "The first quote is not in the record; the second point is addressed.\n"
+    "Defect 1: VALID — the record does not say that.\n"
+    "Defect 2: INVALID — the judgment does address it.\n"
+    "Valid objection: YES"
+)
+
+
+async def test_a_judgment_contest_is_graded_on_a_cell_the_flaw_grader_would_skip(
+    tmp_path, no_network
+):
+    """The three gates the flaw grader applies — sound item, no annotation, correct
+    decision — all fall away here, because validity is a property of the objection
+    against the RECORD. This cell is decided CORRECTLY (the fake judge answers FLAWED on
+    a flawed item), which the flaw grader skips as off-metric; under the judgment mode a
+    defect in the reasoning is a real finding whichever verdict it reached.
+
+    And the mode is read off `challenge.json`: the grade stage below runs with a config
+    whose variant is the default `neutral`, exactly as a re-grade of someone else's tree
+    would, and must still grade this objection as the audit it is."""
+    no_network.replies = {"challenger": JUDGMENT_OBJECTION,
+                          "judgment_grader": JUDGMENT_GRADE}
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid, challenger_variant="judgment")
+
+    challenge = json.loads(
+        next((tmp_path / "cells").rglob("challenge.json")).read_text())
+    assert challenge["arm"] == "judgment"
+    assert [d["type"] for d in challenge["defects"]] == ["misstatement", "omission"]
+    assert challenge["defects"][0]["record_says"] == ['"Bob: I do not answer step 2"']
+
+    results = await grade(tmp_path, grid)      # neutral config, judgment challenge
+    assert results[0]["status"] == "completed"
+    assert results[0]["mode"] == "judgment"
+    graded = json.loads(next((tmp_path / "cells").rglob("grade.json")).read_text())
+    assert graded["mode"] == "judgment"
+    assert graded["valid"] is True
+    assert graded["defects_n"] == 2 and graded["defects_valid_n"] == 1
+    assert [d["type"] for d in graded["defects"]] == ["misstatement", "omission"]
+    assert graded["line_mismatch"] is False
+    # the grader was shown the record and the judgment, and never the annotation
+    sent = "".join(
+        m["content"] for c in no_network.calls
+        if c["meta"]["role"] == "judgment_grader" for m in c["messages"])
+    assert "Alice argues in round 1." in sent
+    assert "Step 2 miscounts." not in sent
+
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["initially_correct"] is True       # the flaw grader would have skipped it
+    assert row["challenge_arm"] == "judgment"
+    assert row["grade_mode"] == "judgment"
+    assert row["grade_valid"] is True
+    assert row["grade_defects_n"] == 2
+    assert row["grade_defects_valid_n"] == 1
+    assert row["grade_line_mismatch"] is False
+    # the flaw grader's two columns are absent rather than nulled: this row was never
+    # scored against an annotation and a null would read as "graded and missed"
+    assert "identified_flaw" not in row and "characterises_the_flaw" not in row
+
+
+async def test_a_sound_item_is_graded_under_the_judgment_mode(tmp_path, no_network):
+    """Where `test_a_sound_item_is_never_graded` skips. There is no recorded flaw and
+    none is wanted — the quotes are checked against the record."""
+    no_network.replies = {"challenger": JUDGMENT_OBJECTION,
+                          "judgment_grader": JUDGMENT_GRADE}
+    grid = build_grid(cases(1, gold_flawed=False), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid, challenger_variant="judgment")
+    results = await grade(tmp_path, grid)
+    assert results[0]["status"] == "completed"
+    assert json.loads(
+        next((tmp_path / "cells").rglob("grade.json")).read_text())["mode"] == "judgment"
+
+
+async def test_a_judgment_objection_is_read_with_the_judgment_agreement_question(
+    tmp_path, no_network
+):
+    """Off the challenge's own arm, so a re-read of a finished tree cannot ask the
+    verdict-shaped question of an audit — which would answer NEITHER for exactly the
+    replies this variant produces."""
+    no_network.replies = {"challenger": JUDGMENT_OBJECTION}
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid, challenger_variant="judgment")
+    await agreement(tmp_path, grid)             # neutral config again
+
+    sent = "".join(m["content"] for c in no_network.calls
+                   if c["meta"]["role"] == "agreement" for m in c["messages"])
+    assert "audit those reasons — the judgment" in sent
+    assert "Does this text argue that the verdict was **right**" not in sent
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["prose_stance"] == "WRONG"       # the fake reader's default
+
+
 # --- a tree that contests another tree's decisions ------------------------------------
 
 
@@ -939,6 +1048,16 @@ def test_a_spec_named_for_a_variant_must_state_it(tmp_path, monkeypatch):
     assert "sets no `challenger_variant`" in message
     assert "would run the neutral challenger" in message
     assert "partisan_advocate" in message
+
+    # the judgment variant is in the same trap and is caught by the same guard: a
+    # `judgment-pilot` that ran the stakeholder arm would grade against `flaw.json` and
+    # write `grade_mode: "flaw"` into a tree whose name promised an audit
+    judgment = tmp_path / "judgment-pilot.toml"
+    judgment.write_text(body.replace('"partisan"', '"judgment-pilot"'),
+                        encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(judgment), "--stage", "contest", "--dry-run"])
+    assert "sets no `challenger_variant`" in str(excinfo.value)
 
     # a neutrally-named spec is not second-guessed: the default IS what it means
     neutral = tmp_path / "recontest.toml"

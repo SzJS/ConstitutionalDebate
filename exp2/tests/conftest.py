@@ -24,7 +24,7 @@ from exp2.client import Completion, FatalError, RetryableError
 
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
-                   "recourse_solo", "agreement", "ruling_reader"}
+                   "recourse_solo", "agreement", "ruling_reader", "judgment_grader"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
@@ -49,6 +49,12 @@ DEFAULT_REPLIES: dict[str, str] = {
     "recourse_solo": "Thinking: reconsidering.\nReasoning: I was wrong.\nVerdict: SOUND",
     "grader": ("It points at the right step and says what is wrong.\n"
                "Identified the flaw: YES\nCharacterised the flaw: YES"),
+    # The judgment variant's grader: one line per alleged defect, then the summary. VALID
+    # matches the summary line, so the default run measures a consistent grade and tests
+    # that want the disagreement ask for it.
+    "judgment_grader": ("The judgment quote is accurate and the record does not say "
+                        "it.\nDefect 1: VALID — the record says the opposite.\n"
+                        "Valid objection: YES"),
     # The line-vs-prose probe. WRONG matches the default challenger's REVERSE line, so
     # the default run measures agreement rather than a phantom contest; tests that want
     # the mismatch ask for it.
