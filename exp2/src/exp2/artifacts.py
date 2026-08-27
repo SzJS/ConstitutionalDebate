@@ -293,6 +293,15 @@ def render_recourse_record(directory: Path) -> str:
         if ruling.get("form") == "uphold_overturn":
             lines.append("*Ruled on by a judge who did not make the original decision. "
                          "The decision stood unless the objection showed it mistaken.*")
+        elif ruling.get("form") == "stated_conclusion":
+            # The same judge and the same standard; what changed is that it is no longer
+            # asked for the relative word. Said plainly here because this sentence is the
+            # account a stakeholder is handed of how their objection was heard, and
+            # "upheld" now means something the judge did not itself write.
+            lines.append("*Ruled on by a judge who did not make the original decision. "
+                         "The judge stated its own conclusion about the text under "
+                         "review; the decision was upheld/overturned by comparing the "
+                         "two.*")
         else:
             lines.append("*Reconsidered by the same reviewer that made the decision, in "
                          "the same conversation.*")

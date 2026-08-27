@@ -299,14 +299,79 @@ def test_the_restated_form_carries_no_ruling_word():
         ruling(form="restated_verdict", ruling="UPHOLD", protocol="in_conversation")
 
 
-def test_the_two_forms_are_named_because_they_ask_different_questions():
+def test_the_three_forms_are_named_because_they_ask_different_questions():
     """A restated verdict asks a model to contradict itself; an uphold/overturn asks a
-    third party whether an objection lands. The record must say which was asked."""
+    third party whether an objection lands; a stated conclusion asks it what is true of
+    the text and derives the rest. The record must say which was asked."""
     assert ruling().form == "uphold_overturn"
     assert ruling(form="restated_verdict", ruling=None,
                   protocol="in_conversation").form == "restated_verdict"
+    assert ruling(form="stated_conclusion").form == "stated_conclusion"
     with pytest.raises(ValueError):
         ruling(form="whatever")
+
+
+def test_the_stated_conclusion_form_still_derives_its_verdict_from_its_ruling():
+    """The judge states the verdict and the ruling word is computed from it, which is the
+    opposite direction from uphold_overturn — but the invariant is the same one, so
+    nothing downstream has to know which way it ran."""
+    ok = ruling(form="stated_conclusion", ruling="OVERTURN",
+                parent_verdict=FLAWED, verdict=SOUND,
+                conclusion_line="Conclusion: the original text in <solution> does not "
+                                "contain a flaw")
+    assert resolve_ruling(ok.ruling, ok.parent_verdict) == ok.verdict
+    assert ok.changed_the_decision is True
+    assert ok.to_dict()["conclusion_line"].startswith("Conclusion:")
+    with pytest.raises(ValueError, match="implies"):
+        ruling(form="stated_conclusion", ruling="UPHOLD", parent_verdict=FLAWED,
+               verdict=SOUND)
+    with pytest.raises(ValueError, match="needs a ruling"):
+        ruling(form="stated_conclusion", ruling=None, parent_verdict=FLAWED,
+               verdict=SOUND)
+
+
+def test_an_old_ruling_json_still_loads_after_conclusion_line_was_added():
+    """The 1,586 rulings on disk predate the field, and the ruling-agreement stage has to
+    read every one of them. `from_dict` also has to drop the two serialised properties,
+    which are not constructor arguments."""
+    old = {"form": "uphold_overturn", "ruling": "OVERTURN", "protocol": "judge_only",
+           "parent_verdict": FLAWED, "verdict": SOUND, "parse_mode": "strict",
+           "raw": "Ruling: OVERTURN", "call_id": "c1", "finish_reason": "stop",
+           "correct": True, "reasoning": "It lands.",
+           "upheld": False, "changed_the_decision": True}
+    loaded = Ruling.from_dict(old)
+    assert loaded.conclusion_line == ""
+    assert loaded.changed_the_decision is True
+    assert Ruling.from_dict(ruling().to_dict()).to_dict() == ruling().to_dict()
+
+
+# --- the ruling's line-vs-prose instrument -------------------------------------------
+
+
+def test_a_ruling_agreement_mismatch_counts_neither_as_a_mismatch():
+    """Deliberate, and the conservative direction: this number is used as a BOUND on
+    every revised_* rate, and a line whose reasoning does not support it has not been
+    shown to follow from anything. `prose_conclusion` is in the index beside it, so the
+    strict contradiction rate can be recovered without re-running the stage."""
+    from exp2.types import RulingAgreement
+
+    def reading(**kw) -> RulingAgreement:
+        base = dict(prose_conclusion="FLAWED", line_conclusion=FLAWED,
+                    reasoning="it finds the error", model="grader/model",
+                    parse_mode="strict", raw="Reading: FLAWED", call_id="c1",
+                    finish_reason="stop", ruling_form="stated_conclusion",
+                    parent_verdict=SOUND)
+        base.update(kw)
+        return RulingAgreement(**base)
+
+    assert reading().mismatch is False
+    assert reading(prose_conclusion="SOUND").mismatch is True
+    assert reading(prose_conclusion="NEITHER").mismatch is True
+    assert reading().to_dict()["mismatch"] is False
+    with pytest.raises(ValueError, match="prose_conclusion"):
+        reading(prose_conclusion="RIGHT")
+    with pytest.raises(ValueError, match="line_conclusion"):
+        reading(line_conclusion="UPHOLD")
 
 
 # --- Challenge: three stances, one of which seeks a ruling ----------------------------

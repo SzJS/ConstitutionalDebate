@@ -248,3 +248,84 @@ def test_tree_sha256_changes_when_a_file_does(tmp_path):
     before = tree_sha256(tmp_path)
     (tmp_path / "a.txt").write_text("two")
     assert tree_sha256(tmp_path) != before
+
+
+# --- a contest copied for re-ruling ---------------------------------------------------
+
+
+async def test_create_rerule_copies_the_objection_and_leaves_the_ruling_behind(tmp_path):
+    """The objection is the stakeholder's, it cost real money, and re-drawing it would
+    change the population as well as the ruling. So everything the source recorded comes
+    across except the four things about to be replaced — and the source ruling is kept
+    beside the new one, so the record carries both."""
+    import json
+
+    from recording import contest
+
+    from exp2.persistence import tree_sha256
+
+    _, _, source_writer, _ = await contest(tmp_path, "debate")
+    source = source_writer.dir
+    (source / "ruling_agreement.json").write_text('{"prose_conclusion": "SOUND"}',
+                                                  encoding="utf-8")
+    before = tree_sha256(source)
+
+    writer = RunWriter.create_rerule(
+        root=tmp_path / "rerule", source_dir=source,
+        item=make_item(), sides=make_sides(), client_config=client_config(),
+        condition="debate")
+
+    copied = {p.name for p in writer.dir.iterdir()}
+    assert {"challenge.json", "challenge.md", "comprehension.json", "item.json",
+            "sides.json", "config.json", "parent"} <= copied
+    # the four that must not come across
+    assert "ruling.json" not in copied
+    assert "calls.jsonl" not in copied
+    assert "ruling_agreement.json" not in copied
+    assert not [name for name in copied if name.startswith("transcript")]
+    # ... but the copied DECISION keeps its own log and its own documents, which is what
+    # makes the record self-contained
+    assert (writer.dir / "parent" / "calls.jsonl").is_file()
+    assert (writer.dir / "parent" / "transcript.md").is_file()
+
+    assert json.loads((writer.dir / "ruling.source.json").read_text())["form"] == (
+        "stated_conclusion")
+    manifest = json.loads((writer.dir / "run.json").read_text())
+    assert manifest["kind"] == "rerule"
+    assert manifest["source_contest_dir"] == str(source)
+    assert manifest["source_sha256"] == before
+    assert manifest["rerule_of_form"] == "stated_conclusion"
+    assert manifest["parent_run_id"]          # still names the decision it contests
+    assert writer.rerule_of_form == "stated_conclusion"
+    # and nothing under the source moved
+    assert tree_sha256(source) == before
+
+
+async def test_a_re_ruled_record_renders_as_a_contest_and_not_as_a_decision(tmp_path):
+    """`record_ruling` re-renders both documents from the new state. A stale document
+    saying "the decision was overturned" beside a ruling that upheld it is worse than a
+    missing one, and a re-rule that rendered as a DECISION record would lose the
+    objection entirely."""
+    from recording import contest
+
+    from exp2.types import Ruling
+
+    outcome, _, source_writer, _ = await contest(tmp_path, "debate")
+    source = source_writer.dir
+    writer = RunWriter.create_rerule(
+        root=tmp_path / "rerule", source_dir=source,
+        item=make_item(), sides=make_sides(), client_config=client_config(),
+        condition="debate")
+    writer.record_ruling(Ruling(
+        form="stated_conclusion", ruling="UPHOLD", protocol="judge_only",
+        parent_verdict=outcome.ruling.parent_verdict,
+        verdict=outcome.ruling.parent_verdict, parse_mode="strict",
+        conclusion_line="Conclusion: the original text in <solution> contains a flaw",
+        raw="Conclusion: the original text in <solution> contains a flaw",
+        call_id="c9", finish_reason="stop", correct=True,
+        reasoning="The objection does not land."))
+    document = (writer.dir / "transcript.md").read_text()
+    assert document.startswith("# Contest record")
+    assert "The decision was **upheld**." in document
+    assert "The judge stated its own conclusion about the text under review" in document
+    assert "The objection does not land." in document

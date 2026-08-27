@@ -383,14 +383,37 @@ def test_the_estimate_charges_nothing_for_decisions_it_reads_off_another_tree(ca
     print_estimate(grid, debate)
     deciding = capsys.readouterr().out
     assert "decision 30," in deciding          # 2 items x (1 + 7 + 7) calls
-    assert "=> up to 60" in deciding           # + contest 12, ruling 6, agreement 6, grading 6
+    # + contest 12, ruling 6, agreement 6, ruling_agreement 6, grading 6
+    assert "=> up to 66" in deciding
 
     print_estimate(grid, debate, decisions_from=Path("outputs/experiments/sweep"))
     contesting = capsys.readouterr().out
     assert "decision 0 (read from outputs/experiments/sweep)," in contesting
-    assert "=> up to 30" in contesting         # the same run, less the 30 decision calls
+    assert "=> up to 36" in contesting         # the same run, less the 30 decision calls
     # the rest of the estimate is unchanged: the contest stages still run in full
     assert "contest 12" in contesting and "ruling <= 6" in contesting
+
+
+def test_the_estimate_counts_the_rulings_a_re_rule_will_actually_make(capsys, tmp_path):
+    """A re-rule makes no challenge, no comprehension probe and no grade, and it rules
+    only the cells whose SOURCE objection contested. On the sweep the counted figure and
+    the grid bound differ by a factor of five, and this is the line the spend is approved
+    from."""
+    from exp2.experiment import build_grid
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    grid = build_grid(_two_cases(), ["single", "self_critique", "debate"])
+    print_estimate(grid, debate, decisions_from=Path("outputs/experiments/sweep"),
+                   contests_from=Path("outputs/experiments/recontest"),
+                   n_source_contests=2)
+    out = capsys.readouterr().out
+    assert "decision 0 (read from outputs/experiments/sweep)," in out
+    assert "contest 0 (objections read from outputs/experiments/recontest)," in out
+    assert "ruling <= 2" in out and "ruling_agreement <= 2" in out
+    assert "agreement <= 0" in out and "grading <= 0" in out
+    assert "=> up to 4" in out
+    assert "the ruling term is COUNTED, not bounded: 2 of the 6 cells" in out
 
 
 def test_retry_failed_is_a_flag_that_defaults_to_off():

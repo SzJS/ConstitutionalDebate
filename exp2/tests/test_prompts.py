@@ -581,11 +581,105 @@ def test_the_salvage_refuses_anything_that_marked_text_private():
         parse_objection_output("This decision seems wrong but I cannot say why.")
 
 
-def test_the_ruling_parser_refuses_near_misses_rather_than_normalising_them():
-    assert parse_ruling_output("Because X.\nRuling: OVERTURN")[0] == "OVERTURN"
-    for near_miss in ("Ruling: UPHELD", "Ruling: OVERRULED", "Ruling: <UPHOLD|OVERTURN>"):
-        with pytest.raises(MalformedOutputError):
+def test_the_ruling_parser_returns_the_judges_conclusion_not_a_ruling_word():
+    """The judge states what is true of the text; UPHOLD/OVERTURN is derived from it by
+    `recourse._rule_by_judge`. The re-contest measured why: asked for the relative word,
+    a weak judge contradicted its own reasoning in 8 of 12 hand-checked rulings on FLAWED
+    parents."""
+    word, reasoning, mode = parse_ruling_output(
+        "The objection is right about step 2.\n"
+        "Conclusion: the original text in <solution> contains a flaw")
+    assert word == "FLAWED" and mode == "strict"
+    assert reasoning == "The objection is right about step 2."
+    assert parse_ruling_output(
+        "Conclusion: the original text in <solution> does not contain a flaw")[0] == \
+        "SOUND"
+
+
+def test_the_ruling_parser_takes_the_last_line_and_tolerates_bold_and_punctuation():
+    """Last match, as everywhere else in the module: the line is asked for last, so an
+    earlier one is the model rehearsing the format. Bold and a full stop are what a weak
+    model does to a line it was told to write exactly."""
+    assert parse_ruling_output(
+        "Conclusion: the original text in <solution> does not contain a flaw\n"
+        "On reflection:\n"
+        "Conclusion: the original text in <solution> contains a flaw")[0] == "FLAWED"
+    assert parse_ruling_output(
+        "**Conclusion: the original text in <solution> contains a flaw.**")[0] == \
+        "FLAWED"
+    assert parse_ruling_output(
+        "**Conclusion:** the text under review does not contain a flaw.")[0] == "SOUND"
+    # both subject phrasings the smoke's variants used, because the record now holds
+    # rulings written under both
+    assert parse_ruling_output("Conclusion: the text under review contains a flaw")[0] \
+        == "FLAWED"
+
+
+def test_the_ruling_parser_refuses_a_conclusion_about_anything_but_the_text():
+    """A conclusion about the objection is the exact confusion the absolute wording
+    removes, and reading it either way would reinstate it. The old `Ruling:` line is
+    refused too — no live prompt asks for it and a stray one must not be read as an
+    answer to this question."""
+    for near_miss in (
+        "Conclusion: the objection is valid",
+        "Conclusion: the objection is right that the program has a bug",
+        "Conclusion: the program contains a flaw",
+        "Ruling: OVERTURN",
+        "The text is flawed.",
+        "Conclusion: the text under review is fine",
+    ):
+        with pytest.raises(MalformedOutputError) as caught:
             parse_ruling_output(near_miss)
+        assert caught.value.kind == "missing_decision_line"
+
+
+def test_the_conclusion_line_is_recorded_verbatim_beside_the_derived_ruling():
+    """So a reader can check the derivation against the sentence it was derived from,
+    rather than taking the implication on trust."""
+    from exp2.prompts import ruling_conclusion_line
+
+    assert ruling_conclusion_line(
+        "Because X.\n**Conclusion: the original text in <solution> contains a flaw**"
+    ) == "**Conclusion: the original text in <solution> contains a flaw"
+    assert ruling_conclusion_line("no line here") == ""
+
+
+def test_the_ruling_agreement_reader_answers_in_the_judges_own_vocabulary():
+    """Asked in the JUDGE's terms — does the reasoning conclude the text is flawed — and
+    not the decision's. The failure being measured IS the translation between those two
+    vocabularies, so a reader that had to translate would inherit it."""
+    from exp2.prompts import (
+        build_ruling_agreement_messages,
+        parse_ruling_agreement_output,
+    )
+
+    word, reasoning, mode = parse_ruling_agreement_output(
+        "It works through step 2 and finds the error.\nReading: FLAWED")
+    assert word == "FLAWED" and mode == "strict"
+    assert reasoning == "It works through step 2 and finds the error."
+    assert parse_ruling_agreement_output("Reading: NEITHER")[0] == "NEITHER"
+    for bad in ("Reading: <FLAWED|SOUND|NEITHER>", "Reading: MAYBE", "Prose: RIGHT"):
+        with pytest.raises(MalformedOutputError):
+            parse_ruling_agreement_output(bad)
+    # and the reader is shown the prose, never a line to be steered by
+    sent = "".join(m["content"] for m in
+                   build_ruling_agreement_messages("The step is wrong."))
+    assert "The step is wrong." in sent
+    assert "Conclusion:" not in sent and "Ruling:" not in sent
+
+
+def test_a_recorded_rulings_prose_is_stripped_of_both_decision_vocabularies():
+    """`Ruling.reasoning` is everything before the DECISIVE match, so an earlier line
+    stays in the published grounds by design. The reader must not see any of them, or the
+    reading is not independent of the line it is compared against — and the rulings it
+    has to read include the sweep's 1,122, every one under the old line."""
+    from exp2.prompts import strip_decision_lines
+
+    stripped = strip_decision_lines(
+        "First I thought Ruling: UPHOLD.\nThen: Conclusion: the text under review "
+        "contains a flaw\nBut step 2 is wrong.")
+    assert "Ruling:" not in stripped and "Conclusion:" not in stripped
+    assert "But step 2 is wrong." in stripped
 
 
 def test_the_comprehension_parser_takes_one_to_five_only():
@@ -621,7 +715,8 @@ def test_each_role_gets_its_own_repair_instruction():
     response the challenger parser then refuses, burning the one attempt."""
     assert "Decision: <STANDS|REVERSE>" in repair_instruction_for("challenger", 400)
     assert "Verdict:" in repair_instruction_for("judge", 400)
-    assert "Ruling:" in repair_instruction_for("recourse_judge", 400)
+    assert "Conclusion: the original text in <solution> contains a flaw" in (
+        repair_instruction_for("recourse_judge", 400))
     assert "Comprehension:" in repair_instruction_for("comprehension", 400)
     with pytest.raises(ValueError):
         repair_instruction_for("nobody", 400)
@@ -811,3 +906,43 @@ def test_every_round_bounds_deliberation_and_none_of_them_offers_a_concession():
     # identical wording in all three, so neither side is bounded differently by round
     assert len({t.split("Decide what to argue")[1] for t in texts}) == 3  # tails differ
     assert all(t.count("Decide what to argue quickly") == 1 for t in texts)
+
+
+def test_the_recourse_judges_repair_asks_for_the_line_the_prompt_asks_for():
+    """The challenger's pair drifted once (2026-08-25) and the cost was a repair asking
+    for a format the parser then refused — one attempt spent on a prompt that could not
+    have succeeded. This is the same pair for the recourse judge, held together by the
+    one string both are built from."""
+    from exp2.prompts import (
+        RECOURSE_JUDGE_CLOSING,
+        RECOURSE_JUDGE_REPAIR,
+        RECOURSE_JUDGE_USER,
+        REPAIR_CLOSINGS,
+    )
+
+    assert REPAIR_CLOSINGS["recourse_judge"] == RECOURSE_JUDGE_CLOSING
+    assert RECOURSE_JUDGE_CLOSING in RECOURSE_JUDGE_REPAIR
+    for phrase in ("Conclusion: the original text in <solution> contains a flaw",
+                   "Conclusion: the original text in <solution> does not contain a flaw"):
+        assert phrase in RECOURSE_JUDGE_USER
+        assert phrase in RECOURSE_JUDGE_REPAIR
+    # and the repair's own text parses as what it asks for, so the one attempt can
+    # actually succeed
+    for phrase, expected in (
+        ("Conclusion: the original text in <solution> contains a flaw", "FLAWED"),
+        ("Conclusion: the original text in <solution> does not contain a flaw", "SOUND"),
+    ):
+        assert parse_ruling_output(phrase)[0] == expected
+
+
+def test_the_judges_user_message_names_the_text_and_the_nesting_rule():
+    """Variant C of the smoke, and the two paragraphs are what separates it from the
+    variants that failed: python800's texts are assessments OF programs, and B — without
+    the nesting paragraph — still contradicted itself 5 times in 19."""
+    from exp2.prompts import RECOURSE_JUDGE_USER
+
+    assert "You are ruling on the ORIGINAL text under review" in RECOURSE_JUDGE_USER
+    assert "You are judging the TEXT, not the thing it assesses" in RECOURSE_JUDGE_USER
+    assert "even though a bug exists" in RECOURSE_JUDGE_USER
+    # the relative word is gone from the prompt entirely
+    assert "UPHOLD" not in RECOURSE_JUDGE_USER and "OVERTURN" not in RECOURSE_JUDGE_USER

@@ -14,6 +14,14 @@ how a finished experiment's decisions get re-contested under a changed protocol 
 regenerating them and without touching the tree that holds them. ``--stage decide``
 refuses on such a spec: it has nothing to decide, and running it would build a second,
 differently-decided grid under the new name.
+
+A spec may additionally set ``contests_from = "<path>"``. The run then reads the
+OBJECTIONS out of that tree too and makes only one thing of its own: the ruling. Each
+source contest is copied here minus its ruling and re-ruled by the recourse judge, so
+1,586 existing objections get a second ruling under the changed prompt without one of
+them being rewritten. ``contest``, ``agreement`` and ``grade`` refuse on such a spec —
+each would write a new objection, or a new grade of one, over the copy this tree holds —
+and ``--stage rerule`` refuses without it.
 """
 
 from __future__ import annotations
@@ -53,6 +61,9 @@ from .experiment import (
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_rerule,
+    run_stage_ruling_agreement,
+    source_contests,
 )
 from .types import load_cases
 
@@ -107,13 +118,23 @@ def print_hyperparameters(config: DebateConfig, client_config: ClientConfig,
 
 
 def print_estimate(grid, config: DebateConfig,
-                   decisions_from: Path | None = None) -> None:
+                   decisions_from: Path | None = None,
+                   contests_from: Path | None = None,
+                   n_source_contests: int | None = None) -> None:
     """The call estimate, which is the line a run is approved from.
 
     ``decisions_from`` makes the decision term ZERO rather than the cost of deciding the
     grid: a re-contest reads its decisions off another tree and calls no decider at all.
     Printing the ordinary figure there would quote 90 calls for a run that makes 36, and
     quote them at the moment the spend is being agreed to.
+
+    ``contests_from`` does the same to the contest and grading terms, and replaces the
+    ruling term with a COUNTED one. A re-rule makes no challenge, no comprehension probe
+    and no grade — the objection and its grade are copied from the source — and it rules
+    only the cells whose source objection actually contested, which is a number that can
+    be read off the source tree rather than bounded by the grid. On the sweep the two
+    differ by a factor of five, and quoting the bound would be quoting five times the
+    spend at the moment it is being agreed to.
     """
     by_condition: dict[str, int] = {}
     for cell in grid:
@@ -122,19 +143,29 @@ def print_estimate(grid, config: DebateConfig,
                 else sum(n * calls_per_cell(c, config) for c, n in by_condition.items()))
     # challenge + comprehension always; ruling only when an objection is raised, and
     # grading only on flawed items whose subset records what the flaw was.
-    contest = 2 * len(grid)
-    ruling = len(grid)
+    contest = 0 if contests_from is not None else 2 * len(grid)
+    ruling = (n_source_contests if contests_from is not None else len(grid)) or 0
     # One short grader call per contest whose decision line parsed — the line-vs-prose
     # instrument. Bounded by the grid because every cell can produce at most one.
-    agreement = len(grid)
-    gradable = sum(1 for cell in grid if cell.case.gradable)
+    agreement = 0 if contests_from is not None else len(grid)
+    # One per ruling: the judge's line read against the judge's own prose.
+    ruling_agreement = ruling
+    gradable = (0 if contests_from is not None
+                else sum(1 for cell in grid if cell.case.gradable))
     print(f"\ncells: {len(grid)}  " +
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
     decision_term = (f"decision 0 (read from {decisions_from})"
                      if decisions_from is not None else f"decision {decision}")
-    print(f"estimated calls: {decision_term}, contest {contest}, "
-          f"ruling <= {ruling}, agreement <= {agreement}, grading <= {gradable}  "
-          f"=> up to {decision + contest + ruling + agreement + gradable}")
+    contest_term = (f"contest 0 (objections read from {contests_from})"
+                    if contests_from is not None else f"contest {contest}")
+    print(f"estimated calls: {decision_term}, {contest_term}, "
+          f"ruling <= {ruling}, agreement <= {agreement}, "
+          f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}  "
+          f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable}")
+    if contests_from is not None:
+        print(f"the ruling term is COUNTED, not bounded: {ruling} of the {len(grid)} "
+              f"cells have a source objection whose stance is `contests`. The rest "
+              "declined or were unreadable and put nothing to a judge.")
     # `max_decision_attempts` is deliberately NOT quoted here. It is loaded and
     # validated but consulted nowhere in `src/`, and the line that used to print it
     # promised a per-cell retry the harness does not make. What is true is stated
@@ -207,6 +238,31 @@ def main(argv: list[str] | None = None) -> int:
             "decisions_from to make a tree that decides for itself."
         )
 
+    # The OBJECTION source. Set only by a re-rule spec, which makes no objection of its
+    # own: it copies each source contest here, minus its ruling, and rules it again. The
+    # three stages that would generate an objection or a grade of one refuse, because
+    # running any of them would make this tree hold objections the source never wrote
+    # while claiming to re-rule the source's.
+    contests_from = spec.get("contests_from")
+    contest_root = Path(contests_from) if contests_from else None
+    if contest_root is not None and args.stage in ("contest", "agreement", "grade"):
+        raise SystemExit(
+            f"this spec re-rules contests in {contest_root}; it does not contest. "
+            f"`{args.stage}` would write a new objection (or a new grade of one) over "
+            "the copy this tree holds. Run --stage rerule / ruling_agreement / analyse "
+            "against it, or drop contests_from to make a tree that contests for itself."
+        )
+    if contest_root is None and args.stage == "rerule":
+        raise SystemExit(
+            "--stage rerule needs `contests_from = \"<tree>\"` in the spec: it re-rules "
+            "objections another tree already made, and there are none to read."
+        )
+    if contest_root is not None and decision_root is None:
+        raise SystemExit(
+            "a spec with `contests_from` also needs `decisions_from`: a ruling is made "
+            "against the decision that was contested, and this tree decides nothing."
+        )
+
     cases = load_cases(Path(spec["cases"]))
     if args.limit:
         cases = cases[: args.limit]
@@ -218,7 +274,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"experiment: {name}   stage: {args.stage}   outputs: {root}")
     if decision_root is not None:
         print(f"decisions read from: {decision_root}   (never written to)")
-    print_estimate(grid, config, decisions_from=decision_root)
+    n_source_contests = None
+    if contest_root is not None:
+        print(f"objections read from: {contest_root}   (never written to)")
+        n_source_contests = len(source_contests(
+            grid, source_root=contest_root,
+            challenger_model=config.challenger_model_for()))
+    print_estimate(grid, config, decisions_from=decision_root,
+                   contests_from=contest_root,
+                   n_source_contests=n_source_contests)
     print_hyperparameters(config, client_config, grading)
 
     if args.dry_run:
@@ -234,6 +298,13 @@ def main(argv: list[str] | None = None) -> int:
         "decisions_from": str(decision_root) if decision_root else None,
         "decisions_from_experiment_sha256": (
             _tree_fingerprint(decision_root) if decision_root else None),
+        # Null unless this tree re-rules another's objections. Both sources are named
+        # and both are hashed: a re-rule reads two trees and its record has to pin which
+        # run of each, since a rerule tree's numbers are only comparable against the
+        # exact objections they were made on.
+        "contests_from": str(contest_root) if contest_root else None,
+        "contests_from_experiment_sha256": (
+            _tree_fingerprint(contest_root) if contest_root else None),
         "config": config.to_dict(), "client_config": client_config.to_dict(),
         "grading": grading.to_dict(),
     }, indent=2), encoding="utf-8")
@@ -262,6 +333,13 @@ def main(argv: list[str] | None = None) -> int:
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key, decision_root=decision_root),
+        "rerule": lambda: run_stage_rerule(
+            grid, root=root, config=config, client_config=client_config,
+            api_key=api_key, decision_root=decision_root or root,
+            contest_root=contest_root),
+        "ruling_agreement": lambda: run_stage_ruling_agreement(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key=api_key),
         "agreement": lambda: run_stage_agreement(
             grid, root=root, config=config, grading=grading,
             client_config=client_config, api_key=api_key,

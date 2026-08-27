@@ -31,8 +31,13 @@ from typing import Any, Iterable
 # objection's prose argues, made after the contest is finished and over its recorded
 # text. It cannot change any decision and must not be able to; costing it against the
 # condition it measures would make the instrument part of what it is measuring.
+# "ruling_reader" is the same probe one layer down: a grader-model read of what a
+# recourse judge's own reasoning concluded, made after the ruling exists and over its
+# recorded text. Same rule, same reason — and here the rule bites harder, because the
+# thing it measures IS the decision path's last step and a reader billed to that step
+# would be measuring itself.
 OFF_PATH_ROLES: frozenset[str] = frozenset(
-    {"grader", "comprehension", "agreement"}
+    {"grader", "comprehension", "agreement", "ruling_reader"}
 )
 
 

@@ -964,11 +964,31 @@ class Challenge:
 #   restated_verdict  the solo conditions. The model that decided is handed the
 #                     objection in its own conversation and asked for its verdict
 #                     again. The verdict is parsed, not derived.
+#   stated_conclusion the recourse judge since 2026-08-27. It is asked what is true of
+#                     the ORIGINAL text under review — contains a flaw / does not — and
+#                     UPHOLD/OVERTURN is derived from that by comparison with the
+#                     decision. Never asked for, never parsed.
 #
 # Worth naming because the second form asks a model to contradict itself, which is the
 # axis on which models are most sycophantic. A revision rate under that form is not
 # directly comparable to one under the first, and the analysis says so.
-RULING_FORMS: tuple[str, ...] = ("uphold_overturn", "restated_verdict")
+#
+# The third exists because the first was measured to be an unreliable *instrument*, not
+# an unreliable judge. The re-contest's hand check found the `Ruling:` line contradicting
+# the judge's own reasoning in 8 of 12 rulings on FLAWED parents — "the objection is
+# valid" and "the text is flawed" both landing on OVERTURN — so the relative word was
+# removed and the absolute statement put in its place. `uphold_overturn` is kept in the
+# vocabulary because 1,586 rulings on disk were made under it; nothing generates it any
+# more, and `ruling_form` in the index is how a reader tells the two apart.
+RULING_FORMS: tuple[str, ...] = (
+    "uphold_overturn", "restated_verdict", "stated_conclusion",
+)
+
+# The forms whose ``ruling`` word is UPHOLD/OVERTURN and whose ``verdict`` follows from
+# it by ``resolve_ruling``. They differ in what the model was ASKED — the relative word
+# or the absolute statement — and not at all in the arithmetic afterwards, which is why
+# the invariant is checked over both rather than duplicated.
+_DERIVED_VERDICT_FORMS: tuple[str, ...] = ("uphold_overturn", "stated_conclusion")
 
 
 @dataclass
@@ -983,10 +1003,17 @@ class Ruling:
 
     For the ``restated_verdict`` form there is no ruling word; the model simply says
     what it now thinks, and ``ruling`` is None.
+
+    For ``stated_conclusion`` the same asymmetry holds and the same two halves are
+    recorded, but the derivation runs the other way round: the judge states the verdict
+    (``conclusion_line``, parsed into ``verdict``) and the ruling word is computed from
+    it. The invariant is the same one either way — ``resolve_ruling(ruling,
+    parent_verdict) == verdict`` — so every reader downstream is unaffected by which of
+    the two produced a given record.
     """
 
     form: str  # one of RULING_FORMS
-    ruling: str | None  # "UPHOLD" | "OVERTURN" for uphold_overturn, else None
+    ruling: str | None  # "UPHOLD" | "OVERTURN" for the derived forms, else None
     protocol: str  # "judge_only" | "in_conversation", named rather than inferred
     parent_verdict: str
     verdict: str
@@ -1000,6 +1027,10 @@ class Ruling:
     reasoning: str = ""
     native_reasoning: str = ""
     reasoning_withheld: bool = False
+    # The judge's own final line, verbatim, under ``stated_conclusion``. Empty for the
+    # other two forms — and defaulted rather than required so the 1,586 ruling.json files
+    # already on disk still load through ``from_dict``.
+    conclusion_line: str = ""
 
     def __post_init__(self) -> None:
         if self.form not in RULING_FORMS:
@@ -1008,10 +1039,10 @@ class Ruling:
             raise ValueError(f"verdict must be one of {VERDICTS}, got {self.verdict!r}")
         if self.parent_verdict not in VERDICTS:
             raise ValueError(f"parent_verdict must be one of {VERDICTS}")
-        if self.form == "uphold_overturn":
+        if self.form in _DERIVED_VERDICT_FORMS:
             if self.ruling not in RULINGS:
                 raise ValueError(
-                    f"the uphold_overturn form needs a ruling in {RULINGS}, "
+                    f"the {self.form} form needs a ruling in {RULINGS}, "
                     f"got {self.ruling!r}"
                 )
             expected = resolve_ruling(self.ruling, self.parent_verdict)
@@ -1040,6 +1071,17 @@ class Ruling:
         data["upheld"] = self.upheld
         data["changed_the_decision"] = self.changed_the_decision
         return data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Ruling":
+        """Read one back, dropping the two serialised properties.
+
+        Needed by the ``ruling_agreement`` stage, which reads finished rulings out of
+        trees it does not write to — including the sweep's and the re-contest's, made
+        under the old line and before ``conclusion_line`` existed.
+        """
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 RULINGS: tuple[str, ...] = ("UPHOLD", "OVERTURN")
@@ -1151,6 +1193,87 @@ class Agreement:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Agreement":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
+
+
+# --------------------------------------------------------------------------- #
+# the ruling's line-vs-prose instrument
+# --------------------------------------------------------------------------- #
+#
+# What a reader of the RECOURSE JUDGE's reasoning says that reasoning concludes about the
+# text under review, independently of the line the judge ended on. Same three values as
+# the decision vocabulary plus NEITHER, because the judge is answering the same
+# object-level question the decision answered.
+PROSE_CONCLUSIONS: tuple[str, ...] = ("FLAWED", "SOUND", "NEITHER")
+
+
+@dataclass(frozen=True)
+class RulingAgreement:
+    """One grader reading of one ruling's reasoning. Off the decision path, always.
+
+    ``Agreement`` exists because the challenger's line is one relative token that nothing
+    mechanical can check against its own prose. This exists because the *judge's* line
+    was worse: the re-contest's hand check found it contradicting the judge's own
+    reasoning in 8 of 12 rulings on FLAWED parents, and the 62 phantom objections were
+    overturned 52 times against reasoning that agreed with the verdict. The prompt has
+    since been changed to ask for an absolute conclusion, which the smoke measured at 1
+    contradiction in 20 rather than 8 — but a residual that is not measured is a residual
+    that cannot be bounded, and every ``revised_*`` rate in the experiment is bounded by
+    it.
+
+    ``line_conclusion`` is the ruling's own ``verdict``, copied rather than re-parsed:
+    under ``stated_conclusion`` that verdict IS what the judge's line said, and under the
+    two older forms it is what the record says the ruling amounted to. Copying it is what
+    lets this instrument run over the sweep's and the re-contest's existing rulings.
+
+    ``mismatch`` is ``prose_conclusion != line_conclusion``, so NEITHER counts as one.
+    That is deliberate and it is the conservative direction: a line that asserts a
+    verdict the reasoning does not support has not been shown to contradict itself, but
+    neither has it been shown to follow from anything, and this number is used as a
+    BOUND. ``prose_conclusion`` is in the index beside it, so a reader who wants the
+    strict contradiction rate can subtract the NEITHERs rather than having to re-run the
+    stage to get them.
+    """
+
+    prose_conclusion: str  # one of PROSE_CONCLUSIONS
+    line_conclusion: str  # the ruling's own verdict, copied for the cross-tab
+    reasoning: str
+    model: str
+    parse_mode: str
+    raw: str
+    call_id: str
+    finish_reason: str | None
+    # Which line the ruling under measurement actually ended on, so a mismatch rate can
+    # be read per form: the old relative word and the new absolute statement are two
+    # different instruments and the whole point of measuring is to compare them.
+    ruling_form: str = ""
+    parent_verdict: str = ""
+    repair_attempts: int = 0
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
+
+    def __post_init__(self) -> None:
+        if self.prose_conclusion not in PROSE_CONCLUSIONS:
+            raise ValueError(
+                f"prose_conclusion must be one of {PROSE_CONCLUSIONS}, "
+                f"got {self.prose_conclusion!r}"
+            )
+        if self.line_conclusion not in VERDICTS:
+            raise ValueError(
+                f"line_conclusion must be one of {VERDICTS}, "
+                f"got {self.line_conclusion!r}"
+            )
+
+    @property
+    def mismatch(self) -> bool:
+        return self.prose_conclusion != self.line_conclusion
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**asdict(self), "mismatch": self.mismatch}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RulingAgreement":
         known = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in known})
 

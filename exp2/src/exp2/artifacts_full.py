@@ -627,15 +627,25 @@ def _contest_calls(directory: Path) -> list[_Accepted]:
             native_reasoning=comprehension.get("native_reasoning", ""),
         ))
     if ruling is not None:
-        by_judge = ruling.get("form") == "uphold_overturn"
+        # Two of the three forms are the third-party judge's — the old relative line and
+        # the absolute conclusion that replaced it — and both are handed the same two
+        # blocks. The heading distinguishes them, because a reader comparing a sweep
+        # record with a re-ruled one has to be able to see which line produced which.
+        form = ruling.get("form")
+        by_judge = form in ("uphold_overturn", "stated_conclusion")
         derived: tuple[tuple[str, str, str], ...] = ()
         if by_judge:
             derived = shown
             if challenge is not None and challenge.get("text"):
                 derived = (*derived, ("X", "the objection, as it was put to the judge",
                                       neutralise_tags(challenge["text"])))
+        heading = "ruling (in conversation)"
+        if form == "stated_conclusion":
+            heading = "ruling (recourse judge, stated conclusion)"
+        elif by_judge:
+            heading = "ruling (recourse judge)"
         accepted.append(_Accepted(
-            heading="ruling (recourse judge)" if by_judge else "ruling (in conversation)",
+            heading=heading,
             call_id=ruling.get("call_id", ""),
             role="recourse_judge" if by_judge else "recourse_solo",
             derived=derived, raw=ruling.get("raw", ""),

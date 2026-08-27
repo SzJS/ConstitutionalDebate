@@ -40,6 +40,8 @@ The recourse mechanism is **identical across conditions**: a weak *recourse judg
 
 The first full sweep (2026-08-26) used an asymmetric mechanism — in `single` and `self_critique` the strong model that made the decision was handed the objection in its own conversation and asked again, while `debate` used a weak third-party judge — and that asymmetry confounded the result: the weak judge overturned 24% of objections whose prose *agreed* with the decision, against 0–4% for the strong re-decider. The in-conversation form is kept as a **deployment-realistic ablation** ("the user objects in chat"), reported separately and never compared against the third-party form.
 
+**The recourse judge states its own conclusion; it is never asked to uphold or overturn.** The re-contest (2026-08-26) found that a weak judge asked for `UPHOLD|OVERTURN` contradicted its own reasoning in most rulings on FLAWED decisions — "the objection is valid" and "the text is flawed" were both being mapped onto OVERTURN. The judge is therefore told that it rules on the **original text under review** (the text in `<solution>`, not the objection, not the decision's reasoning, and not the program or proof that text may itself be assessing), and ends with an absolute line — *the original text contains a flaw / does not contain a flaw* — from which UPHOLD/OVERTURN is derived by comparison with the decision. A separate reading of the judge's prose measures the residual rate at which the line disagrees with it, as the `agreement` reading does for the challenger.
+
 ### Further details
 - Self-critique recieves the same number of critique-revise passes as the there are rounds of debate, to match them.
 - The strong models should be the same across conditions at the same temperature.

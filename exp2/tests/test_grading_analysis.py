@@ -320,3 +320,83 @@ def test_analyse_puts_the_caveats_and_the_overlaps_in_the_output(tmp_path):
     assert metrics["matching"]["in_every_condition"] == 0
     assert "debate" in metrics["by_condition"]
     assert metrics["small_cells"]  # n < 20 is flagged, not silently reported
+
+
+# --- the ruling's line-vs-prose instrument -------------------------------------------
+
+
+def ruled_row(**kw):
+    """A row with a ruling and a reading of the judge's own prose."""
+    base = dict(verdict="FLAWED", ruling_form="stated_conclusion",
+                changed_the_decision=True, ruling_prose_conclusion="SOUND",
+                ruling_line_mismatch=False)
+    base.update(kw)
+    return row(**base)
+
+
+def test_the_ruling_line_mismatch_rate_is_split_by_parent_verdict():
+    """That is where the failure lived: the re-contest's hand check found the old
+    `Ruling:` line contradicting the judge's reasoning in 8 of 12 rulings on FLAWED
+    decisions, because "the objection is valid" and "the text is flawed" collide only
+    when the decision already said FLAWED. A pooled rate would halve it."""
+    rows = [
+        ruled_row(verdict="FLAWED", ruling_line_mismatch=True),
+        ruled_row(verdict="FLAWED", ruling_line_mismatch=True),
+        ruled_row(verdict="FLAWED", ruling_line_mismatch=False),
+        ruled_row(verdict="SOUND", ruling_line_mismatch=False),
+        ruled_row(verdict="SOUND", ruling_line_mismatch=False),
+    ]
+    rates = funnel(rows)["rates"]
+    assert (rates["ruling_line_mismatch"]["k"], rates["ruling_line_mismatch"]["n"]) == (2, 5)
+    flawed = rates["ruling_line_mismatch_on_flawed_parent"]
+    assert (flawed["k"], flawed["n"]) == (2, 3)
+    sound = rates["ruling_line_mismatch_on_sound_parent"]
+    assert (sound["k"], sound["n"]) == (0, 2)
+    # a cell that was never objected to has no line to check, and is not a pass
+    with_decline = rows + [row(ruling_form=None, challenge_stance="declined")]
+    assert funnel(with_decline)["rates"]["ruling_line_mismatch"]["n"] == 5
+    assert funnel(with_decline)["n_ruled"] == 5
+
+
+def test_the_ruling_cross_tab_reconstructs_the_line_from_the_record():
+    """The index carries the PARENT verdict and whether the decision changed; the line's
+    own conclusion is what those two imply. Same arithmetic as `resolve_ruling`, and the
+    reason the ruling record states both halves."""
+    table = funnel([
+        # FLAWED parent, overturned -> the line said SOUND; the prose says FLAWED
+        ruled_row(verdict="FLAWED", changed_the_decision=True,
+                  ruling_prose_conclusion="FLAWED", ruling_line_mismatch=True),
+        # FLAWED parent, upheld -> the line said FLAWED, and so does the prose
+        ruled_row(verdict="FLAWED", changed_the_decision=False,
+                  ruling_prose_conclusion="FLAWED", ruling_line_mismatch=False),
+        # reasoning that settles on nothing is its own column, not a contradiction
+        ruled_row(verdict="SOUND", changed_the_decision=False,
+                  ruling_prose_conclusion="NEITHER", ruling_line_mismatch=True),
+    ])["ruling_line_vs_prose"]
+    assert table["measured"] == 3
+    assert table["table"]["SOUND"]["FLAWED"] == 1
+    assert table["table"]["FLAWED"]["FLAWED"] == 1
+    assert table["line_sound_prose_flawed"] == 1
+    assert table["no_direction"] == 1
+    assert table["by_ruling_form"]["stated_conclusion"] == {"measured": 3, "mismatch": 2}
+
+
+def test_the_ruling_line_caveat_says_measured_or_says_it_was_not_measured():
+    """"we did not look" and "we looked and it was 5%" are the two facts a reader most
+    needs kept apart. The generic version of this warning is what let the sweep's
+    recourse numbers be quoted for a day before the hand check."""
+    unmeasured = " ".join(caveats(
+        [row(ruling_form="uphold_overturn"), row(ruling_form="uphold_overturn")],
+        ["debate", "single"]))
+    assert "has NOT been run" in unmeasured
+    assert "8 of 12" in unmeasured
+
+    measured = " ".join(caveats(
+        [ruled_row(ruling_line_mismatch=True), ruled_row(ruling_line_mismatch=False)],
+        ["debate", "single"]))
+    assert "Measured here at 1/2 (50.0%)" in measured
+    assert "ruling_line_mismatch_on_flawed_parent" in measured
+    assert "bounded by the rate at which a ruling" in measured
+
+    none_at_all = " ".join(caveats([row(ruling_form=None)], ["debate", "single"]))
+    assert "No rulings are in this index" in none_at_all

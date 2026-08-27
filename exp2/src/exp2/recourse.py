@@ -5,10 +5,10 @@ DESIGN.md says so. The difficulty is that the three conditions are contested by
 genuinely different mechanisms, and the record has to say which was used rather than
 leaving a reader to infer it from a model name.
 
-    debate                  a recourse judge — the same weak model — is asked whether
-                            the objection shows the decision to be mistaken. The burden
-                            is on the challenger and the verdict is *derived* from
-                            UPHOLD/OVERTURN.
+    debate                  a recourse judge — the same weak model — is asked what is
+                            true of the original text under review. The burden is on the
+                            challenger, and UPHOLD/OVERTURN is *derived* by comparing the
+                            judge's conclusion with the decision rather than asked for.
 
     single, self_critique   the model that decided is handed the objection **in its own
                             conversation** and asked for its verdict again. This is what
@@ -41,14 +41,18 @@ from .prompts import (
     build_challenger_messages,
     build_comprehension_messages,
     build_recourse_judge_messages,
+    build_ruling_agreement_messages,
     build_solo_recourse_message,
     conversation_spent_a_repair,
     marks_private_text,
     parse_agreement_output,
     parse_comprehension_output,
     parse_objection_output,
-    parse_verdict_output,
+    parse_ruling_agreement_output,
     parse_ruling_output,
+    parse_verdict_output,
+    ruling_conclusion_line,
+    strip_decision_lines,
 )
 from .types import (
     COMPREHENSION_SCALE_ID,
@@ -59,6 +63,7 @@ from .types import (
     Comprehension,
     Item,
     Ruling,
+    RulingAgreement,
     Sides,
     challenge_stance,
     claimed_verdict_for,
@@ -269,18 +274,35 @@ async def judge_prose_stance(
 async def _rule_by_judge(
     record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient
 ) -> Ruling:
-    """A third party rules on the objection; the verdict is derived from the ruling.
+    """A third party states its conclusion; UPHOLD/OVERTURN is derived from it.
 
     Reached by `debate` under the historical `per_condition` routing and by every
     condition under `third_party`. The judge is shown the record the challenger was
     shown, whichever shape it has, so a solo cell ruled here is ruled on the decision
     that was actually made.
+
+    **The relative word is never asked for.** Until 2026-08-27 the judge ended on
+    `Ruling: UPHOLD|OVERTURN` and the verdict was derived from that. The re-contest
+    measured what it cost: a hand check of 12 rulings on FLAWED parents found 8 whose
+    line contradicted the judge's own reasoning, and 52 of the 62 phantom objections —
+    objections whose prose agreed with the verdict — were overturned. It is the pilot-2
+    vocabulary collision one layer down: "the objection is valid" and "the text is
+    flawed" both map onto OVERTURN, whichever way the decision went. So the judge is
+    asked the object-level question instead, in the ONE vocabulary it cannot mistranslate
+    — does the original text contain a flaw — and this function does the comparison the
+    judge was getting wrong. `outputs/rerule-smoke/review.md` is the three-variant smoke
+    that chose the wording; DESIGN.md records the decision.
+
+    The arithmetic goes through `resolve_ruling` in the same direction as before, so the
+    `Ruling` invariant is checked rather than asserted: `ruling` is chosen so that
+    `resolve_ruling(ruling, parent) == verdict`, and `Ruling.__post_init__` re-derives it
+    and refuses the record if the two ever disagree.
     """
     messages = build_recourse_judge_messages(
         record.item, record.sides, record.challenger_view(),
         decision_verdict=record.verdict.verdict, objection=challenge.text,
     )
-    (word, reasoning, parse_mode), completion, repairs, _, _ = (
+    (conclusion, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=config.recourse_judge_model_for(), messages=messages,
             temperature=config.judge_temperature, config=config,
@@ -290,14 +312,71 @@ async def _rule_by_judge(
             word_limit=config.word_limit,
         )
     )
-    verdict = resolve_ruling(word, record.verdict.verdict)
+    parent = record.verdict.verdict
+    word = "UPHOLD" if conclusion == parent else "OVERTURN"
+    verdict = resolve_ruling(word, parent)
     return Ruling(
-        form="uphold_overturn", ruling=word, protocol=config.recourse_protocol,
-        parent_verdict=record.verdict.verdict, verdict=verdict, parse_mode=parse_mode,
+        form="stated_conclusion", ruling=word, protocol=config.recourse_protocol,
+        parent_verdict=parent, verdict=verdict, parse_mode=parse_mode,
+        conclusion_line=ruling_conclusion_line(completion.content),
         raw=completion.content, call_id=completion.call_id,
         finish_reason=completion.finish_reason,
         correct=(verdict == record.item.gold_verdict), repair_attempts=repairs,
         reasoning=reasoning, native_reasoning=completion.reasoning,
+        reasoning_withheld=completion.reasoning_withheld,
+    )
+
+
+async def judge_ruling_prose(
+    ruling: Ruling,
+    *,
+    config: DebateConfig,
+    grading: GradingConfig,
+    client: ChatClient,
+) -> RulingAgreement:
+    """Read one ruling's reasoning and say what it concludes. Off the decision path.
+
+    The exact shape of `judge_prose_stance`, one layer down, and for the same reason: a
+    column that nothing can falsify is not a measurement. There the column is the
+    challenger's `contests` label; here it is the judge's own line, and the re-contest
+    showed that line to be the weaker of the two — 8 contradictions in 12 hand-checked
+    rulings against roughly 1 in 2 phantom objections.
+
+    Run as its own stage over finished contest directories, never inside a contest: it
+    must not be able to change what a judge was handed or what it wrote, and a separate
+    pass makes that structural rather than a promise. It also runs over trees this code
+    did not write — the sweep's 1,122 rulings and the re-contest's 464, every one under
+    the old `Ruling:` line — which is how the two instruments get compared on the same
+    scale.
+
+    Temperature 0 and `grading.max_tokens`, as the agreement probe: this is a
+    measurement, the same text read twice should read the same way, and a 16k ceiling on
+    a probe that costs cents only buys a runaway.
+
+    `line_conclusion` is the ruling's recorded verdict rather than a re-parse of its raw
+    text — under `stated_conclusion` that verdict is exactly what the line said, and
+    under the older forms it is what the record says the ruling amounted to. The reader
+    never sees it, or any decision line: `strip_decision_lines` takes both vocabularies
+    off the prose first, so the reading cannot be steered by the answer.
+    """
+    messages = build_ruling_agreement_messages(strip_decision_lines(ruling.reasoning))
+    (prose, reasoning, parse_mode), completion, repairs, _, _ = (
+        await _complete_with_repair(
+            client, model=grading.grader_model, messages=messages,
+            temperature=AGREEMENT_TEMPERATURE, config=config,
+            meta={"role": "ruling_reader", "speaker": None, "round": None,
+                  "purpose": "ruling_agreement"},
+            parse=parse_ruling_agreement_output, role="ruling_reader", word_limit=0,
+            max_tokens=grading.max_tokens,
+        )
+    )
+    return RulingAgreement(
+        prose_conclusion=prose, line_conclusion=ruling.verdict, reasoning=reasoning,
+        ruling_form=ruling.form, parent_verdict=ruling.parent_verdict,
+        model=grading.grader_model,
+        parse_mode=parse_mode, raw=completion.content, call_id=completion.call_id,
+        finish_reason=completion.finish_reason, repair_attempts=repairs,
+        native_reasoning=completion.reasoning,
         reasoning_withheld=completion.reasoning_withheld,
     )
 

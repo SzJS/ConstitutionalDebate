@@ -38,7 +38,7 @@ async def test_third_party_sends_a_solo_objection_to_the_recourse_judge(tmp_path
     objections they were handed."""
     config = make_config(recourse_form="third_party")
     outcome, client, _, _ = await contest(tmp_path, "single", config=config)
-    assert outcome.ruling.form == "uphold_overturn"
+    assert outcome.ruling.form == "stated_conclusion"
     assert outcome.ruling.protocol == "judge_only"
     assert "recourse_judge" in client.roles()
     assert "recourse_solo" not in client.roles()
@@ -50,7 +50,7 @@ async def test_third_party_sends_a_solo_objection_to_the_recourse_judge(tmp_path
 async def test_third_party_leaves_the_debate_condition_where_it_already_was(tmp_path):
     config = make_config(recourse_form="third_party")
     outcome, client, _, _ = await contest(tmp_path, "debate", config=config)
-    assert outcome.ruling.form == "uphold_overturn"
+    assert outcome.ruling.form == "stated_conclusion"
     assert "recourse_judge" in client.roles()
 
 
@@ -72,7 +72,7 @@ async def test_in_conversation_keeps_the_solo_conditions_in_their_conversation(t
 
 async def test_debate_is_ruled_by_a_judge_who_did_not_decide(tmp_path):
     outcome, client, _, _ = await contest(tmp_path, "debate")
-    assert outcome.ruling.form == "uphold_overturn"
+    assert outcome.ruling.form == "stated_conclusion"
     assert outcome.ruling.protocol == "judge_only"
     assert outcome.ruling.ruling in ("UPHOLD", "OVERTURN")
     assert "recourse_judge" in client.roles()
@@ -82,10 +82,97 @@ async def test_debate_is_ruled_by_a_judge_who_did_not_decide(tmp_path):
 
 async def test_the_derived_verdict_follows_from_the_ruling(tmp_path):
     outcome, _, _, record = await contest(tmp_path, "debate")
-    # the fake recourse judge overturns
+    # the fake recourse judge concludes the text is SOUND against a FLAWED decision
     assert outcome.ruling.ruling == "OVERTURN"
     assert outcome.ruling.verdict != record.verdict.verdict
     assert outcome.ruling.changed_the_decision is True
+
+
+async def test_the_judge_states_a_conclusion_and_the_ruling_word_is_derived(tmp_path):
+    """The judge is never asked whether to uphold or overturn. The re-contest measured
+    what asking cost: 8 of 12 hand-checked rulings on FLAWED parents ended on a line that
+    contradicted the judge's own reasoning, because "the objection is valid" and "the
+    text is flawed" both land on OVERTURN."""
+    from exp2.types import resolve_ruling
+
+    outcome, client, _, record = await contest(tmp_path, "debate")
+    ruling = outcome.ruling
+    assert ruling.form == "stated_conclusion"
+    assert ruling.conclusion_line == (
+        "Conclusion: the original text in <solution> does not contain a flaw")
+    assert ruling.verdict == "SOUND"          # what the judge actually said
+    assert ruling.ruling == "OVERTURN"        # what follows, given a FLAWED decision
+    assert resolve_ruling(ruling.ruling, ruling.parent_verdict) == ruling.verdict
+    # and the relative word never appears in what the judge was asked
+    sent = "".join(m["content"] for m in client.sent_to("recourse_judge"))
+    assert "UPHOLD" not in sent and "OVERTURN" not in sent
+    assert "You are judging the TEXT, not the thing it assesses" in sent
+
+
+async def test_a_judge_that_agrees_with_the_decision_upholds_it(tmp_path):
+    """The other half of the derivation, and the half the old line got wrong: the same
+    conclusion means UPHOLD or OVERTURN depending on the decision, and the comparison is
+    now made in code rather than by a weak model."""
+    client = FakeClient(replies={
+        "recourse_judge": ("The objection does not land.\n"
+                           "Conclusion: the original text in <solution> contains a flaw"),
+    })
+    outcome, _, _, record = await contest(tmp_path, "debate", client=client)
+    assert record.verdict.verdict == "FLAWED"
+    assert outcome.ruling.verdict == "FLAWED"
+    assert outcome.ruling.ruling == "UPHOLD"
+    assert outcome.ruling.changed_the_decision is False
+
+
+async def test_a_ruling_document_says_the_judge_stated_its_own_conclusion(tmp_path):
+    """This sentence is the account a stakeholder is handed of how their objection was
+    heard, and "upheld" now means something the judge did not itself write."""
+    _, _, writer, _ = await contest(tmp_path, "debate")
+    document = (writer.dir / "transcript.md").read_text()
+    assert ("*Ruled on by a judge who did not make the original decision. The judge "
+            "stated its own conclusion about the text under review; the decision was "
+            "upheld/overturned by comparing the two.*") in document
+    full = (writer.dir / "transcript_full.md").read_text()
+    assert "ruling (recourse judge, stated conclusion)" in full
+
+
+async def test_the_ruling_agreement_reader_measures_the_line_against_the_prose(tmp_path):
+    """The residual instrument. The smoke put the new line's contradiction rate at 1 in
+    20 rather than 8 — but a residual nobody measures is a residual nobody can bound, and
+    every revised_* rate in the experiment is bounded by this one."""
+    from exp2.config import GradingConfig
+    from exp2.recourse import judge_ruling_prose
+
+    outcome, _, _, _ = await contest(tmp_path, "debate")
+    client = FakeClient()
+    reading = await judge_ruling_prose(
+        outcome.ruling, config=make_config(), grading=GradingConfig(), client=client)
+    assert reading.prose_conclusion == "SOUND"
+    assert reading.line_conclusion == outcome.ruling.verdict == "SOUND"
+    assert reading.mismatch is False
+    assert reading.ruling_form == "stated_conclusion"
+    assert client.roles() == ["ruling_reader"]
+    assert client.temperature_for("ruling_reader") == 0.0
+    # the reader sees the judge's prose and no decision line of any vocabulary
+    sent = "".join(m["content"] for m in client.sent_to("ruling_reader"))
+    assert "The objection identifies a real error." in sent
+    assert "Conclusion:" not in sent and "Ruling:" not in sent
+
+
+async def test_the_ruling_agreement_reader_catches_a_line_its_prose_contradicts(tmp_path):
+    """The failure it exists to count, and the one the hand check found 8 of in 12: the
+    reasoning concludes the text is flawed and the record says the verdict is SOUND."""
+    from exp2.config import GradingConfig
+    from exp2.recourse import judge_ruling_prose
+
+    outcome, _, _, _ = await contest(tmp_path, "debate")
+    client = FakeClient(replies={
+        "ruling_reader": "It finds a real error in step 2.\nReading: FLAWED"})
+    reading = await judge_ruling_prose(
+        outcome.ruling, config=make_config(), grading=GradingConfig(), client=client)
+    assert reading.prose_conclusion == "FLAWED"
+    assert reading.line_conclusion == "SOUND"
+    assert reading.mismatch is True
 
 
 async def test_a_solo_contest_replays_the_recorded_conversation(tmp_path):

@@ -261,7 +261,7 @@ async def test_a_debate_contest_points_at_the_decisions_own_document(tmp_path):
     document = (writer.dir / "transcript_full.md").read_text()
     assert "`parent/transcript_full.md`" in document
     headings = [section[0] for section in call_sections(document)]
-    assert headings[-1] == "### Call 3 — ruling (recourse judge)"
+    assert headings[-1] == "### Call 3 — ruling (recourse judge, stated conclusion)"
 
 
 async def test_the_record_the_stakeholder_read_is_a_block_shared_with_the_judge(

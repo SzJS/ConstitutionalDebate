@@ -130,6 +130,10 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
     # the challenger to go looking would produce, and it is invisible in the pooled rate.
     correct_flawed = [r for r in correct if r.get("gold_flawed")]
     correct_sound = [r for r in correct if r.get("gold_flawed") is False]
+    # Rows that actually have a ruling — the denominator the ruling-line instrument
+    # belongs over. A cell that was never objected to has no line to check, which is a
+    # different fact from a line that checked out.
+    ruled = [r for r in rows if r.get("ruling_form") is not None]
     rates = [
         _rate("decision_error", rows, "initially_incorrect"),
         _rate("objection_raised_given_incorrect", incorrect, "challenge_raised"),
@@ -158,6 +162,22 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         # contests and not of all of them.
         _rate("phantom_contest", [r for r in rows if r.get("challenge_raised")],
               "phantom_contest"),
+        # The recourse judge's own line against its own prose — the instrument that
+        # keeps every `revised_*` number above falsifiable, and the bound on all of
+        # them. Denominator is the rulings the `ruling_agreement` stage could read.
+        #
+        # Split by PARENT VERDICT because that is where the failure lived: the
+        # re-contest's hand check found the old `Ruling:` line contradicting the judge's
+        # reasoning in 8 of 12 rulings on FLAWED decisions and in none of the clear
+        # SOUND ones, since "the objection is valid" and "the text is flawed" collide
+        # only when the decision already said FLAWED. A pooled rate would halve it.
+        _rate("ruling_line_mismatch", ruled, "ruling_line_mismatch"),
+        _rate("ruling_line_mismatch_on_flawed_parent",
+              [r for r in ruled if r.get("verdict") == "FLAWED"],
+              "ruling_line_mismatch"),
+        _rate("ruling_line_mismatch_on_sound_parent",
+              [r for r in ruled if r.get("verdict") == "SOUND"],
+              "ruling_line_mismatch"),
     ]
     return {
         "n": len(rows),
@@ -167,9 +187,11 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         "n_false_positive": len(false_positive),
         "n_detectable_false_negative": len(detectable),
         "n_characterisable_false_negative": len(characterisable),
+        "n_ruled": len(ruled),
         "rates": {r.name: r.to_dict() for r in rates},
         "stances": _stances(rows),
         "line_vs_prose": _line_vs_prose(rows),
+        "ruling_line_vs_prose": _ruling_line_vs_prose(ruled),
         "comprehension": _comprehension(rows),
     }
 
@@ -243,6 +265,62 @@ def _line_vs_prose(rows: Sequence[dict]) -> dict[str, Any]:
         "n_contests_measured": contests_measured,
         "declines_arguing_for_reversal": table["STANDS"]["WRONG"],
         "n_declines_measured": sum(table["STANDS"].values()),
+    }
+
+
+def _ruling_line_vs_prose(ruled: Sequence[dict]) -> dict[str, Any]:
+    """The cross-tab ``changed_the_decision`` is falsified against.
+
+    The same shape as ``_line_vs_prose`` one layer down, and it exists for a measured
+    reason rather than a precautionary one: the re-contest's hand check
+    (``outputs/recontest-ruling-handcheck.md``) read 12 rulings on FLAWED parents and
+    found 8 whose ``Ruling:`` line contradicted the judge's own reasoning, and 52 of the
+    62 phantom objections — objections whose own prose agreed with the verdict — were
+    overturned. Counts rather than a single rate, because the interesting cells are the
+    off-diagonal ones and because NEITHER is its own column: a reasoning that settles on
+    nothing has not contradicted its line, it has failed to support it, and those are
+    different findings.
+
+    Broken down by ``ruling_form`` as well, since that is the comparison the whole
+    exercise is for: ``uphold_overturn`` is the relative line the sweep and the
+    re-contest used, ``stated_conclusion`` the absolute one that replaced it, and
+    ``restated_verdict`` the solo re-decider, which was never asked a relative question
+    and is the natural floor.
+    """
+    table: dict[str, dict[str, int]] = {
+        line: {prose: 0 for prose in ("FLAWED", "SOUND", "NEITHER")}
+        for line in ("FLAWED", "SOUND")
+    }
+    by_form: dict[str, dict[str, int]] = {}
+    measured = 0
+    for row in ruled:
+        prose = row.get("ruling_prose_conclusion")
+        # The index carries the PARENT verdict as `verdict` and the ruling as
+        # `changed_the_decision`; the line's own conclusion is what those two imply,
+        # which is the same arithmetic `types.resolve_ruling` does and the reason the
+        # ruling record states both halves.
+        parent, changed = row.get("verdict"), row.get("changed_the_decision")
+        if parent not in ("FLAWED", "SOUND") or changed is None:
+            continue
+        if prose not in ("FLAWED", "SOUND", "NEITHER"):
+            continue
+        line = ("SOUND" if parent == "FLAWED" else "FLAWED") if changed else parent
+        measured += 1
+        table[line][prose] += 1
+        form = row.get("ruling_form") or "unknown"
+        counts = by_form.setdefault(form, {"measured": 0, "mismatch": 0})
+        counts["measured"] += 1
+        counts["mismatch"] += 1 if row.get("ruling_line_mismatch") else 0
+    return {
+        "measured": measured,
+        "eligible": len(ruled),
+        "table": table,
+        "by_ruling_form": by_form,
+        # The two named failures, as counts: a line saying the text is sound over
+        # reasoning that found a flaw, and its mirror.
+        "line_sound_prose_flawed": table["SOUND"]["FLAWED"],
+        "line_flawed_prose_sound": table["FLAWED"]["SOUND"],
+        "no_direction": sum(table[line]["NEITHER"] for line in table),
     }
 
 
@@ -383,6 +461,46 @@ def _specious_objection_caveat(rows: Sequence[dict]) -> str:
     return _SPECIOUS_CAVEAT_IN_CONVERSATION
 
 
+def _ruling_line_caveat(rows: Sequence[dict]) -> str:
+    """The bound the ruling-line instrument puts on every revision number.
+
+    Stated with the run's own measured rate where the ``ruling_agreement`` stage has run,
+    and as an unmeasured hazard where it has not — because "we did not look" and "we
+    looked and it was 5%" are the two facts a reader most needs kept apart, and the
+    version of this caveat that read as a generic warning is what let the sweep's
+    recourse numbers be quoted for a day before the hand check.
+    """
+    ruled = [r for r in rows if r.get("ruling_form") is not None]
+    measured = [r for r in ruled if r.get("ruling_line_mismatch") is not None]
+    forms = sorted({r.get("ruling_form") for r in ruled} - {None})
+    head = (
+        "Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived "
+        "from them is bounded by the rate at which a ruling's recorded outcome "
+        "disagrees with the judge's own reasoning: where the two disagree, the "
+        "revision is an artifact of the ruling line and not a re-decision. "
+    )
+    if not ruled:
+        return head + "No rulings are in this index, so nothing here is affected."
+    if not measured:
+        return (
+            head + f"The `ruling_agreement` stage has NOT been run over these "
+            f"{len(ruled)} rulings, so that rate is unmeasured here. It is not small by "
+            "default: the re-contest's hand check found the old `Ruling: "
+            "UPHOLD|OVERTURN` line contradicting the judge's reasoning in 8 of 12 "
+            "rulings on FLAWED decisions."
+        )
+    k = sum(1 for r in measured if r["ruling_line_mismatch"])
+    rate = k / len(measured)
+    return (
+        head + f"Measured here at {k}/{len(measured)} ({rate:.1%}) of the rulings the "
+        f"`ruling_agreement` stage could read (forms present: {', '.join(forms)}); "
+        "`ruling_line_mismatch_on_flawed_parent` is the number to read, since that is "
+        "where the collision lives. NEITHER counts as a mismatch, so this is an upper "
+        "bound — `ruling_prose_conclusion` in the index separates the outright "
+        "contradictions from the reasonings that settled on nothing."
+    )
+
+
 def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
     matching = matched_items(rows, conditions)
     sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
@@ -398,6 +516,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         "size and character by construction. There is no weak_alone condition, so a "
         "debate-vs-single difference cannot separate the mechanism from model strength.",
         _specious_objection_caveat(rows),
+        _ruling_line_caveat(rows),
         "Rates are not pooled across label_basis: injected_pair, sentence_labels and "
         "final_answer are three different claims about what 'flawed' means. medqa's "
         "final_answer basis in particular labels a badly-reasoned solution 'sound' "

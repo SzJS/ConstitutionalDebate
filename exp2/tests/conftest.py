@@ -24,13 +24,20 @@ from exp2.client import Completion, FatalError, RetryableError
 
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
-                   "recourse_solo", "agreement"}
+                   "recourse_solo", "agreement", "ruling_reader"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
 DEFAULT_REPLIES: dict[str, str] = {
     "judge": "The flawed side quoted the text; the sound side did not.\nVerdict: FLAWED",
-    "recourse_judge": "The objection identifies a real error.\nRuling: OVERTURN",
+    # The judge states an absolute conclusion and never a relative word; UPHOLD or
+    # OVERTURN is derived from it by comparison with the decision. Against the default
+    # judge's FLAWED verdict this SOUND conclusion derives OVERTURN, which is what the
+    # old "Ruling: OVERTURN" default gave, so the recourse tests keep the outcome they
+    # were written against while exercising the new line.
+    "recourse_judge": ("The objection identifies a real error.\n"
+                       "Conclusion: the original text in <solution> does not contain a "
+                       "flaw"),
     # Contests: one line, REVERSE, which against the default judge's FLAWED verdict
     # derives a claimed SOUND. A reply with no parsable line is the `unclear` stance,
     # which seeks no ruling — so every recourse test would silently stop exercising the
@@ -46,6 +53,10 @@ DEFAULT_REPLIES: dict[str, str] = {
     # the default run measures agreement rather than a phantom contest; tests that want
     # the mismatch ask for it.
     "agreement": "It argues the verdict got it wrong.\nProse: WRONG",
+    # The ruling's line-vs-prose probe. SOUND matches the default recourse judge's
+    # conclusion above, so the default run measures agreement rather than a mismatch;
+    # tests that want the mismatch ask for it.
+    "ruling_reader": "The reasoning concludes the text is fine.\nReading: SOUND",
 }
 
 

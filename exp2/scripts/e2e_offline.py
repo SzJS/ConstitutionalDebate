@@ -19,7 +19,10 @@ The deciders are scripted to answer SOUND, because that is what makes the flawed
 without a wrong decision it would skip everything and the grading path would go
 unexercised.
 
-**Two passes, because there are two recourse forms and each writes a different
+**Three passes.** The first two are the two recourse forms, each of which writes a
+different document; the third is a `contests_from` re-rule over the first's tree.
+
+**Two of them, because there are two recourse forms and each writes a different
 document.** The first is the whole grid under ``recourse_form = "third_party"`` — what
 the re-contest specs set and what DESIGN.md settled on: every condition's objection is
 ruled by a judge that did not decide, so a solo cell's ``transcript.md`` closes with
@@ -30,6 +33,18 @@ Both sentences are published to a stakeholder as the account of how their object
 heard, so both have to be rendered over a real record and read, and a script that
 covered only the new one would let the other rot. The challenger's reply is in its new
 shape in both: reasons first, the decision line last.
+
+**The third pass is the re-rule**: the first tree's finished objections, ruled again
+into a tree of their own under `contests_from`. It is the path the 1,586 existing
+rulings will be re-made on, and its safety property — neither source tree changes by one
+byte — is asserted here with a hash before and after, over real records rather than a
+fixture. It also runs the `ruling_agreement` stage, the reading of the judge's own prose
+that bounds every revision number.
+
+**Every root is deleted first.** Each stage resumes on its own artifacts, which is what a
+real run needs and exactly wrong here: a tree left by an earlier version of this script
+would be skipped rather than re-made, and the assertions below would pass by describing
+records the current code did not write. The whole thing is offline and takes seconds.
 """
 
 from __future__ import annotations
@@ -38,6 +53,7 @@ import asyncio
 import dataclasses
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -58,7 +74,10 @@ from exp2.experiment import (  # noqa: E402
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_rerule,
+    run_stage_ruling_agreement,
 )
+from exp2.persistence import tree_sha256  # noqa: E402
 from exp2.types import load_cases  # noqa: E402
 
 SPEC = REPO / "experiments" / "pilot.toml"
@@ -67,6 +86,9 @@ ROOT = REPO / "outputs" / "e2e-offline-2"
 # The second pass writes its own tree: a cell is contested once, so the two forms cannot
 # share one.
 ROOT_PER_CONDITION = REPO / "outputs" / "e2e-offline-2-per-condition"
+# The third pass writes its own tree too: it re-rules ROOT's contests, and a re-rule must
+# never write into the tree it reads.
+ROOT_RERULE = REPO / "outputs" / "e2e-offline-2-rerule"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -103,6 +125,16 @@ DECIDER_REPLIES = {
     # The line-vs-prose instrument. WRONG matches the REVERSE line above, so the offline
     # run exercises the agreeing branch end to end.
     "agreement": "It argues the verdict was mistaken.\nProse: WRONG",
+    # The recourse judge states an absolute conclusion about the ORIGINAL text and never
+    # a relative word; UPHOLD/OVERTURN is derived from it. Every decision above is SOUND,
+    # so a judge that finds a flaw overturns — which is what keeps the offline run
+    # exercising a revision end to end.
+    "recourse_judge": ("The objection is right that step 2 does not follow.\n"
+                       "Conclusion: the original text in <solution> contains a flaw"),
+    # The ruling's line-vs-prose instrument. FLAWED matches the conclusion above, so the
+    # offline run exercises the consistent branch and `ruling_line_mismatch` is False.
+    "ruling_reader": ("It concludes the text does not follow at step 2.\n"
+                      "Reading: FLAWED"),
 }
 
 
@@ -137,13 +169,16 @@ def install_fake_client() -> list[FakeClient]:
 
 
 async def run_stages(root, grid, config, client_config, grading) -> None:
-    """decide, contest, agreement, grade over one grid, into one tree."""
+    """decide, contest, agreement, ruling_agreement, grade over one grid, into one tree."""
     stages = {
         "decide": lambda: run_stage_decide(
             grid, root=root, config=config, client_config=client_config, api_key="fake"),
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config, api_key="fake"),
         "agreement": lambda: run_stage_agreement(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key="fake"),
+        "ruling_agreement": lambda: run_stage_ruling_agreement(
             grid, root=root, config=config, grading=grading,
             client_config=client_config, api_key="fake"),
         "grade": lambda: run_stage_grade(
@@ -207,6 +242,13 @@ async def main() -> int:
 
     clients = install_fake_client()
 
+    # Every stage resumes on its own artifacts, which is what a real run needs and
+    # exactly wrong here: a tree left by an earlier version of this script would be
+    # skipped rather than re-made, and every assertion below would then be describing
+    # records the current code did not write.
+    for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE):
+        if root.exists():
+            shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
     print(f"outputs: {ROOT}")
     print(f"cells: {len(grid)}  items: {len(ITEMS)}  conditions: {CONDITIONS}")
@@ -235,10 +277,14 @@ async def main() -> int:
     # Under `third_party` there must be no `restated_verdict` anywhere, in any condition
     # — that form is the decider re-deciding its own appeal, which is what the change
     # removes. Reported per condition, because the solo ones are where it would survive.
+    #
+    # And the form has to be `stated_conclusion`, not `uphold_overturn`: nothing generates
+    # the relative line any more, so a cell that still carried it would mean the judge was
+    # asked the question the re-contest measured it getting wrong.
     forms = ruling_forms(ROOT)
     print(f"ruling forms per condition: {forms}")
-    stray = {c: f for c, f in forms.items() if set(f) != {"uphold_overturn"}}
-    print(f"rulings NOT made by a third-party judge: {stray}")
+    stray = {c: f for c, f in forms.items() if set(f) != {"stated_conclusion"}}
+    print(f"rulings NOT made by a third-party judge stating its own conclusion: {stray}")
     outcomes = rendered_outcome_lines(ROOT)
     print(f"rendered outcome sentences: {sorted(outcomes)}")
     if not outcomes or any("Reconsidered by" in line for line in outcomes):
@@ -252,8 +298,102 @@ async def main() -> int:
           f"{still_labelled}")
 
     first = report_documents(ROOT) or (1 if stray else 0)
+    third = await rerule_pass(config, client_config, grading, grid)
     return await per_condition_pass(
-        per_condition_config, client_config, grading, by_id) or first
+        per_condition_config, client_config, grading, by_id) or first or third
+
+
+async def rerule_pass(config, client_config, grading, grid) -> int:
+    """The first tree's finished objections, ruled again into a tree of their own.
+
+    This is the path the sweep's 1,122 rulings and the re-contest's 464 will be re-made
+    on, and its whole safety property is that neither source tree changes by one byte —
+    asserted here with a hash before and after, over real records rather than a fixture.
+    The objection, its comprehension probe, its agreement reading and its grade come
+    across with the copy; only the ruling is made again, which is why `grade` never runs
+    on a re-rule spec and why the index below still carries `grade_valid`.
+    """
+    ROOT_RERULE.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\nthird pass — re-ruling the first tree's objections")
+    print(f"outputs: {ROOT_RERULE}")
+    print(f"decisions and objections read from: {ROOT}   (never written to)")
+    before = tree_sha256(ROOT)
+
+    results = await run_stage_rerule(
+        grid, root=ROOT_RERULE, config=config, client_config=client_config,
+        api_key="fake", decision_root=ROOT, contest_root=ROOT)
+    counts: dict[str, int] = {}
+    for result in results:
+        key = ("error" if isinstance(result, BaseException)
+               else result.get("status", "unknown"))
+        counts[key] = counts.get(key, 0) + 1
+    print(f"{'rerule':9s} {counts}")
+    for result in results:
+        if isinstance(result, BaseException):
+            print(f"  ! {type(result).__name__}: {result}")
+        elif result.get("status") == "failed":
+            print(f"  ! {result['cell_id']}: {result.get('error')}")
+    forms_replaced = sorted({r.get("was") for r in results
+                             if not isinstance(r, BaseException) and r.get("was")})
+    print(f"ruling forms replaced: {forms_replaced}")
+
+    await run_stage_ruling_agreement(
+        grid, root=ROOT_RERULE, config=config, grading=grading,
+        client_config=client_config, api_key="fake")
+
+    rulings = sorted(ROOT_RERULE.glob("cells/*/contests/*/runs/*/ruling.json"))
+    stray: dict[str, int] = {}
+    forms = {}
+    for path in rulings:
+        ruling = json.loads(path.read_text(encoding="utf-8"))
+        forms[ruling.get("form")] = forms.get(ruling.get("form"), 0) + 1
+        if ruling.get("form") != "stated_conclusion":
+            stray["a ruling not made under the stated-conclusion line"] = 1
+        if not ruling.get("conclusion_line", "").startswith("Conclusion:"):
+            stray["a ruling with no conclusion line of its own"] = 1
+        for name in ("ruling.source.json", "ruling_agreement.json", "challenge.json",
+                     "comprehension.json", "agreement.json"):
+            if not (path.parent / name).is_file():
+                stray[f"a re-ruled contest with no {name}"] = 1
+        if (path.parent / "transcript.md").read_text(encoding="utf-8").find(
+                "stated its own conclusion about the text under review") < 0:
+            stray["a document that does not say the judge stated its own conclusion"] = 1
+    print(f"re-rulings written: {len(rulings)}  forms: {forms}")
+
+    rows = build_index(grid, root=ROOT_RERULE,
+                       challenger_model=config.challenger_model_for(),
+                       decision_root=ROOT)
+    index = ROOT_RERULE / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, CONDITIONS)
+    (ROOT_RERULE / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                              encoding="utf-8")
+    mismatch = metrics["overall"]["rates"]["ruling_line_mismatch"]
+    print(f"indexed {len(rows)} rows   ruling_line_mismatch "
+          f"{mismatch['k']}/{mismatch['n']}")
+    # The grade is of the OBJECTION and the objection has not changed, so it is copied
+    # through and `grade` never runs on a re-rule spec. A sound item is never graded at
+    # all (validity is undefined there by design), so the number to match is the SOURCE's
+    # — not the number of cells.
+    graded_here = len(list(ROOT_RERULE.glob("cells/*/contests/*/runs/*/grade.json")))
+    graded_there = len(list(ROOT.glob("cells/*/contests/*/runs/*/grade.json")))
+    print(f"grades carried across the copy: {graded_here}/{graded_there} of the "
+          f"source's (the rest are sound items, never graded by design)")
+    if graded_here != graded_there:
+        stray["a grade did not survive the copy"] = 1
+    caveat = next((c for c in metrics["caveats"] if "revised_*" in c), "")
+    print(f"ruling-line caveat: {caveat[:120]}...")
+    if not caveat:
+        stray["the metrics carry no ruling-line caveat"] = 1
+
+    after = tree_sha256(ROOT)
+    print(f"source tree hash before {before[:16]}  after {after[:16]}  "
+          f"{'UNCHANGED' if before == after else 'CHANGED'}")
+    if before != after:
+        stray["the re-rule wrote into the tree it read"] = 1
+    print(f"re-rule invariants violated: {stray}")
+
+    return report_documents(ROOT_RERULE) or (1 if stray else 0)
 
 
 async def per_condition_pass(config, client_config, grading, by_id) -> int:

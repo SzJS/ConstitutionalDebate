@@ -84,19 +84,24 @@ def drive(tmp_path: Path, *, fail_at: str | None = None, name: str = "sweep-test
     return proc, stages, tmp_path / "experiments" / name
 
 
-ALL_FIVE = ["decide", "contest", "agreement", "grade", "analyse"]
+# The driver's default list. `ruling_agreement` joined it on 2026-08-27: it reads the
+# recourse judge's line against the judge's own prose, exactly as `agreement` reads the
+# challenger's, and every `revised_*` number in the experiment is bounded by it.
+# `rerule` is deliberately NOT here — it belongs to a `contests_from` spec and is asked
+# for by name through RUN_SWEEP_STAGES.
+ALL_STAGES = ["decide", "contest", "agreement", "ruling_agreement", "grade", "analyse"]
 
 
-def test_all_five_stages_run_in_order_and_leave_done(tmp_path: Path):
+def test_every_default_stage_runs_in_order_and_leaves_done(tmp_path: Path):
     proc, stages, root = drive(tmp_path)
     assert proc.returncode == 0, proc.stderr
-    assert stages == ALL_FIVE
+    assert stages == ALL_STAGES
     assert not (root / "STOP.md").exists()
     done = (root / "DONE.md").read_text(encoding="utf-8")
-    assert "All stages completed: decide contest agreement grade analyse" in done
+    assert "All stages completed: decide contest agreement ruling_agreement grade analyse" in done
     # Completing is not succeeding, and the file has to say so where it is read.
     assert "metrics.json" in done
-    for stage in ALL_FIVE:
+    for stage in ALL_STAGES:
         log = tmp_path / "logs" / f"sweep-test-{stage}.log"
         assert f"stub running stage {stage}" in log.read_text(encoding="utf-8")
 
@@ -126,7 +131,7 @@ def test_a_narrowed_chain_still_halts_at_the_first_failure(tmp_path: Path):
 @pytest.mark.parametrize("fail_at", ["decide", "agreement", "analyse"])
 def test_a_failing_stage_halts_the_chain_and_writes_stop(tmp_path: Path, fail_at: str):
     proc, stages, root = drive(tmp_path, fail_at=fail_at)
-    expected = ALL_FIVE[: ALL_FIVE.index(fail_at) + 1]
+    expected = ALL_STAGES[: ALL_STAGES.index(fail_at) + 1]
     assert stages == expected, "stages after the failure must not have run"
     assert proc.returncode == 7, "the driver exits with the stage's own code"
     assert not (root / "DONE.md").exists()
@@ -149,7 +154,7 @@ def test_a_rerun_clears_the_previous_stop(tmp_path: Path):
     (tmp_path / "fail_at.txt").unlink()
     proc, stages, root = drive(tmp_path)
     assert proc.returncode == 0
-    assert stages == ALL_FIVE
+    assert stages == ALL_STAGES
     assert not (root / "STOP.md").exists()
     assert (root / "DONE.md").exists()
 

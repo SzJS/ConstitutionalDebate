@@ -12,9 +12,10 @@
 # holds the sequencing, and the poller only reads files.
 #
 # What it guarantees:
-#   * stages run in order — decide, contest, agreement, grade, analyse — and each starts
-#     only after the previous one exited 0. contest reads decide's artifacts, so an
-#     overlap would silently contest cells that were still being written.
+#   * stages run in order — decide, contest, agreement, ruling_agreement, grade,
+#     analyse — and each starts only after the previous one exited 0. contest reads
+#     decide's artifacts, so an overlap would silently contest cells that were still
+#     being written.
 #   * every stage's output is teed to outputs/<name>-<stage>.log while still printing,
 #     so it lands in the driver log too and neither copy is the only one.
 #   * the FIRST non-zero exit halts the chain and writes STOP.md. A stage exits non-zero
@@ -33,13 +34,19 @@
 # resumes on its own artifacts and spends nothing on cells that already have a completed
 # record.
 #
-# RUN_SWEEP_STAGES names the stages to run, in order; unset means all five. It is the
+# RUN_SWEEP_STAGES names the stages to run, in order; unset means all six. It is the
 # one of these variables a real run may set, and the re-contest is why: a spec with
 # `decisions_from` contests a tree it does not decide, so `decide` must not run and
 # would refuse if it did.
 #
-#     RUN_SWEEP_STAGES="contest agreement grade analyse" nohup \
+#     RUN_SWEEP_STAGES="contest agreement ruling_agreement grade analyse" nohup \
 #         scripts/run_sweep.sh experiments/recontest.toml > outputs/x.log 2>&1 &
+#
+# `rerule` is never in the default list. It belongs to a spec with `contests_from`, which
+# re-rules another tree's finished objections and on which `contest` refuses:
+#
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/rerule-sweep.toml > outputs/y.log 2>&1 &
 #
 # The other three RUN_SWEEP_* variables exist for the offline test
 # (tests/test_run_sweep.py), which drives this script against a stub command in a tmp
@@ -61,7 +68,7 @@ CMD=${RUN_SWEEP_CMD:-"uv run exp2-experiment"}
 LOGS=${RUN_SWEEP_LOGS:-outputs}
 OUTPUTS=${RUN_SWEEP_OUTPUTS:-outputs/experiments}
 # shellcheck disable=SC2206
-STAGES=(${RUN_SWEEP_STAGES:-decide contest agreement grade analyse})
+STAGES=(${RUN_SWEEP_STAGES:-decide contest agreement ruling_agreement grade analyse})
 
 # The run's name comes from the spec, exactly as experiment_cli.py derives it: the
 # top-level `name` key, falling back to the file stem. Reading it here rather than

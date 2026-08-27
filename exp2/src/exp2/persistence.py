@@ -97,6 +97,15 @@ def _claim_run_dir(root: Path, item_id: str, suffix: str = "") -> Path:
     raise RuntimeError(f"could not claim a run directory under {root}")
 
 
+# What a re-rule does NOT copy from the contest it re-rules. See ``create_rerule`` for
+# the reason each one is here; ``transcript*.md`` is matched by shape rather than named,
+# and only at the top level — the copied ``parent/`` decision has documents and a wire log
+# of its own and they are exactly what makes the record self-contained.
+_RERULE_EXCLUDED: frozenset[str] = frozenset(
+    {"ruling.json", "calls.jsonl", "ruling_agreement.json"}
+)
+
+
 class RunWriter:
     """Owns one run directory. Not reusable across runs."""
 
@@ -108,6 +117,9 @@ class RunWriter:
         self._parent = parent
         self._lock = asyncio.Lock()
         self._manifest: dict[str, Any] = {}
+        # The form of the ruling a re-rule replaces, ``None`` for every other kind of
+        # run. Reported by the stage so a run's own log says what it converted.
+        self.rerule_of_form: str | None = None
 
     # --- construction ---------------------------------------------------------------
 
@@ -154,6 +166,82 @@ class RunWriter:
             "parent_run_id": parent_dir.name, "parent_sha256": parent_hash,
             "parent_copied": copy_parent, "status": "running",
             "client_config": client_config.to_dict(),
+        }
+        writer._flush_manifest()
+        return writer
+
+    @classmethod
+    def create_rerule(cls, *, root: Path, source_dir: Path, item: Item, sides: Sides,
+                      client_config: ClientConfig, condition: str) -> "RunWriter":
+        """A contest directory copied from another tree, ready for a new ruling.
+
+        The objection is not re-made — it is the stakeholder's, it cost real money, and
+        re-drawing it would change the population as well as the ruling. So everything
+        the source contest recorded is copied: ``challenge.json`` and ``challenge.md``,
+        the comprehension probe, the agreement reading, the grade, ``item.json``,
+        ``sides.json``, ``config.json`` and the copied ``parent/`` decision. Copying the
+        grade through is what lets a re-rule run skip the ``grade`` stage entirely; the
+        grade is of the objection, and the objection has not changed.
+
+        Four things are deliberately NOT copied, because they are about to be replaced or
+        would be false:
+
+        * ``ruling.json`` — the whole point. It is kept as ``ruling.source.json``, beside
+          the new one, so the record carries both and a reader can see the change rather
+          than being told about it.
+        * ``calls.jsonl`` — the wire log must describe THIS run's one call. A copied log
+          would make the full document print the old judge's prompt as though it were
+          this ruling's.
+        * ``transcript.md`` / ``transcript_full.md`` — re-rendered from the new state by
+          ``record_ruling``. A stale document that says "the decision was overturned"
+          beside a ruling that upheld it is worse than a missing one.
+        * ``ruling_agreement.json`` — a reading of the OLD ruling's prose. The stage will
+          make a new one, and a copied one would be silently attributed to the new
+          ruling.
+
+        ``run.json`` is copied and then overwritten by the manifest built here, which
+        keeps the source's parent pointers — the decision this contest is of — and adds
+        ``source_contest_dir``, ``source_sha256`` (a hash of the whole source directory,
+        so a source that drifts cannot do so unnoticed) and ``rerule_of_form``.
+        """
+        directory = _claim_run_dir(root, item.item_id, suffix="-rerule")
+        source_hash = tree_sha256(source_dir)
+        for entry in sorted(source_dir.iterdir()):
+            if entry.name in _RERULE_EXCLUDED or (
+                    entry.name.startswith("transcript") and entry.suffix == ".md"):
+                continue
+            if entry.is_dir():
+                shutil.copytree(entry, directory / entry.name)
+            else:
+                shutil.copy2(entry, directory / entry.name)
+        source_ruling = source_dir / "ruling.json"
+        rerule_of_form = None
+        if source_ruling.is_file():
+            shutil.copy2(source_ruling, directory / "ruling.source.json")
+            rerule_of_form = _read_json(source_ruling).get("form")
+        # ``parent`` is only ever consulted for its truthiness — it selects the contest
+        # renderer over the decision one — and a re-rule IS a contest record.
+        writer = cls(directory, directory.name, condition=condition, parent=source_dir)
+        writer.rerule_of_form = rerule_of_form
+        source_manifest: dict[str, Any] = {}
+        if (source_dir / "run.json").is_file():
+            try:
+                source_manifest = _read_json(source_dir / "run.json")
+            except ValueError:
+                source_manifest = {}
+        writer._manifest = {
+            "run_id": writer.run_id, "kind": "rerule", "condition": condition,
+            "item_id": item.item_id, "row_id": item.row_id, "subset": item.subset,
+            # Carried from the source so the re-ruled record still names the DECISION it
+            # contests; a reader who followed `parent_run_id` would otherwise land
+            # nowhere.
+            "parent_run_id": source_manifest.get("parent_run_id"),
+            "parent_sha256": source_manifest.get("parent_sha256"),
+            "parent_copied": source_manifest.get("parent_copied"),
+            "source_contest_dir": str(source_dir),
+            "source_sha256": source_hash,
+            "rerule_of_form": rerule_of_form,
+            "status": "running", "client_config": client_config.to_dict(),
         }
         writer._flush_manifest()
         return writer

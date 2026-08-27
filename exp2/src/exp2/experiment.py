@@ -41,8 +41,8 @@ from .client import OpenRouterClient
 from .config import ClientConfig, DebateConfig, GradingConfig
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
-from .recourse import judge_prose_stance, run_recourse
-from .types import Case, Challenge, Item, make_sides
+from .recourse import _rule_by_judge, judge_prose_stance, judge_ruling_prose, run_recourse
+from .types import Case, Challenge, Item, Ruling, make_sides
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,20 @@ log = logging.getLogger(__name__)
 # wrote and because the grade stage's own gate — stance == "contests" — is the column it
 # exists to audit. It resumes on ``agreement.json`` like every other stage resumes on
 # its own artifact.
-STAGES: tuple[str, ...] = ("decide", "contest", "agreement", "grade", "analyse")
+#
+# ``ruling_agreement`` sits directly after it and is the same instrument one layer down:
+# it audits the recourse judge's line against the judge's own prose, as ``agreement``
+# audits the challenger's. It reads ``ruling.json`` and nothing else, so it runs over
+# rulings made under any of the three forms — which is how the sweep's 1,122 and the
+# re-contest's 464, all written under the old ``Ruling:`` line, get measured on the same
+# scale as the rulings ``rerule`` makes.
+#
+# ``rerule`` is not part of an ordinary run and the driver's default list omits it. It
+# belongs to a spec with ``contests_from``: it re-rules another tree's finished
+# objections without re-making them, and ``contest`` refuses on such a spec.
+STAGES: tuple[str, ...] = (
+    "decide", "contest", "rerule", "agreement", "ruling_agreement", "grade", "analyse",
+)
 
 
 @dataclass(frozen=True)
@@ -294,6 +307,111 @@ async def run_stage_contest(
                           client_config.max_runs_in_flight)
 
 
+def source_contests(cells: Sequence[Cell], *, source_root: Path,
+                    challenger_model: str) -> list[tuple[Cell, Path]]:
+    """The cells of ``cells`` that a source tree holds a CONTESTED objection for.
+
+    The population ``rerule`` will rule on, and therefore the number the run's spend is
+    approved from: an objection that declined put nothing to a judge and has no ruling to
+    re-make. Computed by reading each source ``challenge.json`` rather than the source
+    index, so a spec pointed at a tree with no index still quotes a true figure.
+    """
+    found: list[tuple[Cell, Path]] = []
+    for cell in cells:
+        directory = existing_contest(source_root, cell, challenger_model)
+        if directory is None:
+            continue
+        try:
+            challenge = Challenge.from_dict(
+                json.loads((directory / "challenge.json").read_text()))
+        except (OSError, ValueError, KeyError):
+            continue
+        if challenge.stance == "contests":
+            found.append((cell, directory))
+    return found
+
+
+async def run_stage_rerule(
+    cells: Sequence[Cell], *, root: Path, config: DebateConfig,
+    client_config: ClientConfig, api_key: str, decision_root: Path,
+    contest_root: Path,
+) -> list[dict[str, Any]]:
+    """Rule another tree's finished objections again, into this tree.
+
+    The objections themselves are not re-made — they are the stakeholder's, they cost
+    real money, and re-drawing them would change the population as well as the ruling. So
+    each source contest directory is COPIED here minus its ruling, its wire log and its
+    two documents, the source ruling is kept beside it as ``ruling.source.json``, and one
+    new call is made. The result is a self-contained contest record of exactly the same
+    shape as one this harness contested itself, which is what makes it readable and what
+    lets ``agreement``, ``ruling_agreement`` and ``analyse`` run over it unchanged.
+
+    Nothing under ``contest_root`` or ``decision_root`` is written. Both are named in
+    ``experiment.json`` with the sha256 of their ``experiment.json``, and each cell's
+    manifest additionally carries ``source_contest_dir``, ``source_sha256`` — a hash of
+    the whole source directory — and ``rerule_of_form``, the form of the ruling being
+    replaced.
+
+    Only cells whose source objection has stance ``contests`` are re-ruled. A decline put
+    nothing to a judge, so there is no ruling to re-make and the cell is skipped with
+    ``no objection to re-rule`` rather than silently.
+    """
+    challenger = config.challenger_model_for()
+    semaphore = asyncio.Semaphore(client_config.max_concurrency)
+
+    async def rerule(cell: Cell) -> dict[str, Any]:
+        existing = existing_contest(root, cell, challenger)
+        if existing is not None and (existing / "ruling.json").is_file():
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already re-ruled"}
+        source = existing_contest(contest_root, cell, challenger)
+        if source is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no source contest to re-rule"}
+        challenge = Challenge.from_dict(
+            json.loads((source / "challenge.json").read_text()))
+        if challenge.stance != "contests":
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no objection to re-rule"}
+        record = existing_decision(decision_root, cell)
+        if record is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no decision to rule against"}
+        async with semaphore:
+            # Inside the bound, for the reason create_recourse is: this copies a contest
+            # directory that itself contains a copy of a decision, and running that
+            # unbounded would start every copy at once.
+            writer = await asyncio.to_thread(
+                RunWriter.create_rerule,
+                root=contest_dir(root, cell, challenger) / "runs",
+                source_dir=source, item=record.item, sides=record.sides,
+                client_config=client_config, condition=cell.condition,
+            )
+        writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger,
+                               recourse_form=config.recourse_form)
+        try:
+            async with OpenRouterClient(api_key, client_config,
+                                        sink=writer.record_call,
+                                        semaphore=semaphore) as client:
+                async with asyncio.timeout(client_config.run_timeout_s):
+                    ruling = await _rule_by_judge(record, challenge, config, client)
+        except Exception as error:
+            writer.finish("failed", error=f"{type(error).__name__}: {error}")
+            log.warning("%s rerule failed: %s", cell.cell_id, error)
+            return {"cell_id": cell.cell_id, "status": "failed",
+                    "error": f"{type(error).__name__}: {error}"}
+        # Writes ruling.json and re-renders both documents, so the copied record and the
+        # new ruling are one document rather than a directory a reader has to assemble.
+        writer.record_ruling(ruling)
+        writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
+        return {"cell_id": cell.cell_id, "status": "completed",
+                "was": writer.rerule_of_form, "now": ruling.form,
+                "changed": ruling.changed_the_decision}
+
+    return await _bounded([lambda c=c: rerule(c) for c in cells],
+                          client_config.max_runs_in_flight)
+
+
 async def run_stage_agreement(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     grading: GradingConfig, client_config: ClientConfig, api_key: str,
@@ -353,6 +471,70 @@ async def run_stage_agreement(
                 "line": agreement.line_word, "prose": agreement.prose_stance,
                 "agrees": agreement.agrees,
                 "phantom": agreement.phantom_contest}
+
+    return await _bounded([lambda c=c: measure(c) for c in cells],
+                          client_config.max_concurrency)
+
+
+async def run_stage_ruling_agreement(
+    cells: Sequence[Cell], *, root: Path, config: DebateConfig,
+    grading: GradingConfig, client_config: ClientConfig, api_key: str,
+) -> list[dict[str, Any]]:
+    """The ruling's line-vs-prose instrument, one grader call per recorded ruling.
+
+    Every contest that has a ``ruling.json``, whatever form it is. The three forms are
+    three different instruments and the point of measuring is to compare them: the sweep
+    and the re-contest wrote 1,586 rulings under the relative ``Ruling:`` line whose
+    reliability the re-contest's hand check put at 4 in 12 on FLAWED parents, and
+    ``rerule`` writes new ones under the absolute conclusion that replaced it. Both are
+    read by the same reader, at temperature 0, and ``ruling_agreement.json`` records the
+    form beside the reading so the comparison is in the record rather than in a script.
+
+    It takes no ``decision_root``: everything it needs — the judge's prose, the verdict
+    the line amounted to, the parent verdict — is in ``ruling.json``. That is also what
+    makes it re-runnable over any finished tree for nothing but the grader's cents.
+
+    The calls carry ``role="ruling_reader"``, which ``accounting.OFF_PATH_ROLES`` keeps
+    out of every decision-path total. Here that rule bites harder than it does for the
+    challenger's probe: the thing being measured is the decision path's last step, and a
+    reader billed to that step would be measuring itself.
+    """
+    challenger = config.challenger_model_for()
+    semaphore = asyncio.Semaphore(client_config.max_concurrency)
+
+    async def measure(cell: Cell) -> dict[str, Any]:
+        directory = existing_contest(root, cell, challenger)
+        if directory is None:
+            return {"cell_id": cell.cell_id, "status": "skipped", "reason": "no contest"}
+        ruling_path = directory / "ruling.json"
+        if not ruling_path.is_file():
+            # No ruling was sought because nothing was objected to. There is no line to
+            # check, which is a different fact from a line that checked out.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no ruling to read"}
+        if (directory / "ruling_agreement.json").is_file():
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already measured"}
+        ruling = Ruling.from_dict(json.loads(ruling_path.read_text()))
+        if not ruling.reasoning.strip():
+            # A judge that answered before explaining. Nothing to read, and a reading of
+            # an empty string would be a NEITHER that looked like a measurement.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "the ruling recorded no reasoning to read"}
+        try:
+            async with OpenRouterClient(api_key, client_config,
+                                        sink=_sink_to(directory / "calls.jsonl"),
+                                        semaphore=semaphore) as client:
+                reading = await judge_ruling_prose(
+                    ruling, config=config, grading=grading, client=client)
+        except Exception as error:
+            return {"cell_id": cell.cell_id, "status": "failed",
+                    "error": f"{type(error).__name__}: {error}"}
+        (directory / "ruling_agreement.json").write_text(
+            json.dumps(reading.to_dict(), indent=2), encoding="utf-8")
+        return {"cell_id": cell.cell_id, "status": "completed",
+                "line": reading.line_conclusion, "prose": reading.prose_conclusion,
+                "mismatch": reading.mismatch, "form": ruling.form}
 
     return await _bounded([lambda c=c: measure(c) for c in cells],
                           client_config.max_concurrency)
@@ -533,6 +715,15 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 row["ruling_form"] = ruling.get("form")
                 row["changed_the_decision"] = ruling.get("changed_the_decision")
                 row["final_correct"] = ruling.get("correct")
+                reading_path = contest / "ruling_agreement.json"
+                if reading_path.is_file():
+                    # The instrument that keeps `changed_the_decision` falsifiable, on
+                    # the same rule as the agreement columns above: absent rather than
+                    # False when the stage has not run, so "not measured" and "measured
+                    # and consistent" stay different facts.
+                    reading = json.loads(reading_path.read_text())
+                    row["ruling_prose_conclusion"] = reading["prose_conclusion"]
+                    row["ruling_line_mismatch"] = reading["mismatch"]
             else:
                 # No ruling was sought because nothing was objected to. Not-revised is
                 # the right reading; "never contested" is preserved by challenge_raised.
