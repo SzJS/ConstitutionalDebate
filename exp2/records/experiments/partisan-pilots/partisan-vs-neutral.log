@@ -1,0 +1,465 @@
+====================================================================================================================================
+PARTISAN vs NEUTRAL — the same decisions, contested by different challengers
+====================================================================================================================================
+NEUTRAL   rerule-recontest            records/experiments/rerule/recontest/index.jsonl
+PARTISAN  partisan-pilot-advocate     outputs/experiments/partisan-pilot-advocate/index.jsonl
+PARTISAN  partisan-pilot-assigned     outputs/experiments/partisan-pilot-assigned/index.jsonl
+PARTISAN  partisan-pilot-auditor      outputs/experiments/partisan-pilot-auditor/index.jsonl
+
+WHAT THIS COMPARISON MEANS
+------------------------------------------------------------------------------------------------------------------------------------
+Under the partisan variant the challenger is ASSIGNED the answer the decision
+went against and argues the decision was mistaken; it may still report finding
+no grounds. So 'detection' here reads 'could an advocate find grounds', and
+false alarms on correct decisions are high BY CONSTRUCTION. What the ablation
+measures at raised n is the JUDGE (does it overturn genuine-on-wrong more than
+genuine-on-correct), the GRADER (valid-objection rate), the phantom rate under
+advocacy, and how often an advocate declines when the record supports the
+decision. The neutral column is the design's primary measurement; the raise
+rates in the two columns are different quantities and must not be pooled.
+
+Decisions, labels and conditions are IDENTICAL across the columns by
+construction — every run reads the sweep's decisions — and this is asserted
+cell by cell below. Everything downstream of the challenger is what differs.
+
+====================================================================================================================================
+JOIN
+====================================================================================================================================
+rows in rerule-recontest               5724   records/experiments/rerule/recontest/index.jsonl
+rows in partisan-pilot-advocate         194   outputs/experiments/partisan-pilot-advocate/index.jsonl
+rows in partisan-pilot-assigned         194   outputs/experiments/partisan-pilot-assigned/index.jsonl
+rows in partisan-pilot-auditor          194   outputs/experiments/partisan-pilot-auditor/index.jsonl
+cells present in ALL indices            194   <- every table below
+  dropped from rerule-recontest          5530
+  dropped from partisan-pilot-advocate      0
+  dropped from partisan-pilot-assigned      0
+  dropped from partisan-pilot-auditor       0
+
+neutral stance fill: 175 stances filled from records/experiments/recontest/index.jsonl, 19 cross-checked, 0 still unknown
+
+identity asserted cell by cell on verdict, initially_correct, gold_flawed: 194/194 identical.
+
+joined cells by condition:
+  single              68
+  self_critique       66
+  debate              60
+  POOLED             194
+  labelled           194   (unlabelled cells are excluded from every accuracy figure)
+
+====================================================================================================================================
+(a) WHAT THE CHALLENGER DID
+====================================================================================================================================
+raised          challenge_stance == contests (the Decision: line said REVERSE)
+GENUINE raised  contests AND the agreement stage read the prose as arguing the
+                verdict was WRONG — the only objections that count as detection
+phantom share   of raised, the ones whose own prose endorsed the verdict
+declined        the challenger said the decision should stand. Split by whether
+                the decision was in fact right: declining on a CORRECT decision
+                is the advocate's honesty, and a 0% rate means 'let it stand'
+                is dead. Declining on a WRONG decision is a missed detection.
+
+challenge_arm in the index          not in index            partisan_advocate=194   partisan_assigned=194   partisan_auditor=194    
+  (the neutral index predates the challenge_arm column; 'not in index' there
+   means the run was neutral by construction, not that the arm is unknown)
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+cells                               68                      68                      68                      68                      
+  with a challenge on record        68                      68                      68                      68                      
+objections raised                   3/68 4.4%               9/68 13.2%              4/68 5.9%               6/68 8.8%               
+GENUINE raised (prose WRONG)        3/68 4.4%               8/68 11.8%              4/68 5.9%               6/68 8.8%               
+phantom share of raised             0/3 0.0%                1/9 11.1%               0/4 0.0%                0/6 0.0%                
+prose NEITHER, of raised            0/3 0.0%                0/9 0.0%                0/4 0.0%                0/6 0.0%                
+declined                            65/68 95.6%             59/68 86.8%             64/68 94.1%             62/68 91.2%             
+  declined | CORRECT decision       57/60 95.0%             53/60 88.3%             56/60 93.3%             55/60 91.7%             
+  declined | WRONG decision         8/8 100.0%              6/8 75.0%               8/8 100.0%              7/8 87.5%               
+agrees                              0                       0                       0                       0                       
+stance unclear (unparsed line)      0                       0                       0                       0                       
+contradictory line                  0                       0                       0                       0                       
+no contest on record                0                       0                       0                       0                       
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+cells                               66                      66                      66                      66                      
+  with a challenge on record        66                      66                      66                      66                      
+objections raised                   15/66 22.7%             16/66 24.2%             15/66 22.7%             11/66 16.7%             
+GENUINE raised (prose WRONG)        15/66 22.7%             16/66 24.2%             15/66 22.7%             11/66 16.7%             
+phantom share of raised             0/15 0.0%               0/16 0.0%               0/15 0.0%               0/11 0.0%               
+prose NEITHER, of raised            0/15 0.0%               0/16 0.0%               0/15 0.0%               0/11 0.0%               
+declined                            51/66 77.3%             50/66 75.8%             51/66 77.3%             55/66 83.3%             
+  declined | CORRECT decision       42/50 84.0%             41/50 82.0%             39/50 78.0%             42/50 84.0%             
+  declined | WRONG decision         9/16 56.2%              9/16 56.2%              12/16 75.0%             13/16 81.2%             
+agrees                              0                       0                       0                       0                       
+stance unclear (unparsed line)      0                       0                       0                       0                       
+contradictory line                  0                       0                       0                       0                       
+no contest on record                0                       0                       0                       0                       
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+cells                               60                      60                      60                      60                      
+  with a challenge on record        60                      60                      60                      60                      
+objections raised                   1/60 1.7%               3/60 5.0%               2/60 3.3%               2/60 3.3%               
+GENUINE raised (prose WRONG)        1/60 1.7%               3/60 5.0%               2/60 3.3%               2/60 3.3%               
+phantom share of raised             0/1 0.0%                0/3 0.0%                0/2 0.0%                0/2 0.0%                
+prose NEITHER, of raised            0/1 0.0%                0/3 0.0%                0/2 0.0%                0/2 0.0%                
+declined                            59/60 98.3%             57/60 95.0%             58/60 96.7%             58/60 96.7%             
+  declined | CORRECT decision       35/36 97.2%             34/36 94.4%             34/36 94.4%             34/36 94.4%             
+  declined | WRONG decision         24/24 100.0%            23/24 95.8%             24/24 100.0%            24/24 100.0%            
+agrees                              0                       0                       0                       0                       
+stance unclear (unparsed line)      0                       0                       0                       0                       
+contradictory line                  0                       0                       0                       0                       
+no contest on record                0                       0                       0                       0                       
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+cells                               194                     194                     194                     194                     
+  with a challenge on record        194                     194                     194                     194                     
+objections raised                   19/194 9.8%             28/194 14.4%            21/194 10.8%            19/194 9.8%             
+GENUINE raised (prose WRONG)        19/194 9.8%             27/194 13.9%            21/194 10.8%            19/194 9.8%             
+phantom share of raised             0/19 0.0%               1/28 3.6%               0/21 0.0%               0/19 0.0%               
+prose NEITHER, of raised            0/19 0.0%               0/28 0.0%               0/21 0.0%               0/19 0.0%               
+declined                            175/194 90.2%           166/194 85.6%           173/194 89.2%           175/194 90.2%           
+  declined | CORRECT decision       134/146 91.8%           128/146 87.7%           129/146 88.4%           131/146 89.7%           
+  declined | WRONG decision         41/48 85.4%             38/48 79.2%             44/48 91.7%             44/48 91.7%             
+agrees                              0                       0                       0                       0                       
+stance unclear (unparsed line)      0                       0                       0                       0                       
+contradictory line                  0                       0                       0                       0                       
+no contest on record                0                       0                       0                       0                       
+
+====================================================================================================================================
+(b) THE RULING LINE vs THE JUDGE'S OWN PROSE  (ruling_line_mismatch)
+====================================================================================================================================
+Haiku reads the judge's REASONING ONLY, conclusion line stripped, and says
+whether that prose concludes the text under review contains a flaw. A mismatch
+is a ruling whose line contradicts the reasoning that produced it — the bound on
+every number below that passes through a ruling. n = rulings.
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+rulings made                        3                       9                       4                       6                       
+ruling_line_mismatch                0/3 0.0%                1/9 11.1%               1/4 25.0%               1/6 16.7%               
+  prose FLAWED                      3                       6                       2                       3                       
+  prose SOUND                       0                       3                       2                       3                       
+  prose NEITHER                     0                       0                       0                       0                       
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+rulings made                        15                      16                      15                      11                      
+ruling_line_mismatch                1/15 6.7%               3/16 18.8%              1/15 6.7%               1/11 9.1%               
+  prose FLAWED                      4                       7                       5                       4                       
+  prose SOUND                       11                      9                       10                      7                       
+  prose NEITHER                     0                       0                       0                       0                       
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+rulings made                        1                       3                       2                       2                       
+ruling_line_mismatch                0/1 0.0%                0/3 0.0%                1/2 50.0%               0/2 0.0%                
+  prose FLAWED                      1                       2                       1                       2                       
+  prose SOUND                       0                       1                       1                       0                       
+  prose NEITHER                     0                       0                       0                       0                       
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+rulings made                        19                      28                      21                      19                      
+ruling_line_mismatch                1/19 5.3%               4/28 14.3%              3/21 14.3%              2/19 10.5%              
+  prose FLAWED                      8                       15                      8                       9                       
+  prose SOUND                       11                      13                      13                      10                      
+  prose NEITHER                     0                       0                       0                       0                       
+
+
+====================================================================================================================================
+(c) WHAT THE JUDGE OVERTURNED, BY WHAT WAS ACTUALLY OBJECTED TO
+====================================================================================================================================
+phantom        the line said REVERSE and the prose endorsed the verdict. A judge
+               that reads the objection should overturn almost none of these.
+genuine|wrong  prose WRONG on a decision that was in fact incorrect — the
+               objections a working recourse channel is FOR.
+genuine|corr   prose WRONG on a decision that was in fact correct — the specious
+               objections it must resist.
+discrimination = overturn on genuine|wrong minus overturn on genuine|corr. The
+one figure a judge cannot raise by overturning everything. A raised objection
+with no ruling counts as not overturned (metrics.json does the same).
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+overturn | phantom                  0/0 n/a                 0/1 0.0%                0/0 n/a                 0/0 n/a                 
+overturn | genuine|wrong            0/0 n/a                 0/2 0.0%                0/0 n/a                 0/1 0.0%                
+overturn | genuine|corr             1/3 33.3%               4/6 66.7%               2/4 50.0%               2/5 40.0%               
+overturn | other/NEITHER            0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+DISCRIMINATION                      n/a                     -66.7 pts               n/a                     -40.0 pts               
+raised with no ruling               0                       0                       0                       0                       
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+overturn | phantom                  0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+overturn | genuine|wrong            4/7 57.1%               6/7 85.7%               1/4 25.0%               0/3 0.0%                
+overturn | genuine|corr             0/8 0.0%                4/9 44.4%               3/11 27.3%              3/8 37.5%               
+overturn | other/NEITHER            0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+DISCRIMINATION                      +57.1 pts               +41.3 pts               -2.3 pts                -37.5 pts               
+raised with no ruling               0                       0                       0                       0                       
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+overturn | phantom                  0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+overturn | genuine|wrong            0/0 n/a                 1/1 100.0%              0/0 n/a                 0/0 n/a                 
+overturn | genuine|corr             1/1 100.0%              1/2 50.0%               2/2 100.0%              1/2 50.0%               
+overturn | other/NEITHER            0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+DISCRIMINATION                      n/a                     +50.0 pts               n/a                     n/a                     
+raised with no ruling               0                       0                       0                       0                       
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+overturn | phantom                  0/0 n/a                 0/1 0.0%                0/0 n/a                 0/0 n/a                 
+overturn | genuine|wrong            4/7 57.1%               7/10 70.0%              1/4 25.0%               0/4 0.0%                
+overturn | genuine|corr             2/12 16.7%              9/17 52.9%              7/17 41.2%              6/15 40.0%              
+overturn | other/NEITHER            0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+DISCRIMINATION                      +40.5 pts               +17.1 pts               -16.2 pts               -40.0 pts               
+raised with no ruling               0                       0                       0                       0                       
+
+
+====================================================================================================================================
+(d) NET EFFECT ON ACCURACY  (sweep-phantom-corrected.py's definitions)
+====================================================================================================================================
+A cell's final verdict is the ruling's if the contest produced one, else the
+decision's own. fixed = wrong decision made right; broken = right decision made
+wrong; net = fixed - broken. Over the JOINED cells. `acc before` is identical in
+every column by construction (same decisions), which is the check that the join
+is sound: the whole of any difference is the challenger's and the judge's.
+Unlabelled cells are excluded and counted.
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+labelled cells                      68                      68                      68                      68                      
+acc before                          88.2%                   88.2%                   88.2%                   88.2%                   
+acc after                           86.8%                   82.4%                   85.3%                   85.3%                   
+fixed / broken / net                0/1/-1                  0/4/-4                  0/2/-2                  0/2/-2                  
+unlabelled                          0                       0                       0                       0                       
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+labelled cells                      66                      66                      66                      66                      
+acc before                          75.8%                   75.8%                   75.8%                   75.8%                   
+acc after                           81.8%                   78.8%                   72.7%                   71.2%                   
+fixed / broken / net                4/0/+4                  6/4/+2                  1/3/-2                  0/3/-3                  
+unlabelled                          0                       0                       0                       0                       
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+labelled cells                      60                      60                      60                      60                      
+acc before                          60.0%                   60.0%                   60.0%                   60.0%                   
+acc after                           58.3%                   60.0%                   56.7%                   58.3%                   
+fixed / broken / net                0/1/-1                  1/1/+0                  0/2/-2                  0/1/-1                  
+unlabelled                          0                       0                       0                       0                       
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+labelled cells                      194                     194                     194                     194                     
+acc before                          75.3%                   75.3%                   75.3%                   75.3%                   
+acc after                           76.3%                   74.2%                   72.2%                   72.2%                   
+fixed / broken / net                4/2/+2                  7/9/-2                  1/7/-6                  0/6/-6                  
+unlabelled                          0                       0                       0                       0                       
+
+cross-check — final_correct rebuilt from the DERIVED ruling verdict against
+gold_flawed, compared with the index's own column:
+  cells where the two disagree      0                       0                       0                       0                       
+
+====================================================================================================================================
+(e) END-TO-END — own wrong decisions genuinely contested AND overturned
+====================================================================================================================================
+Of a condition's own incorrect decisions among the joined cells, the fraction
+where the challenger raised an objection whose PROSE argued the verdict was
+wrong and the judge then overturned. Detection x revision, unconditional — the
+number the whole recourse channel exists to move.
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+incorrect decisions                 8                       8                       8                       8                       
+genuinely contested                 0/8 0.0%                2/8 25.0%               0/8 0.0%                1/8 12.5%               
+... AND overturned                  0/8 0.0%                0/8 0.0%                0/8 0.0%                0/8 0.0%                
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+incorrect decisions                 16                      16                      16                      16                      
+genuinely contested                 7/16 43.8%              7/16 43.8%              4/16 25.0%              3/16 18.8%              
+... AND overturned                  4/16 25.0%              6/16 37.5%              1/16 6.2%               0/16 0.0%               
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+incorrect decisions                 24                      24                      24                      24                      
+genuinely contested                 0/24 0.0%               1/24 4.2%               0/24 0.0%               0/24 0.0%               
+... AND overturned                  0/24 0.0%               1/24 4.2%               0/24 0.0%               0/24 0.0%               
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+incorrect decisions                 48                      48                      48                      48                      
+genuinely contested                 7/48 14.6%              10/48 20.8%             4/48 8.3%               4/48 8.3%               
+... AND overturned                  4/48 8.3%               7/48 14.6%              1/48 2.1%               0/48 0.0%               
+
+
+====================================================================================================================================
+(f) THE GRADER — did the objection name the flaw the dataset annotates?
+====================================================================================================================================
+The grade stage's own gate (run_stage_grade) is: the stance is `contests` AND
+the item is gold-flawed with an annotation AND the DECISION WAS INCORRECT —
+`P(valid objection | initially incorrect)`, so an objection to a decision that
+was right is a false alarm whose validity is undefined by design and is never
+graded. `gradable & contested & wrong` below is that gate as far as the index
+can express it (annotation_quality is not an index column, so a cell whose
+annotation records nothing to grade against shows up as eligible-but-ungraded).
+n is small and is printed with every rate. The index columns are
+`identified_flaw`, `characterises_the_flaw` and `grade_valid` (build_index emits
+no `grade_identified`).
+
+--- single ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+gradable cells                      28                      28                      28                      28                      
+gradable & contested & wrong        0                       0                       0                       0                       
+graded rows                         0                       0                       0                       0                       
+identified_flaw                     0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+characterises_the_flaw              0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+grade_valid                         0/0 n/a                 0/0 n/a                 0/0 n/a                 0/0 n/a                 
+
+--- self_critique ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+gradable cells                      28                      28                      28                      28                      
+gradable & contested & wrong        6                       6                       4                       1                       
+graded rows                         6                       6                       4                       1                       
+identified_flaw                     4/6 66.7%               3/6 50.0%               3/4 75.0%               0/1 0.0%                
+characterises_the_flaw              3/6 50.0%               2/6 33.3%               2/4 50.0%               0/1 0.0%                
+grade_valid                         3/6 50.0%               2/6 33.3%               2/4 50.0%               0/1 0.0%                
+
+--- debate ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+gradable cells                      27                      27                      27                      27                      
+gradable & contested & wrong        0                       1                       0                       0                       
+graded rows                         0                       1                       0                       0                       
+identified_flaw                     0/0 n/a                 0/1 0.0%                0/0 n/a                 0/0 n/a                 
+characterises_the_flaw              0/0 n/a                 0/1 0.0%                0/0 n/a                 0/0 n/a                 
+grade_valid                         0/0 n/a                 0/1 0.0%                0/0 n/a                 0/0 n/a                 
+
+--- POOLED ---
+                                    rerule-recontest        partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+gradable cells                      83                      83                      83                      83                      
+gradable & contested & wrong        6                       7                       4                       1                       
+graded rows                         6                       7                       4                       1                       
+identified_flaw                     4/6 66.7%               3/7 42.9%               3/4 75.0%               0/1 0.0%                
+characterises_the_flaw              3/6 50.0%               2/7 28.6%               2/4 50.0%               0/1 0.0%                
+grade_valid                         3/6 50.0%               2/7 28.6%               2/4 50.0%               0/1 0.0%                
+
+
+====================================================================================================================================
+(g) GO / NO-GO  (the plan's step-6 rule, computed)
+====================================================================================================================================
+The rule: GO with the clause with the HIGHEST genuine raise rate, subject to
+  (i)   phantom share of raised <= 13% (the neutral run's all-contests share)
+  (ii)  at least some declines on CORRECT decisions — a 0% decline rate means
+        'let it stand' is dead and the advocate is manufacturing a case
+  (iii) parse failures ~ 0 (index-visible proxy: stance `unclear` and
+        `challenge_contradictory`; true parse/repair counts live in the run
+        log, not the index)
+and only if some clause reaches >= 2x the NEUTRAL POOLED genuine raise rate.
+This block does not decide anything. It prints the four clauses of the rule
+with their numbers so the decision is made from them and can be re-checked.
+
+neutral pooled: genuine raise 19/194 9.8%   raised 19/194 9.8%   phantom share of raised 0/19 0.0%
+neutral gate:   >= 2x 9.8% = 19.6% genuine raise
+
+clause                                  partisan-pilot-advocate partisan-pilot-assigned partisan-pilot-auditor  
+------------------------------------------------------------------------------------------------------------------------------------
+genuine raise rate                      27/194 13.9%            21/194 10.8%            19/194 9.8%             
+  x neutral pooled (9.8%)               1.42x                   1.11x                   1.00x                   
+  >= 2x neutral?                        FAIL                    FAIL                    FAIL                    
+phantom share of raised                 1/28 3.6%               0/21 0.0%               0/19 0.0%               
+  <= 13%?                               PASS                    PASS                    PASS                    
+declines on CORRECT decisions           128/146 87.7%           129/146 88.4%           131/146 89.7%           
+  > 0?                                  PASS                    PASS                    PASS                    
+unclear + contradictory lines           0+0                     0+0                     0+0                     
+  ~ 0?                                  PASS                    PASS                    PASS                    
+------------------------------------------------------------------------------------------------------------------------------------
+all four clauses                        FAIL                    FAIL                    FAIL                    
+
+NO-GO
+  partisan-pilot-advocate: fails 2x neutral
+  partisan-pilot-assigned: fails 2x neutral
+  partisan-pilot-auditor: fails 2x neutral
+  Per the plan: stop, record the results in LLM_NOTES, report to the user,
+  and do NOT run the full sweep.
+
+Fable decides. The hand check of the transcripts is the other half of it: does
+the advocate argue the assigned side, and is its Decision: line consistent with
+its own prose? Numbers alone cannot answer that.
+
+====================================================================================================================================
+(h) PER-CELL STANCE TRANSITIONS  neutral -> partisan
+====================================================================================================================================
+What advocacy ADDS, cell by cell: which declines became objections, whether
+those objections were genuine or phantom, and which neutral objections the
+advocate dropped. Rows = the neutral stance, columns = the partisan stance.
+`no contest` is a cell with no challenge on record in that index.
+
+--- neutral -> partisan-pilot-advocate ---
+neutral \ partisan       contests|genuine   contests|phantom           declined    total
+------------------------------------------------------------------------------------------------------------------------------------
+contests|genuine                       12                  0                  7       19
+declined                               15                  1                159      175
+------------------------------------------------------------------------------------------------------------------------------------
+total                                  27                  1                166      194
+
+  genuine objections ADDED by advocacy   15
+  phantom objections added by advocacy   1
+  neutral objections the advocate DROPPED  7
+  genuine in both                        12
+
+--- neutral -> partisan-pilot-assigned ---
+neutral \ partisan       contests|genuine           declined    total
+------------------------------------------------------------------------------------------------------------------------------------
+contests|genuine                        9                 10       19
+declined                               12                163      175
+------------------------------------------------------------------------------------------------------------------------------------
+total                                  21                173      194
+
+  genuine objections ADDED by advocacy   12
+  phantom objections added by advocacy   0
+  neutral objections the advocate DROPPED  10
+  genuine in both                        9
+
+--- neutral -> partisan-pilot-auditor ---
+neutral \ partisan       contests|genuine           declined    total
+------------------------------------------------------------------------------------------------------------------------------------
+contests|genuine                        8                 11       19
+declined                               11                164      175
+------------------------------------------------------------------------------------------------------------------------------------
+total                                  19                175      194
+
+  genuine objections ADDED by advocacy   11
+  phantom objections added by advocacy   0
+  neutral objections the advocate DROPPED  11
+  genuine in both                        8
+
+
+====================================================================================================================================
+end

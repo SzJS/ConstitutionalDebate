@@ -14,11 +14,11 @@ exception to 'nothing here was edited'" below, which names every line that diffe
 why.
 
 Nothing here is an input to any stage. No code reads this directory; deleting it would
-break no command. It is evidence, and it is small (≈31 MB — the sweep, the re-contest
+break no command. It is evidence, and it is small (≈33 MB — the sweep, the re-contest
 and the three re-rule trees are most of it).
 
 The one thing here that is meant to be *run* again is `derivations/`. What each script
-does now is **not** the same across the ten, so the blanket "none of them work" that
+does now is **not** the same across them, so the blanket "none of them work" that
 used to stand here is replaced by the truth per script. All of them must be run from `exp2/`
 (the pilot-3 scripts insert `src` on `sys.path`; `sweep-1-provider-check.py` imports the
 installed package under `uv run` and needs the root `.env`).
@@ -34,6 +34,7 @@ installed package under `uv run` and needs the root `.env`).
 | `pilot-3-paths.py`, `pilot-3-handcheck-sample.py` | same, both take a `ROOT` (the sample script also takes `N`). They pick the cells for a hand read, which the sweep needs too. |
 | `recontest-vs-sweep.py` | **runs on a bare `git clone`** for sections (a)–(g): it joins `experiments/sweep/index.jsonl` and `experiments/recontest/index.jsonl` on `cell_id`, asserts cell by cell that the decisions are the same generations, and prints the two runs side by side. Section (h) needs the re-contest's run tree and prints what it could not read. `experiments/recontest/recontest-vs-sweep.log` is its output. |
 | `rerule-compare.py` | **runs on a bare `git clone`.** It takes a SOURCE index and a RERULE index (`--source`, `--rerule`) and prints the same objections under two ruling lines: the join, the ruling forms, the new `ruling_line_mismatch` instrument split by parent verdict, overturn rates by what was actually objected to, discrimination, the net effect on accuracy in `sweep-phantom-corrected.py`'s definitions, the per-cell ruling transitions, and — when the source is the sweep — the paired **strong re-decider vs weak third-party judge** table on its 682 solo objections. A cross-check against the run tree runs when the tree is there and no table uses it. The three `rerule-compare-*.log` files beside it are its output, copied into `experiments/rerule/`. |
+| `partisan-vs-neutral.py` | **runs on a bare `git clone`.** It takes a NEUTRAL index (`--neutral`, default `experiments/rerule/recontest/index.jsonl`) and ONE OR MORE PARTISAN indices (`--partisan`, one column each) and prints the same decisions contested by different challengers: the join with a cell-by-cell identity assertion on `verdict`/`initially_correct`/`gold_flawed`, what the challenger did (raised, genuine, phantom, declines split by whether the decision was in fact right), the `ruling_line_mismatch` instrument, overturn by what was actually objected to with discrimination, the net effect on accuracy, end-to-end, the grader, the plan's **go/no-go rule computed**, and the per-cell stance transitions neutral → partisan. A re-rule tree carries stances only for the cells it re-ruled, so `--neutral-stances` (default `experiments/recontest/index.jsonl`) fills the rest in and asserts they agree wherever both indices have one; `--no-stance-fill` turns it off. `experiments/partisan-pilots/partisan-vs-neutral.log` is its output over the three pilot clauses. |
 | `rerule-smoke-pick.py` | read-only. Draws the items of the re-contest's 62 phantom cells out of `experiments/recontest/index.jsonl` into the smoke's case file. Runs on a bare clone. |
 | `pilot-2-shapes.py`, `pilot-3-checks2.py` | **hard-coded** to `outputs/experiments/pilot-2` and `-pilot-3`, which were wiped. One line each to re-point; until then they are a record of a derivation, not a runnable script. `sweep-1-checks2.py` is the generalised `pilot-3-checks2.py`, so prefer it. |
 
@@ -65,6 +66,7 @@ sweep. Do not re-apply `GATE.md`'s thresholds to a run it was not written for.
 | `experiments/*/experiment.json` | the spec each run actually ran with | which hyperparameters produced which numbers |
 | `experiments/pilot-3/GATE.md` | the five-row permissive gate applied before the sweep | the decision to proceed |
 | `experiments/sweep/` | **the first full sweep, 2026-08-26 — the run this repository exists to have done.** Its own [`README.md`](experiments/sweep/README.md) lists the directory; start at `CHECKLIST.md`, whose "THE PHANTOM-CORRECTED FUNNEL" section is the headline. Also there: `DONE.md`, the two hand checks, `phantom-corrected.log`, and the four hand-read transcripts | `LLM_NOTES.md` §3s in full, and `HANDOFF.md` §4's sweep paragraph |
+| `experiments/partisan-pilots/` | **the partisan challenger, tried on three clauses and stopped, 2026-08-27.** Three 194-cell pilots that contested the sweep's own decisions under three wordings of one standpoint paragraph, the neutral baseline beside them, and the go/no-go the plan wrote before the runs. All three fail it; the ~$22 full run was never started. Start at [`CHECKLIST.md`](experiments/partisan-pilots/CHECKLIST.md) | `LLM_NOTES.md` §3v, and `HANDOFF.md` §4's partisan paragraph |
 | `experiments/sweep-1/experiment.json` | the abandoned slice's spec as it ran | LLM_NOTES §7's sweep-1 entry |
 | `pick-weak/DECISION.md` | the weak-model choice and the subset screen, written by `scripts/pick_weak.py` | §1b in full |
 | `pick-weak/rows.jsonl` | probe 2's six candidates, one row per call-level outcome | §1b, §3h's six-candidate row |

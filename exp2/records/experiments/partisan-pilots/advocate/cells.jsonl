@@ -1,0 +1,828 @@
+{"stage": "contest", "cell_id": "gpqa-123-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-123-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-123-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-161-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-161-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-161-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-39-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-39-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-39-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-19-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-19-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-19-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-70-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-70-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-70-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "gpqa-93-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-93-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-93-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "gpqa-164-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-164-sound__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "gpqa-164-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-102-sound__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "gpqa-102-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-102-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "gpqa-127-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-127-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-127-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-127-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-127-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "gpqa-127-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con2_gpt4_A-s13__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con2_gpt4_A-s13__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con2_gpt4_A-s13__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi5_gpt4_A-s5__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi5_gpt4_A-s5__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "law-evi5_gpt4_A-s5__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "law-con1_gpt3-5_A-s2__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con1_gpt3-5_A-s2__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "law-con1_gpt3-5_A-s2__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi4_gpt3-5_B-s11__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi4_gpt3-5_B-s11__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi4_gpt3-5_B-s11__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi1_gpt4_A-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi1_gpt4_A-s4__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi1_gpt4_A-s4__debate__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt3-5_B-s5__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt3-5_B-s5__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt3-5_B-s5__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi3_gpt3-5_B-s8__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi3_gpt3-5_B-s8__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi3_gpt3-5_B-s8__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi2_gpt4_A-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi2_gpt4_A-s4__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-evi2_gpt4_A-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_B-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_B-s4__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_B-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_A-s7__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_A-s7__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "law-con5_gpt4_A-s7__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim144_gpt4_A-s18__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim144_gpt4_A-s18__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "lojban-stim144_gpt4_A-s18__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim157_gpt3-5_B-s3__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim157_gpt3-5_B-s3__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim157_gpt3-5_B-s3__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim163_gpt3-5_A-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim163_gpt3-5_A-s4__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim163_gpt3-5_A-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim180_gpt4_B-s6__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim180_gpt4_B-s6__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim180_gpt4_B-s6__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim145_gpt4_B-s1__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim145_gpt4_B-s1__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "lojban-stim145_gpt4_B-s1__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim172_gpt4_B-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim172_gpt4_B-s4__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim172_gpt4_B-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt3-5_B-s7__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt3-5_B-s7__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt3-5_B-s7__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim182_gpt4_A-s16__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim182_gpt4_A-s16__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim182_gpt4_A-s16__debate__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt4_A-s22__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt4_A-s22__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim177_gpt4_A-s22__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim175_gpt4_A-s4__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim175_gpt4_A-s4__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "lojban-stim175_gpt4_A-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_2855__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_2855__self_critique__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "medqa-train_2855__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_1442__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_1442__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_1442__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_1701__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_1701__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "medqa-train_1701__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_3221__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_3221__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "medqa-train_3221__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0044__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0044__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0044__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "medqa-dev_0076__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0076__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0076__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0113__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0113__self_critique__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "medqa-dev_0113__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0116__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0116__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-dev_0116__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_2769__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_2769__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_2769__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_3754__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_3754__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "medqa-train_3754__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03407-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03407-flawed__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03407-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03945-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03945-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03945-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02863-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02863-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02863-flawed__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "python800-p03845-flawed__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03845-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03845-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03606-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03606-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03606-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02724-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02724-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02724-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03672-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03672-sound__self_critique__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "python800-p03672-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02982-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02982-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p02982-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03372-flawed__single__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "python800-p03372-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03372-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03240-sound__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "python800-p03240-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "python800-p03240-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt3-5_A-s7__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt3-5_A-s7__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt3-5_A-s7__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur10_gpt3-5_A-s1__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur10_gpt3-5_A-s1__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur10_gpt3-5_A-s1__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt4_A-s15__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt4_A-s15__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "surgery-sur40_gpt4_A-s15__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur36_gpt3-5_B-s8__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur36_gpt3-5_B-s8__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur36_gpt3-5_B-s8__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur55_gpt3-5_B-s11__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur55_gpt3-5_B-s11__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur55_gpt3-5_B-s11__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur20_gpt3-5_A-s4__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur20_gpt3-5_A-s4__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "surgery-sur20_gpt3-5_A-s4__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur38_gpt4_A-s6__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur38_gpt4_A-s6__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur38_gpt4_A-s6__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur45_gpt3-5_B-s5__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur45_gpt3-5_B-s5__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur45_gpt3-5_B-s5__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur28_gpt4_B-s17__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur28_gpt4_B-s17__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur28_gpt4_B-s17__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur42_gpt4_B-s8__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur42_gpt4_B-s8__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "surgery-sur42_gpt4_B-s8__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-kite2-png-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-kite2-png-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-kite2-png-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__debate__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__single__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "contest", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__self_critique__r1", "status": "completed", "raised": true, "stance": "contests", "changed": true}
+{"stage": "contest", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__debate__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__single__r1", "status": "completed", "raised": true, "stance": "contests", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__self_critique__r1", "status": "completed", "raised": false, "stance": "declined", "changed": false}
+{"stage": "contest", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__debate__r1", "status": "skipped", "reason": "no decision to contest"}
+{"stage": "agreement", "cell_id": "gpqa-123-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-123-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-123-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-161-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-161-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-161-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-39-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-39-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-39-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-19-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-19-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-19-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-70-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-70-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-70-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "gpqa-93-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-93-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-93-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "gpqa-164-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-164-sound__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-164-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-102-sound__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-102-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-102-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "gpqa-127-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-127-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-127-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-127-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-127-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "gpqa-127-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con2_gpt4_A-s13__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con2_gpt4_A-s13__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con2_gpt4_A-s13__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi5_gpt4_A-s5__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi5_gpt4_A-s5__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi5_gpt4_A-s5__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "law-con1_gpt3-5_A-s2__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con1_gpt3-5_A-s2__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con1_gpt3-5_A-s2__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi4_gpt3-5_B-s11__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi4_gpt3-5_B-s11__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi4_gpt3-5_B-s11__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi1_gpt4_A-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi1_gpt4_A-s4__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi1_gpt4_A-s4__debate__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt3-5_B-s5__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt3-5_B-s5__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt3-5_B-s5__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi3_gpt3-5_B-s8__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi3_gpt3-5_B-s8__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi3_gpt3-5_B-s8__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi2_gpt4_A-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi2_gpt4_A-s4__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-evi2_gpt4_A-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_B-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_B-s4__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_B-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_A-s7__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_A-s7__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "law-con5_gpt4_A-s7__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim144_gpt4_A-s18__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim144_gpt4_A-s18__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim144_gpt4_A-s18__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim180_gpt4_B-s6__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim180_gpt4_B-s6__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim180_gpt4_B-s6__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim145_gpt4_B-s1__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim145_gpt4_B-s1__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim145_gpt4_B-s1__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim172_gpt4_B-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim172_gpt4_B-s4__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim172_gpt4_B-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim182_gpt4_A-s16__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim182_gpt4_A-s16__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim182_gpt4_A-s16__debate__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt4_A-s22__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt4_A-s22__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim177_gpt4_A-s22__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim175_gpt4_A-s4__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim175_gpt4_A-s4__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "lojban-stim175_gpt4_A-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_2855__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_2855__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "medqa-train_2855__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1442__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1442__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1442__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1701__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1701__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_1701__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3221__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3221__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3221__debate__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0044__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0044__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0044__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "medqa-dev_0076__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0076__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0076__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0113__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0113__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "medqa-dev_0113__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0116__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0116__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-dev_0116__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_2769__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_2769__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_2769__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3754__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3754__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "medqa-train_3754__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03407-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03407-flawed__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03407-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03945-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03945-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03945-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02863-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02863-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02863-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "python800-p03845-flawed__single__r1", "status": "completed", "line": "REVERSE", "prose": "RIGHT", "agrees": false, "phantom": true}
+{"stage": "agreement", "cell_id": "python800-p03845-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03845-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03606-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03606-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03606-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02724-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02724-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02724-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "WRONG", "agrees": false, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03672-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03672-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "python800-p03672-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02982-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02982-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p02982-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03372-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "python800-p03372-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03372-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03240-sound__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03240-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "python800-p03240-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt4_A-s15__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt4_A-s15__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur40_gpt4_A-s15__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur38_gpt4_A-s6__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur38_gpt4_A-s6__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur38_gpt4_A-s6__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur28_gpt4_B-s17__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur28_gpt4_B-s17__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur28_gpt4_B-s17__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur42_gpt4_B-s8__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur42_gpt4_B-s8__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "surgery-sur42_gpt4_B-s8__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__debate__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__single__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__self_critique__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__debate__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__single__r1", "status": "completed", "line": "REVERSE", "prose": "WRONG", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__self_critique__r1", "status": "completed", "line": "STANDS", "prose": "RIGHT", "agrees": true, "phantom": false}
+{"stage": "agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-123-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-123-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-123-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-161-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-161-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-161-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-39-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-39-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-39-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-19-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-19-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-19-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-70-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-70-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-70-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-93-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-93-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-93-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-164-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-164-sound__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-164-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-102-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-102-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-102-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "gpqa-127-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con2_gpt4_A-s13__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con2_gpt4_A-s13__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con2_gpt4_A-s13__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi5_gpt4_A-s5__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi5_gpt4_A-s5__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-evi5_gpt4_A-s5__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "law-con1_gpt3-5_A-s2__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con1_gpt3-5_A-s2__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-con1_gpt3-5_A-s2__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi4_gpt3-5_B-s11__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi4_gpt3-5_B-s11__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi4_gpt3-5_B-s11__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi1_gpt4_A-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi1_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi1_gpt4_A-s4__debate__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt3-5_B-s5__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt3-5_B-s5__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt3-5_B-s5__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi3_gpt3-5_B-s8__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi3_gpt3-5_B-s8__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi3_gpt3-5_B-s8__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt4_A-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-evi2_gpt4_A-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_B-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_B-s4__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_B-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_A-s7__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_A-s7__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "law-con5_gpt4_A-s7__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim144_gpt4_A-s18__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim144_gpt4_A-s18__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "SOUND", "mismatch": true, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim144_gpt4_A-s18__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim157_gpt3-5_B-s3__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "SOUND", "mismatch": true, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim163_gpt3-5_A-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim180_gpt4_B-s6__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim180_gpt4_B-s6__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim180_gpt4_B-s6__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim145_gpt4_B-s1__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim145_gpt4_B-s1__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim145_gpt4_B-s1__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim172_gpt4_B-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim172_gpt4_B-s4__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim172_gpt4_B-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt3-5_B-s7__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim182_gpt4_A-s16__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim182_gpt4_A-s16__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim182_gpt4_A-s16__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt4_A-s22__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt4_A-s22__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim177_gpt4_A-s22__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim175_gpt4_A-s4__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim175_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "lojban-stim175_gpt4_A-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2855__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2855__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2855__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1442__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1442__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1442__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1701__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1701__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_1701__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3221__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3221__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3221__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0044__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0044__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0044__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0076__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0076__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0076__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0113__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0113__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0113__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0116__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0116__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-dev_0116__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2769__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2769__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_2769__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3754__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3754__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "medqa-train_3754__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03407-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03407-flawed__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03407-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03945-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03945-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03945-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02863-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02863-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02863-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03845-flawed__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03845-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03845-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03606-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03606-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03606-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02724-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02724-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02724-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03672-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03672-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03672-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02982-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02982-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p02982-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03372-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03372-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03372-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03240-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "SOUND", "mismatch": true, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03240-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "python800-p03240-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt3-5_A-s7__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur10_gpt3-5_A-s1__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt4_A-s15__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt4_A-s15__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur40_gpt4_A-s15__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur36_gpt3-5_B-s8__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur55_gpt3-5_B-s11__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__single__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur20_gpt3-5_A-s4__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur38_gpt4_A-s6__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur38_gpt4_A-s6__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur38_gpt4_A-s6__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur45_gpt3-5_B-s5__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur28_gpt4_B-s17__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur28_gpt4_B-s17__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur28_gpt4_B-s17__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur42_gpt4_B-s8__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur42_gpt4_B-s8__self_critique__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "surgery-sur42_gpt4_B-s8__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-kite2-png-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__single__r1", "status": "completed", "line": "SOUND", "prose": "SOUND", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__debate__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__single__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__self_critique__r1", "status": "completed", "line": "FLAWED", "prose": "SOUND", "mismatch": true, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__debate__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__single__r1", "status": "completed", "line": "FLAWED", "prose": "FLAWED", "mismatch": false, "form": "stated_conclusion"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__self_critique__r1", "status": "skipped", "reason": "no ruling to read"}
+{"stage": "ruling_agreement", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "gpqa-123-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-123-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-123-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-161-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-161-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-161-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-39-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-39-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-39-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-19-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-19-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-19-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-70-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-70-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-70-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "gpqa-93-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-93-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-93-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "gpqa-164-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-164-sound__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "gpqa-164-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-102-sound__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "gpqa-102-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-102-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "gpqa-127-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-127-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-127-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-127-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-127-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "gpqa-127-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con2_gpt4_A-s13__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con2_gpt4_A-s13__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con2_gpt4_A-s13__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi5_gpt4_A-s5__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi5_gpt4_A-s5__self_critique__r1", "status": "completed", "valid": true}
+{"stage": "grade", "cell_id": "law-evi5_gpt4_A-s5__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "law-con1_gpt3-5_A-s2__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con1_gpt3-5_A-s2__self_critique__r1", "status": "completed", "valid": false}
+{"stage": "grade", "cell_id": "law-con1_gpt3-5_A-s2__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi4_gpt3-5_B-s11__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi4_gpt3-5_B-s11__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi4_gpt3-5_B-s11__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi1_gpt4_A-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi1_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi1_gpt4_A-s4__debate__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "law-con5_gpt3-5_B-s5__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt3-5_B-s5__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt3-5_B-s5__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi3_gpt3-5_B-s8__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi3_gpt3-5_B-s8__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi3_gpt3-5_B-s8__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi2_gpt4_A-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi2_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-evi2_gpt4_A-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_B-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_B-s4__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_B-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_A-s7__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_A-s7__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "law-con5_gpt4_A-s7__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim144_gpt4_A-s18__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim144_gpt4_A-s18__self_critique__r1", "status": "completed", "valid": false}
+{"stage": "grade", "cell_id": "lojban-stim144_gpt4_A-s18__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim157_gpt3-5_B-s3__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim157_gpt3-5_B-s3__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim157_gpt3-5_B-s3__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim163_gpt3-5_A-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim163_gpt3-5_A-s4__self_critique__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "lojban-stim163_gpt3-5_A-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim180_gpt4_B-s6__single__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "lojban-stim180_gpt4_B-s6__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim180_gpt4_B-s6__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim145_gpt4_B-s1__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim145_gpt4_B-s1__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "lojban-stim145_gpt4_B-s1__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim172_gpt4_B-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim172_gpt4_B-s4__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim172_gpt4_B-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt3-5_B-s7__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt3-5_B-s7__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt3-5_B-s7__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim182_gpt4_A-s16__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "lojban-stim182_gpt4_A-s16__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim182_gpt4_A-s16__debate__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt4_A-s22__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt4_A-s22__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim177_gpt4_A-s22__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim175_gpt4_A-s4__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim175_gpt4_A-s4__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "lojban-stim175_gpt4_A-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_2855__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_2855__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "medqa-train_2855__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_1442__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_1442__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_1442__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_1701__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_1701__self_critique__r1", "status": "completed", "valid": true}
+{"stage": "grade", "cell_id": "medqa-train_1701__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_3221__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_3221__self_critique__r1", "status": "completed", "valid": false}
+{"stage": "grade", "cell_id": "medqa-train_3221__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0044__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0044__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0044__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "medqa-dev_0076__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0076__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0076__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0113__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0113__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "medqa-dev_0113__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0116__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0116__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-dev_0116__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_2769__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_2769__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_2769__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_3754__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_3754__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "medqa-train_3754__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03407-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03407-flawed__self_critique__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "python800-p03407-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03945-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03945-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03945-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02863-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02863-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02863-flawed__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "python800-p03845-flawed__single__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "python800-p03845-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03845-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03606-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03606-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03606-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02724-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02724-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02724-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03672-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03672-sound__self_critique__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "python800-p03672-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02982-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02982-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p02982-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03372-flawed__single__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "python800-p03372-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03372-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03240-sound__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "python800-p03240-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "python800-p03240-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt3-5_A-s7__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt3-5_A-s7__self_critique__r1", "status": "completed", "valid": false}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt3-5_A-s7__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur10_gpt3-5_A-s1__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur10_gpt3-5_A-s1__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur10_gpt3-5_A-s1__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt4_A-s15__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt4_A-s15__self_critique__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "surgery-sur40_gpt4_A-s15__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur36_gpt3-5_B-s8__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur36_gpt3-5_B-s8__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur36_gpt3-5_B-s8__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur55_gpt3-5_B-s11__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur55_gpt3-5_B-s11__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "surgery-sur55_gpt3-5_B-s11__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur20_gpt3-5_A-s4__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "surgery-sur20_gpt3-5_A-s4__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "surgery-sur20_gpt3-5_A-s4__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur38_gpt4_A-s6__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur38_gpt4_A-s6__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur38_gpt4_A-s6__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur45_gpt3-5_B-s5__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur45_gpt3-5_B-s5__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "surgery-sur45_gpt3-5_B-s5__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur28_gpt4_B-s17__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur28_gpt4_B-s17__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur28_gpt4_B-s17__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur42_gpt4_B-s8__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "surgery-sur42_gpt4_B-s8__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "surgery-sur42_gpt4_B-s8__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-kite2-png-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-kite2-png-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-kite2-png-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__single__r1", "status": "skipped", "reason": "decision was correct \u2014 off-metric"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-math_abstract_algebra_7_5-txt-flawed__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-flawed__debate__r1", "status": "completed", "valid": false}
+{"stage": "grade", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-maxku_ipnetwork8-lan-png-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-rate_distortion_function_2-png-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__single__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-modulararithmetic4-png-sound__debate__r1", "status": "skipped", "reason": "no contest"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__self_critique__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-Lah_number_3-txt-sound__debate__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__single__r1", "status": "skipped", "reason": "sound item \u2014 validity undefined"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__self_critique__r1", "status": "skipped", "reason": "stance is declined, not contests"}
+{"stage": "grade", "cell_id": "theoremqa-solutions-angular_momentum-txt-sound__debate__r1", "status": "skipped", "reason": "no contest"}

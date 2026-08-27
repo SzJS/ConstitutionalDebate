@@ -51,6 +51,12 @@ checkable.
 > **measured ~6% residual** where an unmeasured failure used to be; evidence in
 > [`records/experiments/rerule/`](records/experiments/rerule/README.md), write-up
 > `LLM_NOTES.md` **§3u**, and §4 below.
+>
+> **The partisan-challenger ablation was tried on three clauses on the 207-cell slice on
+> 2026-08-27 and is a NO-GO** — none reached the pre-written gate of 2× the neutral genuine
+> objection rate, so the ~$22 full run was never started; evidence in
+> [`records/experiments/partisan-pilots/`](records/experiments/partisan-pilots/README.md),
+> write-up `LLM_NOTES.md` **§3v**.
 
 ---
 
@@ -233,12 +239,14 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$53.75** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+Total spent so far: **$54.97** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
 decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
 re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
 validation slice (**$0.38**), the re-rule's **$3.0887** (a three-variant prompt smoke
 **$0.0202**, a 69-ruling smoke **$0.1205**, `rerule-recontest` **$0.8109**, `rerule-sweep`
-**$2.1371**), and a few cents of provider checks that nothing itemises.
+**$2.1371**), the three partisan pilots' **$1.2234** (`advocate` **$0.4345**, `assigned`
+**$0.4026**, `auditor` **$0.3863**), and a few cents of provider checks that nothing
+itemises.
 Nothing below needs re-running, and section 6 says why.
 
 ### The probe (2026-08-24 to 08-25, $4.90) — how the weak model was chosen
@@ -475,6 +483,66 @@ the fact that phantoms are a challenger property the re-rule does not touch.
 
 `records/derivations/rerule-compare.py` reproduces all three comparisons from the committed
 `index.jsonl` files; the cross-check against the run tree is optional and no table uses it.
+
+### The partisan pilots (2026-08-27) — NO-GO
+
+**The planned partisan-challenger ablation was tried on three clauses and stopped. The
+~$22 full run was never started; $1.2234 was spent finding that out.** Evidence:
+[`records/experiments/partisan-pilots/`](records/experiments/partisan-pilots/README.md) —
+one directory, three subtrees and the comparison log; write-up `LLM_NOTES.md` **§3v**. 403
+tests pass.
+
+**Why it was proposed.** The neutral decide-last challenger objects on ~8% of cells, so the
+judge's discrimination, the grader's valid-objection rate and the phantom rate all rest on
+tens of cells per condition. Under advocacy every cell yields an objection unless the
+advocate declines, which would have put those quantities on hundreds.
+
+**What was built, commit `3e08df4`.** `CHALLENGER_SYSTEM` gained one `{arm_clause}` slot and
+`CHALLENGER_ARMS` four named arms — `neutral` plus `partisan_{advocate,assigned,auditor}`;
+everything else in the prompt is shared, and the tests diff the four rendered prompts
+pairwise to prove it. A config field **`challenger_variant`** defaults to `"neutral"` (what
+every paid run before this did) and is validated; **`Challenge.arm`** is validated against
+the same names and written into `index.jsonl` as **`challenge_arm`**; `analysis.caveats()`
+emits a partisan-only caveat saying detection and false-alarm rates become advocacy rates.
+
+**Three runs**, all `RUN_SWEEP_STAGES="contest agreement ruling_agreement grade analyse"` on
+`data/cases/pilot-3.jsonl` (207 cells, **194** with a sweep decision to contest), five
+stages, every stage exit 0, every wire attempt HTTP 200, 0 cells failed:
+
+| clause | genuine objections raised | × neutral (19/194 = 9.8%) | spend | wall |
+|---|---|---|---|---|
+| `partisan_advocate` | **27/194 = 13.9%** | **1.42×** | $0.4345 | 3 m 39 s |
+| `partisan_assigned` | **21/194 = 10.8%** | **1.11×** | $0.4026 | 3 m 23 s |
+| `partisan_auditor` | **19/194 = 9.8%** | **1.00×** | $0.3863 | 3 m 23 s |
+
+**The gate, written before the runs, wanted ≥ 2× on the pooled 194.** Its other three
+criteria passed in all three clauses — phantom share 3.6% / 0% / 0% against a 13% ceiling,
+declines on correct decisions **88–90%** (0% would have meant "let it stand" was dead), and
+zero unparsed or contradictory lines. Only the raise rate failed, and it failed in all
+three.
+
+**Why, and it is not the wording.** On `gpqa-127-sound__debate` and
+`gpqa-161-flawed__debate` — both **wrong** decisions, both declined under all three clauses
+— every partisan reply opens with "The verdict … is correct" and restates the judge's own
+grounds, in nearly the words the neutral challenger used on the same cells. The
+transitions table says the same thing at scale: the advocate keeps 12 of
+the neutral challenger's 19 objections and **drops 7**, `assigned` drops 10, `auditor` drops
+11 and lands on exactly the neutral rate. Advocacy is resampling the same challenger, not
+adding to it. **The standpoint instruction does not move `gpt-4.1-nano`**, which joins §3h,
+§3n and §3u: this model follows the shape of the record in front of it rather than an
+instruction about how to stand toward it.
+
+**What this settles, and what it costs.** The low neutral objection rate is **the model's,
+not the neutral instruction's** — that was the live alternative and it is now closed. The
+recourse numbers therefore stay at the neutral n and every small-denominator caveat in §3s,
+§3t and §3u stands unchanged. The ablation itself is **unrun, not refuted**: the code,
+tests and four specs are committed, no `"partisan"` alias was ever assigned, and
+`experiments/partisan.toml` still refuses to run without a variant. Re-running it with a
+stronger challenger costs the same ~$22 and one spec line — **a model choice for the user,
+not an agent's.**
+
+`records/derivations/partisan-vs-neutral.py` reproduces the whole comparison from four
+committed `index.jsonl` files, no run tree and no key.
 
 ### The open findings the write-up must carry
 

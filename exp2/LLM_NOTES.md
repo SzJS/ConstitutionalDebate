@@ -3015,6 +3015,227 @@ record of what the ruling lines said; the readings do not.
 - Carried forward unchanged: the **`weak_alone` arm**, and the **gloss leak** (65 of 5,724
   published objections), which is a challenger-side prompt fix and was not part of this pass.
 
+## 3v. The partisan challenger — tried on three clauses, NO-GO (2026-08-27)
+
+**Written after the runs. Every number here is quoted from
+`records/experiments/partisan-pilots/CHECKLIST.md`, from
+`records/experiments/partisan-pilots/partisan-vs-neutral.log`, from a `metrics.json` in
+that directory, or from the driver logs the CHECKLIST names — all of the first three now in
+git.** This section **reports a negative result**. It does not conclude that a partisan
+challenger cannot work; it concludes that this one, on this model, over these records, does
+not raise n, and it says what would have to change for the question to be asked again.
+
+`DESIGN.md` names the partisan variant as a planned ablation, and §3s, §3t and §3u all end
+owing the same thing: n. The neutral decide-last challenger objects on ~8% of cells — 54 of
+`debate`'s 1,644 in the re-contest, 46 of them genuine — so the judge's discrimination, the
+grader's valid-objection rate and the phantom rate each rest on tens of cells per condition.
+The ablation was the remedy: assign the challenger the answer the decision went against, ask
+it to argue the decision was mistaken, let it still report finding no grounds, and every
+cell yields an objection unless the advocate genuinely declines. Full run costed at **~$22
+and ~2 h**. It was **not run**. Three pilot clauses were, for **$1.2234**, and all three
+failed the gate the plan wrote before them.
+
+### What was built (commit `3e08df4`)
+
+"The challenger gets a standpoint, and the record says which one it had." Nineteen files,
+1,044 insertions, and the whole of it is one paragraph slot plus the record-keeping that
+makes the slot honest.
+
+- **Four named arms.** `prompts.CHALLENGER_ARMS` maps `neutral`, `partisan_advocate`,
+  `partisan_assigned` and `partisan_auditor` to standpoint paragraphs.
+  `CHALLENGER_SYSTEM` gained a single `{arm_clause}` slot where the neutral paragraph used
+  to be inline, and **nothing else in the prompt changed**: `{flaw_definition}`, "Either
+  verdict can be wrong…", the quote-the-record instruction, the length rule, the two-section
+  `Thinking:`/`Argument:` format and the decide-last `CHALLENGE_DECISION_INSTRUCTION` with
+  both `Decision:` lines are shared by all four. The tests diff the four rendered system
+  prompts pairwise and assert they differ **only** in that paragraph, and that the user
+  message is byte-identical across variants. Label-flip invariance holds for all four.
+- **`challenger_variant`**, a config field defaulting to `"neutral"` — what every paid run
+  before 2026-08-27 did — validated against the four names, carrying a `WHY` entry, and in
+  `RECOURSE_ONLY_KEYS`. An old spec keeps its meaning; an invalid value raises `ConfigError`
+  before anything spends.
+- **`challenge_arm`**, so the record says which standpoint produced it. `Challenge.arm` is
+  validated against the same four names (old `challenge.json` files all carry `"neutral"`,
+  so `from_dict` still loads them), `build_index` writes it as a column, `metrics.json`
+  gains its counts, and `analysis.caveats()` emits a caveat **only when a row is partisan**:
+  detection and false-alarm rates are advocacy rates, not stakeholder rates, and only
+  recourse-stage quantities may be compared with the neutral run's.
+- Four specs — `experiments/partisan-pilot-{advocate,assigned,auditor}.toml` and
+  `experiments/partisan.toml` — and an `e2e_offline.py` pass under a partisan variant
+  asserting the arm on every challenge, the caveat present, and closing invariants 0/0/0.
+
+The clause is formatted with `contrary_phrase = side_phrase(complement(decision_verdict))`:
+a phrase, never the FLAWED/SOUND token, so naming the side the decision went against does
+not leak the vocabulary the challenger's own `Decision:` line is parsed against. Note for
+anyone re-reading `test_prompts.py:317`: the partisan clauses deliberately **do** invite the
+challenger to look at the text under review, where the neutral one does not; what stays out
+of all four is the exact string `"examine it yourself"` that test guards.
+
+### The three clauses
+
+Verbatim in `records/experiments/partisan-pilots/README.md` and in `prompts.py`. In one
+line each:
+
+- **`partisan_advocate`** — the exp1-derived wording. *You represent the side this decision
+  went against… argue it properly rather than merely asserting it… you are not obliged to
+  manufacture a case… an objection you cannot support costs the credibility you need for the
+  ones you can.*
+- **`partisan_assigned`** — flatter. *You have been assigned the position that
+  {contrary\_phrase}. Search the record for the strongest support for that position… Decline
+  only if, having searched, you find nothing.*
+- **`partisan_auditor`** — no side at all, a presumption instead. *Your job is to find the
+  best objection to this decision. Assume there is one until you have looked… Let the
+  decision stand only if every claim in the grounds holds up and you find no flaw the
+  decision missed.*
+
+### The gate, written before the runs
+
+The user's rule for a new prompt is a small subset first, read by hand, with an explicit
+go/no-go on the objection rate before anything runs at scale. The plan's step-6 rule:
+
+> GO with the clause that has the highest *genuine* raise rate subject to (i) phantom share
+> ≤ the neutral run's 13%, (ii) at least some declines on correct decisions (a 0% decline
+> rate means "let it stand" is dead), (iii) parse failures ≈ 0. If **no** clause raises the
+> genuine objection rate clearly above neutral's (at least 2× on the pooled 194), NO-GO:
+> stop, record the three results in LLM_NOTES, and report to the user — do not run the full
+> sweep.
+
+**No iteration beyond these three clauses** was allowed, and none was done.
+
+Each clause ran on `data/cases/pilot-3.jsonl` — 69 items, all seven subsets, 207 cells of
+which the sweep decided **194** — into its own tree, stages `contest agreement
+ruling_agreement grade analyse`, five stages, exit 0, `DONE.md` written. The fair neutral
+baseline on the same 194 cells is **`rerule-recontest`** restricted to them: neutral
+objections, the corrected ruling line, the `ruling_agreement` instrument present. The
+re-contest's original rulings are not a fair baseline — comparing a corrected ruler with an
+uncorrected one would credit §3u's fix to the challenger's standpoint.
+
+### The numbers, with their n
+
+**Ops first.** $0.4345 / $0.4026 / $0.3863 = **$1.2234**; 3 m 39 s / 3 m 23 s / 3 m 23 s;
+**1,809 / 1,791 / 1,793 wire attempts, every one HTTP 200**, zero non-2xx; **0** cells
+failed in any stage; **0** unparsed stances and **0** contradictory lines. Challenger format
+repairs **23 / 22 / 31** (10.6% / 10.2% / 13.8% of challenger calls), all `no_public_label`,
+all in `contest`, none anywhere else — **higher** than the neutral arm's, which is the one
+thing advocacy reliably changed: an advocate writes longer and drifts out of the two-section
+format more often. The sweep tree was hashed before and after and is byte-identical
+(`5e2eb4d6…`).
+
+**The gate's one number.** Neutral on the same 194 cells raises **19 genuine, 9.8%**, so the
+gate is ≥ 19.6%.
+
+| clause | genuine raised | × neutral | phantom | declines on CORRECT | unclear+contradictory |
+|---|---|---|---|---|---|
+| `partisan_advocate` | **27/194 = 13.9%** | **1.42×** | 1/28 = 3.6% | 128/146 = 87.7% | 0 + 0 |
+| `partisan_assigned` | **21/194 = 10.8%** | **1.11×** | 0/21 = 0.0% | 129/146 = 88.4% | 0 + 0 |
+| `partisan_auditor` | **19/194 = 9.8%** | **1.00×** | 0/19 = 0.0% | 131/146 = 89.7% | 0 + 0 |
+
+Criteria (i), (ii) and (iii) **pass in all three clauses**. Criterion (ii) is worth reading
+rather than ticking: it asked for *some* declines on correct decisions, because 0% would
+mean "let it stand" was dead and the advocate was manufacturing a case. It is **88–90%** —
+four points below the neutral challenger's 91.8%. And on **wrong** decisions the clauses
+decline **79–92%** of the time, two of the three *more* often than the neutral challenger's
+85.4%. The advocate is not manufacturing anything; it is agreeing with the verdict.
+
+**Per condition** — the ablation's job in the three places it had to do it (genuine raised):
+
+| condition | cells | neutral | `advocate` | `assigned` | `auditor` |
+|---|---|---|---|---|---|
+| `single` | 68 | 3/68 | **8/68** | 4/68 | 6/68 |
+| `self_critique` | 66 | 15/66 | **16/66** | 15/66 | 11/66 |
+| `debate` | 60 | **1/60** | **3/60** | 2/60 | 2/60 |
+
+`debate` is where n was thinnest and where the ablation was most needed: the best clause
+moves it from **one** objection to **three**. On `self_critique`, where the neutral
+challenger already objects on 22.7% of cells, advocacy adds **one** and the auditor clause
+**loses four**.
+
+**What advocacy actually did, cell by cell.** The transitions table is the most informative
+thing in the pilots. Of the 19 cells the neutral challenger objected on, the advocate keeps
+**12** and drops **7**; `assigned` keeps 9 and drops 10; `auditor` keeps 8 and drops 11.
+Genuine objections added: **+15 / +12 / +11**. Advocacy is not adding a layer on top of the
+neutral challenger's objections — it is **resampling the same challenger at temperature
+0.7** with a slightly different prior. `partisan_auditor` adds eleven and loses eleven and
+lands on exactly the neutral pooled rate.
+
+**And the recourse-stage numbers the ablation was for are still on tens.** Pooled
+discrimination — overturn on genuine-on-wrong minus overturn on genuine-on-correct — is
+neutral **+40.5 pts** (on 7 and 12) against `advocate`'s **+17.1** (on 10 and 17),
+`assigned`'s **−16.2** and `auditor`'s **−40.0**. The one clause that raised n at all raised
+it from 19 objections to 28 and moved the point estimate by 23 points, which is what a
+denominator of ten does and is precisely the disease the ablation was prescribed for. It did
+not deliver the cure. The `ruling_line_mismatch` instrument reads 14.3% / 14.3% / 10.5% on
+28 / 21 / 19 rulings against `rerule-recontest`'s 5.8% on 464 — one ruling is 3.6 to 5.3
+points at those denominators, so that is not evidence of anything either.
+
+### Why — Fable's reading of the declines
+
+> on `gpqa-127-sound__debate` and `gpqa-161-flawed__debate` — both WRONG decisions — every
+> partisan clause opens with "The verdict … is correct" and restates the judge's own grounds,
+> in nearly the same words the NEUTRAL re-contest challenger used on the same cells
+> ("explicitly flagged as an assumption… a legitimate mathematical strategy"). The standpoint
+> instruction does not move gpt-4.1-nano at all: a challenger that reasons before committing,
+> over a record that already contains both sides and a verdict, sides with the verdict
+> regardless of which side it is told to represent. The low objection rate is a property of
+> the challenger model reading these records, not of the neutral instruction, and the
+> ablation cannot raise n with this model.
+
+Both cells are in the committed indices and are `declined` in all three trees, with their
+prose read `RIGHT` by the `agreement` instrument in every column — the challenger's own
+words say the verdict was right, under a clause that told it to argue the verdict was wrong.
+
+This joins a family. §3h found the weak judge made *worse* by a transcript it could not
+read; §3n found it collapsing FLAWED/SOUND onto whichever word the prompt made easiest; §3u
+found its recourse ruling line contradicting its own reasoning on most FLAWED parents. The
+common factor is that `gpt-4.1-nano` follows the **shape** of what is in front of it rather
+than the instruction about how to stand toward it. A record that states a verdict and its
+grounds is a shape that says "this is right", and one paragraph of standpoint does not
+outweigh it.
+
+**Fable decided NO-GO on 2026-08-27.** The full run was not started.
+
+### What it means for the design
+
+- **The ablation exists in code and is not refuted — it is unrun on this model.** Four arms,
+  the config field, the validated `Challenge.arm`, the `challenge_arm` column, the caveat,
+  the tests and four specs are all in `3e08df4` and all green. Re-running it with a stronger
+  challenger costs the same ~$22 and needs one line of a spec changed. **That is a model
+  choice, and it is the user's.**
+- **The `partisan` alias was never assigned.** The plan reserved `"partisan"` as an alias
+  for whichever clause won; no clause won, so `CHALLENGER_ARMS` carries exactly the four
+  explicit names and nothing named `partisan` resolves.
+- **`experiments/partisan.toml` refuses to run.** Its `challenger_variant` line is commented
+  out on purpose and `experiment_cli` refuses **any** spec whose name contains `partisan`
+  and states no variant — on a dry run and on a real one alike — because the field defaults
+  to `"neutral"`: without that guard the file would quietly
+  re-run the neutral challenger into `outputs/experiments/partisan/` and every number in
+  that tree would be a neutral number under a partisan name. The refusal stands and should
+  stay until a variant is chosen.
+- **The low neutral objection rate is not an artifact of the neutral instruction.** That was
+  the live alternative — that "you are not required to find fault" was suppressing objections
+  the model could have made. Three clauses saying the opposite, one of them in as many words,
+  do not recover them. **The rate is the model's**, and §3t's and §3u's caveats about it need
+  no revision.
+
+### What is still owed
+
+- **The recourse numbers remain at the neutral n.** Every small-denominator caveat in §3s,
+  §3t and §3u stands exactly as it stood: `debate`'s 54 objections, the 7-and-12 denominators
+  under the discrimination figure, the grader's single-digit graded rows. Nothing in this
+  pass moved any of them.
+- **Raising n now needs a different challenger model or a different record, and both are
+  design decisions, not an agent's.** A stronger challenger — one that will hold a position
+  it was assigned against a record that contradicts it — is the direct route, at the cost of
+  changing the model whose behaviour every other recourse number was measured on. The other
+  route is a record that does not hand the challenger the verdict and its grounds, which is a
+  different experiment about a different mechanism, not a variant of this one.
+- **Whether the wording could be pushed further is unanswered on purpose.** The plan allowed
+  no iteration beyond three clauses and none was taken; three points that span 1.00× to 1.42×
+  do not rule out a fourth that reaches 2×, they only make it a poor bet at this model.
+- Carried forward unchanged from §3u: the **python800 phrasing**, the **145 of 682** cells
+  where the two rulers disagree, the **specious-objection control**, phantoms as a
+  **challenger property**, the **`weak_alone` arm** and the **gloss leak**.
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later
