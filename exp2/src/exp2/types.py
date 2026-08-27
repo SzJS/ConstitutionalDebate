@@ -896,7 +896,12 @@ class Challenge:
     # 2026-08-27 carries "neutral", so old trees still load.
     arm: str | None = None
     # The judgment variant's structured findings, as `prompts.parse_defects` read them
-    # back: one dict per numbered defect, `{type, judgment_says, record_says, why}`.
+    # back: one dict per numbered defect, `{type, judgment_says, record_says, why,
+    # quote_in_judgment}`. That last is the quote check — whether the text the defect
+    # quotes as the judgment's is really in the judgment — decided by string comparison
+    # when the objection was parsed, False on a defect the grader is therefore never
+    # asked about, and None where the check does not apply (an omission, a defect that
+    # quoted nothing, or a challenge written before the check existed).
     # Empty for every other arm, and empty for a judgment objection that declined or
     # whose list could not be read — a count of 0 beside a REVERSE line is a
     # phantom-shaped reply, which the `agreement` stage is what catches, so it is

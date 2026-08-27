@@ -157,6 +157,86 @@ async def test_a_judgment_grade_with_no_defect_lines_falls_back_visibly():
     assert result.line_mismatch is False
 
 
+async def test_a_defect_whose_quote_is_not_in_the_judgment_is_ruled_without_a_call():
+    """The skip path. A defect quoting a judgment that does not say it is INVALID by
+    string comparison, so the grader is neither asked about it nor paid to read it — but
+    it is still RULED, in the same list and under its own number, or `grade.json` would
+    stop agreeing with the `challenge.json` it came from."""
+    from exp2.grading import QUOTE_NOT_IN_JUDGMENT
+
+    client = FakeClient(replies={"judgment_grader": (
+        "The second defect holds.\n"
+        "Defect 2: VALID — the record raises it and the judgment is silent.\n"
+        "Valid objection: YES")})
+    result = await judgment_grade(
+        client=client,
+        defects=[{"type": "misstatement", "quote_in_judgment": False},
+                 {"type": "omission", "quote_in_judgment": None}])
+
+    assert [(d["index"], d["valid"], d["reason"]) for d in result.defects] == [
+        (1, False, QUOTE_NOT_IN_JUDGMENT),
+        (2, True, "the record raises it and the judgment is silent."),
+    ]
+    assert result.valid is True and result.to_dict()["defects_n"] == 2
+    # one call, and it named the skipped defect rather than leaving it to be found
+    assert len(client.calls) == 1
+    sent = "".join(m["content"] for m in client.calls[0]["messages"])
+    assert "Defect 1 has already been checked" in sent
+
+
+async def test_the_graders_ruling_on_a_skipped_defect_is_discarded():
+    """A grader that rules on a defect it was told not to rule on does not get to
+    overturn a string comparison. Its ruling is dropped, not merged: two rulings under
+    one number would make `defects_n` disagree with the objection it graded."""
+    client = FakeClient(replies={"judgment_grader": (
+        "Both hold.\n"
+        "Defect 1: VALID — the quote is accurate.\n"
+        "Defect 2: VALID — the point is unaddressed.\n"
+        "Valid objection: YES")})
+    result = await judgment_grade(
+        client=client,
+        defects=[{"type": "misstatement", "quote_in_judgment": False},
+                 {"type": "omission", "quote_in_judgment": None}])
+    assert [(d["index"], d["valid"]) for d in result.defects] == [(1, False), (2, True)]
+    assert result.to_dict()["defects_valid_n"] == 1
+
+
+async def test_an_objection_whose_every_quote_is_invented_is_graded_without_a_call():
+    """The no-call path, and the reason the check is in the harness rather than in the
+    probe: on the slice this shape was a quarter of the objections, and each one was a
+    grader call spent reading quotations of a text that does not contain them."""
+    from exp2.grading import QUOTE_CHECK_ONLY
+
+    client = FakeClient()
+    result = await judgment_grade(
+        client=client,
+        defects=[{"type": "misstatement", "quote_in_judgment": False},
+                 {"type": "contradiction", "quote_in_judgment": False}])
+
+    assert client.calls == []
+    assert result.valid is False and result.line_valid is False
+    assert result.line_mismatch is False
+    assert result.parse_mode == QUOTE_CHECK_ONLY
+    assert result.model == "" and result.raw == "" and result.call_id == ""
+    data = result.to_dict()
+    assert data["defects_n"] == 2 and data["defects_valid_n"] == 0
+    assert [d["type"] for d in data["defects"]] == ["misstatement", "contradiction"]
+
+
+async def test_a_defect_the_check_did_not_apply_to_still_reaches_the_grader():
+    """None is not False. An omission has nothing in the judgment to quote, and a
+    challenge written before the check existed carries no flag at all — neither is
+    evidence against the defect, and both are graded exactly as they always were."""
+    client = FakeClient()
+    result = await judgment_grade(
+        client=client, defects=[{"type": "omission", "quote_in_judgment": None},
+                                {"type": "misstatement"}])
+    assert len(client.calls) == 1
+    assert "already been checked" not in "".join(
+        m["content"] for m in client.calls[0]["messages"])
+    assert result.defects[0]["valid"] is True
+
+
 async def test_a_judgment_grade_needs_the_record_to_check_quotes_against():
     with pytest.raises(NotGradable, match="no record"):
         await judgment_grade(record="")
@@ -459,6 +539,28 @@ def test_the_judgment_rate_is_over_every_graded_row_and_split_by_correctness():
     assert summary["judgment_defects"] == {
         "objections_graded": 4, "defects_alleged": 8, "defects_valid": 3,
         "objections_alleging_nothing": 0, "defects_per_objection": 2.0}
+
+
+def test_the_misattribution_rate_is_over_defects_and_absent_where_nobody_quoted():
+    """The instrument that says how much of an objection list was built on quotations
+    that are not in the judgment. Its denominator is DEFECTS, not rows — a row that
+    alleged five defects is five chances to misquote — and it is omitted entirely on a
+    run whose challenger was never asked for a quote."""
+    rows = [
+        judgment_row(item_id="a", challenge_defects_n=3,
+                     challenge_defects_misattributed_n=2),
+        judgment_row(item_id="b", challenge_defects_n=1,
+                     challenge_defects_misattributed_n=0),
+    ]
+    rate = funnel(rows)["rates"]["misattributed_quote"]
+    assert (rate["k"], rate["n"]) == (2, 4)
+    assert rate["rate"] == 0.5
+    assert rate["ci_low"] < 0.5 < rate["ci_high"]
+
+    # a neutral run has no such number, and 0/0 would invite a comparison with one
+    assert "misattributed_quote" not in funnel([row(), row()])["rates"]
+    # nor does a judgment run indexed before the check existed
+    assert "misattributed_quote" not in funnel([judgment_row()])["rates"]
 
 
 def test_a_judgment_row_never_enters_the_flaw_graders_denominator():

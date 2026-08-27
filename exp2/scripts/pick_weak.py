@@ -503,7 +503,12 @@ async def judge_and_challenge(model, fixture, config, client_config, api_key,
                     item, cfg, DecisionRecord.for_debate(transcript), sides=sides,
                     decision_verdict=jrow.verdict, decision_grounds=completion.content,
                 )
-                (_, raised, _, _, _), c2, repairs, _, _ = await _complete_with_repair(
+                # This pass last ran before the stance rewrite of 2026-08-25, when
+                # `parse_objection_output` returned five values and the second was a
+                # boolean `raised`. It now returns four, and the decision word is one
+                # relative token: REVERSE contests, STANDS declines, None is a reply
+                # whose direction could not be read and is not a decline.
+                (_, word, _, _), c2, repairs, _, _ = await _complete_with_repair(
                     client, model=model, messages=messages,
                     temperature=cfg.debater_temperature, config=cfg,
                     meta={"role": "challenger", "speaker": None, "round": None,
@@ -511,7 +516,7 @@ async def judge_and_challenge(model, fixture, config, client_config, api_key,
                     parse=parse_objection_output, role="challenger",
                     word_limit=cfg.challenge_word_limit_for(),
                 )
-                crow.raised = raised
+                crow.raised = word == "REVERSE" if word else None
                 crow.repairs = repairs
                 crow.native_reasoning = bool(c2.reasoning)
                 crow.cost_usd = cost_of(c2)

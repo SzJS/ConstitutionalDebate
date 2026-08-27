@@ -153,6 +153,28 @@ class NotGradable(ValueError):
     """Raised when a caller asks for a grade that cannot mean anything."""
 
 
+# The two markers of a ruling that no model made. `QUOTE_NOT_IN_JUDGMENT` is the reason
+# on a single defect the quote check settled; `QUOTE_CHECK_ONLY` is the parse_mode of a
+# whole grade that was reached without a call because every defect failed it. Both are
+# strings a reader of `grade.json` meets rather than has to infer, and both are what an
+# analysis counts on when it separates "the grader rejected this" from "this never
+# reached the grader".
+QUOTE_NOT_IN_JUDGMENT = "quote not in judgment"
+QUOTE_CHECK_ONLY = "quote_check_only"
+
+
+def _quote_check_ruling(index: int, defect: dict[str, Any]) -> dict[str, Any]:
+    """The ruling the quote check makes on one defect, in the grader's own shape.
+
+    Shaped exactly like a grader's ruling — same keys, same types — so that
+    `defects_n`, `defects_valid_n` and every hand check read one list and not two, and
+    so that the count in `grade.json` still equals the count in `challenge.json`. What
+    tells the two apart is the reason.
+    """
+    return {"index": index, "type": defect.get("type"), "valid": False,
+            "reason": QUOTE_NOT_IN_JUDGMENT, "alleged": True}
+
+
 async def grade_objection(
     case: Case,
     objection: str,
@@ -268,10 +290,32 @@ async def _grade_judgment(
             f"{case.item.item_id}: cannot grade a judgment objection with no record to "
             "check its quotes against"
         )
+    # The quote check has already ruled on some of these, deterministically and for
+    # free (`prompts.defect_quote_in_judgment`, run at parse time). Only `False` skips:
+    # `None` means the check did not apply — an omission, a defect that quoted nothing,
+    # or a challenge written before the check existed — and every one of those goes to
+    # the grader exactly as it did before.
+    skipped = [index for index, defect in enumerate(defects, 1)
+               if defect.get("quote_in_judgment") is False]
+    surviving = len(defects) - len(skipped)
+    if defects and not surviving:
+        # NO CALL. Every defect this objection alleged quotes a judgment that does not
+        # say it, so there is nothing left for a grader to rule on and nothing a grader
+        # could rule that would change the answer. Written as a grade rather than as a
+        # skip, because "graded invalid" and "not graded" are different facts and the
+        # analysis counts them differently.
+        log.info("%s: every alleged defect failed the quote check; not calling the "
+                 "grader", case.item.item_id)
+        return JudgmentGrade(
+            defects=[_quote_check_ruling(index, defects[index - 1])
+                     for index in skipped],
+            line_valid=False, model="", parse_mode=QUOTE_CHECK_ONLY, raw="",
+            call_id="", finish_reason=None,
+        )
     messages = build_judgment_grader_messages(
         case.item, record=record, judgment=judgment,
         decision_verdict=decision_verdict or FLAWED, objection=objection,
-        n_defects=len(defects),
+        n_defects=len(defects), skipped=skipped,
     )
     (defect_grades, line_valid, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
@@ -291,6 +335,16 @@ async def _grade_judgment(
     # reason.
     graded: list[dict[str, Any]] = []
     for grade in defect_grades:
+        if grade["index"] in skipped:
+            # The grader ruled on a defect it was told not to rule on. Its ruling is
+            # DISCARDED rather than merged: the quote check is a string comparison a
+            # reader can redo, and a model's opinion does not overturn one. Logged, not
+            # silent — how often the grader ignores the instruction is a fact about the
+            # grader.
+            log.info("%s: judgment grader ruled on defect %d, which the quote check "
+                     "had already settled; discarding its ruling",
+                     case.item.item_id, grade["index"])
+            continue
         alleged = (defects[grade["index"] - 1]
                    if 1 <= grade["index"] <= len(defects) else {})
         graded.append({
@@ -300,11 +354,17 @@ async def _grade_judgment(
             "reason": grade["reason"],
             "alleged": bool(alleged),
         })
-    if len(graded) != len(defects):
+    if len(graded) != surviving:
         log.info(
-            "%s: judgment grader ruled on %d defects; the objection alleged %d",
-            case.item.item_id, len(graded), len(defects),
+            "%s: judgment grader ruled on %d defects; the objection alleged %d, of "
+            "which %d survived the quote check",
+            case.item.item_id, len(graded), len(defects), surviving,
         )
+    # The deterministic rulings take their places by number, so `grade.json` rules on
+    # every defect the objection alleged and a reader can see which instrument ruled on
+    # which.
+    graded += [_quote_check_ruling(index, defects[index - 1]) for index in skipped]
+    graded.sort(key=lambda ruling: ruling["index"])
 
     result = JudgmentGrade(
         defects=graded, line_valid=line_valid, model=grading.grader_model,

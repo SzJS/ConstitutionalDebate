@@ -738,6 +738,18 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             # not the same quantity, and without this column an index that pooled two
             # runs would read as one population.
             row["challenge_arm"] = challenge.arm
+            if challenge.arm == JUDGMENT_VARIANT:
+                # How much was alleged, and how much of it was built on a quotation the
+                # judgment does not contain. Written only under the judgment arm, on the
+                # rule the graded columns follow: a 0 on a neutral row would read as "it
+                # alleged nothing" when the truth is that nobody asked it to allege
+                # anything. `challenge_defects_misattributed_n` counts DEFECTS whose
+                # quote check failed, not quotes — one defect can carry two — and it is
+                # the numerator of the `misattributed_quote` rate in the analysis.
+                row["challenge_defects_n"] = len(challenge.defects)
+                row["challenge_defects_misattributed_n"] = sum(
+                    1 for defect in challenge.defects
+                    if defect.get("quote_in_judgment") is False)
             row["challenge_stance"] = challenge.stance
             row["challenge_raised"] = challenge.stance == "contests"
             row["challenge_agreed"] = challenge.stance == "agrees"

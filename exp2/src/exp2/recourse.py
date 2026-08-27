@@ -174,7 +174,12 @@ async def generate_challenge(
         # one: running the parser over every arm would put an empty column on 5,724
         # neutral rows and, worse, could pick a stray "Type:" out of a stakeholder's
         # prose and report it as an audited defect.
-        defects=(parse_defects(text)
+        #
+        # The grounds are handed over with the text so that each defect's
+        # `quote_in_judgment` is settled here, at the moment the objection is read,
+        # against the very text the challenger was shown. Deciding it later would mean
+        # re-deriving that text from the tree and hoping the derivation matched.
+        defects=(parse_defects(text, record.decision_grounds)
                  if config.challenger_variant == JUDGMENT_VARIANT else []),
         claimed_verdict=claimed, stance=stance,
         # Unreachable with one line, and recorded as False rather than dropped: a

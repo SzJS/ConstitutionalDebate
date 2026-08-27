@@ -207,6 +207,9 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
             _rate("judgment_grade_line_mismatch", judgment_graded,
                   "grade_line_mismatch"),
         ]
+    misattributed = _misattributed_quote_rate(rows)
+    if misattributed is not None:
+        rates.append(misattributed)
     return {
         "n": len(rows),
         "n_judgment_graded": len(judgment_graded),
@@ -224,6 +227,39 @@ def funnel(rows: Sequence[dict]) -> dict[str, Any]:
         "ruling_line_vs_prose": _ruling_line_vs_prose(ruled),
         "comprehension": _comprehension(rows),
     }
+
+
+def _misattributed_quote_rate(rows: Sequence[dict]) -> "Rate | None":
+    """How much of what the judgment challenger alleged was built on a quotation the
+    judgment does not contain.
+
+    ``None`` — the rate is omitted entirely — unless some row carries the columns, which
+    only the judgment arm does. A neutral or partisan run is not asked for quotes and
+    has no such number; printing 0/0 for it would invite a reader to compare an absence
+    with a measurement.
+
+    **The denominator is DEFECTS, not rows**, unlike every other rate in this module: the
+    question is what share of the alleged defects rest on a quote that is not there, and
+    a row that alleged five defects is five chances to misquote. The interval is
+    therefore over defects too, and the defects within one objection are not
+    independent — read it as a description of the objection list, not as a significance
+    test.
+
+    It is a CHALLENGER property, so its denominator is every judgment objection in the
+    index, graded or not. The grade is downstream of it: a defect counted here as
+    misattributed is exactly a defect `grading._grade_judgment` never sent to the
+    grader.
+    """
+    counted = [r for r in rows
+               if r.get("challenge_defects_n") is not None
+               and r.get("challenge_defects_misattributed_n") is not None]
+    if not counted:
+        return None
+    return Rate(
+        name="misattributed_quote",
+        k=sum(r["challenge_defects_misattributed_n"] for r in counted),
+        n=sum(r["challenge_defects_n"] for r in counted),
+    )
 
 
 def _judgment_defects(rows: Sequence[dict]) -> dict[str, Any]:

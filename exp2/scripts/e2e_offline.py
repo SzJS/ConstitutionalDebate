@@ -490,6 +490,8 @@ async def judgment_pass(config, client_config, grading, grid) -> int:
         await run_stages(ROOT_JUDGMENT, grid, config, client_config, grading)
 
     stray: dict[str, int] = {}
+    # (condition, defect type) -> the quote check's answer, filled in below.
+    checks: dict[tuple[str, str], object] = {}
 
     # The prompt that was actually sent, off the wire log.
     prompts: dict[str, int] = {}
@@ -528,14 +530,32 @@ async def judgment_pass(config, client_config, grading, grid) -> int:
             stray[f"a defect list parsed as {types}"] = 1
         if not defects or not defects[0].get("record_says"):
             stray["a defect with no record quote parsed out of a reply that gave one"] = 1
+        # THE QUOTE CHECK, over real judgments and both of its answers. The scripted
+        # objection quotes `"step 2 follows from step 1"` as the judgment's, which is
+        # verbatim what the scripted `single` reviewer wrote and is not what the judge
+        # or the final revision wrote — so the same reply is a founded allegation
+        # against one condition's judgment and an invented one against the other two.
+        # The omission carries the `(the judgment does not address this)` placeholder
+        # and must be None under every condition: there is nothing there to check.
+        condition = path.parts[path.parts.index("cells") + 1].split("__")[1]
+        checks[(condition, types[0])] = defects[0].get("quote_in_judgment")
+        if defects[1].get("quote_in_judgment") is not None:
+            stray["an omission was put through a check it cannot fail"] = 1
     print(f"arms recorded on {sum(arms.values())} challenges: {arms}")
     print(f"defects parsed per contested objection: {defect_counts}")
+    print(f"quote check on the alleged misstatement, per condition: "
+          f"{ {k[0]: v for k, v in sorted(checks.items())} }")
+    if checks.get(("single", "misstatement")) is not True:
+        stray["a quote that IS in the judgment did not pass the check"] = 1
+    if {checks.get((c, "misstatement")) for c in ("debate", "self_critique")} != {False}:
+        stray["a quote that is NOT in the judgment passed the check"] = 1
 
     # THE GATE. Every contested cell is graded, and the grades say which instrument
     # wrote them. The cells whose decision was CORRECT are counted separately because
     # they are the ones every other pass in this script skips.
     graded = sorted(ROOT_JUDGMENT.glob("cells/*/contests/*/runs/*/grade.json"))
     modes: dict[str, int] = {}
+    reasons: dict[str, int] = {}
     for path in graded:
         grade = json.loads(path.read_text(encoding="utf-8"))
         modes[str(grade.get("mode"))] = modes.get(str(grade.get("mode")), 0) + 1
@@ -546,7 +566,20 @@ async def judgment_pass(config, client_config, grading, grid) -> int:
             stray["a grade that did not rule on the two defects separately"] = 1
         if grade.get("valid") is not True or grade.get("line_mismatch") is not False:
             stray["a grade whose validity does not follow its own defect lines"] = 1
+        # Every defect the objection alleged is ruled on, whichever instrument ruled —
+        # and the two are told apart by the reason. The scripted grader always answers
+        # `Defect 1: INVALID` even when told not to rule on defect 1, so a tree where
+        # the grader's ruling had been merged instead of discarded would show its
+        # reason here on a defect the check had already settled.
+        reasons[grade["defects"][0]["reason"]] = (
+            reasons.get(grade["defects"][0]["reason"], 0) + 1)
     print(f"contested cells: {contested}   graded: {len(graded)}   modes: {modes}")
+    print(f"who ruled on defect 1, by reason: {reasons}")
+    if reasons.get("quote not in judgment") != 8:
+        stray["the quote check did not rule on the defects the grader was not asked "
+              "about"] = 1
+    if len(reasons) != 2:
+        stray["defect 1 was ruled on by only one instrument across the tree"] = 1
     if len(graded) != contested:
         stray["a contested cell was not graded"] = 1
     if set(modes) != {"judgment"}:
@@ -576,6 +609,13 @@ async def judgment_pass(config, client_config, grading, grid) -> int:
           f"defects: {metrics['overall']['judgment_defects']}")
     if rates["judgment_grade_line_mismatch"]["k"]:
         stray["the grader's summary line contradicted its own defect lines"] = 1
+    # The misattribution rate: 8 of the 24 alleged defects quote a judgment that does
+    # not say it, and the denominator is defects rather than rows.
+    misquoted = rates.get("misattributed_quote")
+    print(f"misattributed_quote: {misquoted['k']}/{misquoted['n']}"
+          if misquoted else "misattributed_quote: ABSENT")
+    if not misquoted or (misquoted["k"], misquoted["n"]) != (8, 24):
+        stray["the index does not count the misattributed quotes it recorded"] = 1
     caveat = next((c for c in metrics["caveats"] if "JUDGMENT AUDIT" in c), "")
     print(f"judgment caveat: {caveat[:150]}...")
     if not caveat or "PROCESS validity" not in caveat:

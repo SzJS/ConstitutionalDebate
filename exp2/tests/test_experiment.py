@@ -569,9 +569,13 @@ async def test_a_partisan_contest_records_its_arm_and_is_written_from_it(tmp_pat
 
 # --- the judgment variant -------------------------------------------------------------
 
+# The `Judgment says:` quote is a VERBATIM span of the fake judge's reply
+# (`conftest.DEFAULT_REPLIES["judge"]`), so this objection passes the quote check and
+# reaches the grader whole. A quote that missed would be ruled INVALID without a call —
+# which is the subject of its own test below, not of these.
 JUDGMENT_OBJECTION = (
     "1. Type: misstatement\n"
-    '   Judgment says: "the sound side answered the objection"\n'
+    '   Judgment says: "the sound side did not"\n'
     '   Record says: "Bob: I do not answer step 2"\n'
     "   Why it matters: the verdict rests on an answer nobody gave.\n"
     "2. Type: omission\n"
@@ -640,6 +644,61 @@ async def test_a_judgment_contest_is_graded_on_a_cell_the_flaw_grader_would_skip
     # the flaw grader's two columns are absent rather than nulled: this row was never
     # scored against an annotation and a null would read as "graded and missed"
     assert "identified_flaw" not in row and "characterises_the_flaw" not in row
+    # both quotes check out against the judgment, so nothing was skipped
+    assert row["challenge_defects_n"] == 2
+    assert row["challenge_defects_misattributed_n"] == 0
+
+
+async def test_a_misattributed_quote_is_counted_in_the_index_and_never_graded(
+    tmp_path, no_network
+):
+    """End to end, on the shape the slice found in a quarter of nano's objections: a
+    defect quoting a judgment that does not say it. The check runs when the objection is
+    parsed, the index counts it, and the grader is never asked — which is what the two
+    new columns exist to make visible on every run rather than only in a hand read."""
+    from exp2.grading import QUOTE_NOT_IN_JUDGMENT
+
+    no_network.replies = {
+        "challenger": (
+            "1. Type: misstatement\n"
+            '   Judgment says: "Bob conceded that step 2 divides by zero"\n'
+            '   Record says: "Bob: I concede nothing"\n'
+            "2. Type: omission\n"
+            "   Judgment says: (the judgment does not address this)\n"
+            '   Record says: "Alice: step 2 divides by zero"\n'
+            "Decision: REVERSE"),
+        "judgment_grader": ("Defect 2: VALID — the judgment is silent on it.\n"
+                            "Valid objection: YES"),
+    }
+    grid = build_grid(cases(1), ["debate"])
+    await decide(tmp_path, grid)
+    await contest(tmp_path, grid, challenger_variant="judgment")
+
+    challenge = json.loads(
+        next((tmp_path / "cells").rglob("challenge.json")).read_text())
+    assert [d["quote_in_judgment"] for d in challenge["defects"]] == [False, None]
+
+    await grade(tmp_path, grid)
+    graded = json.loads(next((tmp_path / "cells").rglob("grade.json")).read_text())
+    assert [(d["index"], d["valid"], d["reason"]) for d in graded["defects"]] == [
+        (1, False, QUOTE_NOT_IN_JUDGMENT),
+        (2, True, "the judgment is silent on it."),
+    ]
+    sent = "".join(m["content"] for c in no_network.calls
+                   if c["meta"]["role"] == "judgment_grader" for m in c["messages"])
+    assert "Defect 1 has already been checked" in sent
+
+    row = build_index(grid, root=tmp_path, challenger_model="strong/model")[0]
+    assert row["challenge_defects_n"] == 2
+    assert row["challenge_defects_misattributed_n"] == 1
+    # and a neutral objection is not asked for quotes, so it has neither column
+    neutral = build_grid(cases(1), ["single"])
+    await decide(tmp_path, neutral)
+    await contest(tmp_path, neutral)
+    other = [r for r in build_index(neutral, root=tmp_path,
+                                    challenger_model="strong/model")
+             if r["condition"] == "single"][0]
+    assert "challenge_defects_n" not in other
 
 
 async def test_a_sound_item_is_graded_under_the_judgment_mode(tmp_path, no_network):

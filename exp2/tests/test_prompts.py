@@ -534,11 +534,99 @@ def test_parse_defects_reads_the_three_shapes_and_gives_up_quietly():
     # a defect alleged with no quotes is kept — the grader is what rules it INVALID
     bare = parse_defects("1. Type: omission\nDecision: REVERSE")
     assert bare == [{"type": "omission", "judgment_says": [], "record_says": [],
-                     "why": ""}]
+                     "why": "", "quote_in_judgment": None}]
 
     # and prose with no list at all is zero defects, not an exception
     assert parse_defects("The judgment looks fine to me.\nDecision: STANDS") == []
     assert parse_defects("Type: vibes\nJudgment says: \"x\"") == []
+
+
+def test_the_quote_check_is_lenient_about_form_and_strict_about_substance():
+    """The slice measured 34 of nano's 66 `Judgment says:` quotes as not being in the
+    judgment at all. Deciding that is a string comparison, so it is made here rather
+    than paid for at the grader — but a false skip throws a real defect away, so the
+    comparison forgives everything except the words."""
+    from exp2.prompts import QUOTE_MATCH_CHARS, quote_in_text
+
+    judgment = ("The sound side answered the objection to step 2, and\n"
+                "Alice never returned to it.")
+
+    assert quote_in_text('"answered the objection to step 2"', judgment)
+    assert quote_in_text("ANSWERED THE OBJECTION", judgment)          # case
+    assert quote_in_text("answered   the\n objection", judgment)      # whitespace
+    assert quote_in_text("“answered the objection”", judgment)        # smart quotes
+    # a line wrapped in the judgment must not hide an accurate quotation of it
+    assert quote_in_text("to step 2, and Alice never returned", judgment)
+
+    assert not quote_in_text("Bob conceded step 2", judgment)
+    assert not quote_in_text("", judgment)       # no evidence is not a match
+    assert not quote_in_text("   ", judgment)
+
+    # only the first 80 characters are compared, so a quote that starts accurately and
+    # then drifts still matches — the grader, not the check, is what rules on the rest
+    long = "x" * QUOTE_MATCH_CHARS
+    assert quote_in_text(long + " and then something invented", long + " and then z")
+
+
+def test_a_defect_records_whether_its_judgment_quote_is_in_the_judgment():
+    """False only where the check actually ran and failed. Everything else is None, so
+    that `grading` skips a defect for being unfounded and never for being unchecked."""
+    from exp2.prompts import parse_defects
+
+    judgment = "The sound side did not quote the text. Verdict: SOUND"
+    reply = (
+        "1. Type: misstatement\n"
+        '   Judgment says: "The sound side did not quote the text"\n'
+        '   Record says: "Bob: I quoted it twice"\n'
+        "2. Type: misstatement\n"
+        '   Judgment says: "Alice conceded step 2"\n'
+        '   Record says: "Alice: I do not concede"\n'
+        "3. Type: omission\n"
+        "   Judgment says: (the judgment does not address this)\n"
+        '   Record says: "Alice: step 2 divides by zero"\n'
+        "4. Type: contradiction\n"
+        '   Judgment says: "The sound side did not quote the text"\n'
+        '   Judgment says: "the sound side quoted it twice"\n'
+        '   Record says: "Bob: I quoted it twice"\n'
+        "5. Type: misstatement\n"
+        "   Record says: \"Alice: step 2 divides by zero\"\n"
+    )
+    defects = parse_defects(reply, judgment)
+    assert [d["quote_in_judgment"] for d in defects] == [
+        True,      # the quote is in the judgment, verbatim
+        False,     # it is not — this defect is never sent to the grader
+        None,      # an omission has nothing in the judgment to quote, by construction
+        False,     # a contradiction needs BOTH its quotes; one of these is invented
+        None,      # a defect that quoted nothing is the grader's to reject, not ours
+    ]
+
+    # no judgment to check against is not a failed check: an older challenge.json, or a
+    # caller that did not ask, must not have its defects skipped downstream
+    assert [d["quote_in_judgment"] for d in parse_defects(reply)] == [None] * 5
+
+
+def test_the_grader_is_told_which_defects_the_quote_check_already_settled():
+    """The objection is shown whole, so the skipped defects are in front of the grader
+    whatever it is asked. Naming them is what stops it ruling on a question already
+    answered — and the numbering is held fixed, because the rulings are joined back to
+    the challenger's own list by number."""
+    from exp2.prompts import skipped_defects_note
+
+    user = build_judgment_grader_messages(
+        make_item(), record="r", judgment="j", decision_verdict=FLAWED,
+        objection="1. Type: misstatement\n2. Type: omission\n3. Type: contradiction",
+        n_defects=3, skipped=[1, 3])[1]["content"]
+    assert "It alleges 3 numbered defects" in user     # what the objection SAYS
+    assert "Defect 1 and Defect 3 have already been checked" in user
+    assert "KEEP THE OBJECTION'S OWN NUMBERING" in user
+
+    assert "Defect 2 has already been checked" in skipped_defects_note([2])
+    # and a clean objection is sent exactly what it was sent before the check existed
+    assert skipped_defects_note([]) == ""
+    clean = build_judgment_grader_messages(
+        make_item(), record="r", judgment="j", decision_verdict=FLAWED,
+        objection="1. Type: misstatement", n_defects=1)[1]["content"]
+    assert "already been checked" not in clean
 
 
 def test_the_judgment_grader_is_given_the_record_the_challenger_saw():

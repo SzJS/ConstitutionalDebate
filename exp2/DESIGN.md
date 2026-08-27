@@ -183,6 +183,8 @@ Do different model families behave differently? Also, whether Chinese and Americ
 ## Model strength
 Challenger capability is assumed to be weak. We could see if changing it makes a difference.
 
+The judgment-challenge variant forced this question early: on a 194-cell slice, gpt-4.1-nano raised objections on 57% of cells but only 6% were valid, and half of its "Judgment says" quotations were not from the judgment at all — it cannot reliably hold "which text is the judgment" straight, so it cannot audit one. The challenger for the judgment variant is therefore chosen by a pre-registered auditing probe: known defects (a misquote, a swapped attribution, a contradiction, an omission) are injected by code into copies of real sweep judgments, each candidate audits them with the variant's own prompt, and the cheapest model clearing the thresholds in `records/pick-auditor/RULES.md` is used — or none is, and that is the finding. The injection is an instrument for scoring auditors, not a decision the experiment measures. Haiku is excluded from the candidates because it is the grader. The neutral and partisan results stand as the weak-stakeholder measurements; the judgment variant measures whether a *reliable* auditor of process finds contestable judgments, with the challenger's strength recorded as a parameter.
+
 ## Further baselines
 Further baselines are possible — AI systems with legibility training (confession, NLA, and similar)
 
