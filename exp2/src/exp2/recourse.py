@@ -35,6 +35,7 @@ from typing import Any
 from .arms import _split_solo
 from .client import ChatClient
 from .config import (
+    FABRICATED_VARIANT,
     JUDGMENT_FAMILY,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
@@ -212,6 +213,11 @@ async def generate_challenge(
         # from the spec that produced the tree: a specious objection pooled with a real
         # one would put a deliberately-invalid audit into the valid-objection rate.
         specious=config.challenger_variant == SPECIOUS_VARIANT,
+        # The 2026-08-28 control whose falsity is a string comparison rather than an
+        # instruction: every `Judgment says:` quotation invented, the `Record says:` one
+        # real. Recorded here for the same reason `specious` is — an arm inferred from
+        # the spec that produced the tree is an arm a re-run of one stage can lose.
+        fabricated=config.challenger_variant == FABRICATED_VARIANT,
         # Only the judgment family is asked for a defect list, so only it is read for
         # one: running the parser over every arm would put an empty column on 5,724
         # neutral rows and, worse, could pick a stray "Type:" out of a stakeholder's

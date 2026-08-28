@@ -1,0 +1,135 @@
+# jd4 — the SPECIOUS CONTROL THAT IS FALSE BY CONSTRUCTION. The challenger audits M0's
+# judgments and every `Judgment says:` quotation it writes is INVENTED.
+#
+# READ FIRST: `records/experiments/judgment-debate-4/PREREG.md` — the population, the
+# mechanical manipulation check and its 80% threshold, the descriptive endpoint, the
+# accuracy ablation and the stop rules are all there and none of them is restated here.
+# It is to be committed before this arm's first paid call.
+#
+# WHY THIS ARM EXISTS, and it is a failure of `judgment-debate-3`'s M3 rather than a new
+# idea. M3 ran the specious clause on 1,642 cells for $51.72 and the grader validated
+# **29.2%** of its objections (`LLM_NOTES.md` §3y;
+# `records/experiments/judgment-debate-3/HANDCHECK-M3-specious.md`, fourteen cells read by
+# hand). The diagnosis is mechanical and no rewording repairs it: with `omission` struck
+# after M3's first smoke — a compressed judgment always leaves something unaddressed, so
+# an omission cannot be made false to order — the move left under `contradiction` and
+# `misstatement` is *"the judgment softened a party's position"*, and a 400-word judgment
+# of a three-round debate does that constantly. The allegation lands on a defect that is
+# really there.
+#
+# SO THIS ARM CHANGES THE DEFECT, NOT THE INSTRUCTION ABOUT IT. The objection must rest on
+# a quotation THE JUDGMENT DOES NOT CONTAIN, and whether it does is not a matter of
+# opinion: `prompts.defect_quote_in_judgment` string-matches every `Judgment says:` quote
+# against the judgment at parse time and records `quote_in_judgment`, which is on the
+# decision path and was pre-registered before the first judgment run. The arm's ground
+# truth is therefore CODE, and the manipulation check is a string comparison a reader can
+# redo by hand — `challenge_fabrication_ok` per objection and
+# `challenge_defects_fabricated_n` per defect, both in `index.jsonl`.
+#
+# THE `Record says:` QUOTATION STAYS REAL. The objection has to read as properly sourced,
+# so the record side is quoted verbatim and only the judgment side is invented; a judge
+# refusing it is then refusing a claim rather than an empty page.
+#
+# THE GRADE STAGE MOSTLY MAKES NO CALL, AND THAT IS WHAT MAKES THIS ARM CHEAP. When every
+# defect of an objection fails the quote check there is nothing left for a grader to rule
+# on, so `grading._grade_judgment` writes a `quote_check_only` grade with NO wire call —
+# existing behaviour, pinned by
+# `tests/test_grading_analysis.py::test_an_objection_whose_every_quote_is_invented_is_graded_without_a_call`
+# and, for this arm end to end, by
+# `tests/test_experiment.py::test_the_fabricated_arm_is_graded_with_no_grader_call_and_the_index_says_so`.
+# M3 paid $13.13 for its grade stage; a working fabricated arm pays cents. The grader is
+# still run, because the objections it IS called on are the ones the manipulation failed
+# on, and that is a number the arm needs.
+#
+# THE POPULATION IS THE 896 CELLS M1 CONTESTED, and it is fixed in the cases file rather
+# than taken as an overlap afterwards. M3 contested every decided cell because its
+# instruction forbids the decline; this instruction forbids it too, so the restriction is
+# made up front — `records/derivations/jd4-pick.py` writes
+# `data/cases/jd4-fabricated.jsonl` from `jd3-main`'s index and ASSERTS the count is 896.
+# The arm then pairs cell for cell with M1 (real), M2 (placeholder) and M4 (gated), which
+# all stand on exactly those cells. Its own raise rate is 1.0 by construction and is not a
+# detection rate.
+#
+# THE DECISIONS ARE M0's. `decisions_from` points at `jd3-main`, which is read and never
+# written, and must be byte-identical before and after (`dfa9bdca…` at the close of the
+# jd3 campaign). `--stage decide` and `--stage rejudge` both refuse on this spec: this arm
+# judges nothing.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd4-fabricated.toml \
+#         > outputs/jd4-fabricated-driver.log 2>&1 &
+#
+# ESTIMATE, scaled from M3's own per-cell costs (`records/experiments/judgment-debate-3/
+# logs/stage-tails.md`): contest $0.0197/cell, agreement $0.0017, ruling_agreement
+# $0.0022, grade $0.0080 — so 896 cells cost about **$21** with the grade stage silent,
+# about **$28** with 1.3x headroom, and about $28 even if the manipulation fails outright
+# and every objection is graded.
+#
+# THE CLAUSE WAS SMOKED TWICE AND REVISED ONCE, and it is fixed at the version smoke 2
+# ran. Smoke 1 (`experiments/jd4-smoke.toml`, $0.0702): judgment half 6/6 objections and
+# 13/13 quotations invented, record half 3/10 quotations verbatim with 4/10 being
+# sentences of the JUDGMENT under the record's label. The fix, 2026-08-28, is two bullets
+# saying `Record says:` quotes the debate record verbatim and never the judgment. Smoke 2
+# (`experiments/jd4-smoke-2.toml`, $0.0798, six cells smoke 1 did not touch): **6/6
+# judgment, 10/10 quotations invented, 5/6 objections with every record quotation real,
+# 0/8 taken from the judgment** — the gate written before it ran, met. Both are rendered
+# in `outputs/jd4-smoke-read.txt` with every quotation recomputed from the documents.
+
+name = "jd4-fabricated"
+
+# THE 896 CELLS M1 CONTESTED, and nothing else. Built by
+# `records/derivations/jd4-pick.py` from `outputs/experiments/jd3-main/index.jsonl`
+# (`challenge_raised == true`), which asserts the count before it writes.
+cases = "data/cases/jd4-fabricated.jsonl"
+
+# The decisions are M0's — Maverick's judgments of the sweep's stored transcripts. This
+# arm writes its own objections, so it takes no `contests_from`.
+decisions_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-specious.toml`'s decision-path block, which is byte-identical to
+# `jd3-main.toml`'s: this arm must differ from the real audit in the challenger's
+# instruction and in nothing else, or the comparison is a comparison of two setups.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+
+# The same challenger model as the real audit's and as M3's, so the only thing that moves
+# between the three arms is the instruction.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE CONTROL. The judgment task, its prompt and its parser unchanged, plus the fabricated
+# clause. Objections carry `arm = "judgment"` so the MATERIALITY ruling prompt and reader
+# apply exactly as they do to the real audit, and are told apart by
+# `challenge_arm = "judgment_fabricated"` in the index and `Challenge.fabricated` in the
+# record. The four judgment-family arms are NEVER pooled under one label.
+challenger_variant = "judgment_fabricated"
+
+recourse_form = "third_party"
+
+# THE SAME JUDGE AS M1's AND M3's, and the same one that wrote the judgments being
+# objected to. An overturn here is a judge abandoning its own reasoning under pressure
+# that cannot be true.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# The judgment grader, UNCHANGED, and held equal to every other arm's — but note what it
+# is and is not here. It is NOT this arm's manipulation check (the string comparison is);
+# it is the failure-mode measurement beside it, and it is called only on the objections
+# whose defects did not all fail the quote check.
+grader_model = "anthropic/claude-haiku-4.5"

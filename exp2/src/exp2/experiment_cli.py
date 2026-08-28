@@ -76,6 +76,7 @@ from .config import (
     CHALLENGER_VARIANTS,
     CLIENT_WHY,
     GRADING_WHY,
+    FABRICATED_VARIANT,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
     SPECIOUS_VARIANT,
@@ -218,7 +219,14 @@ def print_estimate(grid, config: DebateConfig,
     # that grade is the manipulation check on the instruction and it is the whole reason
     # the arm is readable — so it takes the judgment grading term too. The placeholder is
     # not graded at all; `contests_from` already zeroes its term.
-    judgment = config.challenger_variant in (JUDGMENT_VARIANT, SPECIOUS_VARIANT)
+    # The FABRICATED arm takes the judgment grading term too, and the estimate it
+    # produces is deliberately an UPPER bound rather than the spend: when the arm works,
+    # every defect fails the parse-time quote check and `grading._grade_judgment` returns
+    # a `quote_check_only` grade with NO wire call, so the grader is called only on the
+    # objections the manipulation failed on. Quoting the smaller number here would be
+    # quoting a number that is only right if the arm succeeds.
+    judgment = config.challenger_variant in (JUDGMENT_VARIANT, SPECIOUS_VARIANT,
+                                             FABRICATED_VARIANT)
     placeholder = config.challenger_variant == PLACEHOLDER_VARIANT
     gradable = (0 if contests_from is not None
                 else len(grid) if judgment
@@ -245,10 +253,21 @@ def print_estimate(grid, config: DebateConfig,
           f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}{gate_term}  "
           f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable + gatekeeper}")
     if judgment:
-        print("the grading term is the whole grid: `challenger_variant = \"judgment\"` "
-              "grades every cell whose objection contests, against the RECORD rather "
-              "than the recorded flaw — so the annotation gates that hold the ordinary "
-              "grading term down do not apply.")
+        print("the grading term is the whole grid: `challenger_variant = "
+              f"\"{config.challenger_variant}\"` grades every cell whose objection "
+              "contests, against the RECORD rather than the recorded flaw — so the "
+              "annotation gates that hold the ordinary grading term down do not apply.")
+    if config.challenger_variant == FABRICATED_VARIANT:
+        # The one arm whose grading term is an upper bound rather than a forecast, and
+        # the reader agreeing to the spend has to know which: a working fabricated arm
+        # pays almost nothing here, and a bill that lands near the bound is the
+        # manipulation failing rather than the estimate being wrong.
+        print("BUT THE FABRICATED ARM SHOULD PAY ALMOST NONE OF IT: an objection whose "
+              "every defect fails the parse-time quote check is graded invalid with NO "
+              "grader call, which is what this arm is built to produce on every cell. "
+              "The grading term above is the bound if the manipulation fails outright; "
+              "the grader is called only on the objections whose quotations turned out "
+              "to be real, and that count IS the failure-mode measurement.")
     if transcripts_from is not None:
         print(f"the decision term is COUNTED, not bounded: {decision} of the "
               f"{len(grid)} cells have a decided run in {transcripts_from}, and each "
@@ -461,7 +480,8 @@ def main(argv: list[str] | None = None) -> int:
     # it against `flaw.json`, and produce a tree whose `grade_mode` said "flaw" under a
     # name that promised an audit.
     stated_variant = spec.get("debate", {}).get("challenger_variant")
-    if stated_variant is None and ("partisan" in name or "judgment" in name):
+    if stated_variant is None and any(word in name for word in
+                                      ("partisan", "judgment", "fabricated")):
         raise SystemExit(
             f"this spec is named {name!r} but sets no `challenger_variant`, so it would "
             f"run the neutral challenger — `challenger_variant` defaults to "

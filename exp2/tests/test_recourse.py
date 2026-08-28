@@ -531,6 +531,56 @@ async def test_a_specious_objection_is_recorded_as_specious_and_ruled_on_materia
     assert "plausible but wrong" in challenger_sent
 
 
+FABRICATED_REPLY = (
+    "Thinking: I need a sentence this judgment would plausibly contain.\n"
+    "Argument:\n"
+    "1. Type: misstatement\n"
+    '   Judgment says: "the sound side conceded the point in its closing round"\n'
+    '   Record says: "Alice round 1 argument."\n'
+    "   Why it matters: the judgment rests the verdict on a concession the record "
+    "does not show.\n"
+    "Decision: REVERSE"
+)
+
+
+async def test_a_fabricated_objection_is_recorded_as_fabricated_and_ruled_on_materiality(
+    tmp_path,
+):
+    """The 2026-08-28 control whose falsity is a string comparison, not an instruction.
+
+    Same design as the specious arm's — `arm = "judgment"` so the MATERIALITY prompt
+    rules it exactly as it rules a real audit, `fabricated` beside it so nothing pools
+    the two — plus the property that arm exists for: the objection's quotation is not in
+    the judgment, and the harness says so at parse time without asking anybody.
+    """
+    from exp2.prompts import objection_fabrication_ok
+
+    config = make_config(challenger_variant="judgment_fabricated",
+                         recourse_form="third_party")
+    client = FakeClient(replies={"challenger": FABRICATED_REPLY})
+    outcome, client, _, _ = await contest(tmp_path, "debate", client=client,
+                                          config=config)
+
+    challenge = outcome.challenge
+    assert challenge.arm == "judgment"           # ruled as the real audit is
+    assert challenge.fabricated is True
+    assert challenge.specious is False and challenge.placeholder is False
+    assert challenge.variant == "judgment_fabricated"   # what the index writes
+    assert challenge.stance == "contests"
+    assert [d["type"] for d in challenge.defects] == ["misstatement"]
+
+    # THE MANIPULATION CHECK, made by the harness against the very judgment the
+    # challenger was shown, and nothing else had to be called to make it
+    assert challenge.defects[0]["quote_in_judgment"] is False
+    assert challenge.defects[0]["judgment_quotes_found"] == [False]
+    assert objection_fabrication_ok(challenge.defects) is True
+
+    assert outcome.ruling.prompt_form == "materiality"
+    challenger_sent = "".join(m["content"] for m in client.sent_to("challenger"))
+    assert "UNFOUNDED BY CONSTRUCTION" in challenger_sent
+    assert "plausible but wrong" not in challenger_sent   # not the specious clause
+
+
 async def test_a_placeholder_contest_makes_no_challenger_call_at_all(tmp_path):
     """The arm's cost is rulings and nothing else.
 

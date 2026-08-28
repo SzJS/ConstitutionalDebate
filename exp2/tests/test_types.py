@@ -462,6 +462,38 @@ def test_a_challenges_arm_is_validated_and_old_records_still_load():
         Challenge(text="t", origin="generated", raised=True, arm="partisan")
 
 
+def test_the_three_controls_are_mutually_exclusive_and_name_themselves():
+    """One objection cannot be two controls, and each must say which it is.
+
+    `arm` is what selects the RULING prompt and all three controls share it — that is
+    the design, since a control ruled in a different form measures the form. So the only
+    thing keeping a specious objection out of the fabricated arm's numbers is
+    `Challenge.variant`, and the only thing keeping a row out of two arms at once is this
+    refusal."""
+    common = dict(text="t", origin="generated", raised=True, arm="judgment")
+
+    assert Challenge(**common, specious=True).variant == "judgment_specious"
+    assert Challenge(**common, fabricated=True).variant == "judgment_fabricated"
+    assert Challenge(**common, placeholder=True).variant == "placeholder"
+    assert Challenge(**common).variant == "judgment"
+
+    for pair in (("specious", "fabricated"), ("specious", "placeholder"),
+                 ("fabricated", "placeholder")):
+        with pytest.raises(ValueError, match="at most one of specious"):
+            Challenge(**common, **{name: True for name in pair})
+
+    # a control ruled under any other arm would not be a control at all
+    for name in ("specious", "fabricated", "placeholder"):
+        with pytest.raises(ValueError, match="must carry arm='judgment'"):
+            Challenge(text="t", origin="generated", raised=True, arm="neutral",
+                      **{name: True})
+
+    # and every challenge.json written before 2026-08-28 loads as a real objection
+    old = {"text": "t", "origin": "generated", "raised": True, "arm": "judgment"}
+    loaded = Challenge.from_dict(old)
+    assert loaded.fabricated is False and loaded.variant == "judgment"
+
+
 def test_a_challenge_written_before_stances_existed_still_loads():
     """Every challenge.json on disk predates the field. Empty means derive from
     ``raised``, which is exactly what the pipeline did before."""

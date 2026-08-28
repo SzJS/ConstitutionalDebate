@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from .config import PLACEHOLDER_VARIANT, SPECIOUS_VARIANT
+from .config import FABRICATED_VARIANT, PLACEHOLDER_VARIANT, SPECIOUS_VARIANT
 
 
 @dataclass(frozen=True)
@@ -769,6 +769,58 @@ def _specious_arm_caveat(rows: Sequence[dict]) -> str | None:
     )
 
 
+def _fabricated_arm_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where an objection in this index was written by the FABRICATED
+    auditor — the control of 2026-08-28 whose objections are false BY CONSTRUCTION.
+
+    Two rates in this file would be misread without it, and they are misread in opposite
+    directions from the specious arm's. `objection_raised_*` is 1.0 by construction here
+    too. But `valid_objection_judgment` is NOT this arm's manipulation check: the check is
+    a string comparison the harness already made — `challenge_fabrication_ok`, True when
+    every `Judgment says:` quotation in the objection is one the judgment does not contain
+    — and the graded rate is the FAILURE MODE beside it. A fabricated objection the grader
+    validates is one whose quotation turned out to be real, which is the thing that went
+    wrong with the specious arm (29.2% graded valid, `LLM_NOTES.md` §3y) and the reason
+    this arm exists.
+
+    The count is printed because it is cheap and because a reader must be able to see it
+    without opening a derivation: this is the one control in this experiment whose ground
+    truth is code.
+    """
+    fabricated = [r for r in rows if r.get("challenge_arm") == FABRICATED_VARIANT]
+    if not fabricated:
+        return None
+    checked = [r for r in fabricated if r.get("challenge_fabrication_ok") is not None]
+    ok = sum(1 for r in checked if r["challenge_fabrication_ok"])
+    measured = (
+        f" On these rows the check stands at {ok}/{len(checked)} objections whose every "
+        "judgment quotation is invented." if checked else
+        " No objection in this index carries a defect the check applies to, which is "
+        "itself the arm failing rather than a missing measurement."
+    )
+    return (
+        "THE CHALLENGER WAS FABRICATING (challenger_variant = \"judgment_fabricated\"): "
+        "it was instructed to allege one or two misstatements or contradictions in which "
+        "the `Judgment says:` quotation is INVENTED — a sentence in the judgment's own "
+        "register that the judgment does not contain — with the `Record says:` quotation "
+        "real and verbatim, and never to decline. So of the "
+        f"{len(fabricated)} objections here the RAISE RATE IS 1.0 BY CONSTRUCTION and is "
+        "not a detection rate. THE MANIPULATION CHECK IS `challenge_fabrication_ok`, NOT "
+        "THE GRADE: it is the harness's own string comparison of every judgment quotation "
+        "against the judgment, made at parse time by `prompts.defect_quote_in_judgment`, "
+        "so this arm's ground truth is CODE rather than a model's opinion and a reader can "
+        "redo it." + measured +
+        " `valid_objection_judgment` here is the FAILURE MODE and never a finding — an "
+        "objection this arm gets graded valid is one whose quotation was real after all — "
+        "and it is computed over the few objections that reached the grader at all, since "
+        "an objection whose every defect fails the quote check is graded invalid without a "
+        "grader call. Nothing in this file is comparable with a neutral, partisan, "
+        "specious or genuine-judgment run; what the arm measures is the recourse judge's "
+        "overturn rate on objections that cannot be true, which is a comparison against "
+        "another tree and is made in the derivation."
+    )
+
+
 def _placeholder_arm_caveat(rows: Sequence[dict]) -> str | None:
     """Emitted only where this index holds the second-look control.
 
@@ -894,6 +946,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         _partisan_arm_caveat(rows),
         _judgment_mode_caveat(rows),
         _specious_arm_caveat(rows),
+        _fabricated_arm_caveat(rows),
         _placeholder_arm_caveat(rows),
         _gatekeeper_caveat(rows),
     ]

@@ -1,0 +1,94 @@
+# THE SIX-CELL SMOKE for the FABRICATED challenger clause — `contest` only, about $0.15.
+#
+# THE HOUSE RULE (`HANDOFF.md` §2.8, and the standing memory note): any new or changed
+# prompt is tried on about six chosen examples and READ before a slice or a sweep. The
+# fabricated clause is new, so it is read first, and this spec exists for no other reason.
+#
+# WHY IT MATTERS MORE HERE THAN USUAL. `judgment-debate-3`'s M3 smoked its specious clause
+# twice, revised it once, passed its gate at 1 of 6 graded valid — and then graded 29.2%
+# valid at scale. So a smoke of a wrong-objection clause has been wrong before. What makes
+# this one different is that the gate is not a grader's opinion: the reader recomputes,
+# by hand, whether each `Judgment says:` quotation is in the judgment and whether each
+# `Record says:` quotation is in the record. `records/derivations/jd4-smoke-read.py`
+# writes that read to `outputs/jd4-smoke-read.txt` and recomputes both checks from the
+# stored documents rather than trusting the index.
+#
+# THE GATE, written down before the run: **6/6 objections carry only invented judgment
+# quotations** (`challenge_fabrication_ok`), the record quotations are real, and the
+# objections read as plausible audits. If flash declines to fabricate — if it writes real
+# quotations instead — that is a finding in itself and the arm may be impossible; it is
+# reported rather than smoked again with a warmer instruction.
+#
+# THE SIX CELLS are one per subset, drawn in `cell_id` order from the SAME 896 the paid
+# arm runs on, by `records/derivations/jd4-pick.py`. Six kinds of judgment rather than six
+# python800 ones, because what is being read is whether a judgment quotation can be
+# invented convincingly, and judgments differ by subset in length and register.
+#
+#     uv run exp2-experiment --spec experiments/jd4-smoke.toml --stage contest \
+#         2>&1 | tee outputs/jd4-smoke.log
+#     uv run python records/derivations/jd4-smoke-read.py > outputs/jd4-smoke-read.txt
+#
+# `contest` ONLY. The agreement, ruling_agreement and grade stages answer questions about
+# an arm, not about a clause, and the six rulings this stage buys are incidental — the
+# read is of the objections.
+#
+# Everything below is `experiments/jd4-fabricated.toml` verbatim except the name and the
+# cases file, so that what is smoked is what runs.
+
+name = "jd4-smoke"
+
+# SIX of the 896 cells M1 contested — one per subset, in `cell_id` order — written by
+# the same `records/derivations/jd4-pick.py` run that writes the paid arm's population,
+# so the smoke is a subset of the arm and not a different draw.
+cases = "data/cases/jd4-smoke.jsonl"
+
+# The decisions are M0's — Maverick's judgments of the sweep's stored transcripts. This
+# arm writes its own objections, so it takes no `contests_from`.
+decisions_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-specious.toml`'s decision-path block, which is byte-identical to
+# `jd3-main.toml`'s: this arm must differ from the real audit in the challenger's
+# instruction and in nothing else, or the comparison is a comparison of two setups.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+
+# The same challenger model as the real audit's and as M3's, so the only thing that moves
+# between the three arms is the instruction.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE CONTROL. The judgment task, its prompt and its parser unchanged, plus the fabricated
+# clause. Objections carry `arm = "judgment"` so the MATERIALITY ruling prompt and reader
+# apply exactly as they do to the real audit, and are told apart by
+# `challenge_arm = "judgment_fabricated"` in the index and `Challenge.fabricated` in the
+# record. The four judgment-family arms are NEVER pooled under one label.
+challenger_variant = "judgment_fabricated"
+
+recourse_form = "third_party"
+
+# THE SAME JUDGE AS M1's AND M3's, and the same one that wrote the judgments being
+# objected to. An overturn here is a judge abandoning its own reasoning under pressure
+# that cannot be true.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# The judgment grader, UNCHANGED, and held equal to every other arm's — but note what it
+# is and is not here. It is NOT this arm's manipulation check (the string comparison is);
+# it is the failure-mode measurement beside it, and it is called only on the objections
+# whose defects did not all fail the quote check.
+grader_model = "anthropic/claude-haiku-4.5"

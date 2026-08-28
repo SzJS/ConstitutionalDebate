@@ -35,6 +35,7 @@ from typing import Any, Callable, Sequence
 
 from .config import (
     CHALLENGER_VARIANTS,
+    FABRICATED_VARIANT,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
     SPECIOUS_VARIANT,
@@ -934,6 +935,19 @@ class Challenge:
     # 5,724, the re-contest's, the judgment run's 1,643 — loads as a real objection,
     # which is what it is.
     specious: bool = False
+    # ``fabricated``  the THIRD control, of 2026-08-28. The challenger was told to write
+    #               an objection whose every ``Judgment says:`` quotation is INVENTED —
+    #               a sentence in the judgment's register that the judgment does not
+    #               contain — with the ``Record says:`` quotation real and verbatim. It
+    #               exists because the specious arm was not specious enough: 29.2% of its
+    #               objections were graded VALID, because the only allegation left to it
+    #               is usually true of a compressed judgment. Falsity here is settled by
+    #               the harness's own string check rather than by an instruction, so the
+    #               manipulation check is `prompts.objection_fabrication_ok` over
+    #               ``defects`` and needs no grader. Its raise rate is 1.0 by
+    #               construction, exactly as ``specious``'s is, and a GRADED-valid
+    #               objection in this arm is a failure of the arm rather than a finding.
+    fabricated: bool = False
     placeholder: bool = False
     visibility: str | None = None  # "public" | "full" — what the generator saw
     model: str | None = None
@@ -976,19 +990,25 @@ class Challenge:
             raise ValueError(
                 f"arm must be one of {CHALLENGER_VARIANTS} or None, got {self.arm!r}"
             )
-        if self.specious and self.placeholder:
+        if sum((self.specious, self.fabricated, self.placeholder)) > 1:
+            # Three different objects: one written by a challenger told to be wrong, one
+            # written by a challenger told to invent its evidence, and one written by no
+            # challenger at all. A row carrying two of these flags would be counted in
+            # two arms that may never be pooled.
             raise ValueError(
-                "a challenge cannot be both specious and a placeholder: the first was "
-                "written by a challenger told to be wrong, the second by no challenger "
-                "at all"
+                "a challenge may carry at most one of specious / fabricated / "
+                "placeholder: the first was written by a challenger told to be wrong, "
+                "the second by one told to invent its quotations, the third by no "
+                "challenger at all"
             )
-        if (self.specious or self.placeholder) and self.arm != JUDGMENT_VARIANT:
+        if ((self.specious or self.fabricated or self.placeholder)
+                and self.arm != JUDGMENT_VARIANT):
             # The whole design of both controls is that they are RULED exactly as the
             # real audit is. An arm of anything else would send them to the object-level
             # ruling prompt, and the comparison the run exists to make would be between
             # two different instruments.
             raise ValueError(
-                "a specious or placeholder challenge must carry "
+                "a specious, fabricated or placeholder challenge must carry "
                 f"arm={JUDGMENT_VARIANT!r} so the materiality ruling prompt applies; "
                 f"got {self.arm!r}"
             )
@@ -1016,6 +1036,8 @@ class Challenge:
             return PLACEHOLDER_VARIANT
         if self.specious:
             return SPECIOUS_VARIANT
+        if self.fabricated:
+            return FABRICATED_VARIANT
         return self.arm
 
     @property

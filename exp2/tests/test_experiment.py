@@ -1809,6 +1809,109 @@ async def test_a_specious_arm_is_graded_by_the_judgment_grader_unchanged(tmp_pat
         assert row["challenge_defects_n"] == 1
 
 
+FABRICATED_REPLY = (
+    "Thinking: a sentence in this judgment's register that it does not contain.\n"
+    "Argument:\n"
+    "1. Type: misstatement\n"
+    '   Judgment says: "the flawed side withdrew its objection in the third round"\n'
+    '   Record says: "Alice round 1 argument."\n'
+    "   Why it matters: the verdict rests on a withdrawal the record does not show.\n"
+    "Decision: REVERSE"
+)
+
+
+async def test_the_fabricated_arm_is_graded_with_no_grader_call_and_the_index_says_so(
+    tmp_path, no_network
+):
+    """WHAT MAKES THIS ARM CHEAP, and what makes its ground truth code.
+
+    Every defect it alleges quotes a judgment that does not say it, so
+    `grading._grade_judgment` returns a `quote_check_only` grade and **never reaches the
+    wire**. The grade stage still runs on every contested cell — the row must say
+    `grade_mode = "judgment"` and `grade_valid = False`, not "not graded" — and the index
+    carries the manipulation check itself: `challenge_fabrication_ok` per objection and
+    `challenge_defects_fabricated_n` per defect, both string comparisons.
+    """
+    from exp2.grading import QUOTE_CHECK_ONLY
+
+    make_decisions_wrong(no_network)
+    no_network.replies["challenger"] = FABRICATED_REPLY
+    grid = build_grid(cases(2), ["debate"])
+    config = make_config(challenger_variant="judgment_fabricated",
+                         recourse_form="third_party")
+    await decide(tmp_path, grid)
+    await run_stage_contest(grid, root=tmp_path, config=config,
+                            client_config=client_config(), api_key="k")
+    before = len(no_network.calls)
+    results = await run_stage_grade(grid, root=tmp_path, config=config,
+                                    grading=GradingConfig(),
+                                    client_config=client_config(), api_key="k")
+    assert all(r["status"] == "completed" and r["mode"] == "judgment" for r in results)
+    # THE POINT: the grade stage bought nothing
+    assert no_network.calls[before:] == []
+
+    for path in sorted(tmp_path.rglob("cells/*/contests/*/runs/*/grade.json")):
+        grade = json.loads(path.read_text())
+        assert grade["parse_mode"] == QUOTE_CHECK_ONLY
+        assert grade["valid"] is False and grade["model"] == ""
+
+    rows = build_index(grid, root=tmp_path, challenger_model="strong/model")
+    for row in rows:
+        assert row["challenge_arm"] == "judgment_fabricated"
+        assert row["challenge_fabricated"] is True
+        assert row["challenge_specious"] is False
+        assert row["challenge_placeholder"] is False
+        assert row["ruling_prompt_form"] == "materiality"   # ruled as the real audit is
+        assert row["grade_mode"] == "judgment"
+        assert row["grade_valid"] is False
+        # the check, in the index, computed by string comparison and not by a model
+        assert row["challenge_defects_n"] == 1
+        assert row["challenge_defects_fabricated_n"] == 1
+        assert row["challenge_fabrication_ok"] is True
+        # the same defect is a misattributed quotation under the pre-registered check —
+        # one fact, two columns, and they mean opposite things in the two arms
+        assert row["challenge_defects_misattributed_n"] == 1
+
+
+async def test_a_fabricated_objection_whose_quote_is_real_is_visible_as_the_arm_failing(
+    tmp_path, no_network
+):
+    """The failure mode, and it must be legible in the index rather than inferred.
+
+    A challenger that quotes the judgment accurately has written a REAL objection under
+    the fabricated arm's name — which is exactly how `judgment-debate-3`'s specious arm
+    came apart (29.2% graded valid). The row then says `challenge_fabrication_ok = False`
+    and the grader IS called, so the arm's cost and its validity fail together and in the
+    same place."""
+    make_decisions_wrong(no_network)
+    # "The sound side answered the objection." is the judgment the fake judge writes
+    no_network.replies["challenger"] = (
+        "Argument:\n"
+        "1. Type: misstatement\n"
+        '   Judgment says: "The sound side answered the objection"\n'
+        '   Record says: "Alice round 1 argument."\n'
+        "   Why it matters: it did not.\n"
+        "Decision: REVERSE"
+    )
+    grid = build_grid(cases(1), ["debate"])
+    config = make_config(challenger_variant="judgment_fabricated",
+                         recourse_form="third_party")
+    await decide(tmp_path, grid)
+    await run_stage_contest(grid, root=tmp_path, config=config,
+                            client_config=client_config(), api_key="k")
+    before = len(no_network.calls)
+    await run_stage_grade(grid, root=tmp_path, config=config, grading=GradingConfig(),
+                          client_config=client_config(), api_key="k")
+    assert [c["meta"]["role"] for c in no_network.calls[before:]] == ["judgment_grader"]
+
+    rows = build_index(grid, root=tmp_path, challenger_model="strong/model")
+    for row in rows:
+        assert row["challenge_arm"] == "judgment_fabricated"
+        assert row["challenge_fabrication_ok"] is False
+        assert row["challenge_defects_fabricated_n"] == 0
+        assert row["challenge_defects_misattributed_n"] == 0
+
+
 def test_only_the_placeholder_spec_may_contest_while_reading_another_trees_contests(
     tmp_path, monkeypatch
 ):

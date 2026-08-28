@@ -293,7 +293,8 @@ def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
     assert "challenger_variant" in RECOURSE_ONLY_KEYS
     assert CHALLENGER_VARIANTS == ("neutral", "partisan_advocate", "partisan_assigned",
                                    "partisan_auditor", "judgment",
-                                   "judgment_specious", "placeholder")
+                                   "judgment_specious", "judgment_fabricated",
+                                   "placeholder")
     for variant in CHALLENGER_VARIANTS:
         assert DebateConfig(
             **debate_kwargs(challenger_variant=variant)).challenger_variant == variant
@@ -307,19 +308,21 @@ def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
     `prompts` imports `config` rather than the other way round, so nothing structural
     keeps them equal.
 
-    THREE names are deliberately NOT in the clause table, and they are exactly
+    FOUR names are deliberately NOT in the clause table, and they are exactly
     `JUDGMENT_FAMILY`. `judgment` is a mode, not a standpoint: it has its own system
     prompt because the challenger's task changes, so a clause selected by name would be
     the wrong shape for it — and the whole point of `challenger_arm_clause` raising on an
     unknown name is that a mode which fell through to a clause would be a judgment run
     wearing a stakeholder's prompt. `judgment_specious` is that mode plus a spliced
-    clause, so it has a prompt of its own rather than an entry here, and `placeholder`
-    has no prompt at all — it makes no call.
+    clause, so it has a prompt of its own rather than an entry here, `judgment_fabricated`
+    is the same mode plus a different spliced clause, and `placeholder` has no prompt at
+    all — it makes no call.
     """
     from exp2.config import CHALLENGER_VARIANTS, JUDGMENT_FAMILY, JUDGMENT_VARIANT
     from exp2.prompts import (
         CHALLENGER_ARMS,
         CHALLENGER_SYSTEM_JUDGMENT,
+        CHALLENGER_SYSTEM_JUDGMENT_FABRICATED,
         CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS,
     )
 
@@ -328,6 +331,7 @@ def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
     assert JUDGMENT_VARIANT in CHALLENGER_VARIANTS
     assert CHALLENGER_SYSTEM_JUDGMENT  # the prompt that stands in for the missing clause
     assert CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS  # and the control's spliced copy of it
+    assert CHALLENGER_SYSTEM_JUDGMENT_FABRICATED   # and the second control's
 
 
 def test_recourse_form_defaults_to_what_every_paid_run_actually_did():
@@ -579,6 +583,7 @@ def test_the_two_controls_are_ruled_as_the_judgment_arm_and_named_as_themselves(
     `Challenge.specious` / `Challenge.placeholder` and surfaced by `Challenge.variant`.
     """
     from exp2.config import (
+        FABRICATED_VARIANT,
         JUDGMENT_FAMILY,
         JUDGMENT_VARIANT,
         NEUTRAL_VARIANT,
@@ -587,8 +592,10 @@ def test_the_two_controls_are_ruled_as_the_judgment_arm_and_named_as_themselves(
         arm_for_variant,
     )
 
-    assert JUDGMENT_FAMILY == {"judgment", "judgment_specious", "placeholder"}
+    assert JUDGMENT_FAMILY == {"judgment", "judgment_specious", "judgment_fabricated",
+                               "placeholder"}
     assert SPECIOUS_VARIANT == "judgment_specious"
+    assert FABRICATED_VARIANT == "judgment_fabricated"
     assert PLACEHOLDER_VARIANT == "placeholder"
     for variant in JUDGMENT_FAMILY:
         assert arm_for_variant(variant) == JUDGMENT_VARIANT
@@ -608,6 +615,12 @@ def test_the_why_table_says_what_the_two_controls_are_and_are_not():
 
     entry = WHY["challenger_variant"]
     assert "judgment_specious" in entry and "placeholder" in entry
+    # and the third control, whose manipulation check is code rather than a grader —
+    # the fact that would be missed is that its GRADED validity is the failure mode
+    assert "judgment_fabricated" in entry
+    assert "false BY CONSTRUCTION" in entry or "false BY " in entry
+    assert "challenge_fabrication_ok" in entry
+    assert "FAILURE MODE" in entry
     assert "MANIPULATION CHECK" in entry
     assert "BY CONSTRUCTION" in entry
     assert "void" in entry
@@ -649,7 +662,7 @@ def test_the_estimate_grades_the_specious_arm_over_the_whole_grid(capsys):
 
     debate, _ = load_config()
     grid = build_grid(_two_cases(), ["debate"])
-    for variant in ("judgment", "judgment_specious"):
+    for variant in ("judgment", "judgment_specious", "judgment_fabricated"):
         print_estimate(grid, dataclasses.replace(debate,
                                                  challenger_variant=variant))
         out = capsys.readouterr().out

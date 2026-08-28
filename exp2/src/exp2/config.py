@@ -98,6 +98,29 @@ RECOURSE_FORMS: tuple[str, ...] = ("per_condition", "third_party", "in_conversat
 #                      to them exactly as they do to the real audit; what tells the two
 #                      apart in the record is `Challenge.specious` and the index's
 #                      `challenge_arm = "judgment_specious"`.
+#   judgment_fabricated  the SPECIOUS CONTROL THAT IS FALSE BY CONSTRUCTION, added
+#                      2026-08-28 after `judgment-debate-3`'s M3 measured 29.2% of its
+#                      "specious" objections as REAL (`LLM_NOTES.md` §3y,
+#                      `records/experiments/judgment-debate-3/HANDCHECK-M3-specious.md`).
+#                      M3 failed as a manipulation for a reason no rewording repairs:
+#                      with `omission` struck, the only move left to a challenger told to
+#                      be wrong about a compressed judgment — "it softened a party's
+#                      position" — is usually TRUE of a compressed judgment. This variant
+#                      changes the defect TYPE instead of the instruction: the objection
+#                      must rest on a `Judgment says:` quotation THAT DOES NOT EXIST — a
+#                      sentence in the judgment's own register that the judgment does not
+#                      contain — while the `Record says:` quotation stays real and
+#                      verbatim. Its falsity is then decided by CODE, not by a grader:
+#                      `prompts.defect_quote_in_judgment` string-matches every judgment
+#                      quotation at parse time, so `quote_in_judgment is False` on every
+#                      defect IS the manipulation check, and a reader can redo it with a
+#                      string comparison. Like the other two controls it carries
+#                      `arm = "judgment"` for the materiality ruling; `Challenge.
+#                      fabricated` and `challenge_arm = "judgment_fabricated"` tell it
+#                      apart. Its raise rate is 1.0 by construction and its GRADED
+#                      validity rate is the failure mode rather than a finding — a
+#                      fabricated objection that grades valid is one whose quotation was
+#                      real after all.
 #   placeholder        the SECOND-LOOK control, and the only variant that makes no model
 #                      call at all: a fixed, content-free but well-formed judgment-style
 #                      objection (one omission defect whose two quotes are the
@@ -120,6 +143,7 @@ CHALLENGER_VARIANTS: tuple[str, ...] = (
     "partisan_auditor",
     "judgment",
     "judgment_specious",
+    "judgment_fabricated",
     "placeholder",
 )
 
@@ -137,13 +161,21 @@ JUDGMENT_VARIANT = "judgment"
 # So `arm_for_variant` maps both onto "judgment" and the record keeps the variant in its
 # own field; `Challenge.variant` is what the index writes.
 SPECIOUS_VARIANT = "judgment_specious"
+# The third control, of 2026-08-28, and the one whose ground truth needs no model at all:
+# every `Judgment says:` quotation in it is INVENTED, which `prompts.parse_defects`
+# already decides by string comparison at the moment the objection is read. It shares
+# `SPECIOUS_VARIANT`'s properties — `arm = "judgment"`, a raise rate of 1.0, never pooled
+# — and differs in the one that matters: what makes M3's objections false is an
+# instruction the model may or may not follow, and what makes these false is a check the
+# harness runs.
+FABRICATED_VARIANT = "judgment_fabricated"
 PLACEHOLDER_VARIANT = "placeholder"
 
 # The three variants that write a judgment-style defect list and are ruled on
 # materiality. Used by the prompt builder, `generate_challenge` (which arm to record and
 # whether to parse a defect list) and the tests that pin the mapping.
 JUDGMENT_FAMILY: frozenset[str] = frozenset(
-    {JUDGMENT_VARIANT, SPECIOUS_VARIANT, PLACEHOLDER_VARIANT}
+    {JUDGMENT_VARIANT, SPECIOUS_VARIANT, FABRICATED_VARIANT, PLACEHOLDER_VARIANT}
 )
 
 
@@ -508,7 +540,7 @@ WHY: dict[str, str] = {
     "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",
     "comprehension_model": "unset means the challenger model — the probe asks the reader about what it just read.",
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
-    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above. Since 2026-08-28 it also selects the RULING prompt, through the objection's arm rather than through this field: a judgment objection alleges defects in the judgment, and the object-level ruling prompt tells the judge to disregard the decision's reasoning, so that arm is ruled on MATERIALITY instead — is each alleged defect real against the record, and does addressing a real one change what is true of the text. Every other arm's ruling prompt is byte-identical to what it always was, and `ruling_prompt_form` in the index says which ruled. \"judgment_specious\" and \"placeholder\" are the two CONTROLS of 2026-08-28 and neither is a finding on its own. The specious arm is DESIGN.md's sycophancy check: the judgment task and its whole prompt, plus an instruction to allege plausible-but-invalid defects with accurate quotations and to object every time, so its raise rate is 100% BY CONSTRUCTION and its graded validity rate is the MANIPULATION CHECK on the instruction (it should be low; if it is not, the objections were not specious and the sycophancy comparison is void) rather than a measurement of anything. The placeholder arm is the second-look control and makes NO model call: the contest stage writes one fixed, content-free objection wherever the source run raised one, so the difference between the real audit's after-state and this one's is the audit net of 'the same weak judge looked again'. Both are ruled under the MATERIALITY prompt, because a control ruled in a different form measures the form; both therefore record `arm = \"judgment\"` and are told apart by `challenge_arm` in the index.",
+    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above. Since 2026-08-28 it also selects the RULING prompt, through the objection's arm rather than through this field: a judgment objection alleges defects in the judgment, and the object-level ruling prompt tells the judge to disregard the decision's reasoning, so that arm is ruled on MATERIALITY instead — is each alleged defect real against the record, and does addressing a real one change what is true of the text. Every other arm's ruling prompt is byte-identical to what it always was, and `ruling_prompt_form` in the index says which ruled. \"judgment_specious\" and \"placeholder\" are the two CONTROLS of 2026-08-28 and neither is a finding on its own. The specious arm is DESIGN.md's sycophancy check: the judgment task and its whole prompt, plus an instruction to allege plausible-but-invalid defects with accurate quotations and to object every time, so its raise rate is 100% BY CONSTRUCTION and its graded validity rate is the MANIPULATION CHECK on the instruction (it should be low; if it is not, the objections were not specious and the sycophancy comparison is void) rather than a measurement of anything. The placeholder arm is the second-look control and makes NO model call: the contest stage writes one fixed, content-free objection wherever the source run raised one, so the difference between the real audit's after-state and this one's is the audit net of 'the same weak judge looked again'. Both are ruled under the MATERIALITY prompt, because a control ruled in a different form measures the form; both therefore record `arm = \"judgment\"` and are told apart by `challenge_arm` in the index. \"judgment_fabricated\" is the THIRD control, added 2026-08-28 because the specious one was not specious enough: 29.2% of `judgment_specious`'s objections were graded VALID, since with omission struck the only allegation left to it — the judgment softened a party's position — is usually TRUE of a judgment that compresses a three-round debate. This arm makes the objection false BY CONSTRUCTION rather than by instruction: every `Judgment says:` quotation must be INVENTED, a sentence in the judgment's register that the judgment does not contain, while the `Record says:` quotation stays verbatim. The manipulation check is therefore CODE and not a grader — `prompts.defect_quote_in_judgment` string-matches every judgment quotation at parse time, the index carries `challenge_fabrication_ok` and `challenge_defects_fabricated_n`, and a reader can redo the whole check with a string comparison. Its raise rate is 1.0 BY CONSTRUCTION and its graded validity rate is the FAILURE MODE, not a finding: a fabricated objection the grader validates is one whose quotation turned out to be real. It is ruled under the MATERIALITY prompt like the other two, for the same reason.",
 }
 
 

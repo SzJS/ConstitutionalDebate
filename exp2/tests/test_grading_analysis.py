@@ -829,6 +829,45 @@ def test_the_specious_caveat_states_the_manipulation_check_before_any_number():
     assert "MIXES arms" in mixed
 
 
+def test_the_fabricated_caveat_names_the_code_check_and_not_the_grade():
+    """The 2026-08-28 control whose ground truth is a string comparison.
+
+    The failure it is written against is a reader taking `valid_objection_judgment` for
+    this arm's manipulation check, as it is for the specious one. Here the check is
+    `challenge_fabrication_ok` — every `Judgment says:` quotation absent from the
+    judgment, decided by `prompts.defect_quote_in_judgment` at parse time — and the
+    graded rate is the failure mode beside it: an objection graded valid in this arm is
+    one whose quotation was real after all, which is exactly how the specious arm came
+    apart (29.2% graded valid)."""
+    absent = " ".join(caveats([judgment_row(), judgment_row(item_id="i2")], ["debate"]))
+    assert "THE CHALLENGER WAS FABRICATING" not in absent
+
+    stated = " ".join(caveats(
+        [judgment_row(challenge_arm="judgment_fabricated",
+                      challenge_fabrication_ok=True),
+         judgment_row(item_id="i2", challenge_arm="judgment_fabricated",
+                      challenge_fabrication_ok=False)], ["debate"]))
+    assert "THE CHALLENGER WAS FABRICATING" in stated
+    assert "RAISE RATE IS 1.0 BY CONSTRUCTION" in stated
+    assert "MANIPULATION CHECK IS `challenge_fabrication_ok`, NOT THE GRADE" in stated
+    assert "ground truth is CODE rather than a model's opinion" in stated
+    # the count is printed, so a reader of metrics.json sees the check without opening
+    # a derivation
+    assert "1/2 objections whose every judgment quotation is invented" in stated
+    assert "FAILURE MODE and never a finding" in stated
+    # it is not the specious arm and does not borrow its caveat
+    assert "THE CHALLENGER WAS SPECIOUS" not in stated
+    assert "MIXES arms" not in stated
+
+    # and the two controls in one index are MIXED, exactly as specious-plus-real is:
+    # one is false by instruction and the other by construction, and their validity
+    # rates mean opposite things
+    mixed = " ".join(caveats(
+        [judgment_row(challenge_arm="judgment_specious"),
+         judgment_row(item_id="i2", challenge_arm="judgment_fabricated")], ["debate"]))
+    assert "MIXES arms" in mixed
+
+
 def test_the_placeholder_caveat_says_no_challenger_ran():
     """Every challenger-side column on a placeholder index is a property of one constant
     string. A reader meeting a raise rate of 1.0 beside an absent validity rate has no
@@ -859,7 +898,9 @@ def test_the_arm_counts_keep_the_three_judgment_arms_apart(tmp_path):
         row(item_id="i1", challenge_arm="judgment"),
         row(item_id="i2", challenge_arm="judgment_specious"),
         row(item_id="i3", challenge_arm="placeholder"),
+        row(item_id="i4", challenge_arm="judgment_fabricated"),
     ]), encoding="utf-8")
     metrics = analyse(index, ["debate"])
     assert metrics["challenge_arm"] == {
-        "judgment": 1, "judgment_specious": 1, "placeholder": 1}
+        "judgment": 1, "judgment_specious": 1, "placeholder": 1,
+        "judgment_fabricated": 1}

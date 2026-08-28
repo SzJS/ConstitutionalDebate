@@ -48,6 +48,7 @@ from .config import (
 from .debate import _judge
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
+from .prompts import objection_defects_fabricated_n, objection_fabrication_ok
 from .recourse import (
     _rule_by_judge,
     judge_admissibility,
@@ -1098,6 +1099,7 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             # row belongs to.
             if challenge.arm == JUDGMENT_VARIANT:
                 row["challenge_specious"] = challenge.specious
+                row["challenge_fabricated"] = challenge.fabricated
                 row["challenge_placeholder"] = challenge.placeholder
                 # How much was alleged, and how much of it was built on a quotation the
                 # judgment does not contain. Written only under the judgment arm, on the
@@ -1110,6 +1112,25 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 row["challenge_defects_misattributed_n"] = sum(
                     1 for defect in challenge.defects
                     if defect.get("quote_in_judgment") is False)
+                # THE FABRICATED ARM'S GROUND TRUTH, and it is written on every
+                # judgment-family row rather than only that arm's, so that the check can
+                # be read on the real audit too — where it is the same quantity under the
+                # other name: a defect quoting a judgment that does not say it is an
+                # instrument failure in M1 and the whole point in this arm.
+                #
+                # `challenge_defects_fabricated_n` counts defects EVERY one of whose
+                # judgment quotations is absent, which is stricter than
+                # `challenge_defects_misattributed_n` above: that one counts a defect as
+                # soon as ONE of its two quotations fails, which is the right rule for
+                # the pre-registered check and the wrong one for "was this invented".
+                # `challenge_fabrication_ok` is the per-OBJECTION flag — True only if
+                # every defect it alleged is fabricated — and it is the manipulation
+                # check `records/experiments/judgment-debate-4/PREREG.md` puts a
+                # threshold on. Both are computed by string comparison, not by a model.
+                row["challenge_defects_fabricated_n"] = (
+                    objection_defects_fabricated_n(challenge.defects))
+                row["challenge_fabrication_ok"] = (
+                    objection_fabrication_ok(challenge.defects))
             row["challenge_stance"] = challenge.stance
             row["challenge_raised"] = challenge.stance == "contests"
             row["challenge_agreed"] = challenge.stance == "agrees"
