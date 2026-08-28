@@ -89,10 +89,12 @@ from exp2.experiment import (  # noqa: E402
     build_grid,
     build_index,
     source_contests,
+    source_decisions,
     run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_rejudge,
     run_stage_rerule,
     run_stage_ruling_agreement,
 )
@@ -129,6 +131,11 @@ ROOT_PLACEHOLDER = REPO / "outputs" / "e2e-offline-2-placeholder"
 # and what makes the filter a filter. ROOT_JUDGMENT itself is left byte-identical and
 # hashed either side to prove it.
 ROOT_PLACEHOLDER_SOURCE = REPO / "outputs" / "e2e-offline-2-placeholder-source"
+# And the eighth: the re-judge, which reads the DECISIONS of ROOT — their stored debate
+# transcripts — and writes decisions of its own under a different judge. It is the only
+# pass that writes a decision it did not debate, and the only one whose run directory
+# holds a wire log copied from another run beside its own.
+ROOT_REJUDGE = REPO / "outputs" / "e2e-offline-2-rejudge"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -378,7 +385,8 @@ async def main() -> int:
     # skipped rather than re-made, and every assertion below would then be describing
     # records the current code did not write.
     for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN, ROOT_JUDGMENT,
-                 ROOT_SPECIOUS, ROOT_PLACEHOLDER, ROOT_PLACEHOLDER_SOURCE):
+                 ROOT_SPECIOUS, ROOT_PLACEHOLDER, ROOT_PLACEHOLDER_SOURCE,
+                 ROOT_REJUDGE):
         if root.exists():
             shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
@@ -435,9 +443,116 @@ async def main() -> int:
     fifth = await judgment_pass(config, client_config, grading, grid)
     sixth = await specious_pass(config, client_config, grading, grid)
     seventh = await placeholder_pass(config, client_config, grading, grid)
+    eighth = await rejudge_pass(config, client_config, grading, by_id)
     return await per_condition_pass(
         per_condition_config, client_config, grading, by_id
-    ) or first or third or fourth or fifth or sixth or seventh
+    ) or first or third or fourth or fifth or sixth or seventh or eighth
+
+
+async def rejudge_pass(config, client_config, grading, by_id) -> int:
+    """The first tree's stored debates, judged again by a different judge.
+
+    This is the path M0 runs on — the sweep's 1,644 debate transcripts re-judged for the
+    price of one call each — and it has three properties no other pass can show:
+
+      the SOURCE    is not written to. Hashed before and after, over real records.
+      the RECORD    is an ORDINARY decision run: item, sides, transcript, verdict,
+                    a config naming the judge that made it. That is what lets
+                    `decisions_from` read the tree downstream with nothing changed.
+      the DOCUMENT  is still verbatim. The debate's prompts were paid for by another run
+                    and are copied to `calls.source.jsonl`; this run's `calls.jsonl` is
+                    its one judge call, so the money is honest AND the full record does
+                    not fall back to generations-only. Both are checked below — the
+                    fallback count by `report_documents`, the spend by reading the log.
+    """
+    grid = build_grid([by_id[i] for i in ITEMS], ["debate"])
+    ROOT_REJUDGE.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\neighth pass — re-judging the first tree's stored debates")
+    print(f"outputs: {ROOT_REJUDGE}")
+    print(f"transcripts read from: {ROOT}   (never written to)")
+    found = source_decisions(grid, source_root=ROOT)
+    print(f"cells: {len(grid)}  with a decided run in the source: {len(found)}")
+    before = tree_sha256(ROOT)
+
+    # A judge that reads the same transcripts the other way, so `verdict` and
+    # `source_verdict` differ in the index and the join is visibly a join.
+    rejudge_config = dataclasses.replace(config, judge_model="other/judge")
+    stray: dict[str, int] = {}
+    with scripted(judge=("The flawed side's reading of step 2 stands.\n"
+                         "Verdict: FLAWED")):
+        results = await run_stage_rejudge(
+            grid, root=ROOT_REJUDGE, config=rejudge_config,
+            client_config=client_config, api_key="fake", transcript_root=ROOT)
+    counts: dict[str, int] = {}
+    for result in results:
+        key = ("error" if isinstance(result, BaseException)
+               else result.get("status", "unknown"))
+        counts[key] = counts.get(key, 0) + 1
+    print(f"{'rejudge':9s} {counts}")
+    for result in results:
+        if isinstance(result, BaseException):
+            print(f"  ! {type(result).__name__}: {result}")
+        elif result.get("status") == "failed":
+            print(f"  ! {result['cell_id']}: {result.get('error')}")
+    if counts.get("completed") != len(grid):
+        stray["a cell was not re-judged"] = 1
+
+    for directory in sorted(ROOT_REJUDGE.glob("cells/*/runs/*")):
+        manifest = json.loads((directory / "run.json").read_text(encoding="utf-8"))
+        if manifest.get("kind") != "rejudge":
+            stray["a run that does not say it was re-judged"] = 1
+        if manifest.get("rejudged_from") != str(ROOT):
+            stray["a run that does not name the tree it re-judged"] = 1
+        for name in ("item.json", "sides.json", "config.json", "transcript.json",
+                     "verdict.json"):
+            if not (directory / name).is_file():
+                stray[f"a re-judged decision with no {name}"] = 1
+        if json.loads((directory / "config.json").read_text(
+                encoding="utf-8"))["judge_model"] != "other/judge":
+            stray["a config.json that names the wrong judge"] = 1
+        # the sides are the source's, not a fresh draw
+        source_run = Path(manifest["source_run_dir"])
+        if (directory / "sides.json").read_text(encoding="utf-8") != (
+                source_run / "sides.json").read_text(encoding="utf-8"):
+            stray["a re-judge that re-drew the sides"] = 1
+        logged = [json.loads(line) for line
+                  in (directory / "calls.jsonl").read_text(
+                      encoding="utf-8").splitlines()]
+        if [record.get("role") for record in logged] != ["judge"]:
+            stray["a wire log that is not this run's one judge call"] = 1
+        if not (directory / "calls.source.jsonl").is_file():
+            stray["a re-judged decision with no copy of the debate's own log"] = 1
+
+    rows = build_index(grid, root=ROOT_REJUDGE,
+                       challenger_model=config.challenger_model_for())
+    index = ROOT_REJUDGE / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, ["debate"])
+    (ROOT_REJUDGE / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                               encoding="utf-8")
+    moved = sum(1 for r in rows if r["verdict"] != r.get("source_verdict"))
+    print(f"indexed {len(rows)} rows   verdict != source_verdict on {moved}")
+    print("decision cost per re-judged cell: "
+          f"{sorted({r['decision_cost_usd'] for r in rows})} (the judge call only — "
+          "the debate was paid for in the source run)")
+    if any(r.get("rejudged_from") != str(ROOT) for r in rows):
+        stray["an index row that does not name the tree it was re-judged from"] = 1
+    if moved != len(rows):
+        stray["the scripted judge did not move a verdict"] = 1
+    caveat = next((c for c in metrics["caveats"]
+                   if "RE-JUDGED FROM STORED TRANSCRIPTS" in c), "")
+    print(f"re-judge caveat: {caveat[:120]}...")
+    if not caveat:
+        stray["the metrics carry no re-judged caveat"] = 1
+
+    after = tree_sha256(ROOT)
+    print(f"source tree hash before {before[:16]}  after {after[:16]}  "
+          f"{'UNCHANGED' if before == after else 'CHANGED'}")
+    if before != after:
+        stray["the re-judge wrote into the tree it read"] = 1
+    print(f"re-judge invariants violated: {stray}")
+
+    return report_documents(ROOT_REJUDGE) or (1 if stray else 0)
 
 
 async def partisan_pass(config, client_config, grading, grid) -> int:

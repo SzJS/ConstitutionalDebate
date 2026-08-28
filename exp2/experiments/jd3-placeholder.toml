@@ -1,0 +1,112 @@
+# M2 — the SECOND-LOOK control, under the same judge that judged the debates.
+# The only arm that carries `contests_from` and still runs `contest`.
+#
+# READ FIRST: `records/experiments/judgment-debate-3/PREREG.md`, committed before M1's
+# first paid call. P2, its alpha and the void conditions are there; none is restated here.
+#
+# THE FOUR ARMS, and where this spec sits:
+#
+#     M0   Maverick re-judges the sweep's stored transcripts        jd3-main.toml
+#     M1   flash audits M0's judgments, Maverick rules              jd3-main.toml
+#     M2   the placeholder objection on the cells M1 contested      <- THIS SPEC
+#     M3   the specious auditor on every cell                       jd3-specious.toml
+#
+# WHAT IT ASKS — P2, and it is the confound `records/experiments/judgment-debate/PREREG.md`
+# named and could not resolve. With objections raised on most cells, is M1's net the AUDIT,
+# or is it "the same judge read the record a second time and changed its mind on some of
+# them"? THIS ARM GIVES THE JUDGE THE SECOND LOOK AND NO INFORMATION. "The audit did it"
+# means M1 beats M2; "a second look did it" means they do not differ.
+#
+# It matters more here than it did under nano, not less: in this design the judge that
+# rules IS the judge that wrote the judgment being audited, so "it reconsidered" is an
+# even more available explanation than it was before. M2 is what prices it.
+#
+# THE OBJECTION IS A CONSTANT AND NO MODEL WRITES IT. `prompts.PLACEHOLDER_OBJECTION_TEXT`
+# is one fixed, content-free, well-formed judgment objection — a single omission whose two
+# quotations are the parenthetical placeholders the judgment format itself asks for — and
+# it is byte-identical on every cell. It names no sentence, no speaker, no round and no
+# claim, so it is true of every judgment ever written. A judge that overturns on it
+# overturns on nothing.
+#
+# THIS IS THE ONE SPEC THAT CARRIES `contests_from` AND STILL RUNS `contest`. That is not a
+# loophole, it is the definition of the control: the placeholder must stand on EXACTLY the
+# cells M1 objected to, or the two after-states are not paired and "which cells get a
+# second look" is no longer held constant. The contest stage reads `jd3-main`'s stances and
+# emits the placeholder where it contested and NOTHING where it declined — those cells keep
+# their before-state here exactly as they do there. Nothing under the source is written.
+# The CLI asserts the placement count against the source after the stage and prints
+# MATCHES / DOES NOT MATCH; a mismatch means the P2 comparison must not be read until it is
+# accounted for cell by cell.
+#
+# `agreement` AND `grade` STILL REFUSE, and the stages themselves skip with `not measured:
+# placeholder` / `not graded: placeholder`. There is nothing in a constant to read for
+# line-vs-prose agreement, and a grade of it would be one answer bought a thousand times.
+#
+# THE DECISIONS ARE M0's. `decisions_from` points at `jd3-main`, whose decisions are
+# Maverick's judgments of the sweep's stored transcripts — so this arm rules against
+# exactly the judgments M1 ruled against, which is what makes P2 paired. That tree is
+# fingerprinted after M1 and again at the end of the campaign by
+# `outputs/jd3-run-all.sh` and must be byte-identical: nothing here writes into it.
+#
+# THE WHOLE COST OF THIS ARM IS ITS RULINGS. No challenger call, no comprehension probe,
+# no agreement reading, no grade. From the pilot's measured unit costs, about $3.
+#
+#     RUN_SWEEP_STAGES="contest ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd3-placeholder.toml \
+#         > outputs/jd3-placeholder-driver.log 2>&1 &
+#
+# The orchestration script `outputs/jd3-run-all.sh` runs M0+M1, then M2, then M3 in
+# dependency order under one process; do not launch this by hand before `jd3-main` has
+# finished — an arm pointed at a tree that does not exist yet writes nothing and exits 0.
+
+name = "jd3-placeholder"
+cases = "data/cases/ftf-all.jsonl"
+
+# The decisions are M0's — Maverick's judgments — and the objections whose PLACEMENT this
+# arm copies are M1's. Both live in the one `jd3-main` tree, and neither is written to.
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block. This arm decides nothing and
+# judges nothing, but `config.json` records what the decisions it rules on were made under,
+# and a spec that quietly differed from the tree it reads would make the record wrong about
+# its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# THE CONTROL. `placeholder` is the one variant that makes NO model call: the contest stage
+# writes the fixed text itself. It records `arm = "judgment"` so the MATERIALITY ruling
+# prompt and the materiality ruling reader apply to it exactly as they apply to the real
+# audit — a control ruled under a different prompt would measure the prompt — and it is
+# told apart from the real arm by `challenge_arm = "placeholder"` in the index and by
+# `Challenge.placeholder` in the record.
+challenger_variant = "placeholder"
+
+recourse_form = "third_party"
+
+# THE SAME JUDGE AS M1's, and the same one that wrote the judgments being objected to.
+# That is the point: P2 subtracts what THIS judge does with no information from what it
+# does with the audit.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# For the `ruling_agreement` reader only — this arm is never graded. Held equal to every
+# other arm's so the ruling-line residual is measured by the same reader.
+grader_model = "anthropic/claude-haiku-4.5"

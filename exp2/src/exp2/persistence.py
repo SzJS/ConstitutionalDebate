@@ -105,6 +105,20 @@ _RERULE_EXCLUDED: frozenset[str] = frozenset(
     {"ruling.json", "calls.jsonl", "ruling_agreement.json"}
 )
 
+# What a RE-JUDGE does not copy from the decision it re-judges. See ``create_rejudge``.
+# ``calls.jsonl`` is not in the set because it is not dropped but RENAMED — the debate's
+# own prompts and replies are what makes the copied transcript verbatim, and they are the
+# source run's wire log, not this one's.
+_REJUDGE_EXCLUDED: frozenset[str] = frozenset(
+    {"verdict.json", "run.json", "config.json", "calls.jsonl"}
+)
+
+# Where a re-judged run keeps the source run's wire log. Read by
+# ``artifacts_full._load_calls`` so the verbatim document can still print the debaters'
+# prompts, and by nothing that counts money: ``accounting`` walks ``calls.jsonl`` alone,
+# so a re-judge's spend is its one judge call and never the debate it re-reads.
+SOURCE_CALLS = "calls.source.jsonl"
+
 
 class RunWriter:
     """Owns one run directory. Not reusable across runs."""
@@ -166,6 +180,99 @@ class RunWriter:
             "parent_run_id": parent_dir.name, "parent_sha256": parent_hash,
             "parent_copied": copy_parent, "status": "running",
             "client_config": client_config.to_dict(),
+        }
+        writer._flush_manifest()
+        return writer
+
+    @classmethod
+    def create_rejudge(cls, *, root: Path, source_dir: Path, config: DebateConfig,
+                       client_config: ClientConfig, condition: str,
+                       rejudged_from: Path | None = None) -> "RunWriter":
+        """A DECISION directory copied from another tree, ready for a new judgment.
+
+        The debate is not re-run — it is the sweep's, it cost real money, and re-drawing
+        it would change the population as well as the verdict. So everything the source
+        decision recorded about *what was argued* is copied: ``item.json``,
+        ``sides.json``, ``transcript.json`` and ``flaw.json``. What comes out is a run
+        directory of exactly the same shape as one this harness decided itself, which is
+        the whole point: ``decisions_from`` on the tree that holds it works with no
+        change anywhere downstream.
+
+        Four things are deliberately NOT copied:
+
+        * ``verdict.json`` — the whole reason for the run. The source verdict is kept in
+          the manifest as ``source_verdict`` instead of beside the new one, because a
+          second verdict file in a decision directory is exactly the ambiguity
+          ``load_run_record`` must never have to resolve.
+        * ``config.json`` — written fresh from THIS run's config, so it names the judge
+          that actually judged. A copied one would say the record was judged by the
+          model the source used, and every contest of it copies that file forward.
+        * ``run.json`` — replaced by the manifest built here.
+        * ``transcript.md`` / ``transcript_full.md`` — re-rendered from the new state by
+          ``record_verdict``. A document that prints the old verdict beside the new one
+          is worse than a missing one.
+
+        ``calls.jsonl`` is neither copied nor dropped: it is copied to
+        ``calls.source.jsonl``. The debaters' prompts and replies belong to the source
+        run and this run made exactly one call, so a copied wire log would bill the
+        debate to the re-judge — ``accounting`` walks ``calls.jsonl`` and nothing else,
+        and every per-stage spend figure would then include money spent in another run.
+        Renaming it keeps the money honest and keeps ``transcript_full.md`` verbatim:
+        ``artifacts_full._load_calls`` reads both files, this run's last, so the new
+        judge's call is this run's and the debaters' are the source's.
+        """
+        directory = _claim_run_dir(root, _read_json(source_dir / "item.json")["item_id"],
+                                   suffix="-rejudge")
+        source_hash = tree_sha256(source_dir)
+        for entry in sorted(source_dir.iterdir()):
+            if entry.name in _REJUDGE_EXCLUDED or (
+                    entry.name.startswith("transcript") and entry.suffix == ".md"):
+                continue
+            if entry.is_dir():
+                shutil.copytree(entry, directory / entry.name)
+            else:
+                shutil.copy2(entry, directory / entry.name)
+        if (source_dir / "calls.jsonl").is_file():
+            shutil.copy2(source_dir / "calls.jsonl", directory / SOURCE_CALLS)
+        _write_json(directory / "config.json", config.to_dict())
+        writer = cls(directory, directory.name, condition=condition)
+        source_manifest: dict[str, Any] = {}
+        if (source_dir / "run.json").is_file():
+            try:
+                source_manifest = _read_json(source_dir / "run.json")
+            except ValueError:
+                source_manifest = {}
+        source_verdict: dict[str, Any] = {}
+        if (source_dir / "verdict.json").is_file():
+            try:
+                source_verdict = _read_json(source_dir / "verdict.json")
+            except ValueError:
+                source_verdict = {}
+        source_config: dict[str, Any] = {}
+        if (source_dir / "config.json").is_file():
+            try:
+                source_config = _read_json(source_dir / "config.json")
+            except ValueError:
+                source_config = {}
+        item = _read_json(directory / "item.json")
+        writer._manifest = {
+            "run_id": writer.run_id, "kind": "rejudge", "condition": condition,
+            "item_id": item["item_id"], "row_id": item.get("row_id"),
+            "subset": item.get("subset"),
+            # The TREE, so a row can say where the transcript came from without a path
+            # walk, and the DIRECTORY with a hash of it, so a source that drifts cannot
+            # do so unnoticed. Both, for the same reason a re-rule records both.
+            "rejudged_from": str(rejudged_from) if rejudged_from else None,
+            "source_run_dir": str(source_dir),
+            "source_run_id": source_manifest.get("run_id", source_dir.name),
+            "source_sha256": source_hash,
+            # What the source judge said about this same transcript, and which judge it
+            # was. The M0-vs-nano comparison is a column join off these two and needs no
+            # second tree open.
+            "source_verdict": source_verdict.get("verdict"),
+            "source_correct": source_verdict.get("correct"),
+            "source_judge_model": source_config.get("judge_model"),
+            "status": "running", "client_config": client_config.to_dict(),
         }
         writer._flush_manifest()
         return writer

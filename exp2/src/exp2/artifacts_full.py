@@ -146,18 +146,29 @@ def _load_calls(directory: Path) -> dict[str, dict[str, Any]]:
     runs after every recorded step, so the last line can be half written. An unparsable
     line is skipped rather than fatal; the call it belongs to then falls back, and the
     next render picks it up.
+
+    ``calls.source.jsonl`` is read FIRST and this run's own log second, so a call_id in
+    both resolves to this run's. It exists only under a re-judged decision
+    (``RunWriter.create_rejudge``): the debate was argued in another run and this one
+    made a single judge call, so the debaters' prompts live in the copied log and the
+    judgment in this one. Without it every re-judged record's verbatim document would
+    drop to the generations-only fallback — the transcript's turns name call_ids that
+    are not in this directory — and the money would have to be copied across with the
+    prompts to avoid it, which is the one thing that must not happen: ``accounting``
+    walks ``calls.jsonl`` alone and a copied log would bill the debate to the re-judge.
     """
-    path = directory / "calls.jsonl"
-    if not path.is_file():
-        return {}
     calls: dict[str, dict[str, Any]] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            record = json.loads(line)
-        except json.JSONDecodeError:
+    for name in ("calls.source.jsonl", "calls.jsonl"):
+        path = directory / name
+        if not path.is_file():
             continue
-        if isinstance(record, dict) and record.get("call_id"):
-            calls[record["call_id"]] = record
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(record, dict) and record.get("call_id"):
+                calls[record["call_id"]] = record
     return calls
 
 

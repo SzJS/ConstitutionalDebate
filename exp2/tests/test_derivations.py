@@ -612,3 +612,243 @@ def test_jd2_reproduces_the_finished_runs_published_endpoint(capsys, jd2):
     assert "NET                                    +45 cells" in out
     assert "p = 0.0110865" in out
     assert "SIGNIFICANT at alpha=0.05" in out
+
+
+# --- judgment-debate-3: one judge throughout, P1 / P2 / P3 ----------------------------
+
+
+_JD3_FLAGS: dict = {}
+
+
+@pytest.fixture(scope="module")
+def jd3():
+    module = _load("judgment-debate-3.py")
+    _JD3_FLAGS.clear()
+    _JD3_FLAGS.update({**module.ARM_FLAGS, **module.PRELUDE_FLAGS})
+    return module
+
+
+def _jd3_only(*args):
+    """Arguments that run ONLY the indexes named, with every other one pointed at a path
+    that does not exist — the prelude flags included.
+
+    Without this the defaults pick up the live `judgment-debate` and `jd2-*-real` trees,
+    so the published +45 and the abandoned chain's +124 print into the same capture and
+    an assertion about the arm under test quietly matches one of those instead.
+    """
+    argv = []
+    named = set(args[::2])
+    for _, (flag, _default) in _JD3_FLAGS.items():
+        if flag not in named:
+            argv += [flag, "/nonexistent/index.jsonl"]
+    return list(args) + argv
+
+
+def _jd3_arm(path: Path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    return str(path)
+
+
+def _rejudged(i, *, before, after, source_correct=None, **kw):
+    """A re-judged cell that was objected to and ruled.
+
+    Shaped as `build_index` writes a jd3 row: the rejudge columns (`rejudged_from`,
+    `source_verdict`, `source_correct`) beside the ordinary judgment-arm ones.
+    """
+    row = _contested(i, before=before, after=after, **kw)
+    row["rejudged_from"] = "outputs/experiments/sweep"
+    row["verdict"] = "FLAWED" if before == row["gold_flawed"] else "SOUND"
+    if source_correct is not None:
+        row["source_correct"] = source_correct
+        row["source_verdict"] = ("FLAWED" if source_correct == row["gold_flawed"]
+                                 else "SOUND")
+    return row
+
+
+def test_jd3_has_one_alpha_and_no_bonferroni_family(jd3):
+    """The one thing about this script that a copy from judgment-debate-2.py could get
+    silently wrong. That phase ran TWO judges and split 0.05 over them; this one runs one
+    judge, and P1 and P2 are different comparisons against different arms rather than a
+    family of two — PREREG.md says so before either arm ran. A 0.025 inherited from the
+    older script would report a true result as not significant."""
+    assert jd3.ALPHA == 0.05
+    assert not hasattr(jd3, "ALPHA_FAMILY")
+    assert "alpha=0.05" in jd3.verdict_at(0.01)
+    assert jd3.verdict_at(0.03).startswith("SIGNIFICANT")
+    assert jd3.verdict_at(0.30).startswith("not significant")
+
+
+def test_jd3_mcnemar_and_wilson_agree_with_the_other_derivations(jd, jd2, jd3):
+    """Three scripts will quote p-values side by side in the same write-up. If they drift
+    the reader sees two numbers for one test."""
+    for b, c in ((10, 3), (0, 0), (7, 7), (173, 128), (5, 3), (237, 113)):
+        assert jd3.mcnemar_exact(b, c) == jd.mcnemar_exact(b, c)
+        assert jd3.mcnemar_exact(b, c) == jd2.mcnemar_exact(b, c)
+    for k, n in ((0, 10), (10, 10), (41, 60), (173, 1644)):
+        assert jd3.wilson(k, n) == jd.wilson(k, n)
+    with pytest.raises(ValueError):
+        jd3.mcnemar_exact(-1, 3)
+
+
+def test_jd3_p1_counts_fixed_and_broken_over_a_synthetic_arm(tmp_path, capsys, jd3):
+    """M0 before, M1 after, in ONE index — which is the shape that differs from jd2, where
+    before and after came from two trees. 5 fixed, 2 broken, and concordant cells in both
+    corners so a script that forgot to exclude them would be caught.
+    b=5 c=2 -> 2 * (1+7+21) / 128 = 58/128 = 0.453125."""
+    rows = ([_rejudged(i, before=False, after=True) for i in range(5)]
+            + [_rejudged(100 + i, before=True, after=False) for i in range(2)]
+            + [_rejudged(200 + i, before=True, after=True) for i in range(4)]
+            + [_rejudged(300 + i, before=False, after=False) for i in range(3)])
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    assert "fixed   (BEFORE wrong -> AFTER correct)   b = 5" in out
+    assert "broken  (BEFORE correct -> AFTER wrong)   c = 2" in out
+    assert "NET                                    +3 cells" in out
+    assert "p = 0.453125" in out
+    assert "not significant at alpha=0.05" in out
+    # the arms that did not run say so rather than printing an empty table
+    assert out.count("NOT RUN") >= 2
+
+
+def test_jd3_p2_pairs_the_real_arm_against_the_placeholder(tmp_path, capsys, jd3):
+    """The second-look control, and it matters more here than under nano: the judge that
+    rules IS the judge that wrote the judgment being audited, so "it reconsidered" is an
+    even more available explanation. Only the cells BOTH arms carry are paired; a cell one
+    arm lacks is dropped and counted rather than defaulted to a before-state."""
+    real = ([_rejudged(i, before=False, after=True) for i in range(6)]
+            + [_rejudged(100 + i, before=False, after=False) for i in range(4)])
+    placeholder = ([_rejudged(i, before=False, after=False) for i in range(6)]
+                   + [_rejudged(100 + i, before=False, after=False) for i in range(4)])
+    real.append(_rejudged(999, before=False, after=True))
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "a" / "index.jsonl", real),
+                       "--placeholder",
+                       _jd3_arm(tmp_path / "c" / "index.jsonl", placeholder)))
+    out = capsys.readouterr().out
+    assert "paired on 10 cells both arms carry" in out
+    assert "(1 in one arm only, dropped rather than defaulted)" in out
+    assert "fixed   (PLACEHOLDER wrong -> REAL correct)   b = 6" in out
+    assert "-> THE AUDIT DID IT" in out
+
+
+def test_jd3_p2_says_a_second_look_did_it_when_the_arms_do_not_differ(tmp_path, capsys,
+                                                                      jd3):
+    """The null this control exists to be able to report, in words rather than as a net of
+    0 the reader has to interpret."""
+    rows = [_rejudged(i, before=False, after=True) for i in range(6)]
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "a" / "index.jsonl", rows),
+                       "--placeholder",
+                       _jd3_arm(tmp_path / "c" / "index.jsonl", list(rows))))
+    out = capsys.readouterr().out
+    assert "NOT SEPARATED at alpha=0.05" in out
+    assert "not distinguishable from a second look" in out
+    assert "-> THE AUDIT DID IT" not in out
+
+
+def test_jd3_p3_is_void_when_the_grader_validates_most_specious_objections(tmp_path,
+                                                                           capsys, jd3):
+    """The stopping rule PREREG.md states before the arm runs. A specious arm the grader
+    largely VALIDATES did not produce specious objections, so it is a failed manipulation
+    and not a null result about sycophancy — and no comparison may be printed from it."""
+    spec = ([_rejudged(i, before=False, after=True, grade_mode="judgment",
+                       grade_valid=True) for i in range(5)]
+            + [_rejudged(100, before=False, after=False, grade_mode="judgment",
+                         grade_valid=False)])
+    real = [_rejudged(i, before=False, after=True) for i in range(6)]
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "r" / "index.jsonl", real),
+                       "--specious", _jd3_arm(tmp_path / "s" / "index.jsonl", spec)))
+    out = capsys.readouterr().out
+    assert "graded VALID (the manipulation check) 5/6" in out
+    assert "P3 IS VOID" in out
+    assert "FAILED" in out and "MANIPULATION" in out
+    assert "overturn on SPECIOUS" not in out
+
+
+def test_jd3_p3_compares_overturn_rates_when_the_manipulation_held(tmp_path, capsys, jd3):
+    """The check passes (1 of 9 valid), so the comparison is printed — on the OVERLAP
+    only, with the cells the specious arm contested and the real one did not reported
+    separately rather than pooled, because the specious instruction forbids the decline."""
+    real = ([_rejudged(i, before=False, after=True) for i in range(4)]
+            + [_rejudged(100 + i, before=False, after=False) for i in range(4)])
+    spec = ([_rejudged(i, before=False, after=True, grade_mode="judgment",
+                       grade_valid=(i == 0)) for i in range(4)]
+            + [_rejudged(100 + i, before=False, after=True, grade_mode="judgment",
+                         grade_valid=False) for i in range(4)]
+            + [_rejudged(500, before=False, after=True, grade_mode="judgment",
+                         grade_valid=False)])
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "r" / "index.jsonl", real),
+                       "--specious", _jd3_arm(tmp_path / "s" / "index.jsonl", spec)))
+    out = capsys.readouterr().out
+    assert "P3 IS VOID" not in out
+    assert "graded VALID (the manipulation check) 1/9" in out
+    assert "4/8 50.0%" in out and "8/8 100.0%" in out
+    assert "+50.0 pts" in out
+    assert "1 specious cells outside the overlap" in out
+
+
+def test_jd3_m0_against_nano_reads_the_source_column_and_is_never_tested(tmp_path, capsys,
+                                                                         jd3):
+    """The descriptive that must not be read as the endpoint. It joins on the
+    `source_verdict` / `source_correct` columns the rejudge stage writes beside every
+    re-judged decision, and it prints a p that is explicitly REPORTED, NOT TESTED — the
+    phase tests what recourse does to Maverick's judgments, not whether Maverick judges
+    better than nano."""
+    rows = ([_rejudged(i, before=True, after=True, source_correct=False)
+             for i in range(7)]
+            + [_rejudged(100 + i, before=False, after=False, source_correct=True)
+               for i in range(2)]
+            + [_rejudged(200 + i, before=True, after=True, source_correct=True)
+               for i in range(3)])
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    block = out[out.index("(d) M0 AGAINST"):out.index("(e) THE PRELUDE")]
+    assert "maverick right where nano was wrong    7" in block
+    assert "maverick wrong where nano was right    2" in block
+    assert "NET                                    +5 cells" in block
+    assert "REPORTED, NOT TESTED" in block
+    # never the significance sentence: this comparison has no alpha at all
+    assert "SIGNIFICANT" not in block and "not significant" not in block
+    assert "accuracy maverick (M0)                 10/12" in block
+    assert "accuracy nano (the sweep)              5/12" in block
+
+
+def test_jd3_the_prelude_is_labelled_a_record_and_not_an_effect(tmp_path, capsys, jd3):
+    """The abandoned chain's arms print with their nets, and the paragraph above them says
+    why they are not the result: those judges are stronger than the one that judged the
+    debates. A table of +124 with no such sentence is the misreading this phase exists to
+    prevent."""
+    prelude = ([_contested(i, before=False, after=True) for i in range(9)]
+               + [_contested(100 + i, before=True, after=False) for i in range(2)])
+    jd3.main(_jd3_only("--jd2-mav", _jd3_arm(tmp_path / "p" / "index.jsonl", prelude)))
+    out = capsys.readouterr().out
+    block = out[out.index("(e) THE PRELUDE"):out.index("(f) SECONDARY")]
+    assert "re-ruled by maverick" in block
+    assert "+7" in block
+    assert "STRONGER than the nano that judged the debates" in block
+    assert "not as an effect" in block
+    assert "NOT comparable with (a)" in block
+    # and the arms with no index say NOT RUN rather than printing a row of zeros
+    assert block.count("NOT RUN") == 3
+
+
+def test_jd3_prose_wins_is_post_hoc_and_actually_moves(tmp_path, capsys, jd3):
+    """(h) recomputes every arm with the reader's reading of the prose over the ruling's
+    own line. Two of the four rulings here read the other way, so the net moves — a
+    sensitivity that always printed the endpoint again would be measuring nothing."""
+    rows = [_rejudged(i, before=False, after=True) for i in range(4)]
+    for row in rows[:2]:
+        row["ruling_prose_conclusion"] = "SOUND"
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    assert "POST HOC, NOT THE ENDPOINT" in out
+    block = out[out.index("(h) THE PROSE-WINS"):]
+    assert "+4" in block and "+2" in block and "-2" in block
+
+
+def test_jd3_is_stdlib_only_like_every_other_derivation(jd3):
+    """It has to run on a bare clone with nothing installed — that is what makes a
+    committed index a checkable number rather than a claim about a tree nobody has."""
+    source = (DERIVATIONS / "judgment-debate-3.py").read_text(encoding="utf-8")
+    for banned in ("import numpy", "import scipy", "import pandas",
+                   "from scipy", "import statsmodels", "from exp2"):
+        assert banned not in source, banned

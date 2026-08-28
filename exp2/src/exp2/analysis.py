@@ -797,6 +797,33 @@ def _placeholder_arm_caveat(rows: Sequence[dict]) -> str | None:
     )
 
 
+def _rejudged_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where a decision in this index was RE-JUDGED from a stored record.
+
+    The debates were argued once, by another run, and a second judge read the transcript
+    afterwards. That is what makes the arm affordable and it is also the one thing a
+    reader has to be told: these verdicts were not produced end to end here, and the
+    decision-path cost beside them is one judge call, not a debate.
+    """
+    rejudged = [row for row in rows if row.get("rejudged_from")]
+    if not rejudged:
+        return None
+    sources = sorted({row["rejudged_from"] for row in rejudged})
+    mixed = "" if len(rejudged) == len(rows) else (
+        f" Only {len(rejudged)} of the {len(rows)} rows here are re-judged; the rest "
+        "were decided by this tree, and the two are not one population."
+    )
+    return (
+        f"DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS ({', '.join(sources)}): the "
+        f"debates behind these {len(rejudged)} cells were argued in another run and "
+        "this one only judged them again, so `verdict` and `initially_correct` are this "
+        "spec's judge reading a record it did not commission, `source_verdict` beside "
+        "them is what the source tree's judge made of the same transcript, and "
+        "`decision_cost_usd` is the one judge call rather than the debate that "
+        "preceded it." + mixed
+    )
+
+
 def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
     matching = matched_items(rows, conditions)
     sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
@@ -829,6 +856,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         "asymmetrically.",
         # Conditional: it is a statement about the run, not a standing limitation, and a
         # caveat that appears on every index is one nobody reads.
+        _rejudged_caveat(rows),
         _partisan_arm_caveat(rows),
         _judgment_mode_caveat(rows),
         _specious_arm_caveat(rows),

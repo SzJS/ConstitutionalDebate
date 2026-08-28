@@ -23,6 +23,17 @@ them being rewritten. ``contest``, ``agreement`` and ``grade`` refuse on such a 
 each would write a new objection, or a new grade of one, over the copy this tree holds —
 and ``--stage rerule`` refuses without it.
 
+A spec may instead set ``transcripts_from = "<path>"``. The run then reads the stored
+debate TRANSCRIPTS out of that tree and judges them again under its own ``judge_model``,
+writing a full decision record of its own — the transcript copied, the new judgment and
+verdict, a ``config.json`` naming the judge that made it. Everything downstream then
+works with no change at all: the tree it writes is an ordinary decision tree, and a later
+spec points ``decisions_from`` at it. ``--stage decide`` refuses on such a spec (it would
+re-run the debates), ``--stage rejudge`` refuses without it, the two source keys are
+mutually exclusive — a run either decides for itself, reads decisions, or re-judges
+transcripts, and never two of the three — and the conditions must be ``["debate"]``,
+because only a debate leaves a record a second judge can be handed without re-deciding.
+
 One arm is exempt from that refusal and only one: ``challenger_variant = "placeholder"``,
 the second-look control. It carries ``contests_from`` and runs ``contest``, but it
 generates nothing — the stage writes one fixed, content-free objection with no model call
@@ -73,9 +84,11 @@ from .experiment import (
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_rejudge,
     run_stage_rerule,
     run_stage_ruling_agreement,
     source_contests,
+    source_decisions,
 )
 from .types import load_cases
 
@@ -132,7 +145,9 @@ def print_hyperparameters(config: DebateConfig, client_config: ClientConfig,
 def print_estimate(grid, config: DebateConfig,
                    decisions_from: Path | None = None,
                    contests_from: Path | None = None,
-                   n_source_contests: int | None = None) -> None:
+                   n_source_contests: int | None = None,
+                   transcripts_from: Path | None = None,
+                   n_source_decisions: int | None = None) -> None:
     """The call estimate, which is the line a run is approved from.
 
     ``decisions_from`` makes the decision term ZERO rather than the cost of deciding the
@@ -154,11 +169,19 @@ def print_estimate(grid, config: DebateConfig,
     generation, and the ruling term is the source's contested count because that is
     exactly where the placeholder is placed. Its whole spend is rulings plus the reading
     of them.
+
+    ``transcripts_from`` replaces the decision term with a COUNTED one: a re-judge makes
+    exactly ONE call per stored decision — the judge's, over a transcript it does not
+    re-run — so the figure is the source tree's decided cells and not the 7 calls a
+    debate costs. On the sweep's debate cells those differ by a factor of seven and by
+    hundreds of cells the sweep never decided, and quoting the grid here would quote
+    fourteen times the spend at the moment it is being agreed to.
     """
     by_condition: dict[str, int] = {}
     for cell in grid:
         by_condition[cell.condition] = by_condition.get(cell.condition, 0) + 1
     decision = (0 if decisions_from is not None
+                else (n_source_decisions or 0) if transcripts_from is not None
                 else sum(n * calls_per_cell(c, config) for c, n in by_condition.items()))
     # challenge + comprehension always; ruling only when an objection is raised, and
     # grading only on flawed items whose subset records what the flaw was.
@@ -186,8 +209,11 @@ def print_estimate(grid, config: DebateConfig,
                 else sum(1 for cell in grid if cell.case.gradable))
     print(f"\ncells: {len(grid)}  " +
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
-    decision_term = (f"decision 0 (read from {decisions_from})"
-                     if decisions_from is not None else f"decision {decision}")
+    decision_term = (
+        f"decision 0 (read from {decisions_from})" if decisions_from is not None
+        else f"decision {decision} (one judge call per stored transcript in "
+             f"{transcripts_from}; the debates are NOT re-run)"
+        if transcripts_from is not None else f"decision {decision}")
     contest_term = (
         "contest 0 (the placeholder objection is a fixed text written with NO model "
         f"call, on the cells {contests_from} contested)" if placeholder
@@ -202,6 +228,13 @@ def print_estimate(grid, config: DebateConfig,
               "grades every cell whose objection contests, against the RECORD rather "
               "than the recorded flaw — so the annotation gates that hold the ordinary "
               "grading term down do not apply.")
+    if transcripts_from is not None:
+        print(f"the decision term is COUNTED, not bounded: {decision} of the "
+              f"{len(grid)} cells have a decided run in {transcripts_from}, and each "
+              "costs ONE judge call over the transcript that run already paid for. The "
+              "rest were never decided there and are skipped with `no source decision "
+              "to re-judge`. A judgment that truncates or will not parse fails its cell "
+              "and is counted, not decided, exactly as it was in the source run.")
     if contests_from is not None:
         print(f"the ruling term is COUNTED, not bounded: {ruling} of the {len(grid)} "
               f"cells have a source objection whose stance is `contests`. The rest "
@@ -252,7 +285,7 @@ def build_parser() -> argparse.ArgumentParser:
              "was attempted and the model's outcome recorded, and re-drawing it "
              "selects for compliant outputs (LLM_NOTES.md 3p.4). Use it when the "
              "failures were the harness's fault — a bad provider slug, a full disk — "
-             "not the model's. Only `decide` reads it.")
+             "not the model's. `decide` and `rejudge` read it; no other stage does.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser
@@ -282,6 +315,44 @@ def main(argv: list[str] | None = None) -> int:
             f"this spec contests decisions in {decision_root}; it does not decide. "
             "Run --stage contest / agreement / grade / analyse against it, or drop "
             "decisions_from to make a tree that decides for itself."
+        )
+
+    # The TRANSCRIPT source. Set only by a re-judge spec, which makes no debate of its
+    # own: it copies each source decision here minus its verdict and judges the stored
+    # transcript again. What it writes is an ORDINARY decision tree — that is the whole
+    # design — so no other stage learns a new path and a later spec reads it through
+    # `decisions_from` unchanged.
+    transcripts_from = spec.get("transcripts_from")
+    transcript_root = Path(transcripts_from) if transcripts_from else None
+    if transcript_root is not None and args.stage == "decide":
+        raise SystemExit(
+            f"this spec re-judges the stored transcripts in {transcript_root}; it does "
+            "not decide. `decide` would run the debates again — new arguments, a new "
+            "population, and the one thing this stage exists to hold fixed. Run "
+            "--stage rejudge / contest / agreement / ruling_agreement / grade / analyse "
+            "against it, or drop transcripts_from to make a tree that decides for "
+            "itself."
+        )
+    if transcript_root is not None and decision_root is not None:
+        raise SystemExit(
+            "a spec may set `decisions_from` OR `transcripts_from`, not both: the first "
+            "reads finished decisions and never writes one, the second WRITES a "
+            "decision per stored transcript. With both, every stage after `rejudge` "
+            "would read its decisions out of the other tree and the re-judged verdicts "
+            "this run paid for would be indexed nowhere."
+        )
+    if transcript_root is not None and set(conditions) != {"debate"}:
+        raise SystemExit(
+            f"this spec re-judges transcripts but runs conditions {conditions}. "
+            "`rejudge` is debate-only: only a debate leaves a record a second judge can "
+            "be handed. `single` and `self_critique` reach their verdict inside the "
+            "conversation that wrote the record, so there is nothing to re-judge "
+            "without re-running the decision. Set `conditions = [\"debate\"]`."
+        )
+    if transcript_root is None and args.stage == "rejudge":
+        raise SystemExit(
+            "--stage rejudge needs `transcripts_from = \"<tree>\"` in the spec: it "
+            "judges debates another tree already ran, and there are none to read."
         )
 
     # The OBJECTION source. Set only by a re-rule spec, which makes no objection of its
@@ -361,6 +432,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"experiment: {name}   stage: {args.stage}   outputs: {root}")
     if decision_root is not None:
         print(f"decisions read from: {decision_root}   (never written to)")
+    n_source_decisions = None
+    if transcript_root is not None:
+        print(f"transcripts read from: {transcript_root}   (never written to)")
+        n_source_decisions = len(source_decisions(grid, source_root=transcript_root))
     n_source_contests = None
     if contest_root is not None:
         print(f"objections read from: {contest_root}   (never written to)")
@@ -369,7 +444,9 @@ def main(argv: list[str] | None = None) -> int:
             challenger_model=config.challenger_model_for()))
     print_estimate(grid, config, decisions_from=decision_root,
                    contests_from=contest_root,
-                   n_source_contests=n_source_contests)
+                   n_source_contests=n_source_contests,
+                   transcripts_from=transcript_root,
+                   n_source_decisions=n_source_decisions)
     print_hyperparameters(config, client_config, grading)
 
     if args.dry_run:
@@ -392,6 +469,13 @@ def main(argv: list[str] | None = None) -> int:
         "contests_from": str(contest_root) if contest_root else None,
         "contests_from_experiment_sha256": (
             _tree_fingerprint(contest_root) if contest_root else None),
+        # Null unless this tree re-judges another's transcripts. Named and hashed for
+        # the same reason both of the above are: this tree's verdicts are only
+        # interpretable against the exact debates they were made over, and the source
+        # tree's own cell directories are hashed one by one in each run's manifest.
+        "transcripts_from": str(transcript_root) if transcript_root else None,
+        "transcripts_from_experiment_sha256": (
+            _tree_fingerprint(transcript_root) if transcript_root else None),
         "config": config.to_dict(), "client_config": client_config.to_dict(),
         "grading": grading.to_dict(),
     }, indent=2), encoding="utf-8")
@@ -417,6 +501,10 @@ def main(argv: list[str] | None = None) -> int:
         "decide": lambda: run_stage_decide(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key, retry_failed=args.retry_failed),
+        "rejudge": lambda: run_stage_rejudge(
+            grid, root=root, config=config, client_config=client_config,
+            api_key=api_key, transcript_root=transcript_root,
+            retry_failed=args.retry_failed),
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key, decision_root=decision_root,

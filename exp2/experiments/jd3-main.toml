@@ -1,0 +1,158 @@
+# M0 + M1 — the whole before-and-after, in ONE tree. The sweep's 1,644 stored debate
+# transcripts re-judged by Maverick (M0), then audited and ruled by Maverick (M1).
+#
+# READ FIRST: `records/experiments/judgment-debate-3/PREREG.md`, committed before this
+# arm's first paid call. The endpoints (P1, P2, P3), the single alpha, the population,
+# the same-model note and the stop rules are all there and none of them is restated here.
+#
+# WHY THIS PHASE EXISTS, in four lines. The debate-only judgment-challenge run netted +45
+# with `gpt-4.1-nano` in both judge seats. The follow-up chain re-ruled those objections
+# with two FLASH-CLASS judges and got +124 and +114 — but those judges are stronger than
+# the nano that JUDGED the debates, so the result could be "a better judge re-decided".
+# The user's decision was to remove the asymmetry rather than model it: one judge
+# throughout, at the challenger's own level, from a fourth model family.
+#
+# THE FOUR ARMS, and where this spec sits:
+#
+#     M0   Maverick re-judges the sweep's stored transcripts        <- THIS SPEC, stage 1
+#     M1   flash audits M0's judgments, Maverick rules              <- THIS SPEC, stages 2+
+#     M2   the placeholder objection on the cells M1 contested      jd3-placeholder.toml
+#     M3   the specious auditor on every cell                       jd3-specious.toml
+#
+# M0 AND M1 ARE ONE SPEC AND ONE TREE, and they have to be: M1's contest rules on M0's
+# decisions, so the contest stage must find them in the tree it is writing into. That is
+# exactly what `rejudge` produces — an ORDINARY decision record, transcript copied,
+# judgment and verdict new, `config.json` naming the judge that made it — which is why
+# nothing else in the pipeline changes and why M2 and M3 read this tree through
+# `decisions_from` with no special case anywhere.
+#
+# THE DEBATES ARE NOT RE-RUN. `transcripts_from` reads the sweep's stored transcripts and
+# the `rejudge` stage makes ONE judge call over each. Nothing under
+# `outputs/experiments/sweep` is written; it is fingerprinted before and after every arm
+# by `outputs/jd3-run-all.sh` and must be byte-identical. `--stage decide` refuses on this
+# spec, because deciding would re-debate 2,110 items and change the population as well as
+# the verdict.
+#
+# THE POPULATION IS WHAT M0 DECIDES. The sweep decided 1,644 of its 2,110 debate cells;
+# the other 466 have no transcript and are skipped with `no source decision to re-judge`.
+# A Maverick judgment that truncates or will not parse fails its cell and is COUNTED AND
+# LEFT UNDECIDED, exactly as the sweep did. The pilot lost 0 of 60.
+#
+# THE SAME-MODEL PROPERTY IS THE DESIGN, NOT A DEFECT. The model that judges the debate
+# rules on the appeal against its own judgment — as the first run had with nano. What
+# bounds it is the pair of ablations: M2 says what this judge does on a second look with
+# NO information, M3 says what it does when the information is WRONG. Neither is a finding
+# on its own and both travel with every number here.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rejudge contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd3-main.toml \
+#         > outputs/jd3-main-driver.log 2>&1 &
+#
+# `--retry-failed` is the user's standing choice of 2026-08-26 and is what the sweep ran
+# under: a cell whose latest run failed is re-attempted once on a resume, and a cell that
+# still fails is counted and left undecided. The sweep's own decided set is what it is
+# after that rule, so this keeps the two runs' resume semantics the same.
+#
+# The orchestration script `outputs/jd3-run-all.sh` runs M0+M1, then M2, then M3 in
+# dependency order under one process; do not launch arms by hand out of that order — M2
+# and M3 read THIS tree, and an arm pointed at a tree that does not exist yet writes
+# nothing and exits 0.
+
+name = "jd3-main"
+cases = "data/cases/ftf-all.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions — Maverick's
+# judgments of debates the sweep already ran.
+transcripts_from = "outputs/experiments/sweep"
+
+# ONE CONDITION, and it is the whole point — twice over. Only a debate publishes a
+# judgment that is a document other than the decision itself, so the audit is defined here
+# and undefined in the other two; and only a debate leaves a record a SECOND JUDGE can be
+# handed without re-running the decision, which is what `rejudge` needs. 2,110 items x 1
+# condition x 1 repeat = 2,110 cells, of which the sweep decided 1,644.
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Copied from `sweep.toml` unedited. No debater call is made — the transcripts are the
+# sweep's — but this is what `config.json` will say the copied debate was argued under,
+# and a spec that quietly differed from the tree it reads would make the record wrong
+# about its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+
+# THE ONE DECISION-PATH MODEL THAT DIFFERS FROM `sweep.toml`, AND THE REASON THIS TREE
+# EXISTS. Index 14 with reasoning off — EXACTLY the challenger's level, delta 0 — passed
+# the judge-selection rule of `records/experiments/judgment-debate-2/PREREG.md` on 82
+# stored objections (strict ruling-line mismatch 5.3% against nano's 9.5%, discrimination
+# +45.3 pts against nano's +36.7), and a FOURTH model family: Meta, distinct from the
+# debaters' DeepSeek, the challenger's Google and the grader's Anthropic. UNPINNED, as
+# every judge and challenger in every run so far has been, and verified live with
+# `reasoning_effort = "off"` on 2026-08-28 (`outputs/jd3-liveness.log`).
+judge_model      = "meta-llama/llama-4-maverick"
+
+# Unchanged from the finished run and both judgment-debate pilots. The auditor probe's
+# pre-registered rule picked nobody and flash was chosen after the numbers — a disclosed
+# departure that stands in `records/pick-auditor/DECISION.md`, in the pre-registration and
+# in the write-up. It is at index 14 with reasoning off, which is the level the judge above
+# was selected to match.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE VARIANT, byte-identical to the finished run's. The challenger audits the JUDGMENT —
+# here Maverick's — against the published record for a contradiction, a misstatement or an
+# omission, quoting both sides of each, and is forbidden the object level. It selects the
+# challenger's system prompt, its objection format, the `agreement` question, the grader,
+# and (through the objection's arm) the MATERIALITY ruling prompt and reader.
+challenger_variant = "judgment"
+
+# Every condition's objection is ruled by a third party rather than by the decider
+# re-deciding in its own conversation. Note what it does NOT mean here: the third party is
+# the same MODEL as the judge, by design (see the same-model note above).
+recourse_form = "third_party"
+
+# ONE JUDGE THROUGHOUT. Stated rather than left to inherit `judge_model`, even though the
+# value is identical, because the whole design is that these two are now deliberately the
+# same and a reader of `config.json` must see it said.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# Unchanged from `sweep.toml`. The cap for the roles that emit a decision line — judge,
+# challenger, recourse judge, comprehension probe — none of which has truncated in six runs.
+max_tokens = 16384
+
+# Unchanged from `sweep.toml`. The cap for the roles that produce record text. Nothing here
+# generates record text, but it is what the copied debate was argued under.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+# Copied from `sweep.toml` unedited. It binds the strong model, which this run does not
+# call at all — the debates are read from disk. The judge, the challenger and the grader
+# are not in this table and so are unpinned.
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. A pin that silently falls back is
+# not a pin.
+
+[client]
+# 16/8, as the sweep proved and the pilot re-confirmed (401 calls, 0 non-2xx). Every stage
+# here is one to three short calls per cell where `decide` was up to seven strong-model
+# ones.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each contest directory carries a full copy of the decision it contests — here a
+# re-judged decision, which itself carries the copied transcript and the debate's own wire
+# log. That is what makes a contest record self-contained, and it is why this tree costs
+# disk although it debates nothing.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint: the `agreement` stage, the
+# `ruling_agreement` stage and the JUDGMENT grader. Held equal to every earlier run's so
+# the phantom rate and the ruling-line residual stay measured by the same reader. No
+# `anthropic/*` challenger or judge for the same reason: a party graded by itself is a
+# confound `DESIGN.md` names.
+grader_model = "anthropic/claude-haiku-4.5"

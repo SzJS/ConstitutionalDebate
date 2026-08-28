@@ -15,6 +15,7 @@ that want the repair path ask for it through ``fail_on``.
 from __future__ import annotations
 
 import asyncio
+import itertools
 from typing import Any
 
 import pytest
@@ -88,6 +89,16 @@ def _solo_reply(purpose: str) -> str:
         return f"Thinking: {SOLO_THINKING}\nReasoning: my draft took step 2 on trust."
     return (f"Thinking: {SOLO_THINKING}\n"
             f"Reasoning: my {purpose} assessment.\nVerdict: FLAWED")
+
+
+# Call ids are unique across every fake client in a process, as a provider's generation
+# ids are across every run. They were `call-{len(self.calls)}` and so restarted at zero
+# for each client — which is fine while one directory holds one client's calls, and wrong
+# the moment a directory holds a wire log copied from ANOTHER run beside its own: a
+# re-judged decision keeps the debate's prompts in `calls.source.jsonl` and its own judge
+# call in `calls.jsonl`, and two calls sharing an id would render one under the other's
+# heading.
+_CALL_IDS = itertools.count()
 
 
 class FakeClient:
@@ -265,7 +276,7 @@ class FakeClient:
 
     def _completion(self, content: str, *, finish_reason: str = "stop") -> Completion:
         return Completion(
-            call_id=f"call-{len(self.calls)}", content=content,
+            call_id=f"call-{next(_CALL_IDS)}", content=content,
             finish_reason=finish_reason, model="fake/model", provider="fake",
             reasoning=self.native_reasoning, usage={"cost": 0.0},
         )

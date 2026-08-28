@@ -25,9 +25,11 @@ from exp2.experiment import (
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_rejudge,
     run_stage_rerule,
     run_stage_ruling_agreement,
     source_contests,
+    source_decisions,
 )
 from pathlib import Path
 
@@ -1447,3 +1449,365 @@ def test_a_placeholder_spec_without_a_source_is_refused_at_the_cli(tmp_path,
     message = str(excinfo.value)
     assert "needs `contests_from" in message
     assert "not a control for anything" in message
+
+
+# --- re-judging another tree's stored transcripts -------------------------------------
+#
+# The `rejudge` stage of 2026-08-28. Its whole reason for existing is that the sweep's
+# 1,644 debate transcripts cost $32 and a different judge can be measured on them for
+# cents — and its whole safety property is that measuring so changes nothing about them.
+
+
+async def _decided_debates(tmp_path, no_network, n=2):
+    """A source tree holding decided DEBATE cells, and the grid over them."""
+    grid = build_grid(cases(n), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    return grid, source
+
+
+async def test_a_rejudge_writes_a_full_decision_record_and_writes_nowhere_else(
+    tmp_path, no_network
+):
+    """The stage's two promises at once: the source tree does not change by one byte,
+    and what lands in the new tree is an ORDINARY decision run — which is what lets
+    `decisions_from` read it downstream with no change anywhere."""
+    grid, source = await _decided_debates(tmp_path, no_network)
+    before = _tree_fingerprint(source)
+    assert before
+    rejudged = tmp_path / "M0"
+
+    # A different judge, stated the way the real spec states it.
+    config = make_config(judge_model="meta-llama/llama-4-maverick")
+    results = await run_stage_rejudge(
+        grid, root=rejudged, config=config, client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["completed"] * 2
+
+    runs = sorted(rejudged.glob("cells/*/runs/*"))
+    assert len(runs) == 2
+    copied = 0
+    for directory in runs:
+        # everything load_run_record needs, and nothing it must not find twice
+        for name in ("item.json", "sides.json", "config.json", "transcript.json",
+                     "verdict.json", "run.json"):
+            assert (directory / name).is_file(), name
+        # the config names the judge that actually judged, not the source's
+        assert json.loads((directory / "config.json").read_text())["judge_model"] == (
+            "meta-llama/llama-4-maverick")
+        manifest = json.loads((directory / "run.json").read_text())
+        assert manifest["kind"] == "rejudge"
+        assert manifest["status"] == "completed"
+        assert manifest["rejudged_from"] == str(source)
+        assert manifest["source_verdict"] == "FLAWED"
+        assert manifest["source_judge_model"] == "weak/model"
+        assert len(manifest["source_sha256"]) == 64
+        assert Path(manifest["source_run_dir"]).is_relative_to(source)
+        # THIS run's wire log is the one judge call and nothing else. The debate's own
+        # calls are beside it under another name, so the money stays this run's while
+        # the verbatim document stays complete. (The offline fixture shares one fake
+        # client across concurrent cells and so one sink at a time, which is why the
+        # copied log is asserted where the source actually wrote one; the e2e builds a
+        # client per run and checks every document there.)
+        logged = [json.loads(line) for line
+                  in (directory / "calls.jsonl").read_text().splitlines()]
+        assert [record["role"] for record in logged] == ["judge"]
+        source_run = Path(json.loads((directory / "run.json").read_text())
+                          ["source_run_dir"])
+        if (source_run / "calls.jsonl").is_file():
+            copied += 1
+            source_log = [json.loads(line) for line
+                          in (directory / "calls.source.jsonl").read_text().splitlines()]
+            assert {record["role"] for record in source_log} == {"debater", "judge"}
+            full = (directory / "transcript_full.md").read_text()
+            assert "Prompts were not recorded for this run" not in full
+    assert copied, "no source wire log was copied, so the document check never ran"
+
+    # the decision really is readable as a decision
+    for cell in grid:
+        record = existing_decision(rejudged, cell)
+        assert record is not None
+        assert record.transcript is not None
+        assert record.verdict.verdict == "FLAWED"
+
+    assert _tree_fingerprint(source) == before
+    # ... and it resumes on the decision it wrote
+    again = await run_stage_rejudge(
+        grid, root=rejudged, config=config, client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert all(r["reason"] == "already re-judged" for r in again)
+
+
+async def test_a_truncated_judgment_is_counted_and_left_undecided(tmp_path, no_network):
+    """As the sweep did: the judge has no budget route, so a reply cut off at the
+    ceiling fails the cell rather than entering the record half-written. The run is on
+    disk and marked `failed` — the cell is counted — and no verdict exists."""
+    grid, source = await _decided_debates(tmp_path, no_network, n=1)
+    rejudged = tmp_path / "M0"
+    no_network.fail_on = {"judge": "truncated_twice"}
+
+    results = await run_stage_rejudge(
+        grid, root=rejudged, config=make_config(), client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["failed"]
+    assert "Truncated" in results[0]["error"]
+    directory = next(iter(sorted(rejudged.glob("cells/*/runs/*"))))
+    assert json.loads((directory / "run.json").read_text())["status"] == "failed"
+    assert not (directory / "verdict.json").exists()
+    assert existing_decision(rejudged, grid[0]) is None
+    assert latest_run_status(rejudged, grid[0]) == "failed"
+    # and a resume does not give it a second draw unless asked
+    no_network.fail_on = {}
+    again = await run_stage_rejudge(
+        grid, root=rejudged, config=make_config(), client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert again[0]["reason"].startswith("already attempted and failed")
+    retried = await run_stage_rejudge(
+        grid, root=rejudged, config=make_config(), client_config=client_config(),
+        api_key="k", transcript_root=source, retry_failed=True)
+    assert [r["status"] for r in retried] == ["completed"]
+
+
+async def test_a_rejudge_reuses_the_recorded_sides_and_never_re_draws_them(
+    tmp_path, no_network
+):
+    """The judgment has to be of the debate that happened. `make_sides` is deterministic
+    given (seed, item_id), so a re-draw would usually agree — and "usually" is the
+    failure: a spec with another seed would present the verdict template in the other
+    order and swap which speaker argued FLAWED."""
+    from exp2.types import make_sides as draw_sides
+
+    grid, source = await _decided_debates(tmp_path, no_network, n=1)
+    decision = existing_decision(source, grid[0])
+    assert decision is not None
+    # Doctor the recorded draw so it can no longer be confused with a fresh one.
+    flipped = {
+        "alice_side": decision.sides.bob_side,
+        "bob_side": decision.sides.alice_side,
+        "verdict_order": [decision.sides.verdict_order[1],
+                          decision.sides.verdict_order[0]],
+        "seed_material": decision.sides.seed_material,
+        "swap_debater_models": decision.sides.swap_debater_models,
+    }
+    (decision.directory / "sides.json").write_text(json.dumps(flipped),
+                                                   encoding="utf-8")
+    drawn = draw_sides(grid[0].case.item, make_config().seed)
+    assert list(drawn.verdict_order) != flipped["verdict_order"]
+
+    rejudged = tmp_path / "M0"
+    await run_stage_rejudge(grid, root=rejudged, config=make_config(),
+                            client_config=client_config(), api_key="k",
+                            transcript_root=source)
+    written = json.loads(
+        next(iter(sorted(rejudged.glob("cells/*/runs/*/sides.json")))).read_text())
+    assert written == flipped
+    # and the prompt the judge was actually sent carries that order, not the draw
+    judge_calls = [c for c in no_network.calls if c["meta"].get("role") == "judge"]
+    sent = judge_calls[-1]["messages"][-1]["content"]
+    first, second = flipped["verdict_order"]
+    assert f"Verdict: <{first}|{second}>" in sent
+
+
+async def test_decisions_from_a_rejudged_tree_round_trips_through_every_later_stage(
+    tmp_path, no_network
+):
+    """The design's whole point: what `rejudge` writes is an ordinary decision tree, so
+    the contest, the agreement reading, the grade and the index run over it with no
+    argument any of them did not already take."""
+    grid, source = await _decided_debates(tmp_path, no_network)
+    rejudged = tmp_path / "M0"
+    await run_stage_rejudge(grid, root=rejudged, config=make_config(),
+                            client_config=client_config(), api_key="k",
+                            transcript_root=source)
+    contests = tmp_path / "M1"
+    for stage in (
+        lambda: run_stage_contest(grid, root=contests, config=make_config(),
+                                  client_config=client_config(), api_key="k",
+                                  decision_root=rejudged),
+        lambda: run_stage_agreement(grid, root=contests, config=make_config(),
+                                    grading=GradingConfig(),
+                                    client_config=client_config(), api_key="k",
+                                    decision_root=rejudged),
+        lambda: run_stage_ruling_agreement(grid, root=contests, config=make_config(),
+                                           grading=GradingConfig(),
+                                           client_config=client_config(), api_key="k"),
+    ):
+        results = await stage()
+        assert [r["status"] for r in results] == ["completed"] * 2, results
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert len(rows) == 2
+    assert all(row["challenge_raised"] is True for row in rows)
+    assert all(row["ruling_line_mismatch"] is not None for row in rows)
+    # the contest carried the re-judged decision with it, judge and all
+    parents = sorted(contests.glob("cells/*/contests/*/runs/*/parent/verdict.json"))
+    assert len(parents) == 2
+    configs = sorted(contests.glob("cells/*/contests/*/runs/*/config.json"))
+    assert all(json.loads(p.read_text())["judge_model"] == "weak/model"
+               for p in configs)
+
+
+async def test_the_index_says_a_decision_was_rejudged_and_what_the_source_said(
+    tmp_path, no_network
+):
+    """`source_verdict` beside `verdict` is what makes the new judge against the old one
+    a column join rather than a second tree to open, and the caveat is what stops the
+    two being read as one population of decisions this tree made."""
+    from exp2.analysis import caveats
+
+    grid, source = await _decided_debates(tmp_path, no_network)
+    rejudged = tmp_path / "M0"
+    # The new judge disagrees with the source's FLAWED on the same transcripts.
+    no_network.replies = {"judge": "The sound side answered it.\nVerdict: SOUND"}
+    await run_stage_rejudge(grid, root=rejudged, config=make_config(),
+                            client_config=client_config(), api_key="k",
+                            transcript_root=source)
+    rows = build_index(grid, root=rejudged, challenger_model="strong/model")
+    assert len(rows) == 2
+    for row in rows:
+        assert row["verdict"] == "SOUND"
+        assert row["source_verdict"] == "FLAWED"
+        assert row["initially_correct"] is False
+        assert row["source_correct"] is True
+        assert row["rejudged_from"] == str(source)
+        assert row["source_judge_model"] == "weak/model"
+        # the cost is this run's ONE judge call, never the debate it read
+        assert row["decision_cost_usd"] == 0.0
+    stated = caveats(rows, ["debate"])
+    assert any("RE-JUDGED FROM STORED TRANSCRIPTS" in c for c in stated)
+
+    # a tree that decided for itself says nothing of the kind
+    plain = build_index(grid, root=source, challenger_model="strong/model")
+    assert all("rejudged_from" not in row for row in plain)
+    assert not any("RE-JUDGED" in c for c in caveats(plain, ["debate"]))
+
+
+async def test_rejudge_refuses_a_condition_that_publishes_no_transcript(tmp_path):
+    """`single` and `self_critique` reach their verdict inside the conversation that
+    wrote the record, so there is nothing to hand a second judge without re-deciding.
+    Refused in the stage as well as in the CLI, so a direct caller cannot get past it."""
+    grid = build_grid(cases(1), ["debate", "single"])
+    with pytest.raises(ValueError) as excinfo:
+        await run_stage_rejudge(grid, root=tmp_path / "M0", config=make_config(),
+                                client_config=client_config(), api_key="k",
+                                transcript_root=tmp_path / "sweep")
+    assert "debate-only" in str(excinfo.value)
+
+
+async def test_a_cell_the_source_never_decided_is_skipped_by_name(tmp_path, no_network):
+    """The sweep lost 466 debate cells to truncation and they have no transcript. Named
+    rather than silent, because "never decided there" and "we forgot" must stay apart."""
+    grid = build_grid(cases(1), ["debate"])
+    results = await run_stage_rejudge(
+        grid, root=tmp_path / "M0", config=make_config(),
+        client_config=client_config(), api_key="k", transcript_root=tmp_path / "sweep")
+    assert [r["reason"] for r in results] == ["no source decision to re-judge"]
+
+
+def test_a_spec_that_rejudges_transcripts_refuses_to_decide_and_needs_its_source(
+    tmp_path, monkeypatch
+):
+    """`decide` would run the debates again — new arguments, a new population, and the
+    one thing the arm holds fixed. And `rejudge` without a source would judge nothing
+    and exit 0, which is how a run reports success having measured nothing."""
+    from exp2.experiment_cli import main
+
+    spec = tmp_path / "jd3.toml"
+    spec.write_text(
+        'name = "jd3-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        'conditions = ["debate"]\n'
+        f'transcripts_from = "{tmp_path / "sweep"}"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "decide"])
+    assert "it does not decide" in str(excinfo.value)
+
+    bare = tmp_path / "plain.toml"
+    bare.write_text('name = "plain-x"\n'
+                    'cases = "data/cases/does-not-matter.jsonl"\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(bare), "--stage", "rejudge"])
+    assert "needs `transcripts_from" in str(excinfo.value)
+
+
+def test_a_rejudge_spec_is_debate_only_and_may_not_also_read_decisions(tmp_path,
+                                                                       monkeypatch):
+    """Two refusals with one cause: a re-judge tree DECIDES, for one condition only."""
+    from exp2.experiment_cli import main
+
+    monkeypatch.chdir(tmp_path)
+    both = tmp_path / "both.toml"
+    both.write_text(
+        'name = "both-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        'conditions = ["debate"]\n'
+        f'decisions_from = "{tmp_path / "A"}"\n'
+        f'transcripts_from = "{tmp_path / "sweep"}"\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(both), "--stage", "rejudge"])
+    assert "not both" in str(excinfo.value)
+
+    solo = tmp_path / "solo.toml"
+    solo.write_text(
+        'name = "solo-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        'conditions = ["debate", "single"]\n'
+        f'transcripts_from = "{tmp_path / "sweep"}"\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(solo), "--stage", "rejudge"])
+    assert "debate-only" in str(excinfo.value)
+
+
+def test_a_rejudge_trees_experiment_json_names_the_tree_it_read(tmp_path, monkeypatch):
+    """The verdicts are only interpretable against the exact debates they were made
+    over, so the record pins which run of the source tree that was."""
+    import hashlib
+
+    from exp2.experiment_cli import main
+
+    outputs = tmp_path / "outputs" / "experiments"
+    (outputs / "sweep").mkdir(parents=True)
+    (outputs / "sweep" / "experiment.json").write_text(
+        json.dumps({"name": "sweep"}), encoding="utf-8")
+    cases_path = tmp_path / "cases.jsonl"
+    cases_path.write_text("\n".join(json.dumps(c.to_dict()) for c in cases(1)),
+                          encoding="utf-8")
+    spec = tmp_path / "jd3.toml"
+    spec.write_text(
+        'name = "jd3-x"\n'
+        f'cases = "{cases_path}"\n'
+        'conditions = ["debate"]\n'
+        f'transcripts_from = "{outputs / "sweep"}"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["--spec", str(spec), "--stage", "analyse"]) == 0
+    written = json.loads((outputs / "jd3-x" / "experiment.json").read_text())
+    assert written["transcripts_from"] == str(outputs / "sweep")
+    assert written["transcripts_from_experiment_sha256"] == hashlib.sha256(
+        (outputs / "sweep" / "experiment.json").read_bytes()).hexdigest()
+    assert written["decisions_from"] is None
+    assert [p.name for p in (outputs / "sweep").rglob("*")] == ["experiment.json"]
+
+
+async def test_the_estimate_counts_the_source_decisions_rather_than_the_grid(
+    tmp_path, no_network, capsys
+):
+    """The line a run is approved from. A re-judge makes ONE call per stored decision,
+    not the seven a debate costs, and not one at all for a cell the source never
+    decided — quoting the grid would quote fourteen times the spend."""
+    from exp2.experiment_cli import print_estimate
+
+    grid, source = await _decided_debates(tmp_path, no_network, n=3)
+    # one of the three was never decided in the source
+    shutil_rmtree = __import__("shutil").rmtree
+    shutil_rmtree(cell_dir(source, grid[0]))
+    found = source_decisions(grid, source_root=source)
+    assert len(found) == 2
+    print_estimate(grid, make_config(), transcripts_from=source,
+                   n_source_decisions=len(found))
+    printed = capsys.readouterr().out
+    assert "decision 2 (one judge call per stored transcript" in printed
+    assert "the decision term is COUNTED, not bounded: 2 of the 3 cells" in printed

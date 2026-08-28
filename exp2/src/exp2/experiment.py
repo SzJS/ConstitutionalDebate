@@ -45,6 +45,7 @@ from .config import (
     DebateConfig,
     GradingConfig,
 )
+from .debate import _judge
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
 from .recourse import _rule_by_judge, judge_prose_stance, judge_ruling_prose, run_recourse
@@ -67,8 +68,15 @@ log = logging.getLogger(__name__)
 # ``rerule`` is not part of an ordinary run and the driver's default list omits it. It
 # belongs to a spec with ``contests_from``: it re-rules another tree's finished
 # objections without re-making them, and ``contest`` refuses on such a spec.
+#
+# ``rejudge`` is the same shape one layer up and the driver's default list omits it for
+# the same reason. It belongs to a spec with ``transcripts_from``: it judges another
+# tree's stored debate transcripts again, under this spec's judge, and writes a FULL
+# decision record — so ``decisions_from`` pointed at the tree it writes works with no
+# change anywhere downstream, and ``decide`` refuses on such a spec.
 STAGES: tuple[str, ...] = (
-    "decide", "contest", "rerule", "agreement", "ruling_agreement", "grade", "analyse",
+    "decide", "rejudge", "contest", "rerule", "agreement", "ruling_agreement", "grade",
+    "analyse",
 )
 
 
@@ -241,6 +249,141 @@ async def run_stage_decide(
                 "verdict": result.verdict.verdict, "correct": result.verdict.correct}
 
     return await _bounded([lambda c=c: decide(c) for c in cells],
+                          client_config.max_runs_in_flight)
+
+
+def source_decisions(cells: Sequence[Cell], *,
+                     source_root: Path) -> list[tuple[Cell, Path]]:
+    """The cells of ``cells`` that a source tree holds a DECIDED run for.
+
+    The population ``rejudge`` will judge, and therefore the number the run's spend is
+    approved from: a cell the source never decided has no transcript to re-judge. Read
+    off each run's manifest rather than off the source index, so a spec pointed at a
+    tree with no index still quotes a true figure — and cheaply, because it opens
+    ``run.json`` alone where ``existing_decision`` parses the whole record including a
+    multi-kilobyte transcript, and this runs over the grid at every dry-run.
+
+    The same two conditions ``load_run_record`` applies: the newest readable manifest
+    says ``completed`` and a ``verdict.json`` is there beside it.
+    """
+    found: list[tuple[Cell, Path]] = []
+    for cell in cells:
+        for directory in sorted((cell_dir(source_root, cell) / "runs").glob("*"),
+                                reverse=True):
+            try:
+                manifest = json.loads(
+                    (directory / "run.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if (manifest.get("status") == "completed"
+                    and (directory / "verdict.json").is_file()):
+                found.append((cell, directory))
+            break
+    return found
+
+
+async def run_stage_rejudge(
+    cells: Sequence[Cell], *, root: Path, config: DebateConfig,
+    client_config: ClientConfig, api_key: str, transcript_root: Path,
+    retry_failed: bool = False,
+) -> list[dict[str, Any]]:
+    """Judge another tree's stored debate transcripts again, into this tree.
+
+    The debates are not re-run — they are the sweep's, they cost $32, and re-drawing
+    them would change the population as well as the verdict. So each source decision
+    directory is COPIED here minus its verdict, its wire log and its two documents, and
+    one new call is made: ``debate._judge``, the *same function the decide stage calls*,
+    over the stored transcript, under this spec's ``judge_model``, ``judge_temperature``,
+    ``judge_cot``, ``reasoning_effort`` and ``max_tokens``. Building the messages by
+    hand here instead would be a second copy of the judge prompt that could drift from
+    the one every decided cell was judged under, and the comparison this stage exists to
+    make — a different judge, the same debates — would quietly become a comparison of
+    two prompts.
+
+    **The sides are the source's and are never re-drawn.** ``make_sides`` is
+    deterministic given ``(seed, item_id)``, so a re-draw would usually agree — and
+    "usually" is the problem: a spec with a different ``seed`` would silently present
+    the verdict template in the other order and swap which speaker argued FLAWED, and
+    the judgment would then be of a debate that never happened. The recorded draw is
+    read back and reused, which also makes a source tree with a hand-edited
+    ``sides.json`` judged as it is written.
+
+    **A truncated or unparseable judgment fails the cell and is counted, not decided** —
+    exactly as it was in the sweep. The judge has no ``public_label`` and so no budget
+    route: ``_complete_with_repair`` spends its one format repair on a malformed reply,
+    and a reply that is still malformed, or one cut off at the token ceiling, raises.
+    The run is marked ``failed`` and the cell has no decision, which is the honest
+    outcome and the one the sweep's 90.4% is measured on.
+
+    Nothing under ``transcript_root`` is written. It is named in ``experiment.json`` with
+    the sha256 of its ``experiment.json``, and each cell's manifest additionally carries
+    ``source_run_dir``, ``source_sha256`` — a hash of the whole source directory — and
+    the source's own ``source_verdict`` beside the new one.
+
+    Resume follows ``decide``'s rule and for ``decide``'s reasons: a cell already decided
+    here is skipped, and so is one whose latest run FAILED, unless ``retry_failed``.
+    """
+    unexpected = sorted({cell.condition for cell in cells} - {"debate"})
+    if unexpected:
+        raise ValueError(
+            f"rejudge is a debate-only stage; got conditions {unexpected}. Only a "
+            "debate has a judgment made from a record that outlives it: `single` and "
+            "`self_critique` reach their verdict inside the conversation that wrote the "
+            "record, and there is no stored artifact a second judge could be handed "
+            "without re-running the decision itself."
+        )
+    semaphore = asyncio.Semaphore(client_config.max_concurrency)
+
+    async def rejudge(cell: Cell) -> dict[str, Any]:
+        if existing_decision(root, cell) is not None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already re-judged"}
+        if not retry_failed and latest_run_status(root, cell) == "failed":
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already attempted and failed; --retry-failed to "
+                              "re-attempt"}
+        source = existing_decision(transcript_root, cell)
+        if source is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no source decision to re-judge"}
+        if source.transcript is None:
+            # Unreachable through the CLI, which refuses a non-debate condition on this
+            # spec, and recorded by name rather than crashing the stage if a direct
+            # caller gets here: a decision with no transcript is a solo record, and
+            # there is nothing to hand a judge.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "source decision has no transcript to re-judge"}
+        async with semaphore:
+            # Inside the bound, for the reason create_recourse is: this copies a decision
+            # directory, and running that unbounded would start every copy at once.
+            writer = await asyncio.to_thread(
+                RunWriter.create_rejudge,
+                root=cell_dir(root, cell) / "runs", source_dir=source.directory,
+                config=config, client_config=client_config, condition=cell.condition,
+                rejudged_from=transcript_root,
+            )
+        # `judge_model` on the manifest as well as in `config.json`, because the manifest
+        # is what a resume and a spend report read and the whole point of the run is
+        # which judge made the verdict beside it.
+        writer.manifest_update(cell_id=cell.cell_id, judge_model=config.judge_model)
+        try:
+            async with OpenRouterClient(api_key, client_config,
+                                        sink=writer.record_call,
+                                        semaphore=semaphore) as client:
+                async with asyncio.timeout(client_config.run_timeout_s):
+                    verdict = await _judge(source.item, config, source.sides, client,
+                                           source.transcript, writer=writer)
+        except Exception as error:
+            writer.finish("failed", error=f"{type(error).__name__}: {error}")
+            log.warning("%s rejudge failed: %s", cell.cell_id, error)
+            return {"cell_id": cell.cell_id, "status": "failed",
+                    "error": f"{type(error).__name__}: {error}"}
+        writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
+        return {"cell_id": cell.cell_id, "status": "completed",
+                "verdict": verdict.verdict, "correct": verdict.correct,
+                "was": source.verdict.verdict}
+
+    return await _bounded([lambda c=c: rejudge(c) for c in cells],
                           client_config.max_runs_in_flight)
 
 
@@ -787,6 +930,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
         usage = aggregate_calls(record.directory / "calls.jsonl")
         row["decision_cost_usd"] = usage["decision_path"]["cost_usd"]
         row["decision_completion_tokens"] = usage["decision_path"]["completion_tokens"]
+        # Written only on a RE-JUDGED decision, on the rule the graded columns follow:
+        # absent where it does not apply, so "this verdict is the tree's own" and "this
+        # verdict replaced another one" stay different facts. `source_verdict` is what
+        # the source tree's judge said about the SAME transcript, so the M0-vs-nano
+        # comparison is a column join and needs no second tree open;
+        # `decision_cost_usd` above is this run's one judge call and never the debate,
+        # because the debate's wire log was renamed rather than copied.
+        manifest = _decision_manifest(record.directory)
+        if manifest.get("kind") == "rejudge":
+            row["rejudged_from"] = manifest.get("rejudged_from")
+            row["source_verdict"] = manifest.get("source_verdict")
+            row["source_correct"] = manifest.get("source_correct")
+            row["source_judge_model"] = manifest.get("source_judge_model")
 
         contest = existing_contest(root, cell, challenger_model)
         if contest is not None:
@@ -899,6 +1055,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     row["characterises_the_flaw"] = grade["characterises_the_flaw"]
         rows.append(row)
     return rows
+
+
+def _decision_manifest(directory: Path) -> dict[str, Any]:
+    """A decision run's ``run.json``, or an empty dict.
+
+    ``load_run_record`` deliberately returns no manifest — it is operational rather than
+    decision-relevant — but the re-judge provenance lives there, so the index reads it
+    directly rather than widening ``RunRecord`` with a field only one stage writes.
+    """
+    try:
+        return json.loads((directory / "run.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 def _record_words(record) -> int | None:
