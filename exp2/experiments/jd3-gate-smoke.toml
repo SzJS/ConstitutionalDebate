@@ -1,0 +1,88 @@
+# THE ADMISSIBILITY PROMPT, on six cells, before anything is spent at scale.
+#
+# READ FIRST: the house rule in `HANDOFF.md` §2.8 / MEMORY — any new or changed prompt is
+# tried on about six chosen examples and READ before a slice or a sweep. This is that
+# reading, for the one prompt M4 adds.
+#
+# WHAT IT IS. `gatekeeper_model = "openai/gpt-4.1-mini"` and the `gatekeeper` stage: for
+# each of `jd3-main`'s objections on these six items, ONE call asking whether the
+# objection is ADMISSIBLE — is at least one alleged defect REAL, checked against the
+# judgment and the record and quoted. Not whether it is material (the recourse judge has
+# already answered that and its ruling is copied here untouched), not whether the verdict
+# was right, not whether the solution is flawed. The prompt says all three out loud.
+#
+# WHICH SIX AND WHY. `records/derivations/jd3-gate-smoke-pick.py`, run on 2026-08-28 over
+# 895 contested cells: three objections Maverick OVERTURNED the decision on and three it
+# UPHELD, spread over gpqa, law and lojban, four on decisions M0 got RIGHT and two on
+# decisions it got wrong. The grade stage had not started, so the grader's verdict was not
+# available to pick on; when it is, the picker prefers three graded VALID and three graded
+# INVALID and says which basis it used. The six items are in
+# `data/cases/jd3-gate-smoke.jsonl`.
+#
+# THE GATE, written before the run, and it is a READING and not a threshold. There is no
+# number here that decides anything — `outputs/jd3-gate-smoke-read.txt` puts each
+# objection's defect list beside mini's per-defect findings and its `Admissibility:` line
+# so a person can check them against the two documents. What would stop M4:
+#   1. NOT WELL-FORMED — the replies do not parse, or need the repair every time.
+#   2. IT ANSWERED A DIFFERENT QUESTION — findings that weigh materiality ("real but
+#      minor"), or that re-decide whether the solution is flawed. That is the failure the
+#      prompt is written against and the one a rate could not show.
+#   3. NO DISCRIMINATION VISIBLE — six admissions or six refusals, with reasons that do
+#      not turn on the documents.
+# None of the three is a number and none is scored here; the planner reads the file.
+#
+# ADMISSION IS NOT THE JUDGE'S RULING AND MUST NOT BE READ AS ONE. The overturned/upheld
+# split is what the six were drawn on, not an answer key: the judge ruled on MATERIALITY
+# and the gate answers whether the defect is REAL. An objection can be real and immaterial,
+# and a specious one can move a judge — which is exactly what M3 is for.
+#
+# COST. Six calls at `openai/gpt-4.1-mini`, on the order of $0.05.
+#
+# NOTHING IS RE-RULED AND NOTHING IS RE-CONTESTED. The stage copies each source contest
+# here with its objection and its ruling and adds one `admission.json`. Nothing under
+# `outputs/experiments/jd3-main` is written; it is a tree M1 is still filling, and this
+# spec only reads it.
+#
+#     uv run exp2-experiment --spec experiments/jd3-gate-smoke.toml \
+#         --stage gatekeeper 2>&1 | tee outputs/jd3-gate-smoke.log
+
+name = "jd3-gate-smoke"
+cases = "data/cases/jd3-gate-smoke.jsonl"
+
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-gatekeeper.toml`'s block, which is byte-identical to
+# `jd3-main.toml`'s decision-path block. A smoke run under different settings from the arm
+# it gates would be a smoke of a different prompt in a different context.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+challenger_variant = "judgment"
+recourse_form = "third_party"
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# THE ONE THING UNDER TEST.
+gatekeeper_model = "openai/gpt-4.1-mini"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+# Six cells. 6/6 rather than the arm's 16/8 so the whole smoke is one round trip and the
+# log reads in order.
+max_concurrency = 6
+max_runs_in_flight = 6
+copy_parent = true
+
+[grading]
+# Read by the gate only for `max_tokens` (4096). No grader runs in this spec.
+grader_model = "anthropic/claude-haiku-4.5"

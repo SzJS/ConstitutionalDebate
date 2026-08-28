@@ -24,6 +24,7 @@ from exp2.experiment import (
     run_stage_agreement,
     run_stage_contest,
     run_stage_decide,
+    run_stage_gatekeeper,
     run_stage_grade,
     run_stage_rejudge,
     run_stage_rerule,
@@ -1066,6 +1067,412 @@ async def test_a_rerule_tree_analyses_without_a_grade_stage(tmp_path, no_network
     assert all(r["grade_valid"] is True for r in rows)
     assert all(r["ruling_form"] == "stated_conclusion" for r in rows)
     assert all(r["ruling_line_mismatch"] is not None for r in rows)
+
+
+# --- the M4 admissibility gate (POST HOC, 2026-08-28) ---------------------------------
+#
+# It is the narrowest stage in the harness: it copies a finished contest WITH its ruling
+# and adds one file. Nothing is re-made, so every test below is really about two things —
+# that the copy is complete, and that the after-state arithmetic happens in the index and
+# not in the tree.
+
+
+REFUSED_GATE = ("Neither quotation is in the document it is attributed to.\n"
+                "Defect 1: NOT REAL — the record does not contain that sentence.\n"
+                "Admissibility: REFUSED")
+
+# One numbered defect, so the gatekeeper's `Defect 1:` finding has a defect to be joined
+# to. The conftest default challenger writes prose and no list, and a finding joined to
+# nothing would test the join by not exercising it.
+GATED_OBJECTION = (
+    "Thinking: I read the judgment against the record.\n"
+    "Argument:\n"
+    "1. Type: misstatement\n"
+    '   Judgment says: "The sound side answered the objection"\n'
+    '   Record says: "Alice round 1 argument."\n'
+    "   Why it matters: the judgment attributes an answer nobody gave.\n"
+    "Decision: REVERSE"
+)
+
+
+def _gate_config(**kw):
+    base = dict(challenger_variant="judgment", recourse_form="third_party",
+                gatekeeper_model="gate/model")
+    base.update(kw)
+    return make_config(**base)
+
+
+async def test_the_gate_adds_an_admission_and_replaces_nothing(tmp_path, no_network):
+    """The safety property, and it is stricter than the re-rule's: a re-rule replaces the
+    ruling, and this replaces NOTHING. The objection, its ruling, its grade and the copied
+    decision all come across intact, one `admission.json` is added beside them, and the
+    two trees it read are byte-identical afterwards."""
+    grid, decisions, source = await _source_arm(tmp_path, no_network,
+                                                challenger_reply=GATED_OBJECTION)
+    root = tmp_path / "C"
+    before_a, before_b = _tree_fingerprint(decisions), _tree_fingerprint(source)
+
+    results = await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    assert [r["status"] for r in results] == ["completed"] * 3
+    assert all(r["admitted"] is True for r in results)
+
+    admissions = sorted(root.rglob("cells/*/contests/*/runs/*/admission.json"))
+    assert len(admissions) == 3
+    for path in admissions:
+        admission = json.loads(path.read_text())
+        assert admission["admitted"] is True
+        assert admission["line_admitted"] is True
+        assert admission["line_mismatch"] is False
+        assert admission["model"] == "gate/model"
+        assert admission["parse_mode"] == "strict"
+        assert admission["findings"][0]["real"] is True
+        # joined to the challenger's own defect list by the number both used
+        assert admission["findings"][0]["type"] == "misstatement"
+        assert admission["findings"][0]["alleged"] is True
+        assert admission["cost_usd"] >= 0.0
+        directory = path.parent
+        # THE RULING CAME ACROSS. This is the one line that separates a gate from a
+        # re-rule: the ruling is what the gate decides whether to count, so a gate tree
+        # with no ruling in it could not be read at all.
+        assert (directory / "ruling.json").is_file()
+        assert not (directory / "ruling.source.json").exists()
+        assert (directory / "challenge.json").is_file()
+        assert (directory / "parent" / "verdict.json").is_file()
+        manifest = json.loads((directory / "run.json").read_text())
+        assert manifest["kind"] == "gate"
+        assert manifest["gate_admitted"] is True
+        assert manifest["gatekeeper_model"] == "gate/model"
+        assert Path(manifest["source_contest_dir"]).is_relative_to(source)
+        assert len(manifest["source_sha256"]) == 64
+
+    # the wire log is THIS run's one call, and the source's is kept beside it verbatim
+    logged = [json.loads(line)
+              for path in root.glob("cells/*/contests/*/runs/*/calls.jsonl")
+              for line in path.read_text().splitlines()]
+    assert len(logged) == 3
+    assert {record["role"] for record in logged} == {"gatekeeper"}
+    # (the offline fixture shares one fake client across concurrent cells, so a
+    # source contest may have had no calls.jsonl of its own to rename)
+    assert any((path.parent / "calls.source.jsonl").is_file()
+               for path in admissions)
+    # and the gate call is OFF the decision path, so it cannot inflate what it gates
+    from exp2.accounting import aggregate_calls
+
+    totals = aggregate_calls(admissions[0].parent / "calls.jsonl")
+    assert "gatekeeper" not in totals["decision_path"]
+    assert totals["by_role"]["gatekeeper"]["calls"] == 1
+    # temperature 0 and reasoning off, pinned at the call site rather than inherited
+    gate_calls = [c for c in no_network.calls if c["meta"]["role"] == "gatekeeper"]
+    assert {c["temperature"] for c in gate_calls} == {0.0}
+
+    assert _tree_fingerprint(decisions) == before_a
+    assert _tree_fingerprint(source) == before_b
+    # and it resumes on the admission it wrote
+    again = await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    assert all(r["reason"] == "already gated" for r in again)
+
+
+async def test_a_refused_objection_leaves_the_cell_at_its_before_state(tmp_path,
+                                                                       no_network):
+    """THE AFTER-STATE RULE, and it is the whole arm. The ruling is untouched — it still
+    says what it said and `ruling_form` is still written — and `final_correct` is the
+    DECISION's own verdict, because the objection was never heard. A gated index whose
+    `final_correct` still counted every ruling would be the source arm's index under a
+    different name."""
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    no_network.replies["gatekeeper"] = REFUSED_GATE
+    root = tmp_path / "C"
+    results = await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    assert all(r["admitted"] is False for r in results)
+
+    rows = build_index(grid, root=root, challenger_model="strong/model",
+                       decision_root=decisions)
+    assert len(rows) == 3
+    for row in rows:
+        assert row["gate_admitted"] is False
+        assert row["gate_model"] == "gate/model"
+        assert row["gate_findings_n"] == 1 and row["gate_findings_real_n"] == 0
+        # the decision was wrong and the source's ruling overturned it; refused, the
+        # cell keeps the wrong decision it started with
+        assert row["initially_correct"] is False
+        assert row["ruling_form"] == "stated_conclusion"
+        assert row["changed_the_decision"] is False
+        assert row["final_correct"] is False
+
+    # and with the SAME rulings admitted, the same cells are fixed — so the difference
+    # between the two indexes is the gate and nothing else
+    admitted_root = tmp_path / "D"
+    del no_network.replies["gatekeeper"]
+    await run_stage_gatekeeper(
+        grid, root=admitted_root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    admitted_rows = build_index(grid, root=admitted_root,
+                                challenger_model="strong/model",
+                                decision_root=decisions)
+    assert all(r["gate_admitted"] is True for r in admitted_rows)
+    assert all(r["final_correct"] is True for r in admitted_rows)
+    assert all(r["changed_the_decision"] is True for r in admitted_rows)
+
+
+async def test_the_gated_index_says_in_words_that_it_moved_the_after_state(tmp_path,
+                                                                           no_network):
+    """A column computed rather than read has to announce itself. The caveat names the
+    gate model, says the after-state is the ruling's outcome only where it admitted, and
+    says the two things that make M4 an ablation: it is post hoc, and it is a model."""
+    from exp2.analysis import caveats
+
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    no_network.replies["gatekeeper"] = REFUSED_GATE
+    root = tmp_path / "C"
+    await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    rows = build_index(grid, root=root, challenger_model="strong/model",
+                       decision_root=decisions)
+    stated = [c for c in caveats(rows, ["debate"]) if "ADMISSIBILITY GATE" in c]
+    assert len(stated) == 1
+    assert "gate/model" in stated[0]
+    assert "MOVES" in stated[0] and "`final_correct`" in stated[0]
+    assert "0 of 3" in stated[0]
+    assert "POST HOC" in stated[0]
+    assert "No ruling was re-made" in stated[0]
+    # an ungated index says nothing about a gate at all
+    ungated = build_index(grid, root=source, challenger_model="strong/model",
+                          decision_root=decisions)
+    assert not any("ADMISSIBILITY GATE" in c for c in caveats(ungated, ["debate"]))
+
+
+async def test_the_gate_spends_one_repair_on_a_reply_with_no_admissibility_line(
+    tmp_path, no_network
+):
+    """One repair and no more, as every role gets. The repaired reply is parsed and the
+    record says a repair was spent, so a run's own gate-repair rate is a column and not
+    something a reader has to infer."""
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    no_network.fail_on = {"gatekeeper": "malformed"}
+    root = tmp_path / "C"
+    results = await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    assert [r["status"] for r in results] == ["completed"] * 3
+    for path in root.rglob("admission.json"):
+        assert json.loads(path.read_text())["repair_attempts"] == 1
+    # and the repair asked for the gate's OWN format, not the grader's
+    repairs = [c for c in no_network.calls
+               if c["meta"]["role"] == "gatekeeper"
+               and c["meta"].get("purpose") == "repair"]
+    assert repairs
+    sent = repairs[0]["messages"][-1]["content"]
+    assert "Admissibility: <ADMITTED|REFUSED>" in sent
+    assert "Valid objection" not in sent
+
+
+async def test_the_gate_skips_a_declined_objection_and_needs_a_model(tmp_path,
+                                                                     no_network):
+    """A decline put nothing to a judge, so there is no ruling to gate — skipped by name.
+    And the stage refuses ONCE, before any cell, when no gatekeeper is named: it inherits
+    from no other field, because the only neighbour to inherit from is the judge whose own
+    judgment is under appeal."""
+    no_network.replies = {"challenger": "Looks sound.\nDecision: STANDS"}
+    grid = build_grid(cases(1), ["debate"])
+    decisions, source, root = tmp_path / "A", tmp_path / "B", tmp_path / "C"
+    await run_stage_decide(grid, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    await run_stage_contest(grid, root=source,
+                            config=make_config(challenger_variant="judgment",
+                                               recourse_form="third_party"),
+                            client_config=client_config(), api_key="k",
+                            decision_root=decisions)
+    results = await run_stage_gatekeeper(
+        grid, root=root, config=_gate_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    assert [r["reason"] for r in results] == ["no objection to gate"]
+    assert not list(root.rglob("admission.json"))
+
+    with pytest.raises(ValueError, match="needs `gatekeeper_model`"):
+        await run_stage_gatekeeper(
+            grid, root=root, config=make_config(challenger_variant="judgment"),
+            grading=GradingConfig(), client_config=client_config(), api_key="k",
+            decision_root=decisions, contest_root=source)
+
+
+def test_the_gatekeeper_stage_refuses_a_spec_with_no_source_and_no_model(tmp_path,
+                                                                         monkeypatch):
+    """Both refusals are one-line SystemExits before anything is spent: a gate with no
+    objections to read would report success having measured nothing, and a gate with no
+    model would fall back to the judge."""
+    from exp2.experiment_cli import main
+
+    spec = tmp_path / "gate.toml"
+    spec.write_text(
+        'name = "gate-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        f'decisions_from = "{tmp_path / "A"}"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "gatekeeper"])
+    assert "needs `contests_from" in str(excinfo.value)
+
+    spec.write_text(
+        'name = "gate-x"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        f'decisions_from = "{tmp_path / "A"}"\n'
+        f'contests_from = "{tmp_path / "B"}"\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "gatekeeper"])
+    assert "needs `gatekeeper_model`" in str(excinfo.value)
+    assert "would have the judge decide" in str(excinfo.value)
+
+    # and a `contests_from` spec still refuses the three stages that would REWRITE the
+    # objection — the gate is not a loophole into them
+    for stage in ("contest", "agreement", "grade"):
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--spec", str(spec), "--stage", stage])
+        assert "it does not contest" in str(excinfo.value)
+
+
+def test_a_spec_that_names_a_gatekeeper_quotes_its_calls_in_the_estimate(tmp_path,
+                                                                         monkeypatch,
+                                                                         capsys):
+    """The estimate is the line a run is approved from, and the gate term is COUNTED off
+    the source tree rather than bounded by the grid — on the sweep the two differ by a
+    factor of five."""
+    from exp2.experiment_cli import main
+
+    outputs = tmp_path / "outputs" / "experiments"
+    for name in ("src-decisions", "src-contests"):
+        (outputs / name).mkdir(parents=True)
+        (outputs / name / "experiment.json").write_text(
+            json.dumps({"name": name}), encoding="utf-8")
+    cases_path = tmp_path / "cases.jsonl"
+    cases_path.write_text("\n".join(json.dumps(c.to_dict()) for c in cases(2)),
+                          encoding="utf-8")
+    spec = tmp_path / "gate.toml"
+    spec.write_text(
+        'name = "gate-x"\n'
+        f'cases = "{cases_path}"\n'
+        'conditions = ["debate"]\n'
+        f'decisions_from = "{outputs / "src-decisions"}"\n'
+        f'contests_from = "{outputs / "src-contests"}"\n'
+        '[debate]\n'
+        'gatekeeper_model = "gate/model"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert main(["--spec", str(spec), "--stage", "gatekeeper", "--dry-run"]) == 0
+    printed = capsys.readouterr().out
+    assert "gatekeeper <= 0" in printed          # the source contested nothing yet
+    assert "the gatekeeper term is COUNTED, not bounded" in printed
+    assert "gate/model" in printed
+    assert "POST HOC" in printed
+
+
+async def test_the_mechanical_gate_admits_only_objections_whose_quotes_all_exist(
+    tmp_path, no_network
+):
+    """`records/derivations/jd3-gates.py`, over real records rather than a fixture.
+
+    POST HOC, and no model reads anything: an objection is admitted iff every `Judgment
+    says:` quotation is in the judgment AND every `Record says:` quotation is in the
+    record the challenger was shown. It is the LOWER bound of the three gate rows — the
+    weakest filter there is, asking only whether the evidence exists.
+
+    Three cells, one per branch: every quotation verbatim, a record quotation that is in
+    nothing, and a judgment quotation that is in nothing (which the harness's own
+    parse-time check already caught, and which this recomputes rather than reads).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "jd3_gates", Path(__file__).resolve().parent.parent / "records" / "derivations"
+        / "jd3-gates.py")
+    gates = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gates)
+
+    def objection(judgment_quote, record_quote):
+        return ("Thinking: reading the two documents.\n"
+                "Argument:\n"
+                "1. Type: misstatement\n"
+                f'   Judgment says: "{judgment_quote}"\n'
+                f'   Record says: "{record_quote}"\n'
+                "   Why it matters: it bears on the verdict.\n"
+                "Decision: REVERSE")
+
+    # what the fake judge and the fake debaters actually wrote, so a "verbatim" quotation
+    # here really is verbatim
+    real_judgment = "The sound side answered the objection"
+    real_record = "Alice argues in round 1"
+    invented = "nothing in either document says anything like this"
+
+    make_decisions_wrong(no_network)
+    grid = build_grid(cases(3), ["debate"])
+    decisions, source = tmp_path / "A", tmp_path / "B"
+    await run_stage_decide(grid, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    replies = [objection(real_judgment, real_record),      # admitted
+               objection(real_judgment, invented),         # refused on the record half
+               objection(invented, real_record)]           # refused on the judgment half
+    for cell, reply in zip(grid, replies):
+        no_network.replies["challenger"] = reply
+        await run_stage_contest([cell], root=source,
+                                config=make_config(challenger_variant="judgment",
+                                                   recourse_form="third_party"),
+                                client_config=client_config(), api_key="k",
+                                decision_root=decisions)
+
+    out = tmp_path / "gates.jsonl"
+    assert gates.main(["--tree", str(source), "--out", str(out)]) == 0
+    rows = {r["cell_id"]: r for r in
+            (json.loads(line) for line in out.read_text().splitlines())}
+    assert len(rows) == 3
+    by_cell = [rows[cell.cell_id] for cell in grid]
+
+    assert by_cell[0]["mech_admitted"] is True
+    assert by_cell[0]["defects"][0]["judgment_quotes_ok"] is True
+    assert by_cell[0]["defects"][0]["record_quotes_ok"] is True
+
+    assert by_cell[1]["mech_admitted"] is False
+    assert by_cell[1]["defects_failing_record_quotes"] == 1
+    assert by_cell[1]["defects_failing_judgment_quotes"] == 0
+    # the RECORD half is the new one, so an objection the pre-registered check passed and
+    # this one refuses is exactly what the row adds
+    assert by_cell[1]["defects"][0]["judgment_quotes_ok"] is True
+
+    assert by_cell[2]["mech_admitted"] is False
+    assert by_cell[2]["defects_failing_judgment_quotes"] == 1
+
+    # the recomputed judgment flag agrees with the one the harness stored at parse time —
+    # one comparison made once by one rule, not two rules that happen to agree today
+    for row in by_cell:
+        for flag in row["defects"]:
+            assert flag["judgment_quotes_ok"] == flag["judgment_flag_stored"]
+
+    # a DECLINE is not gated: it put nothing to a judge, so there is no ruling to admit
+    no_network.replies["challenger"] = "Looks sound.\nDecision: STANDS"
+    declined = build_grid(cases(4)[3:], ["debate"])
+    await run_stage_decide(declined, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    await run_stage_contest(declined, root=source,
+                            config=make_config(challenger_variant="judgment",
+                                               recourse_form="third_party"),
+                            client_config=client_config(), api_key="k",
+                            decision_root=decisions)
+    assert gates.main(["--tree", str(source), "--out", str(out)]) == 0
+    assert len(out.read_text().splitlines()) == 3
+
+    # and the tree it read is opened for reading only
+    assert not list(source.rglob("*gates*"))
 
 
 def test_a_spec_that_re_rules_another_tree_refuses_to_contest(tmp_path, monkeypatch):

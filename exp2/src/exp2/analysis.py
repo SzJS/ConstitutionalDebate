@@ -824,6 +824,40 @@ def _rejudged_caveat(rows: Sequence[dict]) -> str | None:
     )
 
 
+def _gatekeeper_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where an admissibility GATE was applied to this index's rulings.
+
+    The one caveat about an after-state that was computed rather than read. On a gated
+    tree `final_correct` is not "what the ruling left the cell at": it is the ruling's
+    outcome where the gate ADMITTED the objection and the decision's own verdict where it
+    REFUSED, and no ruling was changed to make that true. A reader who took the column at
+    face value would be reading M1's rulings under M4's name.
+
+    It also says the two things that make M4 an ablation and not a result: it was added
+    after M1's preliminary numbers were seen, and the gate is a model — a second reader
+    whose own errors are inside the number.
+    """
+    gated = [row for row in rows if row.get("gate_admitted") is not None]
+    if not gated:
+        return None
+    models = sorted({row.get("gate_model") or "?" for row in gated})
+    admitted = sum(1 for row in gated if row["gate_admitted"])
+    return (
+        f"ADMISSIBILITY GATE APPLIED ({', '.join(models)}), and it MOVES "
+        f"`final_correct`: on these {len(gated)} contested cells the after-state is the "
+        "ruling's outcome where the gate admitted the objection "
+        f"({admitted} of {len(gated)}) and the DECISION's own verdict where it refused. "
+        "No ruling was re-made and none was changed — the gate decides only which of "
+        "them are counted, so this index's rulings are byte-identical to the source "
+        "arm's. The gate is POST HOC: it was added on 2026-08-28, after the primary "
+        "arm's preliminary numbers had been seen, and it is reported as an ablation "
+        "beside the pre-registered endpoint and never as it. And it is a MODEL: its own "
+        "false refusals and false admissions are inside every number below, which is "
+        "why the mechanical gate — a string comparison a reader can redo — is reported "
+        "beside it."
+    )
+
+
 def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
     matching = matched_items(rows, conditions)
     sizes = ", ".join(f"{c} n={n}" for c, n in matching["per_condition"].items())
@@ -861,6 +895,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         _judgment_mode_caveat(rows),
         _specious_arm_caveat(rows),
         _placeholder_arm_caveat(rows),
+        _gatekeeper_caveat(rows),
     ]
     return [caveat for caveat in stated if caveat]
 

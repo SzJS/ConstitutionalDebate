@@ -57,6 +57,49 @@ Definitions are shared with `judgment-debate-2.py`, `judgment-debate-vs-alone.py
     fixed / broken  not correct before and correct after / the converse
     phantom         challenge_stance == "contests" and prose_stance == "RIGHT"
 
+SECTION (0) IS THE HEADLINE DESCRIPTIVE, AND IT IS PRINTED FIRST because it is the
+number that explains every net below it. Per arm, over the CONTESTED cells:
+
+    fixed rate    of the WRONG decisions that were contested, the share that ended right
+    broken rate   of the RIGHT decisions that were contested, the share that ended wrong
+    difference    the first minus the second
+
+The net is those two rates multiplied by two populations that are not the same size, and
+that is the whole mechanism: with a judge that is right about three quarters of the time,
+an audit that contests indiscriminately meets a RIGHT decision three times as often as a
+wrong one, so a broken rate well below the fixed rate still loses more cells than it
+fixes. A reader given only the net cannot see that; a reader given these two can.
+
+It was promoted to the first table on 2026-08-28, AFTER M1's preliminary numbers were
+seen, and it is descriptive — no alpha, no test. The quantity itself is not new: it is the
+discrimination row section (f) has always printed, in the vocabulary of the funnel.
+
+The two conditional rates and their difference are the framing this write-up uses. The
+alternative framing that treats a challenge as a diagnostic instrument, with the machinery
+that goes with it, was considered and REJECTED by the user on 2026-08-28; it is named
+nowhere in this file and a test enforces that.
+
+SECTION (i) IS THE THREE GATE ROWS, and every one of them is labelled POST HOC — ADDED
+AFTER M1 WAS SEEN wherever it appears, because that is what they are. They ask one
+question — what if not every objection is HEARD? — and they bracket the answer:
+
+    the MECHANICAL gate   admit iff every quotation in the objection is verbatim in the
+                          document it is attributed to. No model reads anything.
+                          `records/derivations/jd3-gates.py` computes it; this reads the
+                          file. A LOWER bound: the weakest filter there is.
+    M4, the SAME-CLASS    `openai/gpt-4.1-mini` asked whether at least one alleged defect
+    gate                  is REAL. Its own index, its own arm, its own McNemar. The only
+                          one of the three a real process could run.
+    the HAIKU-VALID       admit iff the GRADER marked the objection valid. The grader is
+    bound                 stronger than the judge, so this imports a better reader into
+                          the decision path — an UPPER bound and not a process. It is the
+                          logic of `outputs/leave-to-appeal.py`, folded in here.
+
+Under every one of them the RULING IS UNCHANGED: the after-state is the ruling's outcome
+where the gate admitted the objection and the decision's own verdict where it refused. No
+ruling is re-made, and each row's fixed/broken/net is therefore the same rulings counted
+differently.
+
 SECTION (h) IS POST HOC. The prose-wins sensitivity — the materiality reader's reading of
 each ruling's prose substituted for the ruling's own line wherever that reader answered
 STANDS or CHANGED — is computed for every arm because the finished run's version of it
@@ -298,6 +341,90 @@ def pairs_two_arms(left: dict[str, dict], right: dict[str, dict]):
             continue
         out.append((cell_id, after_state(left[cell_id], lb),
                     after_state(right[cell_id], rb)))
+    return out
+
+
+def conditional_rates(pairs, contested: set[str] | None = None) -> dict:
+    """The two rates and their difference, over the CONTESTED cells.
+
+    ``pairs`` is (cell_id, before, after) as every section here uses; ``contested`` is the
+    set of cell_ids an objection was actually raised on. Restricting to those is the whole
+    point of the table: a cell nobody contested cannot be fixed or broken by a contest, and
+    leaving it in the denominator dilutes both rates by the decline rate and makes two arms
+    with different decline rates incomparable.
+
+    ``contested = None`` means "every cell in `pairs`", which is what an arm whose
+    challenger never declines (the specious one, by construction) amounts to anyway.
+    """
+    rows = [(c, b, a) for c, b, a in pairs
+            if contested is None or c in contested]
+    wrong = [(c, b, a) for c, b, a in rows if b is False]
+    right = [(c, b, a) for c, b, a in rows if b is True]
+    fixed = sum(1 for _, _, a in wrong if a is True)
+    broken = sum(1 for _, _, a in right if a is False)
+    fixed_rate = fixed / len(wrong) if wrong else None
+    broken_rate = broken / len(right) if right else None
+    return {
+        "n": len(rows), "n_wrong": len(wrong), "n_right": len(right),
+        "fixed": fixed, "broken": broken,
+        "fixed_rate": fixed_rate, "broken_rate": broken_rate,
+        "difference": (None if fixed_rate is None or broken_rate is None
+                       else 100.0 * (fixed_rate - broken_rate)),
+    }
+
+
+def contested_cells(rows: dict[str, dict]) -> set[str]:
+    """The cells this arm actually objected to. `challenge_raised` is the STANCE column —
+    since 2026-08-25 it means "contests", not the word the model wrote."""
+    return {cell_id for cell_id, row in rows.items() if row.get("challenge_raised")}
+
+
+def print_conditional_row(label: str, stats: dict) -> None:
+    fixed = (rate(stats["fixed"], stats["n_wrong"]) if stats["n_wrong"]
+             else "n/a")
+    broken = (rate(stats["broken"], stats["n_right"]) if stats["n_right"]
+              else "n/a")
+    diff = ("n/a" if stats["difference"] is None
+            else f"{stats['difference']:+.1f} pts")
+    print(f"{label:<44}{stats['n']:>7}{fixed:>20}{broken:>20}{diff:>12}")
+
+
+def section_conditional_rates(arms: dict[str, dict[str, dict]]) -> dict:
+    head("(0) THE TWO CONDITIONAL RATES  [DESCRIPTIVE, PROMOTED TO FIRST 2026-08-28]")
+    print("Of the WRONG decisions this arm contested, how many ended RIGHT; of the RIGHT")
+    print("decisions it contested, how many ended WRONG; and the difference. Denominator")
+    print("is the CONTESTED cells in both columns — a cell nobody objected to cannot be")
+    print("fixed or broken by an objection, and leaving it in would dilute both rates by")
+    print("the decline rate and make two arms with different decline rates incomparable.")
+    print()
+    print("WHY THIS IS THE FIRST TABLE. The net below is these two rates multiplied by two")
+    print("populations that are not the same size. With a judge that is right about three")
+    print("quarters of the time, an audit that contests indiscriminately meets a RIGHT")
+    print("decision three times as often as a wrong one — so a broken rate well below the")
+    print("fixed rate still loses more cells than it fixes. The net alone hides that.")
+    print()
+    print("DESCRIPTIVE. No alpha and no test. It was promoted to the first table AFTER M1's")
+    print("preliminary numbers were seen; the quantity is the discrimination row section")
+    print("(f) has always printed, in the vocabulary of the funnel.")
+    print()
+    print(f"{'arm':<44}{'n':>7}{'fixed | wrong':>20}{'broken | right':>20}{'diff':>12}")
+    rule()
+    out = {}
+    for key, label in ARMS:
+        rows = arms.get(key, {})
+        if not rows:
+            print(f"{label:<44}{'NOT RUN':>59}")
+            continue
+        stats = conditional_rates(pairs_before_after(rows), contested_cells(rows))
+        print_conditional_row(label, stats)
+        out[key] = stats
+    rule()
+    print("`fixed | wrong` is P(ends right | was wrong and contested);")
+    print("`broken | right` is P(ends wrong | was right and contested).")
+    print("On M3 the denominators are every decided cell, because the specious instruction")
+    print("forbids the decline — that is a property of the instruction and not a detection")
+    print("rate, and it is why M3's row is never read beside M1's as if they were one")
+    print("population.")
     return out
 
 
@@ -619,6 +746,202 @@ def section_prose_wins(arms: dict[str, dict[str, dict]]) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# (i) the three gate rows — POST HOC, added after M1 was seen
+# --------------------------------------------------------------------------- #
+#
+# The label is a string constant rather than three copies of a sentence, because a row
+# that lost it would read as a pre-registered result and that is the one misreading these
+# rows can produce.
+POST_HOC = "POST HOC — added after M1 was seen"
+
+
+def load_gates(path: Path | None) -> dict[str, bool]:
+    """`{cell_id: mech_admitted}` from `records/derivations/jd3-gates.py`'s output.
+
+    A missing file gives `{}` and the row says NOT RUN, on the same rule `load` follows
+    for a missing arm: this script is useful before every input exists.
+    """
+    if path is None or not Path(path).is_file():
+        return {}
+    gates = {}
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        gates[row["cell_id"]] = bool(row.get("mech_admitted"))
+    return gates
+
+
+def gated_pairs(rows: dict[str, dict], admitted):
+    """(cell_id, before, after) with the ruling COUNTED only where `admitted(row)`.
+
+    The one arithmetic every gate row shares, and the only thing a gate changes:
+
+        after = the ruling's outcome   where the objection was ADMITTED
+                the decision's verdict where it was REFUSED
+
+    No ruling is re-made and none is altered — `after_state` reads the same
+    `final_correct` it always reads, and a refusal simply does not consult it. Applied to
+    M4's own index this is a no-op, because `build_index` has already written exactly this
+    rule into that tree's `final_correct`; applying it anyway means all three rows go
+    through one function and none of them can drift from the other two.
+    """
+    out = []
+    for cell_id, row in sorted(rows.items()):
+        before = before_state(row)
+        if before is None:
+            continue
+        after = after_state(row, before) if admitted(row) else before
+        if after is None:
+            continue
+        out.append((cell_id, before, after))
+    return out
+
+
+def admission_discrimination(rows: dict[str, dict], admitted) -> dict:
+    """The GATE's own discrimination: how often it admits an objection to a WRONG decision
+    against how often it admits one to a RIGHT one.
+
+    This is the gate judged as an instrument rather than by what it does to the net, and it
+    is the number that says whether a gate helps for the right reason. A gate that admits
+    everything has a difference of 0 and changes nothing; a gate that admits at random has
+    a difference near 0 and shrinks the net towards zero from both ends; only a gate that
+    admits objections to wrong decisions MORE often than objections to right ones is doing
+    the job the row is for.
+
+    Over the CONTESTED cells, because an objection that was never raised was never put to
+    a gate.
+    """
+    contested = [row for cell_id, row in sorted(rows.items())
+                 if row.get("challenge_raised")]
+    wrong = [r for r in contested if r.get("initially_correct") is False]
+    right = [r for r in contested if r.get("initially_correct") is True]
+    aw = sum(1 for r in wrong if admitted(r))
+    ar = sum(1 for r in right if admitted(r))
+    return {
+        "n_wrong": len(wrong), "n_right": len(right),
+        "admitted_wrong": aw, "admitted_right": ar,
+        "difference": (100.0 * (aw / len(wrong) - ar / len(right))
+                       if wrong and right else None),
+    }
+
+
+def gate_block(name: str, rows: dict[str, dict], admitted, note: str) -> dict:
+    """One gate row, in full: the 2x2, the McNemar, the two conditional rates, and the
+    gate's own admission rate on right against wrong decisions."""
+    head(f"  {name}   [{POST_HOC}]")
+    print(note)
+    print()
+    if not rows:
+        print("  NOT RUN — the index or the gate file this row needs is missing.")
+        return {}
+    pairs = gated_pairs(rows, admitted)
+    result = paired_block(pairs, "BEFORE", "AFTER")
+    print()
+    stats = conditional_rates(pairs, contested_cells(rows))
+    print(f"{'':<44}{'n':>7}{'fixed | wrong':>20}{'broken | right':>20}{'diff':>12}")
+    rule()
+    print_conditional_row("  the two conditional rates", stats)
+    rule()
+    print()
+    disc = admission_discrimination(rows, admitted)
+    print("  THE GATE'S OWN DISCRIMINATION — what it admits, not what follows from it:")
+    print(f"    admitted, decision was WRONG         "
+          f"{rate(disc['admitted_wrong'], disc['n_wrong'])}")
+    print(f"    admitted, decision was RIGHT         "
+          f"{rate(disc['admitted_right'], disc['n_right'])}")
+    print(f"    difference                           "
+          + (f"{disc['difference']:+.1f} pts" if disc["difference"] is not None
+             else "n/a"))
+    print("    A gate that admits everything scores 0 here and changes nothing; a gate")
+    print("    that admits at random scores near 0 and shrinks the net from both ends.")
+    return {**result, "conditional": stats, "admission": disc}
+
+
+def section_gates(arms: dict[str, dict[str, dict]], gates: dict[str, bool],
+                  gatekeeper: dict[str, dict]) -> dict:
+    head(f"(i) THREE GATES — WHAT IF NOT EVERY OBJECTION IS HEARD?  [{POST_HOC}]")
+    print("Every row here was decided on 2026-08-28, AFTER M1's preliminary numbers had")
+    print("been seen. None of them is in PREREG.md as it was committed; M4 alone has an")
+    print("amendment written before its first paid call, and even that is reported BESIDE")
+    print("P1 as an ablation and never as the endpoint. A rule invented after the table is")
+    print("printed is not a rule, and the only honest thing to do with one is to label it.")
+    print()
+    print("UNDER EVERY ROW THE RULING IS UNCHANGED. The after-state is the ruling's outcome")
+    print("where the gate admitted the objection and the decision's own verdict where it")
+    print("refused. No ruling is re-made; these are the same rulings counted differently.")
+    print()
+    print("They bracket the answer rather than settling it:")
+    print("  MECHANICAL   no model at all — every quotation verbatim in the document it is")
+    print("               attributed to. The weakest filter there is, so a LOWER bound.")
+    print("  M4           gpt-4.1-mini, same class as the judge and a different family,")
+    print("               asked whether at least one alleged defect is REAL. The only one")
+    print("               of the three a real process could actually run.")
+    print("  HAIKU-VALID  count only what the GRADER called valid. The grader is stronger")
+    print("               than the judge, so this imports a better reader into the")
+    print("               decision path: an UPPER bound, and not a process.")
+
+    real = arms.get("real", {})
+    out: dict[str, dict] = {}
+
+    covered = len(set(real) & set(gates))
+    contested_n = len(contested_cells(real))
+    out["mechanical"] = gate_block(
+        "THE MECHANICAL GATE — every quotation verbatim, no model",
+        real if (real and gates) else {},
+        lambda row, g=gates: bool(g.get(row.get("cell_id"))),
+        f"  Gate file covers {covered} of this arm's {contested_n} contested cells.\n"
+        "  A contested cell the file does not carry counts as REFUSED, so a stale gate\n"
+        "  file understates this row rather than silently inventing admissions — re-run\n"
+        "  `records/derivations/jd3-gates.py` if the coverage line above is short.")
+    if real and gates and covered < contested_n:
+        print()
+        print(f"  ! the gate file is SHORT by {contested_n - covered} contested cells. "
+              "Re-run jd3-gates.py")
+        print("  ! before quoting this row; as printed it is a lower bound on a lower "
+              "bound.")
+
+    out["m4"] = gate_block(
+        "M4 — THE SAME-CLASS GATEKEEPER (openai/gpt-4.1-mini)",
+        gatekeeper,
+        lambda row: bool(row.get("gate_admitted")),
+        "  Its own arm and its own tree: one admissibility call per contested cell, no\n"
+        "  ruling re-made. `gate_admitted` is the gatekeeper's own answer, and this tree's\n"
+        "  rulings are byte-identical to M1's.\n"
+        f"  EXACT McNEMAR AGAINST M0 AT alpha = {ALPHA}, reported BESIDE P1 as an\n"
+        "  ablation added after M1's preliminary numbers were seen — never as P1.")
+
+    out["haiku"] = gate_block(
+        "THE HAIKU-VALID BOUND — count only what the grader called valid",
+        real,
+        lambda row: row.get("grade_valid") is True,
+        "  NOT A PROCESS, and this row must never be quoted as one. The grader is\n"
+        "  `anthropic/claude-haiku-4.5` — stronger than the judge it would be gating —\n"
+        "  so counting only its `valid` objections imports its reading of the record into\n"
+        "  the decision path. That is the confound that stopped the judgment-debate-2\n"
+        "  chain, arriving by a side door. Read it as 'what a gatekeeper as good as Haiku\n"
+        "  would achieve': an UPPER bound. It is the logic of `outputs/leave-to-appeal.py`.")
+
+    print()
+    print(f"{'gate':<44}{'fixed':>9}{'broken':>9}{'net':>8}{'p':>12}{'gate discr':>14}")
+    rule()
+    for key, label in (("mechanical", "MECHANICAL — every quotation verbatim"),
+                       ("m4", "M4 — gpt-4.1-mini on admissibility"),
+                       ("haiku", "HAIKU-VALID — the grader's verdict (BOUND)")):
+        block = out.get(key) or {}
+        if not block:
+            print(f"{label:<44}{'NOT RUN':>52}")
+            continue
+        disc = block["admission"]["difference"]
+        print(f"{label:<44}{block['fixed']:>9}{block['broken']:>9}"
+              f"{block['net']:>+8d}{block['p']:>12.4g}"
+              f"{(f'{disc:+.1f} pts' if disc is not None else 'n/a'):>14}")
+    rule()
+    print(f"Every row: {POST_HOC}. The ungated arm is (a), and (a) is the endpoint.")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # entry
 # --------------------------------------------------------------------------- #
 
@@ -639,6 +962,14 @@ PRELUDE_FLAGS = {
 }
 
 
+# The two POST HOC inputs section (i) needs beyond the arms themselves. Both default to
+# the live tree, and both say NOT RUN rather than failing when they are absent.
+GATE_FLAGS = {
+    "gates": ("--gates", "outputs/jd3-main-gates.jsonl"),
+    "gatekeeper": ("--gatekeeper", "outputs/experiments/jd3-gatekeeper/index.jsonl"),
+}
+
+
 def _dest(flag: str) -> str:
     return flag.lstrip("-").replace("-", "_")
 
@@ -646,7 +977,8 @@ def _dest(flag: str) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for key, (flag, default) in {**ARM_FLAGS, **PRELUDE_FLAGS}.items():
+    for key, (flag, default) in {**ARM_FLAGS, **PRELUDE_FLAGS,
+                                 **GATE_FLAGS}.items():
         parser.add_argument(flag, type=Path, default=Path(default),
                             help=f"index.jsonl for {key} (default: {default})")
     return parser
@@ -658,6 +990,8 @@ def main(argv=None) -> int:
             for key, (flag, _) in ARM_FLAGS.items()}
     prelude = {key: load(getattr(args, _dest(flag)))
                for key, (flag, _) in PRELUDE_FLAGS.items()}
+    gates = load_gates(getattr(args, _dest(GATE_FLAGS["gates"][0])))
+    gatekeeper = load(getattr(args, _dest(GATE_FLAGS["gatekeeper"][0])))
 
     print("=" * W)
     print("judgment-debate-3 — one judge throughout: P1, P2, P3")
@@ -668,12 +1002,16 @@ def main(argv=None) -> int:
     print()
     print(f"{'arm':<22}{'index':<62}{'rows':>8}")
     rule()
-    for key, (flag, _) in {**ARM_FLAGS, **PRELUDE_FLAGS}.items():
+    counts = {**{k: len(v) for k, v in arms.items()},
+              **{k: len(v) for k, v in prelude.items()},
+              "gates": len(gates), "gatekeeper": len(gatekeeper)}
+    for key, (flag, _) in {**ARM_FLAGS, **PRELUDE_FLAGS, **GATE_FLAGS}.items():
         path = getattr(args, _dest(flag))
-        n = len(arms.get(key, prelude.get(key, {})))
+        n = counts.get(key, 0)
         print(f"{key:<22}{str(path):<62}{(n if n else 'NOT RUN'):>8}")
     rule()
 
+    section_conditional_rates(arms)
     section_p1(arms)
     section_p2(arms)
     section_p3(arms)
@@ -682,12 +1020,15 @@ def main(argv=None) -> int:
     section_secondary(arms)
     section_subsets(arms)
     section_prose_wins(arms)
+    section_gates(arms, gates, gatekeeper)
 
     print()
     rule("=")
     print("Read (a), (b) and (c) as the pre-registered results; (d) and (e) are")
     print("descriptive and (e) is a record of an abandoned chain; (f) and (g) are")
-    print("secondary; (h) is POST HOC and is not the endpoint.")
+    print("secondary; (0), (h) and (i) are POST HOC and none of them is the endpoint.")
+    print("(0) was promoted to the first table and (i) was added on 2026-08-28, after")
+    print("M1's preliminary numbers had been seen, and both say so wherever they print.")
     rule("=")
     return 0
 

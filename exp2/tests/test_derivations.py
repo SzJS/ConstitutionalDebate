@@ -624,7 +624,9 @@ _JD3_FLAGS: dict = {}
 def jd3():
     module = _load("judgment-debate-3.py")
     _JD3_FLAGS.clear()
-    _JD3_FLAGS.update({**module.ARM_FLAGS, **module.PRELUDE_FLAGS})
+    # GATE_FLAGS too, or `_jd3_only` leaves the two POST HOC inputs pointed at their live
+    # defaults and a gate row prints real numbers into a synthetic test's capture.
+    _JD3_FLAGS.update({**module.ARM_FLAGS, **module.PRELUDE_FLAGS, **module.GATE_FLAGS})
     return module
 
 
@@ -843,6 +845,191 @@ def test_jd3_prose_wins_is_post_hoc_and_actually_moves(tmp_path, capsys, jd3):
     assert "POST HOC, NOT THE ENDPOINT" in out
     block = out[out.index("(h) THE PROSE-WINS"):]
     assert "+4" in block and "+2" in block and "-2" in block
+
+
+def _declined(i, *, correct: bool):
+    """A cell the challenger DECLINED: no objection, no ruling, no after-state of its own.
+
+    It is in the arm's population and in P1's 2x2 — it kept its before-state, which is a
+    fact about the arm — and it must be in NEITHER conditional rate, because a cell nobody
+    objected to cannot be fixed or broken by an objection.
+    """
+    return _jd2_row(i, initially_correct=correct, initially_incorrect=not correct,
+                    challenge_arm="judgment", challenge_raised=False,
+                    challenge_stance="declined", changed_the_decision=False,
+                    final_correct=correct, rejudged_from="outputs/experiments/sweep")
+
+
+def _gates_file(path: Path, admitted: dict[str, bool]) -> str:
+    """`records/derivations/jd3-gates.py`'s output, in the shape the derivation reads."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(
+        json.dumps({"cell_id": cell_id, "mech_admitted": flag, "defects_n": 1})
+        for cell_id, flag in admitted.items()) + "\n", encoding="utf-8")
+    return str(path)
+
+
+def test_jd3_the_two_conditional_rates_are_the_first_table(tmp_path, capsys, jd3):
+    """POST HOC in its placement, not in its arithmetic: the quantity is the
+    discrimination section (f) has always printed, promoted to the top on 2026-08-28
+    because the net alone hides the mechanism.
+
+    13 wrong contested of which 5 end right (38.5%); 20 right contested of which 4 end
+    wrong (20.0%); difference +18.5 pts. And the DENOMINATOR IS THE CONTESTED CELLS —
+    the ten declines below are in the arm's population and in P1's 2x2, and must not be
+    in either rate, or an arm that declines more would look better at nothing.
+    """
+    rows = ([_rejudged(i, before=False, after=True) for i in range(5)]
+            + [_rejudged(50 + i, before=False, after=False) for i in range(8)]
+            + [_rejudged(100 + i, before=True, after=False) for i in range(4)]
+            + [_rejudged(200 + i, before=True, after=True) for i in range(16)]
+            + [_declined(300 + i, correct=False) for i in range(10)])
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    block = out[out.index("(0) THE TWO CONDITIONAL RATES"):out.index("(a) P1")]
+    assert "DESCRIPTIVE" in block and "No alpha and no test" in block
+    assert "5/13 38.5%" in block          # fixed | wrong and contested
+    assert "4/20 20.0%" in block          # broken | right and contested
+    assert "+18.5 pts" in block
+    # the declines are in the population but in neither rate: n is 33, not 43
+    row = next(line for line in block.splitlines()
+               if line.startswith("M1 — the real audit"))
+    assert row.split()[5] == "33"      # n, after the five words of the label
+    # and it really is FIRST: before P1, in the output
+    assert out.index("(0) THE TWO CONDITIONAL RATES") < out.index("(a) P1")
+
+
+def test_jd3_the_three_gate_rows_are_each_labelled_post_hoc(tmp_path, capsys, jd3):
+    """The label is the point of the section. These rows were decided after M1's
+    preliminary numbers were seen, none of them is in PREREG.md as committed, and a row
+    that lost the label would read as a pre-registered result — which is the one
+    misreading they can produce."""
+    rows = [_rejudged(i, before=False, after=True, grade_valid=True,
+                      grade_mode="judgment") for i in range(4)]
+    gates = _gates_file(tmp_path / "g.jsonl", {r["cell_id"]: True for r in rows})
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows),
+                       "--gates", gates,
+                       "--gatekeeper", _jd3_arm(tmp_path / "k" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    block = out[out.index("(i) THREE GATES"):]
+    assert block.count("POST HOC — added after M1 was seen") >= 4
+    for name in ("THE MECHANICAL GATE", "M4 — THE SAME-CLASS GATEKEEPER",
+                 "THE HAIKU-VALID BOUND"):
+        assert name in block
+    # the bound says it is a bound and says why, in the row itself
+    assert "NOT A PROCESS" in block
+    assert "stronger than the judge" in block
+    assert "UPPER bound" in block
+    # and the closing line still points at (a)
+    assert "(a) is the endpoint" in block
+
+
+def test_jd3_a_gate_counts_the_ruling_only_where_it_admitted(tmp_path, capsys, jd3):
+    """The one arithmetic every gate row shares. Four cells whose ruling fixed a wrong
+    decision and four whose ruling broke a right one; the gate admits the four fixes and
+    refuses the four breaks, so the net goes from 0 to +4 with NO ruling re-made.
+
+    That is the whole claim of the section: the same rulings, counted differently.
+    """
+    fixes = [_rejudged(i, before=False, after=True) for i in range(4)]
+    breaks = [_rejudged(100 + i, before=True, after=False) for i in range(4)]
+    rows = fixes + breaks
+    admitted = {r["cell_id"]: True for r in fixes}
+    admitted.update({r["cell_id"]: False for r in breaks})
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows),
+                       "--gates", _gates_file(tmp_path / "g.jsonl", admitted)))
+    out = capsys.readouterr().out
+    ungated = out[out.index("(a) P1"):out.index("(b) P2")]
+    assert "NET                                    +0 cells" in ungated
+
+    block = out[out.index("THE MECHANICAL GATE"):out.index("M4 — THE SAME-CLASS")]
+    assert "b = 4" in block and "c = 0" in block
+    assert "NET                                    +4 cells" in block
+    # the gate's own discrimination: it admitted every objection to a wrong decision and
+    # none to a right one
+    assert "admitted, decision was WRONG         4/4 100.0%" in block
+    assert "admitted, decision was RIGHT         0/4 0.0%" in block
+    assert "difference                           +100.0 pts" in block
+    # and the two conditional rates travel with it
+    assert "4/4 100.0%" in block and "0/4 0.0%" in block
+
+
+def test_jd3_a_short_gate_file_is_refused_loudly_and_never_invented(tmp_path, capsys,
+                                                                    jd3):
+    """A contested cell the gate file does not carry counts as REFUSED, so a stale file
+    understates the row rather than inventing admissions — and the coverage is printed
+    with a warning, because a row quietly computed over half its cells is worse than one
+    that says so."""
+    rows = [_rejudged(i, before=False, after=True) for i in range(6)]
+    partial = {rows[0]["cell_id"]: True, rows[1]["cell_id"]: True}
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows),
+                       "--gates", _gates_file(tmp_path / "g.jsonl", partial)))
+    out = capsys.readouterr().out
+    block = out[out.index("THE MECHANICAL GATE"):out.index("M4 — THE SAME-CLASS")]
+    assert "Gate file covers 2 of this arm's 6 contested cells" in block
+    assert "the gate file is SHORT by 4 contested cells" in block
+    assert "lower bound on a lower bound" in block
+    assert "b = 2" in block          # only the two admitted cells count their ruling
+
+
+def test_jd3_m4_reads_its_own_index_and_is_tested_against_m0(tmp_path, capsys, jd3):
+    """M4 is an ARM, not a recomputation: its own tree, its own `gate_admitted` column,
+    and its own exact McNemar against M0 at alpha = 0.05 — reported beside P1 as an
+    ablation added after M1 was seen, never as P1.
+
+    Its index already carries the gated `final_correct` that `build_index` wrote, and the
+    derivation applies the same rule again on top; the two must agree, which is what
+    running all three rows through one function buys.
+    """
+    rows = ([_rejudged(i, before=False, after=True, gate_admitted=True)
+             for i in range(6)]
+            + [_rejudged(100 + i, before=True, after=True, gate_admitted=False)
+               for i in range(2)])
+    jd3.main(_jd3_only("--gatekeeper", _jd3_arm(tmp_path / "k" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    block = out[out.index("M4 — THE SAME-CLASS"):out.index("THE HAIKU-VALID BOUND")]
+    assert "b = 6" in block and "c = 0" in block
+    assert "NET                                    +6 cells" in block
+    assert "EXACT McNEMAR AGAINST M0 AT alpha = 0.05" in block
+    assert "never as P1" in block
+    assert "p = 0.03125" in block and "SIGNIFICANT at alpha=0.05" in block
+    # the arms it does not have still say NOT RUN rather than printing zeros
+    assert "MECHANICAL — every quotation verbatim" in out
+
+
+def test_jd3_the_haiku_bound_counts_only_the_grader_s_valid_objections(tmp_path, capsys,
+                                                                       jd3):
+    """`outputs/leave-to-appeal.py`'s logic, folded in and labelled. Three fixes the
+    grader called valid and three breaks it called invalid: counting only the valid ones
+    turns a net of 0 into +3, which is exactly why it is a BOUND and not a result — the
+    grader is Haiku, stronger than the judge it would be gating."""
+    rows = ([_rejudged(i, before=False, after=True, grade_mode="judgment",
+                       grade_valid=True) for i in range(3)]
+            + [_rejudged(100 + i, before=True, after=False, grade_mode="judgment",
+                         grade_valid=False) for i in range(3)])
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+    ungated = out[out.index("(a) P1"):out.index("(b) P2")]
+    assert "NET                                    +0 cells" in ungated
+    block = out[out.index("THE HAIKU-VALID BOUND"):]
+    assert "b = 3" in block and "c = 0" in block
+    assert "NET                                    +3 cells" in block
+    assert "admitted, decision was WRONG         3/3 100.0%" in block
+    assert "admitted, decision was RIGHT         0/3 0.0%" in block
+
+
+def test_jd3_never_frames_a_challenge_as_a_diagnostic_instrument(jd3):
+    """The user's call of 2026-08-28: the write-up uses the two conditional rates and
+    their difference, and not the family of statistics that treats an objection as a test
+    with a prior behind it. Enforced here because a helpful refactor would reintroduce it
+    in a docstring, and once it is in one derivation it is in the write-up."""
+    source = (DERIVATIONS / "judgment-debate-3.py").read_text(encoding="utf-8").lower()
+    for banned in ("likelihood ratio", "likelihood-ratio", "lr+", "lr-",
+                   "posterior odds", "prior odds", "bayes factor", "bayes' factor",
+                   "sensitivity and specificity", "positive predictive"):
+        assert banned not in source, banned
+    # and the framing that IS used is named
+    assert "the two conditional rates" in source
 
 
 def test_jd3_is_stdlib_only_like_every_other_derivation(jd3):

@@ -655,3 +655,39 @@ def test_the_estimate_grades_the_specious_arm_over_the_whole_grid(capsys):
         out = capsys.readouterr().out
         assert "grading <= 2" in out, variant
         assert "the grading term is the whole grid" in out, variant
+
+
+def test_the_gatekeeper_model_is_unset_by_default_and_inherits_from_nothing():
+    """POST HOC (2026-08-28), and the one model field in `DebateConfig` with no resolver.
+
+    Every other one falls back to a neighbour when unset — `recourse_judge_model` to the
+    judge, `comprehension_model` to the challenger, `critic_model` to the debater. This
+    one must not, because the only neighbour to fall back to is the judge whose own
+    judgment is under appeal, and a gate that decided whether to hear the appeal against
+    itself would be no gate at all. Unset therefore means "no admissibility gate", which
+    is what every arm before 2026-08-28 did, so a spec written before the field existed
+    still describes what it ran.
+    """
+    from exp2.config import RECOURSE_ONLY_KEYS, WHY, ConfigError, DebateConfig
+
+    config, _ = load_config()
+    assert config.gatekeeper_model is None
+    assert not hasattr(config, "gatekeeper_model_for")
+
+    # a decision had no opinion about who would later decide whether an objection to it
+    # is heard, so a contest must not inherit one
+    assert "gatekeeper_model" in RECOURSE_ONLY_KEYS
+
+    # an empty string would route the gate call nowhere and fail cell by cell instead of
+    # refusing once
+    with pytest.raises(ConfigError, match="gatekeeper_model must be a model id"):
+        DebateConfig(**{**config.to_dict(), "gatekeeper_model": "   "})
+
+    named, _ = load_config(overrides={"gatekeeper_model": "openai/gpt-4.1-mini"})
+    assert named.gatekeeper_model == "openai/gpt-4.1-mini"
+    assert named.to_dict()["gatekeeper_model"] == "openai/gpt-4.1-mini"
+
+    # and WHY says the two things that make the field readable: what unset means, and
+    # that it never inherits
+    assert "no admissibility gate" in WHY["gatekeeper_model"].lower()
+    assert "inherit" in WHY["gatekeeper_model"]

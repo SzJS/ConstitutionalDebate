@@ -43,6 +43,9 @@ RECOURSE_ONLY_KEYS: frozenset[str] = frozenset(
         "challenger_temperature",
         "recourse_form",
         "challenger_variant",
+        # The M4 gate's model. A decision had no opinion about who would later decide
+        # whether an objection to it is heard, so a contest must not inherit one.
+        "gatekeeper_model",
     }
 )
 
@@ -309,6 +312,19 @@ class DebateConfig:
     # describes what it ran. A partisan value is the planned ablation and has to be
     # asked for.
     challenger_variant: str = "neutral"
+    # WHO DECIDES WHETHER AN OBJECTION IS HEARD AT ALL. None — the default — means there
+    # is no gate: every arm before 2026-08-28 counted every ruling, so a spec written
+    # before this field existed still describes what it ran, and `--stage gatekeeper`
+    # refuses rather than falling back to some other role's model. There is deliberately
+    # NO `gatekeeper_model_for()` resolver for that reason: every other model field here
+    # inherits from a neighbour when unset, and inheriting this one would silently make
+    # the judge, or the debater, the gatekeeper of the appeal against itself.
+    #
+    # POST HOC. The gate is the M4 ablation added after M1's preliminary numbers were
+    # seen (`records/experiments/judgment-debate-3/PREREG.md`'s M4 amendment, written
+    # before M4's first paid call), and it changes no ruling: it decides which of M1's
+    # existing rulings are counted.
+    gatekeeper_model: str | None = None
 
     def __post_init__(self) -> None:
         if self.turn_style not in TURN_STYLES:
@@ -402,6 +418,14 @@ class DebateConfig:
                 f"challenger_temperature must be in [0, 2], got "
                 f"{self.challenger_temperature}"
             )
+        if self.gatekeeper_model is not None and not self.gatekeeper_model.strip():
+            raise ConfigError(
+                "gatekeeper_model must be a model id or unset, got "
+                f"{self.gatekeeper_model!r}. Unset means there is no admissibility gate "
+                "and every ruling counts, which is what every arm before 2026-08-28 did; "
+                "an empty string would route the gate call nowhere and the stage would "
+                "fail cell by cell instead of refusing once."
+            )
 
     # --- resolvers --------------------------------------------------------------
 
@@ -478,6 +502,7 @@ WHY: dict[str, str] = {
     "recourse_judge_model": "unset means the judge model. Under recourse_form=third_party every condition's objection is ruled by it, so it is the one weak party the design trusts to hear an appeal; the residual asymmetry — it also decided the debate condition — is stated in the analysis caveat.",
     "recourse_form": "per_condition by default, which is what every paid run before 2026-08-26 did (debate ruled by a third-party judge, single/self_critique re-decided by the model that decided). The sweep measured the cost: the weak judge overturned 24% of phantom objections and the strong re-decider 0-4%, so most of self_critique's edge was the routing, not the record. third_party makes the recourse judge a weak third party in every condition — nobody adjudicates their own appeal — and is what the re-contest specs set; in_conversation is the opposite-corner ablation and refuses debate, which has no conversation to replay.",
     "challenger_model": "the weak model — a stakeholder standing in for a human reader, not a second expert.",
+    "gatekeeper_model": "unset means NO admissibility gate — every ruling counts, as every arm before 2026-08-28 did. Set, it names the model that decides which objections are heard at all (the M4 ablation, POST HOC): same class as the judge and a different family, so the gate cannot import a stronger reader into the decision path — the objection that killed the jd2 chain. It never inherits from another field, because a gate that defaulted to the judge would have the judge decide whether the appeal against its own judgment is heard.",
     "challenge_word_limit": "unset means the run's word limit; an objection has to quote the record back.",
     "challenger_reasoning_effort": "unset means the run's setting; challenger deliberation is an experimental axis.",
     "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",

@@ -1,0 +1,155 @@
+# M4 — LEAVE TO APPEAL. A same-class gatekeeper decides which of M1's objections are
+# HEARD; M1's rulings are reused unchanged.
+#
+# READ FIRST: `records/experiments/judgment-debate-3/PREREG.md` **and its M4 amendment**
+# (`outputs/jd3-prereg-amendment-M4.md`, folded into PREREG.md before this arm's first
+# paid call). The amendment is what this spec runs under and it says the one thing that
+# has to travel with every number here:
+#
+#     THIS ARM IS POST HOC. It was decided on 2026-08-28, AFTER M1's preliminary numbers
+#     had been seen (876 cells: 65 fixed, 75 broken). It is reported BESIDE P1 as an
+#     ablation, with its own exact McNemar at alpha = 0.05, and never as the
+#     pre-registered endpoint. A rule invented after the table is printed is not a rule,
+#     and the only honest thing to do with one is to label it.
+#
+# THE FOUR ARMS THAT WERE PRE-REGISTERED, and where this one sits beside them:
+#
+#     M0   Maverick re-judges the sweep's stored transcripts        jd3-main.toml
+#     M1   flash audits M0's judgments, Maverick rules              jd3-main.toml
+#     M2   the placeholder objection on the cells M1 contested      jd3-placeholder.toml
+#     M3   the specious auditor on every cell                       jd3-specious.toml
+#     M4   a gatekeeper decides which M1 objections are heard       <- THIS SPEC (post hoc)
+#
+# WHAT IT ASKS. M1's preliminary read showed the mechanism, and it is arithmetic rather
+# than a defect of the audit: with a judge that is right 74% of the time, an audit that
+# contests indiscriminately meets a CORRECT decision three times as often as a wrong one,
+# so a 24% overturn rate on correct decisions outweighs a 39% fix rate on wrong ones and
+# the net goes negative. A court does not hear every appeal — it grants leave first. This
+# arm asks what the net becomes when leave is granted by a model at the challenger's own
+# level, and what that model's own discrimination is: how often it admits an objection to
+# a WRONG decision against how often it admits one to a RIGHT one.
+#
+# WHAT IT COSTS AND WHAT IT DOES NOT SPEND. ONE call per contested cell, and nothing else.
+# No debate, no judgment, no objection, no ruling, no grade, no reading — all of those are
+# copied from `jd3-main` verbatim. At `openai/gpt-4.1-mini` the estimate is a few dollars
+# for the whole arm.
+#
+# NOTHING IS RE-RULED, and this is the property the comparison rests on. The `gatekeeper`
+# stage copies each source contest here WITH its `ruling.json` and adds exactly one file,
+# `admission.json`. The rulings in this tree are byte-identical to `jd3-main`'s — the e2e
+# harness asserts that byte for byte — so the ONLY difference between M1's index and this
+# one is the gate. What the gate decides is which rulings are COUNTED:
+#
+#     final_correct = the RULING's outcome   where the gate ADMITTED the objection
+#                     the DECISION's verdict where it REFUSED
+#
+# That arithmetic happens in `build_index`, it is the one column there that is computed
+# rather than read off an artifact, and `metrics.json` announces it in a caveat on every
+# gated index. Nothing in `jd3-main` is written to; it is fingerprinted before and after.
+#
+# WHY gpt-4.1-mini AND NOT SOMETHING BETTER. Precisely because something better would
+# wreck the arm. The jd2 chain was stopped because a recourse judge stronger than the
+# debate judge makes "debate + recourse beats debate alone" indistinguishable from "a
+# better model re-decided"; a GATE stronger than the decider imports the same confound by
+# a side door — its reading of the record would be doing the work, and the number would be
+# a fact about Haiku or about gpt-4.1 rather than about gatekeeping. gpt-4.1-mini is the
+# OTHER in-band pass of the judge-selection rule of
+# `records/experiments/judgment-debate-2/PREREG.md` (index 14 with reasoning off, delta 0
+# from the challenger's own level), and it is a different family from Maverick, so it is
+# neither the judge marking its own homework nor a stronger reader smuggled in.
+#
+# THE HAIKU-VALID RECOMPUTATION IS THE BOUND, NOT THIS. `outputs/leave-to-appeal.py`
+# counts only the objections the GRADER marked valid, and the grader is Haiku — stronger
+# than the judge. That row is kept and reported as "what a gatekeeper as good as Haiku
+# would achieve", an upper bound, post hoc. The MECHANICAL gate
+# (`records/derivations/jd3-gates.py`) is the lower one: no model at all, just whether
+# every quotation in the objection is verbatim in the document it is attributed to. This
+# arm sits between them and is the only one of the three that a real process could run.
+#
+# THE GATEKEEPER DECIDES ADMISSIBILITY AND NOTHING ELSE, and its prompt says so three
+# times over: not materiality (that is the recourse judge's question and it is already
+# answered), not the verdict, not the problem. A gate that also weighed materiality would
+# be a second recourse judge and the arm would measure two changes at once.
+#
+#     RUN_SWEEP_STAGES="gatekeeper analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd3-gatekeeper.toml \
+#         > outputs/jd3-gatekeeper-driver.log 2>&1 &
+#
+# Do not launch this before `jd3-main` has written its `DONE.md`: an arm pointed at a tree
+# whose objections are not finished gates the ones that happen to exist and exits 0.
+
+name = "jd3-gatekeeper"
+cases = "data/cases/ftf-all.jsonl"
+
+# BOTH KEYS POINT AT THE SAME TREE, and both are required: the decisions are M0's
+# (Maverick's judgments of the sweep's stored transcripts) and the objections and rulings
+# are M1's, and they live in one tree because M1 ruled on M0's own decisions. Neither is
+# written to.
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block. This arm decides nothing,
+# judges nothing and rules nothing, but `config.json` records what the decisions and
+# rulings it reads were made under, and a spec that quietly differed from the tree it
+# reads would make the record wrong about its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The objections being gated are the judgment audit's. Stated so that `config.json` says
+# which arm's objections this tree holds — `contests_from` copies them, and a tree whose
+# config claimed the neutral challenger wrote them would be wrong about the document it
+# is carrying.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+
+# The judge that MADE the rulings being gated. No call is made to it here — the rulings
+# are copied — and it is stated for the same reason the block above is.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# THE ONE FIELD THIS ARM ADDS, and the only model it calls. It has no default and
+# inherits from nothing: unset means there is no gate, and `--stage gatekeeper` refuses
+# rather than falling back — a gate that fell back to `judge_model` would have Maverick
+# decide whether the appeal against its own judgment is heard.
+gatekeeper_model = "openai/gpt-4.1-mini"
+
+# Unchanged from `jd3-main.toml`. The gate's own cap is `[grading].max_tokens` (4096) —
+# it emits a short per-defect list and one line, and a 16k ceiling on a probe that costs
+# cents only buys a runaway.
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# TEMPERATURE 0 AND REASONING OFF FOR THE GATE, and neither is set here because neither
+# is a spec knob: both are pinned at the call site in `recourse.judge_admissibility`
+# (`GATEKEEPER_TEMPERATURE`, `GATEKEEPER_REASONING_EFFORT`). The gate is a MEASUREMENT and
+# not a generator — the same objection read twice must be read the same way, or the
+# admission rate is a property of the sampler — and a private reasoning channel no reader
+# can see is what `configs/default.toml` refuses on the transparency rule. Pinning them in
+# code rather than in the spec means a spec that forgot them cannot quietly buy the gate a
+# channel the parties it gates never had.
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+# 16/8, as every arm in this phase runs. One short call per cell.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each gated contest carries the copy of the decision the source contest carried. That is
+# what makes the record self-contained — an admission you cannot read without also finding
+# the objection, the ruling and the decision is not a published record.
+copy_parent = true
+
+[grading]
+# NOT the gate's model. This table is read by the gate only for `max_tokens`; no grader,
+# agreement reader or ruling reader runs in this arm — all three are copied from
+# `jd3-main`. Held equal to every other arm's so a reader of `config.json` sees one table
+# across the phase.
+grader_model = "anthropic/claude-haiku-4.5"

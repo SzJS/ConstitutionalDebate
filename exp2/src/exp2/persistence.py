@@ -31,6 +31,7 @@ from .artifacts import render_recourse_record, render_run_record
 from .artifacts_full import render_full_recourse_record, render_full_run_record
 from .config import ClientConfig, DebateConfig
 from .types import (
+    Admission,
     Challenge,
     Comprehension,
     DecisionRecord,
@@ -112,6 +113,15 @@ _RERULE_EXCLUDED: frozenset[str] = frozenset(
 _REJUDGE_EXCLUDED: frozenset[str] = frozenset(
     {"verdict.json", "run.json", "config.json", "calls.jsonl"}
 )
+
+# What the M4 GATE does not copy from the contest it gates. Note what is NOT here and is
+# the whole difference from `_RERULE_EXCLUDED`: `ruling.json` and `ruling_agreement.json`
+# ARE copied, because the gate re-rules nothing — M1's ruling is exactly what it decides
+# whether to count, so it has to be in the record beside the admission that gates it.
+# `calls.jsonl` is renamed rather than dropped, as a re-judge renames it, so the copied
+# objection and ruling keep their own prompts in the verbatim document while this run's
+# wire log holds this run's one call and the money stays honest.
+_GATE_EXCLUDED: frozenset[str] = frozenset({"run.json", "calls.jsonl"})
 
 # Where a re-judged run keeps the source run's wire log. Read by
 # ``artifacts_full._load_calls`` so the verbatim document can still print the debaters'
@@ -353,6 +363,65 @@ class RunWriter:
         writer._flush_manifest()
         return writer
 
+    @classmethod
+    def create_gate(cls, *, root: Path, source_dir: Path, item: Item,
+                    client_config: ClientConfig, condition: str) -> "RunWriter":
+        """A contest directory copied from another tree, ready for an admissibility gate.
+
+        POST HOC (2026-08-28), and it is the gentlest of the three copying constructors:
+        NOTHING already in the source contest is replaced. The objection stands, the
+        ruling stands, the grade stands, the readings stand. One file is ADDED —
+        ``admission.json`` — and it says whether the ruling beside it is counted.
+
+        That is why ``ruling.json`` is copied here and stripped by ``create_rerule``: a
+        re-rule is about to replace the ruling, and a gate is about to decide whether to
+        read it. A gate tree with no ruling in it could not be read at all.
+
+        Two things are not copied, for the reasons ``create_rejudge`` gives for the same
+        two: ``run.json`` is replaced by the manifest built here, and ``calls.jsonl`` is
+        renamed to ``calls.source.jsonl`` so this run's wire log describes this run's one
+        call. ``accounting`` walks ``calls.jsonl`` alone, so the arm's spend is its gate
+        calls and never the objections and rulings it reads.
+
+        Nothing under ``source_dir`` is written. Its whole-directory hash goes into the
+        manifest as ``source_sha256``, so a source that drifts cannot do so unnoticed.
+        """
+        directory = _claim_run_dir(root, item.item_id, suffix="-gate")
+        source_hash = tree_sha256(source_dir)
+        for entry in sorted(source_dir.iterdir()):
+            if entry.name in _GATE_EXCLUDED:
+                continue
+            if entry.is_dir():
+                shutil.copytree(entry, directory / entry.name)
+            else:
+                shutil.copy2(entry, directory / entry.name)
+        if (source_dir / "calls.jsonl").is_file():
+            shutil.copy2(source_dir / "calls.jsonl", directory / SOURCE_CALLS)
+        # ``parent`` is only ever consulted for its truthiness — it selects the contest
+        # renderer over the decision one — and a gated contest IS a contest record.
+        writer = cls(directory, directory.name, condition=condition, parent=source_dir)
+        source_manifest: dict[str, Any] = {}
+        if (source_dir / "run.json").is_file():
+            try:
+                source_manifest = _read_json(source_dir / "run.json")
+            except ValueError:
+                source_manifest = {}
+        writer._manifest = {
+            "run_id": writer.run_id, "kind": "gate", "condition": condition,
+            "item_id": item.item_id, "row_id": item.row_id, "subset": item.subset,
+            # Carried from the source so the gated record still names the DECISION the
+            # objection contests; a reader who followed `parent_run_id` would otherwise
+            # land nowhere.
+            "parent_run_id": source_manifest.get("parent_run_id"),
+            "parent_sha256": source_manifest.get("parent_sha256"),
+            "parent_copied": source_manifest.get("parent_copied"),
+            "source_contest_dir": str(source_dir),
+            "source_sha256": source_hash,
+            "status": "running", "client_config": client_config.to_dict(),
+        }
+        writer._flush_manifest()
+        return writer
+
     # --- recording ------------------------------------------------------------------
 
     def _flush_manifest(self) -> None:
@@ -401,6 +470,19 @@ class RunWriter:
     def record_ruling(self, ruling: Ruling) -> None:
         _write_json(self.dir / "ruling.json", ruling.to_dict())
         self._render()
+
+    def record_admission(self, admission: Admission) -> None:
+        """The M4 gate's finding, beside the ruling it gates and never over it.
+
+        No ``_render()``. The published documents are the record the PARTIES saw — the
+        objection, the ruling — and the gate is an analysis applied to that record
+        afterwards by a model none of them met. Writing it into ``transcript.md`` would
+        put a post-hoc annotation into a document this project's whole claim is that a
+        reader can check against what actually happened.
+        """
+        _write_json(self.dir / "admission.json", admission.to_dict())
+        self.manifest_update(gate_admitted=admission.admitted,
+                             gate_model=admission.model)
 
     def record_comprehension(self, comprehension: Comprehension) -> None:
         _write_json(self.dir / "comprehension.json", comprehension.to_dict())

@@ -26,7 +26,7 @@ from exp2.client import Completion, FatalError, RetryableError
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
                    "recourse_solo", "agreement", "ruling_reader",
-                   "ruling_reader_materiality", "judgment_grader"}
+                   "ruling_reader_materiality", "judgment_grader", "gatekeeper"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
@@ -57,6 +57,15 @@ DEFAULT_REPLIES: dict[str, str] = {
     "judgment_grader": ("The judgment quote is accurate and the record does not say "
                         "it.\nDefect 1: VALID — the record says the opposite.\n"
                         "Valid objection: YES"),
+    # The M4 admissibility gate. ADMITTED matches its own per-defect finding, so the
+    # default run measures a consistent admission and `line_mismatch` reads False; a test
+    # that wants the disagreement, or a refusal, asks for it. Without a default here the
+    # fake would fall through to the catch-all and every gate call in the offline harness
+    # would die malformed after its one repair — which is exactly what the materiality
+    # reader was silently doing until 2026-08-28.
+    "gatekeeper": ("The judgment quote is verbatim and the record does not say it.\n"
+                   "Defect 1: REAL — the record says the opposite.\n"
+                   "Admissibility: ADMITTED"),
     # The line-vs-prose probe. WRONG matches the default challenger's REVERSE line, so
     # the default run measures agreement rather than a phantom contest; tests that want
     # the mismatch ask for it.

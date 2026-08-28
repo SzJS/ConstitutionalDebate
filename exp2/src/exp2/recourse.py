@@ -48,6 +48,7 @@ from .prompts import (
     build_agreement_messages,
     build_challenger_messages,
     build_comprehension_messages,
+    build_gatekeeper_messages,
     build_recourse_judge_messages,
     PLACEHOLDER_DECISION_WORD,
     PLACEHOLDER_OBJECTION_RAW,
@@ -58,6 +59,7 @@ from .prompts import (
     build_solo_recourse_message,
     conversation_spent_a_repair,
     marks_private_text,
+    parse_admissibility_output,
     parse_agreement_output,
     parse_comprehension_output,
     parse_defects,
@@ -75,6 +77,7 @@ from .types import (
     COMPREHENSION_SCALE_ID,
     REVERSE,
     STANDS,
+    Admission,
     Agreement,
     Challenge,
     Comprehension,
@@ -101,6 +104,20 @@ COMPREHENSION_TEMPERATURE = 0.0
 # moved between two readings of one text would be noise in the number that decides
 # whether the `contests` column means anything.
 AGREEMENT_TEMPERATURE = 0.0
+
+# THE GATE IS A MEASUREMENT, NOT A GENERATOR, so it runs at 0 for the reason the two
+# probes above do: the same objection read twice must be read the same way, and an
+# admissibility rate that moved with the sampler would be a property of the sampler.
+# Nothing here is being asked to write anything; it is being asked whether a quotation is
+# in a document.
+GATEKEEPER_TEMPERATURE = 0.0
+# And with native reasoning OFF, explicitly rather than by inheriting the run's setting.
+# Every spec in this phase already sets `reasoning_effort = "off"`, and the reason is the
+# transparency rule (`configs/default.toml`): a channel that moves an outcome and that no
+# reader can see is exactly what this experiment refuses. Naming it at the call site means
+# a spec that forgot it cannot quietly buy the gate a private channel the parties it
+# gates never had.
+GATEKEEPER_REASONING_EFFORT = "off"
 
 # Published in place of an objection whose public section could not be located, on the
 # same rule as arms.WITHHELD: the reply marked a boundary, the repair did not fix it,
@@ -618,6 +635,98 @@ _RECOURSER_TABLES = {
     "third_party": _THIRD_PARTY_RECOURSERS,
     "in_conversation": _IN_CONVERSATION_RECOURSERS,
 }
+
+
+async def judge_admissibility(
+    record: Any,
+    challenge: Challenge,
+    *,
+    config: DebateConfig,
+    grading: GradingConfig,
+    client: ChatClient,
+) -> Admission:
+    """Is this objection admissible — does it allege at least one REAL defect?
+
+    POST HOC (2026-08-28). ONE call per contested cell, and it changes nothing: M1's
+    ruling is already on the record and is copied beside this file untouched. What the
+    answer decides is whether that ruling is COUNTED, and that decision is made in the
+    index and in the derivation, never in the tree's own `ruling.json`.
+
+    Off the decision path in the accounting sense too — `role="gatekeeper"` is in
+    `accounting.OFF_PATH_ROLES` — because a gate that could inflate the condition it
+    gates would be measuring itself.
+
+    The gatekeeper is shown the record the challenger was shown, the judgment it audited,
+    and the objection whole. It is NOT shown the recourse judge's ruling, the grader's
+    verdict, or the harness's own quote-check findings: an admissibility rate that had
+    seen any of those would be partly a restatement of them, and the mechanical gate is
+    reported as its own row precisely so the two can be compared.
+
+    ``temperature`` and ``reasoning_effort`` are pinned here rather than taken from the
+    spec — see the two constants above.
+    """
+    model = config.gatekeeper_model
+    if not model:
+        # Refused rather than defaulted. Every other model field in DebateConfig falls
+        # back to a neighbour when unset; this one must not, because the neighbour is the
+        # judge whose own judgment is under appeal.
+        raise ValueError(
+            "judge_admissibility needs `gatekeeper_model` in the spec's [debate] table. "
+            "It has no default and inherits from nothing: a gate that fell back to "
+            "`judge_model` would have the judge decide whether the appeal against its "
+            "own judgment is heard."
+        )
+    messages = build_gatekeeper_messages(
+        record.item, record=record.challenger_view().body,
+        judgment=record.decision_grounds,
+        decision_verdict=record.verdict.verdict, objection=challenge.text,
+        n_defects=len(challenge.defects),
+    )
+    (findings, line_admitted, reasoning, parse_mode), completion, repairs, _, _ = (
+        await _complete_with_repair(
+            client, model=model, messages=messages,
+            temperature=GATEKEEPER_TEMPERATURE, config=config,
+            meta={"role": "gatekeeper", "speaker": None, "round": None,
+                  "purpose": "admissibility"},
+            parse=parse_admissibility_output, role="gatekeeper", word_limit=0,
+            reasoning_effort=GATEKEEPER_REASONING_EFFORT,
+            max_tokens=grading.max_tokens,
+        )
+    )
+    # The gatekeeper's per-defect lines joined to the challenger's own defect list, by the
+    # number both of them used — the same join `grading._grade_judgment` makes, and kept
+    # rather than dropped when the number is out of range: a finding about a defect nobody
+    # alleged is evidence about the gatekeeper, and hiding it would make `findings_n`
+    # disagree with the objection it came from for no visible reason.
+    joined: list[dict[str, Any]] = []
+    for finding in findings:
+        alleged = (challenge.defects[finding["index"] - 1]
+                   if 1 <= finding["index"] <= len(challenge.defects) else {})
+        joined.append({
+            "index": finding["index"],
+            "type": alleged.get("type"),
+            "real": finding["real"],
+            "reason": finding["reason"],
+            "alleged": bool(alleged),
+        })
+    result = Admission(
+        findings=joined, line_admitted=line_admitted, model=model,
+        parse_mode=parse_mode, raw=completion.content, call_id=completion.call_id,
+        finish_reason=completion.finish_reason, reasoning=reasoning,
+        repair_attempts=repairs, native_reasoning=completion.reasoning or "",
+        reasoning_withheld=completion.reasoning_withheld,
+    )
+    if result.line_mismatch:
+        # Neither repaired nor clamped, exactly as `JudgmentGrade`'s equivalent is not:
+        # `admitted` is the conjunction of the findings, which are the judgements a reader
+        # can check, and the flag is what bounds how often the gate's own summary line
+        # disagreed with them.
+        log.warning(
+            "%s: gatekeeper's line says %s and its per-defect findings say %s",
+            record.item.item_id, "ADMITTED" if line_admitted else "REFUSED",
+            "ADMITTED" if result.admitted else "REFUSED",
+        )
+    return result
 
 
 def recoursers_for(recourse_form: str) -> dict[str, Any]:

@@ -1436,3 +1436,72 @@ class Comprehension:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+# --------------------------------------------------------------------------- #
+# the admissibility gate (M4)
+# --------------------------------------------------------------------------- #
+#
+# POST HOC, added 2026-08-28 after M1's preliminary numbers were seen. Recorded as a
+# file of its own beside the contest it gates rather than as a field on ``Ruling``,
+# because it is not part of what was decided: M1's ruling is unchanged and untouched,
+# and this says only whether that ruling is counted. A reader of the tree meets an
+# ``admission.json`` next to a ``ruling.json`` and can see that the second was made
+# first and by a different model.
+
+
+@dataclass(frozen=True)
+class Admission:
+    """One gatekeeper's reading of one objection's admissibility. Off the decision path.
+
+    ``findings`` is ``[{index, real, reason}, ...]`` joined to the challenger's own defect
+    list by the number both used, exactly as ``JudgmentGrade.defects`` is.
+
+    ``admitted`` is ``any(finding real)`` and is taken from the per-defect findings, not
+    from the gatekeeper's summary line; ``line_mismatch`` records the case where the two
+    disagree. When no per-defect line arrived at all (``parse_mode ==
+    "summary_line_only"``) there is nothing to conjoin and the line is used, which
+    ``parse_mode`` states so the fallback is never invisible. This is the same rule
+    ``JudgmentGrade`` follows, and it is the same rule for the same reason: the summary
+    token is one word and the findings are the judgements a reader can check.
+    """
+
+    findings: list[dict[str, Any]]
+    line_admitted: bool
+    model: str
+    parse_mode: str
+    raw: str
+    call_id: str
+    finish_reason: str | None
+    reasoning: str = ""
+    repair_attempts: int = 0
+    native_reasoning: str = ""
+    reasoning_withheld: bool = False
+    # This run's own wire spend, from its own calls.jsonl — the gate call plus any repair
+    # of it. Written into the file so a per-cell cost is readable without walking the
+    # tree, and so the arm's total is a column sum rather than a second pass.
+    cost_usd: float = 0.0
+
+    @property
+    def admitted(self) -> bool:
+        if not self.findings:
+            return self.line_admitted
+        return any(bool(finding.get("real")) for finding in self.findings)
+
+    @property
+    def line_mismatch(self) -> bool:
+        """The gatekeeper's summary line against its own per-defect findings."""
+        return bool(self.findings) and self.admitted != self.line_admitted
+
+    def to_dict(self) -> dict[str, Any]:
+        # Properties, so asdict drops them; written explicitly because build_index reads
+        # them straight out of the file, exactly as JudgmentGrade's are.
+        return {**asdict(self), "admitted": self.admitted,
+                "line_mismatch": self.line_mismatch,
+                "findings_n": len(self.findings),
+                "findings_real_n": sum(1 for f in self.findings if f.get("real"))}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Admission":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})

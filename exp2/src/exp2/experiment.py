@@ -31,7 +31,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -48,7 +48,13 @@ from .config import (
 from .debate import _judge
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
-from .recourse import _rule_by_judge, judge_prose_stance, judge_ruling_prose, run_recourse
+from .recourse import (
+    _rule_by_judge,
+    judge_admissibility,
+    judge_prose_stance,
+    judge_ruling_prose,
+    run_recourse,
+)
 from .types import Case, Challenge, Item, Ruling, make_sides
 
 log = logging.getLogger(__name__)
@@ -69,14 +75,21 @@ log = logging.getLogger(__name__)
 # belongs to a spec with ``contests_from``: it re-rules another tree's finished
 # objections without re-making them, and ``contest`` refuses on such a spec.
 #
+# ``gatekeeper`` is the M4 ablation of 2026-08-28, POST HOC, and the driver's default
+# list omits it too. It belongs to a spec with ``contests_from``: it copies another tree's
+# finished objections AND their rulings, and adds one thing — an ``admission.json`` saying
+# whether a same-class model finds the objection admissible at all. It re-rules nothing
+# and re-writes nothing; what the answer decides is whether the ruling beside it is
+# COUNTED, and that decision is made in ``build_index`` and in the derivation.
+#
 # ``rejudge`` is the same shape one layer up and the driver's default list omits it for
 # the same reason. It belongs to a spec with ``transcripts_from``: it judges another
 # tree's stored debate transcripts again, under this spec's judge, and writes a FULL
 # decision record — so ``decisions_from`` pointed at the tree it writes works with no
 # change anywhere downstream, and ``decide`` refuses on such a spec.
 STAGES: tuple[str, ...] = (
-    "decide", "rejudge", "contest", "rerule", "agreement", "ruling_agreement", "grade",
-    "analyse",
+    "decide", "rejudge", "contest", "rerule", "gatekeeper", "agreement",
+    "ruling_agreement", "grade", "analyse",
 )
 
 
@@ -605,6 +618,107 @@ async def run_stage_rerule(
                           client_config.max_runs_in_flight)
 
 
+async def run_stage_gatekeeper(
+    cells: Sequence[Cell], *, root: Path, config: DebateConfig,
+    grading: GradingConfig, client_config: ClientConfig, api_key: str,
+    decision_root: Path, contest_root: Path,
+) -> list[dict[str, Any]]:
+    """Decide, for another tree's finished objections, which of them are heard.
+
+    POST HOC — the M4 ablation added 2026-08-28 after M1's preliminary numbers were seen
+    (`records/experiments/judgment-debate-3/PREREG.md`, the M4 amendment, written and
+    dated before the first paid call of this stage).
+
+    THIS STAGE MAKES NOTHING AND REPLACES NOTHING. The objection is the stakeholder's, the
+    ruling is the recourse judge's, and both are copied here verbatim — with the ruling,
+    unlike a re-rule, precisely because the ruling is what the gate decides whether to
+    count. One call per contested cell adds one file, ``admission.json``. The after-state
+    arithmetic lives in ``build_index``: the ruling's outcome where the objection was
+    admitted, the decision's own verdict where it was refused.
+
+    Only cells whose source objection has stance ``contests`` are gated. A decline put
+    nothing to a judge and there is nothing to admit, so the cell is skipped with ``no
+    objection to gate`` rather than silently.
+
+    Nothing under ``contest_root`` or ``decision_root`` is written. Both are named in
+    ``experiment.json`` with the sha256 of their ``experiment.json``, and each cell's
+    manifest carries ``source_contest_dir`` and ``source_sha256``, a hash of the whole
+    source directory.
+    """
+    challenger = config.challenger_model_for()
+    if not config.gatekeeper_model:
+        # Refused once, here, rather than per cell. See `config.WHY["gatekeeper_model"]`:
+        # it inherits from nothing, because the only neighbour to inherit from is the
+        # judge whose own judgment is under appeal.
+        raise ValueError(
+            "the gatekeeper stage needs `gatekeeper_model` in the spec's [debate] "
+            "table; it has no default and inherits from no other field."
+        )
+    semaphore = asyncio.Semaphore(client_config.max_concurrency)
+
+    async def gate(cell: Cell) -> dict[str, Any]:
+        existing = existing_contest(root, cell, challenger)
+        if existing is not None and (existing / "admission.json").is_file():
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "already gated"}
+        source = existing_contest(contest_root, cell, challenger)
+        if source is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no source contest to gate"}
+        challenge = Challenge.from_dict(
+            json.loads((source / "challenge.json").read_text()))
+        if challenge.stance != "contests":
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no objection to gate"}
+        record = existing_decision(decision_root, cell)
+        if record is None:
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "no decision to gate against"}
+        async with semaphore:
+            # Inside the bound, for the reason create_recourse is: this copies a contest
+            # directory that itself contains a copy of a decision, and running that
+            # unbounded would start every copy at once.
+            writer = await asyncio.to_thread(
+                RunWriter.create_gate,
+                root=contest_dir(root, cell, challenger) / "runs",
+                source_dir=source, item=record.item,
+                client_config=client_config, condition=cell.condition,
+            )
+        writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger,
+                               gatekeeper_model=config.gatekeeper_model)
+        try:
+            async with OpenRouterClient(api_key, client_config,
+                                        sink=writer.record_call,
+                                        semaphore=semaphore) as client:
+                async with asyncio.timeout(client_config.run_timeout_s):
+                    admission = await judge_admissibility(
+                        record, challenge, config=config, grading=grading,
+                        client=client)
+        except Exception as error:
+            writer.finish("failed", error=f"{type(error).__name__}: {error}")
+            log.warning("%s gatekeeper failed: %s", cell.cell_id, error)
+            return {"cell_id": cell.cell_id, "status": "failed",
+                    "error": f"{type(error).__name__}: {error}"}
+        totals = aggregate_calls(writer.dir / "calls.jsonl")
+        # This run's own wire spend — the gate call plus any repair of it — put on the
+        # record it belongs to. `gatekeeper` is an off-path role, so it is the off-path
+        # half that carries it; the sum of both halves is taken so that a role
+        # reclassified later cannot silently zero the column.
+        admission = replace(
+            admission,
+            cost_usd=(totals["off_path"]["cost_usd"]
+                      + totals["decision_path"]["cost_usd"]))
+        writer.record_admission(admission)
+        writer.finish("completed", totals=totals)
+        return {"cell_id": cell.cell_id, "status": "completed",
+                "admitted": admission.admitted,
+                "findings": len(admission.findings),
+                "line_mismatch": admission.line_mismatch}
+
+    return await _bounded([lambda c=c: gate(c) for c in cells],
+                          client_config.max_runs_in_flight)
+
+
 async def run_stage_agreement(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     grading: GradingConfig, client_config: ClientConfig, api_key: str,
@@ -907,6 +1021,17 @@ def build_index(cells: Sequence[Cell], *, root: Path,
     to — the sweep's 5,724 decisions are re-contested under a new protocol without
     regenerating one of them, and without an overwritten ``experiment.json`` or an
     ambiguous append to the source's ``cells.jsonl``.
+
+    ONE COLUMN IS COMPUTED RATHER THAN READ, and only on a tree the ``gatekeeper`` stage
+    ran over. Where an ``admission.json`` sits beside a contest, ``final_correct`` is the
+    RULING's outcome if the gate ADMITTED the objection and the DECISION's own verdict if
+    it REFUSED — with ``changed_the_decision`` set False on a refusal to match. Nothing in
+    the tree is altered to make that true: the ruling is the source arm's, copied
+    verbatim, and the gate decides only whether it counts. Both facts stay legible beside
+    each other, because ``ruling_form`` and the ruling's own columns are still written,
+    and ``analysis._gatekeeper_caveat`` says it in words on every gated index. The M4
+    ablation of 2026-08-28 is what needs it, and it is POST HOC — see
+    ``records/experiments/judgment-debate-3/PREREG.md``'s M4 amendment.
     """
     decisions = decision_root or root
     rows = []
@@ -1028,6 +1153,33 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 # the right reading; "never contested" is preserved by challenge_raised.
                 row["changed_the_decision"] = False
                 row["final_correct"] = record.verdict.correct
+            admission_path = contest / "admission.json"
+            if admission_path.is_file():
+                # THE M4 GATE — POST HOC, added 2026-08-28 after M1's preliminary
+                # numbers were seen. Written only on a tree the `gatekeeper` stage ran
+                # over, on the rule every conditional column here follows: absent where
+                # it does not apply, so "no gate" and "gate refused" stay different
+                # facts.
+                #
+                # AND IT MOVES `final_correct`. This is the one place in the index where
+                # a column is not simply read off an artifact, so it is stated here and
+                # in the analysis caveat: on a gated tree the after-state is the
+                # RULING's outcome where the objection was ADMITTED and the DECISION's
+                # own verdict where it was refused. That is the whole arm — the ruling
+                # is unchanged and untouched, and the gate decides only whether it is
+                # counted. A gated index whose `final_correct` still counted every
+                # ruling would be M1's index under M4's name.
+                admission = json.loads(admission_path.read_text())
+                row["gate_admitted"] = admission.get("admitted")
+                row["gate_model"] = admission.get("model")
+                row["gate_findings_n"] = admission.get("findings_n")
+                row["gate_findings_real_n"] = admission.get("findings_real_n")
+                row["gate_line_mismatch"] = admission.get("line_mismatch")
+                row["gate_parse_mode"] = admission.get("parse_mode")
+                row["gate_cost_usd"] = admission.get("cost_usd")
+                if not admission.get("admitted"):
+                    row["changed_the_decision"] = False
+                    row["final_correct"] = record.verdict.correct
             comprehension_path = contest / "comprehension.json"
             if comprehension_path.is_file():
                 row["comprehension"] = json.loads(

@@ -23,6 +23,16 @@ them being rewritten. ``contest``, ``agreement`` and ``grade`` refuse on such a 
 each would write a new objection, or a new grade of one, over the copy this tree holds —
 and ``--stage rerule`` refuses without it.
 
+A spec with ``contests_from`` may also run ``--stage gatekeeper``, and that stage is the
+narrowest of all: it copies each source contest here WITH its ruling and adds one file,
+``admission.json``, saying whether a same-class model finds the objection admissible at
+all. It re-rules nothing, so the rulings in this tree are byte-identical to the source's;
+what the answer changes is `final_correct` in THIS tree's index — the ruling's outcome
+where the objection was admitted, the decision's own verdict where it was refused. It
+needs ``gatekeeper_model`` in the ``[debate]`` table, which has no default and inherits
+from nothing. POST HOC: the M4 ablation of 2026-08-28, added after the primary arm's
+preliminary numbers were seen.
+
 A spec may instead set ``transcripts_from = "<path>"``. The run then reads the stored
 debate TRANSCRIPTS out of that tree and judges them again under its own ``judge_model``,
 writing a full decision record of its own — the transcript copied, the new judgment and
@@ -85,6 +95,7 @@ from .experiment import (
     run_stage_decide,
     run_stage_grade,
     run_stage_rejudge,
+    run_stage_gatekeeper,
     run_stage_rerule,
     run_stage_ruling_agreement,
     source_contests,
@@ -192,6 +203,11 @@ def print_estimate(grid, config: DebateConfig,
     agreement = 0 if contests_from is not None else len(grid)
     # One per ruling: the judge's line read against the judge's own prose.
     ruling_agreement = ruling
+    # One per CONTESTED source cell, and only where a gate model is named: the M4
+    # admissibility gate. Counted off the source tree for the same reason the ruling term
+    # is — it lands on exactly the cells that objected, and bounding it by the grid would
+    # quote five times the spend at the moment it is being agreed to.
+    gatekeeper = ruling if config.gatekeeper_model else 0
     # Under the judgment variant the grading term is the GRID, not the gradable subset:
     # that grader checks alleged defects against the record and opens no annotation, so
     # every contested cell is graded — sound items and correctly decided cells included.
@@ -219,10 +235,15 @@ def print_estimate(grid, config: DebateConfig,
         f"call, on the cells {contests_from} contested)" if placeholder
         else f"contest 0 (objections read from {contests_from})"
         if contests_from is not None else f"contest {contest}")
+    # Printed whenever a gate is NAMED, zero included: a spec that names a gatekeeper
+    # and quotes no gate term reads as a spec with no gate, and 0 is itself the
+    # thing to see — the source tree holds no contested objection to gate.
+    gate_term = (f", gatekeeper <= {gatekeeper}" if config.gatekeeper_model
+                 else "")
     print(f"estimated calls: {decision_term}, {contest_term}, "
           f"ruling <= {ruling}, agreement <= {agreement}, "
-          f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}  "
-          f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable}")
+          f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}{gate_term}  "
+          f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable + gatekeeper}")
     if judgment:
         print("the grading term is the whole grid: `challenger_variant = \"judgment\"` "
               "grades every cell whose objection contests, against the RECORD rather "
@@ -239,6 +260,13 @@ def print_estimate(grid, config: DebateConfig,
         print(f"the ruling term is COUNTED, not bounded: {ruling} of the {len(grid)} "
               f"cells have a source objection whose stance is `contests`. The rest "
               "declined or were unreadable and put nothing to a judge.")
+    if config.gatekeeper_model:
+        print(f"the gatekeeper term is COUNTED, not bounded: ONE admissibility call per "
+              f"contested source objection, at `{config.gatekeeper_model}`. It re-rules "
+              "nothing and re-writes nothing — the objections and the rulings are copied "
+              "verbatim and one `admission.json` is added beside each. POST HOC (M4, "
+              "2026-08-28): read it as an ablation beside the pre-registered endpoint, "
+              "never as it.")
     if placeholder:
         print("this is the SECOND-LOOK CONTROL. It makes no challenger call, no "
               "comprehension probe, no agreement reading and no grade: its whole spend "
@@ -369,6 +397,11 @@ def main(argv: list[str] | None = None) -> int:
     # for the same reason a re-rule writes nothing under it. The other two stages the
     # refusal covers stay refused for that arm as well, and they are also the two the
     # stage-level skips already decline to spend on.
+    #
+    # `gatekeeper` is NOT in the refusal for the same reason `rerule` is not: it writes no
+    # objection and no grade of one. It writes a file the source does not have, beside a
+    # copy of the source's own objection and ruling, and it is the only stage that adds to
+    # a contest record without replacing anything in it.
     placeholder_arm = config.challenger_variant == PLACEHOLDER_VARIANT
     refused = ("agreement", "grade") if placeholder_arm else ("contest", "agreement",
                                                               "grade")
@@ -391,6 +424,21 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(
             "--stage rerule needs `contests_from = \"<tree>\"` in the spec: it re-rules "
             "objections another tree already made, and there are none to read."
+        )
+    if contest_root is None and args.stage == "gatekeeper":
+        raise SystemExit(
+            "--stage gatekeeper needs `contests_from = \"<tree>\"` in the spec: it "
+            "decides which of another tree's finished objections are heard, and there "
+            "are none to read."
+        )
+    if args.stage == "gatekeeper" and not config.gatekeeper_model:
+        raise SystemExit(
+            "--stage gatekeeper needs `gatekeeper_model` in the spec's [debate] table. "
+            "It has no default and inherits from no other field: a gate that fell back "
+            "to `judge_model` would have the judge decide whether the appeal against "
+            "its own judgment is heard, and a gate stronger than the decider would "
+            "import a better reader into the decision path — the confound that stopped "
+            "the judgment-debate-2 chain."
         )
     if contest_root is not None and decision_root is None:
         raise SystemExit(
@@ -513,6 +561,10 @@ def main(argv: list[str] | None = None) -> int:
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key, decision_root=decision_root or root,
             contest_root=contest_root),
+        "gatekeeper": lambda: run_stage_gatekeeper(
+            grid, root=root, config=config, grading=grading,
+            client_config=client_config, api_key=api_key,
+            decision_root=decision_root or root, contest_root=contest_root),
         "ruling_agreement": lambda: run_stage_ruling_agreement(
             grid, root=root, config=config, grading=grading,
             client_config=client_config, api_key=api_key),

@@ -94,6 +94,7 @@ from exp2.experiment import (  # noqa: E402
     run_stage_contest,
     run_stage_decide,
     run_stage_grade,
+    run_stage_gatekeeper,
     run_stage_rejudge,
     run_stage_rerule,
     run_stage_ruling_agreement,
@@ -136,6 +137,11 @@ ROOT_PLACEHOLDER_SOURCE = REPO / "outputs" / "e2e-offline-2-placeholder-source"
 # pass that writes a decision it did not debate, and the only one whose run directory
 # holds a wire log copied from another run beside its own.
 ROOT_REJUDGE = REPO / "outputs" / "e2e-offline-2-rejudge"
+# And the ninth: the M4 admissibility gate (POST HOC, 2026-08-28). It reads the JUDGMENT
+# pass's finished objections and their rulings, copies both here untouched, and adds one
+# `admission.json` beside each. It is the only pass whose tree holds a ruling no call in
+# it made, and the only one where `final_correct` is computed rather than read.
+ROOT_GATE = REPO / "outputs" / "e2e-offline-2-gate"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -386,7 +392,7 @@ async def main() -> int:
     # records the current code did not write.
     for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN, ROOT_JUDGMENT,
                  ROOT_SPECIOUS, ROOT_PLACEHOLDER, ROOT_PLACEHOLDER_SOURCE,
-                 ROOT_REJUDGE):
+                 ROOT_REJUDGE, ROOT_GATE):
         if root.exists():
             shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
@@ -444,9 +450,11 @@ async def main() -> int:
     sixth = await specious_pass(config, client_config, grading, grid)
     seventh = await placeholder_pass(config, client_config, grading, grid)
     eighth = await rejudge_pass(config, client_config, grading, by_id)
+    # After the judgment pass, and it must be: the gate reads that pass's tree.
+    ninth = await gatekeeper_pass(config, client_config, grading, grid)
     return await per_condition_pass(
         per_condition_config, client_config, grading, by_id
-    ) or first or third or fourth or fifth or sixth or seventh or eighth
+    ) or first or third or fourth or fifth or sixth or seventh or eighth or ninth
 
 
 async def rejudge_pass(config, client_config, grading, by_id) -> int:
@@ -1217,6 +1225,146 @@ async def rerule_pass(config, client_config, grading, grid) -> int:
     print(f"re-rule invariants violated: {stray}")
 
     return report_documents(ROOT_RERULE) or (1 if stray else 0)
+
+
+async def gatekeeper_pass(config, client_config, grading, grid) -> int:
+    """The M4 admissibility gate over the judgment pass's finished objections.
+
+    POST HOC (2026-08-28). Three properties no other pass can show, and every one of them
+    is about what the gate does NOT do:
+
+      the COPY        the ruling comes across. A re-rule strips `ruling.json` because it
+                      is about to replace it; the gate keeps it, because it is what the
+                      gate decides whether to count. A gate tree with no rulings in it
+                      could not be read at all.
+      the SOURCE      is not written to, hashed before and after over real records — and
+                      the rulings in this tree are byte-identical to that tree's.
+      the AFTER-STATE is computed. Half the cells are refused here, and for those
+                      `final_correct` is the DECISION's own verdict while `ruling_form`
+                      and the ruling's own columns still say what the judge said. That
+                      is the one place in `build_index` where a column is not read off
+                      an artifact, so it is exercised over real records and the caveat
+                      that announces it is read back out of `metrics.json`.
+    """
+    config = dataclasses.replace(config, challenger_variant="judgment",
+                                 gatekeeper_model="gate/model")
+    ROOT_GATE.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\nninth pass — the M4 admissibility gate (POST HOC)")
+    print(f"outputs: {ROOT_GATE}")
+    print(f"objections and rulings read from: {ROOT_JUDGMENT}   (never written to)")
+    print(f"decisions read from: {ROOT}   (never written to)")
+    before_source, before_decisions = tree_sha256(ROOT_JUDGMENT), tree_sha256(ROOT)
+
+    # Half admitted and half refused, keyed on the cell, so that both branches of the
+    # after-state rule are exercised in one tree. A pass where every objection was
+    # admitted would print M1's numbers under M4's name and look correct doing it.
+    refused = {cell.cell_id for i, cell in enumerate(grid) if i % 2}
+    admit = ("The judgment quote is verbatim and the record does not say it.\n"
+             "Defect 1: REAL - the record says the opposite.\n"
+             "Admissibility: ADMITTED")
+    refuse = ("Neither quotation is in the document it is attributed to.\n"
+              "Defect 1: NOT REAL - the record does not contain that sentence.\n"
+              "Admissibility: REFUSED")
+
+    stray: dict[str, int] = {}
+    results = []
+    for cell in grid:
+        with scripted(gatekeeper=(refuse if cell.cell_id in refused else admit)):
+            results += await run_stage_gatekeeper(
+                [cell], root=ROOT_GATE, config=config, grading=grading,
+                client_config=client_config, api_key="fake",
+                decision_root=ROOT, contest_root=ROOT_JUDGMENT)
+    counts: dict[str, int] = {}
+    for result in results:
+        key = ("error" if isinstance(result, BaseException)
+               else result.get("status", "unknown"))
+        counts[key] = counts.get(key, 0) + 1
+    print(f"{'gatekeeper':9s} {counts}")
+    for result in results:
+        if isinstance(result, BaseException):
+            print(f"  ! {type(result).__name__}: {result}")
+        elif result.get("status") == "failed":
+            print(f"  ! {result['cell_id']}: {result.get('error')}")
+
+    admissions = sorted(ROOT_GATE.glob("cells/*/contests/*/runs/*/admission.json"))
+    admitted_n = 0
+    for path in admissions:
+        admission = json.loads(path.read_text(encoding="utf-8"))
+        admitted_n += bool(admission["admitted"])
+        if admission["line_mismatch"]:
+            stray["a gate whose line contradicted its own findings"] = 1
+        if admission["model"] != "gate/model":
+            stray["an admission that does not name the model that made it"] = 1
+        # The source directory is read off the manifest, not guessed from the path:
+        # a gate run directory is named `<timestamp>-<item>-gate` and the contest it
+        # copied `<timestamp>-<item>-recourse`, so string surgery on the path finds
+        # nothing and would pass this check by never running it.
+        source_dir = Path(json.loads(
+            (path.parent / "run.json").read_text(encoding="utf-8"))
+            ["source_contest_dir"])
+        for name in ("ruling.json", "challenge.json", "grade.json"):
+            if not (source_dir / name).is_file():
+                continue          # the source has none either; nothing to carry across
+            if not (path.parent / name).is_file():
+                stray[f"a gated contest with no {name}"] = 1
+        if (path.parent / "ruling.source.json").exists():
+            stray["a gate that replaced the ruling instead of keeping it"] = 1
+    print(f"admissions written: {len(admissions)}   admitted {admitted_n}   "
+          f"refused {len(admissions) - admitted_n}")
+    if not admissions or admitted_n in (0, len(admissions)):
+        stray["the pass did not exercise both branches of the after-state rule"] = 1
+
+    # The rulings are the source's, byte for byte. This is the claim the whole arm rests
+    # on: the difference between M1's index and M4's is the gate and nothing else.
+    for path in admissions:
+        source_dir = Path(json.loads(
+            (path.parent / "run.json").read_text(encoding="utf-8"))
+            ["source_contest_dir"])
+        here = (path.parent / "ruling.json").read_bytes()
+        there = source_dir / "ruling.json"
+        if not there.is_file() or there.read_bytes() != here:
+            stray["a ruling that is not the source's, byte for byte"] = 1
+    logged = [json.loads(line)
+              for path in ROOT_GATE.glob("cells/*/contests/*/runs/*/calls.jsonl")
+              for line in path.read_text(encoding="utf-8").splitlines()]
+    roles = sorted({record.get("role") for record in logged})
+    print(f"wire calls in this tree: {len(logged)}   roles: {roles}")
+    if roles != ["gatekeeper"]:
+        stray["a call in the gate tree that was not the gate's"] = 1
+
+    rows = build_index(grid, root=ROOT_GATE,
+                       challenger_model=config.challenger_model_for(),
+                       decision_root=ROOT)
+    index = ROOT_GATE / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, CONDITIONS)
+    (ROOT_GATE / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                            encoding="utf-8")
+    gated = [r for r in rows if r.get("gate_admitted") is not None]
+    kept = [r for r in gated if not r["gate_admitted"]]
+    print(f"indexed {len(rows)} rows   gated {len(gated)}   refused {len(kept)}")
+    for row in kept:
+        # the ruling is still there and still says what it said; only the after-state
+        # went back to the decision's own verdict
+        if row.get("ruling_form") is None:
+            stray["a refused cell that lost its ruling columns"] = 1
+        if row.get("changed_the_decision") is not False:
+            stray["a refused cell counted as having changed the decision"] = 1
+        if row.get("final_correct") != row.get("initially_correct"):
+            stray["a refused cell whose after-state is not its before-state"] = 1
+    caveat = next((c for c in metrics["caveats"] if "ADMISSIBILITY GATE" in c), "")
+    print(f"gate caveat: {caveat[:150]}...")
+    if not caveat or "POST HOC" not in caveat:
+        stray["the metrics do not announce the gate that moved final_correct"] = 1
+
+    after_source, after_decisions = tree_sha256(ROOT_JUDGMENT), tree_sha256(ROOT)
+    print(f"source tree hash before {before_source[:16]}  after {after_source[:16]}  "
+          f"{'UNCHANGED' if before_source == after_source else 'CHANGED'}")
+    if before_source != after_source or before_decisions != after_decisions:
+        stray["the gate wrote into a tree it read"] = 1
+    print(f"gate invariants violated: {stray}")
+
+    return report_documents(ROOT_GATE) or (1 if stray else 0)
 
 
 async def per_condition_pass(config, client_config, grading, by_id) -> int:

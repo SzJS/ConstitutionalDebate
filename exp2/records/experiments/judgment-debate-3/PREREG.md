@@ -182,6 +182,182 @@ misattributed quotes, 1 of 6 graded valid). It is not revised again for this pha
   such wherever it appears.
 * **Cost and latency per arm**, from each tree's own `calls.jsonl`.
 
+## Amendment of 2026-08-28 — M4, and the additions decided after M1's preliminary read
+
+**Everything in this section is POST HOC with respect to the pre-registration above, and
+it is here because that is the only honest place to put it.** On 2026-08-28, with M1's
+audit stage about four fifths done, its running numbers were read: on the first 876 cells
+the challenger raised on 54%, and the rulings had fixed **65** wrong decisions and broken
+**75** right ones, overturning 39% of the wrong decisions contested against 24.5% of the
+right ones. Those numbers were seen. What follows was decided after seeing them, and none
+of it may be reported as the pre-registered endpoint. **P1, P2 and P3 above are unchanged
+and unaffected; the population, the after-state definition, the alphas and the stop rules
+are unchanged.** The precedent this document opens with — `MIN_JUDGE_ACCURACY`, a rule
+written down first, disqualifying everything, and withdrawn afterwards, which the write-up
+must disclose *because* it was written down — is the reason this amendment exists rather
+than a quiet addition to the results.
+
+### The headline descriptive: the two conditional rates
+
+For **every arm**, reported as the **first** table beside the net, over the cells that arm
+**contested**:
+
+* **the fixed rate** — of the decisions that were **wrong** and were contested, the share
+  that ended **right**;
+* **the broken rate** — of the decisions that were **right** and were contested, the share
+  that ended **wrong**;
+* **their difference**, in percentage points.
+
+The denominator is the contested cells in both, because a cell nobody objected to cannot
+be fixed or broken by an objection and leaving it in dilutes both rates by the decline
+rate, which differs between arms. On M3 the denominator is every decided cell, because the
+specious instruction forbids the decline; that is a property of the instruction and M3's
+row is never read beside M1's as one population.
+
+**Descriptive. No alpha, no test, no threshold.** The quantity is not new — it is the
+discrimination line the pre-registered descriptive list above already carries, in the
+funnel's vocabulary — and what changed on 2026-08-28 is only that it is printed **first**,
+because the net is these two rates multiplied by two populations of different sizes and a
+reader given only the net cannot see the mechanism: with a judge that is right about three
+quarters of the time, an audit that contests indiscriminately meets a right decision about
+three times as often as a wrong one, so a broken rate well below the fixed rate still
+loses more cells than it fixes.
+
+**The alternative framing — treating an objection as a diagnostic instrument, with the
+machinery of prior odds and a ratio that updates them — was considered and is NOT used**,
+by the user's decision of 2026-08-28. It appears nowhere in the derivations, the record or
+the write-up, and a test enforces that.
+
+### M4 — the same-class gatekeeper ("leave to appeal")
+
+**The arm.** `openai/gpt-4.1-mini` is shown, for each cell M1 contested, the problem, the
+solution, the record, M0's judgment and the objection's defect list, and is asked **one
+question in one call**: for each alleged defect, is it **REAL** — are its quotations
+accurate against the two documents, and is the thing alleged actually there — ending on
+`Admissibility: ADMITTED` (at least one real defect) or `Admissibility: REFUSED`. It is
+told, in the prompt, that **materiality is not its question** (the recourse judge has
+already answered it), that the **verdict** is not its question, and that it must not
+re-decide the problem.
+
+**No ruling is re-made and none is altered.** M1's rulings are copied into M4's tree
+byte-for-byte — the offline harness asserts that byte for byte — and the arm's whole spend
+is one admissibility call per contested cell.
+
+**The after-state.** For every cell in M4:
+
+    final_correct = the RULING's verdict     where the gate ADMITTED the objection
+                    the DECISION's verdict   where the gate REFUSED it
+
+Cells M1 declined keep their before-state, exactly as they do in M1. `metrics.json` emits
+a caveat on every gated index saying that this column was computed rather than read.
+
+**The analysis rule.** **M4's after-state against M0's before-state, on the same cells:
+fixed / broken / net, tested with an exact two-sided McNemar, α = 0.05** — the same test,
+the same formula and the same alpha as P1, on the same population.
+
+**It is reported BESIDE P1 as an ablation, and never as P1.** It is not a second test of
+the primary endpoint and it does not enter a Bonferroni family with it, because it is not
+a candidate for the endpoint at all: it was chosen after the endpoint's numbers were seen,
+and a comparison chosen that way cannot be the thing the study tested. Every table, figure
+and sentence carrying an M4 number carries the label **"post hoc — added after M1's
+preliminary numbers were seen, 2026-08-28"**.
+
+**Reported with it, and this is the number that says whether the gate works for the right
+reason: the gate's own discrimination** — its admission rate on objections to **wrong**
+decisions against its admission rate on objections to **right** ones, and the difference.
+A gate that admits everything scores 0 there and changes nothing; a gate that admits at
+random scores near 0 and shrinks the net towards zero from both ends; only a gate that
+admits objections to wrong decisions more often than objections to right ones is doing the
+job the arm is for.
+
+**Why gpt-4.1-mini and not something better.** Because something better would wreck the
+arm in exactly the way that stopped the `judgment-debate-2` chain. A gate stronger than the
+decider imports its own reading of the record into the decision path, and the number then
+measures that model rather than gatekeeping. gpt-4.1-mini is the **other in-band pass** of
+the judge-selection rule of `records/experiments/judgment-debate-2/PREREG.md` — index 14
+with reasoning off, delta 0 from the challenger's own level — and it is a **different
+family** from Maverick, so it is neither the judge marking its own homework nor a stronger
+reader smuggled in.
+
+**Fixed before M4's first paid call:** the admissibility prompt
+(`prompts.GATEKEEPER_SYSTEM`, `GATEKEEPER_USER`, `GATEKEEPER_CLOSING`, and the unnumbered
+variant), pinned in `tests/test_prompts.py`; **temperature 0 and `reasoning_effort =
+"off"`**, pinned in code at the call site rather than in the spec (a gate is a measurement
+and not a generator — the same objection read twice must be read the same way — and a
+private channel no reader can see is what `configs/default.toml` refuses on the
+transparency rule); one attempt plus one format repair, as every role gets; the source
+tree `outputs/experiments/jd3-main`, fingerprinted before and after and never written to.
+The estimate is **about $2.50** at the smoke's measured $0.0025 per call.
+
+**What M4 does not claim.** It is not a proposal, it is not the design, and it is not
+evidence that a gate should be part of a contestability process. It is one arithmetic
+question asked of one set of finished rulings: *what would the net have been if only the
+objections a same-class reader called real had been heard?*
+
+### The two gate rows that make no calls, and are descriptive only
+
+Both are recomputations of M1's own rulings under a different rule about which of them
+count. Both use the same after-state arithmetic as M4. Both are **POST HOC, descriptive,
+reported with fixed / broken / net and an exact McNemar for comparability, and never tested
+as an endpoint**; both carry the same label M4 carries.
+
+* **The mechanical gate (no model).** An objection is admitted **iff every quotation in it
+  is verbatim in the document it is attributed to**: every `Judgment says:` quote in the
+  judgment — the harness's own parse-time check, which was pre-registered and is on the
+  decision path — **and** every `Record says:` quote in the record the challenger was
+  shown, which is a **new** check (`prompts.record_quotes_in_record`, 2026-08-28) computed
+  over the finished tree and **wired into nothing**. It is deliberately not added to the
+  decision path: doing so would change what the grader was asked about objections already
+  written and paid for, which is a rewrite of a finished measurement rather than an
+  addition to it. Both halves use the same lenient normaliser the pre-registered check
+  uses — whitespace, case, quotation marks, markdown emphasis and ellipsis forgiven — plus
+  one rule the judgment side does not need and does not get: a **speaker attribution** is
+  not part of the quotation, because the record has speakers and a judgment does not.
+  Computed by `records/derivations/jd3-gates.py`, which writes
+  `outputs/jd3-main-gates.jsonl` and reads nothing else. It is the **LOWER bound** of the
+  three rows: the weakest filter there is, asking only whether the evidence exists.
+
+* **The Haiku-valid bound.** An objection is admitted **iff the grader marked it valid**.
+  The grader is `anthropic/claude-haiku-4.5`, **stronger than the judge it would be
+  gating**, so this counts only the objections a better reader endorsed and imports that
+  reader into the decision path — the confound that stopped the `judgment-debate-2` chain,
+  arriving by a side door. It is therefore reported as **"what a gatekeeper as good as
+  Haiku would achieve": an UPPER bound, and not a process anybody could run.** It is the
+  logic of `outputs/leave-to-appeal.py`, folded into the derivation as a labelled row.
+
+**Neither is an endpoint and neither may be quoted without its label.** Their purpose is to
+**bracket** M4: a lower bound that needs no model and an upper bound that needs a better
+one, with the only runnable gate between them.
+
+### The reference table
+
+`records/experiments/judgment-debate-3/REFERENCE-RATES.md` — appellate reversal rates,
+reversal-of-reversal rates where published, and medical second-opinion change rates, each
+with its source and with what it does and does not have by way of ground truth — is
+assembled as **context for the two conditional rates and is never a comparison test**. No
+number in this phase is tested against any number in it.
+
+---
+
+## What did NOT change
+
+For the avoidance of any doubt, and because an amendment that quietly moved something else
+would be worse than no amendment:
+
+* **P1, P2 and P3 are untouched** — the same endpoints, the same exact two-sided McNemar,
+  the same α = 0.05 for P1 and P2, the same descriptive-and-void treatment of P3.
+* **The population is untouched**: the debate cells for which M0 produced a decided
+  judgment. M4 adds no cell, drops no cell and re-decides no cell.
+* **The after-state definition for M0–M3 is untouched.** M4's gated after-state is M4's
+  alone and is stated above.
+* **No prompt on the decision path changed.** The challenger's, the judge's, the recourse
+  judge's, the readers' and the grader's prompts are byte-identical to what M1 sent and are
+  still pinned by sha256. The admissibility prompt is new and belongs to M4 alone.
+* **The stop rules are unchanged and catastrophic-only.**
+* **The same-model note is unchanged**, and M4 does not repair it: the gate is a different
+  model from the judge, but the judge still ruled on the appeal against its own judgment
+  and the gate only decides which of those rulings count.
+
 ## The same-model note
 
 **The model that judges the debate is the model that rules on the appeal against its own

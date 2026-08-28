@@ -41,7 +41,12 @@ OFF_PATH_ROLES: frozenset[str] = frozenset(
     # a purpose of `grader`, because it is repaired with a different format and must not
     # be sent the flaw grader's correction. It is off the decision path for the same
     # reason `grader` is: it grades a run and must never be able to inflate it.
-    {"grader", "judgment_grader", "comprehension", "agreement", "ruling_reader"}
+    # `gatekeeper` is the M4 admissibility gate, added 2026-08-28. Off the decision path
+    # for the same reason the graders are: it decides which of M1's EXISTING rulings are
+    # counted, changes no ruling and no verdict, and a gate that could inflate the
+    # condition it gates would be measuring itself.
+    {"grader", "judgment_grader", "comprehension", "agreement", "ruling_reader",
+     "gatekeeper"}
 )
 
 

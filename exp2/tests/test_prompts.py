@@ -754,6 +754,224 @@ def test_a_defect_records_whether_its_judgment_quote_is_in_the_judgment():
     assert [d["quote_in_judgment"] for d in parse_defects(reply)] == [None] * 5
 
 
+def test_the_record_side_quote_check_is_the_other_half_of_the_format():
+    """POST HOC (2026-08-28). The judgment prompt asks every defect to quote BOTH
+    documents and only the `Judgment says:` half was ever verified. This is the other
+    half, run over a finished tree and wired into nothing — a defect that quotes the
+    judgment accurately and attributes to the record a sentence the record does not
+    contain is built on evidence that does not exist just as surely."""
+    from exp2.prompts import defect_quotes_in_record, record_quotes_in_record
+
+    record = ("Alice: step 2 divides by zero, and the guard above it never runs.\n"
+              "Bob: I quoted the loop twice and neither quotation was contested.")
+
+    # VERBATIM, and leniently: same normaliser as the judgment side, so case,
+    # whitespace, wrapping, quotation marks and markdown emphasis are not differences.
+    assert defect_quotes_in_record({"record_says": ['"step 2 divides by zero"']}, record)
+    assert defect_quotes_in_record({"record_says": ["STEP 2   DIVIDES\n by zero"]}, record)
+    assert defect_quotes_in_record({"record_says": ["I quoted the **loop** twice"]},
+                                   record)
+    # ELLIPSIS-AWARE, on the same rule: two pieces each verbatim, the middle elided.
+    assert defect_quotes_in_record(
+        {"record_says": ['"step 2 divides by zero...the guard above it never runs"']},
+        record)
+    # and eliding is still not a way to smuggle an invented half past the check
+    assert defect_quotes_in_record(
+        {"record_says": ['"step 2 divides by zero...and Bob agreed on the record"']},
+        record) is False
+
+    # ABSENT is False, and it is the case the check exists for.
+    assert defect_quotes_in_record({"record_says": ['"Bob conceded step 2 at once"']},
+                                   record) is False
+    # ALL of them, for the reason the judgment side requires all of its: a claim built
+    # on one real passage and one invented one is built on an invented one.
+    assert defect_quotes_in_record(
+        {"record_says": ['"step 2 divides by zero"', '"Bob conceded step 2 at once"']},
+        record) is False
+
+    # NONE, NOT FALSE, wherever there was nothing to check. "not measured" and "measured
+    # and failed" are different facts, exactly as they are on the judgment side.
+    assert defect_quotes_in_record({"record_says": ['"step 2 divides by zero"']},
+                                   "") is None          # no record supplied
+    assert defect_quotes_in_record({"record_says": []}, record) is None   # quoted nothing
+    assert defect_quotes_in_record({"record_says": ["   "]}, record) is None
+    assert defect_quotes_in_record(
+        {"record_says": ["(the record does not say)"]}, record) is None   # parenthetical
+
+    # THE OMISSION CARVE-OUT DOES NOT APPLY HERE, and that is the point of the check.
+    # `Judgment says:` is excused for an omission because there is nothing to quote;
+    # `Record says:` is not — the prompt tells it to quote the point the judgment does
+    # not address, so an omission's record quote is checkable.
+    from exp2.prompts import defect_quote_in_judgment
+    omission = {"type": "omission",
+                "judgment_says": ["(the judgment does not address this)"],
+                "record_says": ['"Bob conceded step 2 at once"']}
+    assert defect_quote_in_judgment(omission, "some judgment text") is None
+    assert defect_quotes_in_record(omission, record) is False
+
+    # AN ATTRIBUTION IS NOT PART OF THE QUOTATION, and this is the one leniency the
+    # judgment side does not have — because the record has SPEAKERS and a judgment does
+    # not. On M1's first 400 gated objections, 140 of the 191 record quotations that
+    # failed the strict comparison failed on nothing but where the challenger put the
+    # speaker's name, so a gate without this rule measures formatting.
+    turns = ("Round 1:\n  Alice: The analysis does not falsely claim the program "
+             "fails on valid inputs.\n  Bob: the log was kept for 15 years.")
+    assert defect_quotes_in_record(
+        {"record_says": ['Alice Round 1: "The analysis does not falsely claim the '
+                         'program fails on valid inputs"']}, turns)
+    assert defect_quotes_in_record(
+        {"record_says": ['"Bob: the log was kept for 15 years"']}, turns)
+    # tried only AFTER the strict comparison, so nothing that passed can start failing,
+    # and the quoted material itself still has to be there
+    assert defect_quotes_in_record(
+        {"record_says": ['Alice Round 1: "the moon is made of green cheese"']},
+        turns) is False
+    # an attribution wrapping one real span and one invented one is wrapping an invented
+    # one: every substantial quoted span must be found, as every ellipsis piece must be
+    assert defect_quotes_in_record(
+        {"record_says": ['Alice says "the log was kept for 15 years" and also "the moon '
+                         'is made of green cheese"']}, turns) is False
+    # and the rule cannot manufacture a pass by over-stripping: whatever survives the
+    # strip still has to be verbatim
+    assert defect_quotes_in_record(
+        {"record_says": ["Some preamble: nothing like this is in the record"]},
+        turns) is False
+
+    # the list form is aligned with the objection's own order, one flag per defect, so a
+    # caller joins a flag to a defect by the number the challenger used
+    assert record_quotes_in_record(
+        [{"record_says": ['"step 2 divides by zero"']},
+         {"record_says": ['"Bob conceded step 2 at once"']},
+         {"record_says": []}],
+        record) == [True, False, None]
+    assert record_quotes_in_record([], record) == []
+
+
+def test_the_record_side_check_is_not_wired_into_parse_defects():
+    """It is POST HOC and it must stay that way. `parse_defects` runs on the decision
+    path and its `quote_in_judgment` flag costs a defect its grade; adding a second flag
+    there would change what the grader is asked on objections already written and paid
+    for, which is a rewrite of a finished measurement and not an addition to it."""
+    from exp2.prompts import parse_defects
+
+    defects = parse_defects(
+        "1. Type: misstatement\n"
+        '   Judgment says: "x"\n'
+        '   Record says: "invented"\n', "the judgment says x")
+    assert defects[0]["quote_in_judgment"] is True
+    assert "quote_in_record" not in defects[0]
+    assert "record_quotes_ok" not in defects[0]
+
+
+def test_the_gatekeeper_asks_admissibility_and_refuses_the_other_two_questions():
+    """M4's prompt, POST HOC (2026-08-28). It has one job — is at least one alleged
+    defect REAL — and the two it must not do are named in it out loud, because a gate
+    that quietly weighed materiality would be a second recourse judge and the arm would
+    measure two changes at once."""
+    from exp2.prompts import (
+        GATEKEEPER_CLOSING,
+        GATEKEEPER_SYSTEM,
+        build_gatekeeper_messages,
+    )
+
+    assert "Materiality" in GATEKEEPER_SYSTEM
+    assert "NOT your question" in GATEKEEPER_SYSTEM
+    assert "Do not weigh whether a real defect would change the verdict" in \
+        GATEKEEPER_CLOSING
+    assert "Admissibility: <ADMITTED|REFUSED>" in GATEKEEPER_CLOSING
+
+    item = make_item()
+    messages = build_gatekeeper_messages(
+        item, record="RECORD BODY", judgment="JUDGMENT BODY",
+        decision_verdict="FLAWED", objection="1. Type: misstatement",
+        n_defects=1)
+    assert [m["role"] for m in messages] == ["system", "user"]
+    user = messages[1]["content"]
+    for needle in ("RECORD BODY", "JUDGMENT BODY", "1. Type: misstatement",
+                   item.problem, item.solution):
+        assert needle in user
+    assert "1 numbered defect" in user and "1 numbered defects" not in user
+    # an unnumbered objection gets the other closing rather than a sentence that lies
+    # about the document it is quoting
+    unnumbered = build_gatekeeper_messages(
+        item, record="R", judgment="J", decision_verdict="FLAWED",
+        objection="it is all wrong", n_defects=0)[1]["content"]
+    assert "did not number its defects" in unnumbered
+    assert "one or more defects, unnumbered" in unnumbered
+
+    # AND IT IS NOT TOLD WHAT THE HARNESS ALREADY FOUND. The judgment grader is handed
+    # the quote check's rulings; this must not be, or its admission rate would be partly
+    # a restatement of a string comparison the mechanical gate reports on its own.
+    assert "already been checked" not in user
+    assert "mechanical string check" not in user
+
+
+def test_the_gatekeeper_line_is_parsed_last_and_not_read_off_a_template():
+    """`NOT REAL` is tried before `REAL` in the alternation, and that ordering is the one
+    substitution in this module that would invert an arm: `REAL` alone matches the tail
+    of `NOT REAL` and would read every refusal as an admission."""
+    from exp2.prompts import MalformedOutputError, parse_admissibility_output
+
+    findings, admitted, reasoning, mode = parse_admissibility_output(
+        "I checked both quotations against the record.\n"
+        "Defect 1: NOT REAL — the record does not contain that sentence\n"
+        "Defect 2: REAL — the judgment does say both things\n"
+        "Admissibility: ADMITTED")
+    assert [(f["index"], f["real"]) for f in findings] == [(1, False), (2, True)]
+    assert findings[0]["reason"] == "the record does not contain that sentence"
+    assert admitted is True
+    assert reasoning == "I checked both quotations against the record."
+    assert mode == "strict"
+
+    # the LAST line wins, as every decision line in this module does: a model that
+    # restates its answer after a summary has decided twice and meant the second
+    assert parse_admissibility_output(
+        "Admissibility: ADMITTED\nOn reflection.\nAdmissibility: REFUSED")[1] is False
+    # and a de-duplicated defect line takes its last occurrence too
+    assert parse_admissibility_output(
+        "Defect 1: REAL — first pass\nDefect 1: NOT REAL — on checking\n"
+        "Admissibility: REFUSED")[0] == [
+            {"index": 1, "real": False, "reason": "on checking"}]
+
+    # AN ECHOED TEMPLATE IS NOT AN ANSWER. `<REAL|NOT REAL>` and
+    # `<ADMITTED|REFUSED>` are refused by the same trailing-pipe lookahead the grader's
+    # lines use, so a model that repeats the format instead of answering is repaired
+    # rather than read as an admission.
+    with pytest.raises(MalformedOutputError):
+        parse_admissibility_output(
+            "Defect 1: <REAL|NOT REAL> — <short reason>\n"
+            "Admissibility: <ADMITTED|REFUSED>")
+    with pytest.raises(MalformedOutputError) as error:
+        parse_admissibility_output("The objection looks fine to me.")
+    assert error.value.kind == "missing_decision_line"
+
+    # only the summary line is required; a reply with no per-defect lines says so in
+    # parse_mode rather than pretending it ruled defect by defect
+    assert parse_admissibility_output("Nothing checks out.\nAdmissibility: REFUSED") == (
+        [], False, "Nothing checks out.", "summary_line_only")
+
+
+def test_the_gatekeeper_has_its_own_repair_and_never_the_graders():
+    """A gatekeeper repaired with `Valid objection: <YES|NO>` would be asked for a format
+    its own parser refuses — the one repair spent on a prompt that could not succeed,
+    which is the mistake `repair_instruction_for` records exp1 making."""
+    from exp2.prompts import (
+        PUBLIC_LABELS,
+        REPAIR_INSTRUCTIONS,
+        parse_admissibility_output,
+        repair_instruction_for,
+    )
+
+    instruction = repair_instruction_for("gatekeeper", word_limit=0)
+    assert "Admissibility: <ADMITTED|REFUSED>" in instruction
+    assert "Valid objection" not in instruction
+    assert REPAIR_INSTRUCTIONS["gatekeeper"] is not REPAIR_INSTRUCTIONS["judgment_grader"]
+    # no public section, so no shape-aware label repair can ever reach it
+    assert "gatekeeper" not in PUBLIC_LABELS
+    # and the repair asks for a format its own parser accepts
+    parse_admissibility_output("Defect 1: REAL\nAdmissibility: ADMITTED")
+
+
 def test_the_grader_is_told_which_defects_the_quote_check_already_settled():
     """The objection is shown whole, so the skipped defects are in front of the grader
     whatever it is asked. Naming them is what stops it ruling on a question already
