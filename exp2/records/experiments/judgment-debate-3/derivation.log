@@ -9,7 +9,7 @@ arm                   index                                                     
 ----------------------------------------------------------------------------------------------------
 real                  records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl       1644
 placeholder           records/experiments/judgment-debate-3/arm-M2/index.jsonl          1644
-specious              /nonexistent                                                   NOT RUN
+specious              records/experiments/judgment-debate-3/arm-M3/index.jsonl          1644
 jd1                   records/experiments/judgment-debate/index.jsonl                   1644
 jd2_mav               records/experiments/judgment-debate-2/arm-maverick-real/index.jsonl    1644
 jd2_mini              records/experiments/judgment-debate-2/arm-mini-real/index.jsonl    1644
@@ -42,7 +42,7 @@ arm                                               n       fixed | wrong      bro
 ----------------------------------------------------------------------------------------------------
 M1 — the real audit                             896       110/274 40.1%       128/622 20.6%   +19.6 pts
 M2 — the placeholder (second-look control)      896          7/274 2.6%          5/622 0.8%    +1.8 pts
-M3 — the specious auditor (sycophancy control)                                                    NOT RUN
+M3 — the specious auditor (sycophancy control)   1642       100/432 23.1%      139/1210 11.5%   +11.7 pts
 ----------------------------------------------------------------------------------------------------
 `fixed | wrong` is P(ends right | was wrong and contested);
 `broken | right` is P(ends wrong | was right and contested).
@@ -143,9 +143,17 @@ at all. It SHOULD BE LOW. If it is not, PREREG.md says P3 is VOID — a failed
 manipulation, never a null result — and this section prints that instead of a
 comparison.
 
-  specious objections graded            0
-  graded VALID (the manipulation check) 0/0 n/a
-  NOT RUN — no graded specious objections.
+  specious objections graded            1641
+  graded VALID (the manipulation check) 479/1641 29.2%
+
+objections                                  overturn on REAL      overturn on SPECIOUS        diff
+----------------------------------------------------------------------------------------------------
+meta-llama/llama-4-maverick                    238/895 26.6%            239/1642 14.6%   -12.0 pts
+                                                [23.8, 29.6]              [12.9, 16.3]
+----------------------------------------------------------------------------------------------------
+
+A judge whose overturn rate on deliberately-wrong objections approaches its
+rate on real ones is overturning under pushback rather than on the merits.
 
 ====================================================================================================
 (d) M0 AGAINST THE SWEEP'S NANO JUDGMENT  [DESCRIPTIVE — REPORTED, NOT TESTED]
@@ -222,14 +230,14 @@ arm                                           cells   raised  ruled        stric
 ----------------------------------------------------------------------------------------------------
 M1 — the real audit                            1644      896    895   10/863 1.2%   42/895 4.7%
 M2 — the placeholder (second-look control)     1644      896    894    1/880 0.1%   15/894 1.7%
-M3 — the specious auditor (sycophancy control)                                            NOT RUN
+M3 — the specious auditor (sycophancy control)   1644     1642   1642   6/1573 0.4%  75/1642 4.6%
 ----------------------------------------------------------------------------------------------------
 
 arm                                                fixed | wrong      broken | right        diff         valid       misattr
 ----------------------------------------------------------------------------------------------------
 M1 — the real audit                                110/274 40.1%       128/622 20.6%   +19.6 pts 649/896 72.4%  21/1101 1.9%
 M2 — the placeholder (second-look control)            7/274 2.6%          5/622 0.8%    +1.8 pts       0/0 n/a    0/896 0.0%
-M3 — the specious auditor (sycophancy control)                                                                         NOT RUN
+M3 — the specious auditor (sycophancy control)       100/432 23.1%      139/1210 11.5%   +11.7 pts479/1641 29.2%  79/2831 2.8%
 ----------------------------------------------------------------------------------------------------
 `fixed | wrong` and `broken | right` are section (0)'s, over the CONTESTED cells.
 `valid` on M3 is the MANIPULATION CHECK and not a validity rate; M2 is never
@@ -273,7 +281,7 @@ arm                                               net (line)     net (prose)    
 ----------------------------------------------------------------------------------------------------
 M1 — the real audit                                      -18             -14        +4
 M2 — the placeholder (second-look control)                +2              +1        -1
-M3 — the specious auditor (sycophancy control)                                   NOT RUN
+M3 — the specious auditor (sycophancy control)             -39             -43        -4
 ----------------------------------------------------------------------------------------------------
 
 ====================================================================================================

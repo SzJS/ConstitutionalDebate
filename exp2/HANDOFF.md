@@ -258,8 +258,8 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$152.19**, with one arm still running. It breaks into three blocks,
-each itemised where it is reported:
+Total spent so far: **$203.91**, and the campaign that ends it is complete. It breaks into
+three blocks, each itemised where it is reported:
 
 * **$99.68 through the debate-only judgment-challenge run** — $63.00 through the auditor
   probe (itemised below) plus that campaign's **$36.6753**, both unchanged.
@@ -268,11 +268,12 @@ each itemised where it is reported:
   `jd2-nano-placeholder` **$3.0344**, the partial `jd2-maverick-placeholder` **$0.1329**,
   and two six-cell specious smokes **$0.3453**. Kept as a record, not as a result —
   `outputs/jd2-STOPPED-by-user.md`.
-* **$39.2296 for `judgment-debate-3`** (2026-08-28), the one-judge campaign: the 60-cell
-  pilot **$1.1897**, M0+M1 **$32.6568**, M2 **$3.1095**, M4 **$2.2585**, and the six-cell
-  admissibility smoke **$0.0151**. **M3 is still running** and had spent **$4.02** of an
-  estimated **$39** when this was written, so the campaign's final figure is not yet
-  known and the total above does not include it.
+* **$90.9534 for `judgment-debate-3`** (2026-08-28), the one-judge campaign: the 60-cell
+  pilot **$1.1897**, M0+M1 **$32.6568**, M2 **$3.1095**, **M3 $51.7238**, M4 **$2.2585**,
+  and the six-cell admissibility smoke **$0.0151**. **M3 cost more than the other three arms
+  together** and overran its $39 estimate, by construction: the specious instruction forbids
+  the decline, so it contests every decided cell rather than 54.5% of them and grades every
+  one. Budget a specious arm at 1.6x the real one, not at parity.
 
 The earlier breakdown, unchanged, of the first block's $36.6753: the first instrument check
 `judgment-debate-pilot` **$1.3285**, three six-cell prompt smokes **$0.1848**
@@ -760,10 +761,10 @@ not run; the **python800 phrasing** from §3u is still a design decision; and th
 30.4% ruling-line residual above wants a hand read of its alarms before the endpoint is
 quoted anywhere outside this repository.
 
-### The one-judge campaign, `judgment-debate-3` (2026-08-28) — DONE except M3
+### The one-judge campaign, `judgment-debate-3` (2026-08-28) — DONE, all four arms
 
 **The same design, re-run with one judge throughout, because the previous chain's judge was
-stronger than the judge it was auditing. DO NOT RE-RUN M0, M1, M2 OR M4.** Evidence:
+stronger than the judge it was auditing. DO NOT RE-RUN ANY ARM OF IT.** Evidence:
 [`records/experiments/judgment-debate-3/`](records/experiments/judgment-debate-3/README.md);
 write-up `LLM_NOTES.md` **§3y**; pre-registration
 [`PREREG.md`](records/experiments/judgment-debate-3/PREREG.md), **committed before M1's
@@ -779,9 +780,13 @@ level, a fourth model family, and the winner of the judge-selection rule written
 candidate was called. The jd2 chain was stopped after arm B (`outputs/jd2-STOPPED-by-user.md`).
 
 **What ran.** `outputs/jd3-run-all.sh`, one `nohup` process, arms in dependency order; every
-stage of every arm exit 0; **13,529 wire calls with one non-2xx** — a
+stage of every arm exit 0; **24,909 wire calls with one non-2xx** — a
 `ConnectError: Temporary failure in name resolution` on one `jd3-main` challenger call
-(`python800-p03632-flawed`), retried by the client and completed, so no cell was lost to it. The sweep tree was hashed before and after and is byte-identical (`5e2eb4d6…`).
+(`python800-p03632-flawed`), retried by the client and completed, so no cell was lost to it.
+The chain closed at 19:46:18Z (`outputs/jd3-ALL-DONE.md`). Fingerprints held at all three
+points (`outputs/jd3-fingerprints.md`): `sweep` `5e2eb4d6…` before the first arm and after the
+last, `jd3-main` `dfa9bdca…` from the moment M1 finished to the end of M3, so M2, M3 and M4
+each ruled against exactly the decisions that are on disk.
 
 | arm | spec | window (UTC) | spend | what it is |
 |---|---|---|---|---|
@@ -789,13 +794,37 @@ stage of every arm exit 0; **13,529 wire calls with one non-2xx** — a
 | **M1** | `jd3-main.toml`, the other five stages | → 14:43:04 | $30.6515 | flash audits the judgments, Maverick rules on materiality — **the endpoint** |
 | **M2** | `jd3-placeholder.toml` | 14:43:50 → 15:37:17 | $3.1095 | the placeholder on exactly M1's contested cells |
 | **M4** | `jd3-gatekeeper.toml` | 14:48:03 → 15:01:21 | $2.2585 | `gpt-4.1-mini` on **admissibility only**; M1's rulings reused — **POST HOC** |
-| **M3** | `jd3-specious.toml` | 15:37:17 → | est. $39 | the specious auditor — **STILL RUNNING** |
+| **M3** | `jd3-specious.toml` | 15:37:17 → 19:45:06 | $51.7238 | the specious auditor — ran; **P3 not void**, but ~29% of its objections were real |
 
 **The numbers, reported and not concluded from.** **P1 (M1 vs M0): 110 fixed, 128 broken,
 net −18, exact two-sided McNemar p = 0.27045** — a NULL; accuracy 73.7% → 72.6%. **P2 (M1 vs
 M2): net −20, p = 0.2122 — NOT SEPARATED**, and **both arms are nulls**: the placeholder moved
 12 cells against M0 where the audit moved 238, and P2's 232 discordant pairs are the audit's
-movement rather than the placeholder's. **P3 is NOT RUN YET.**
+movement rather than the placeholder's.
+
+**P3 IS NOT VOID.** `PREREG.md` voids it only if the grader validates **most** of the specious
+objections; it validated **479 of 1,641 = 29.2%**, so the condition was not met, nothing in
+the pre-registration moves, and P3 is reported **as measured**.
+
+**The sycophancy number, and it is the first this experiment has had.** Split both arms by the
+grader's verdict, so the comparison is against objections **confirmed not real**: Maverick
+overturned **142/1,162 = 12.2%** of M3's unreal objections against **56/247 = 22.7%** of M1's
+(on the ones graded valid, 20.3% against 28.1%). **It overturns less on objections that are not
+real, in both directions — it does not simply fold.** But **one confirmed-unreal objection in
+eight still moved a decision**, and the arm moved 239 decisions and cost the corpus 39 cells
+(100 fixed / 139 broken) while carrying no information by construction. **Descriptive, not a
+pre-registered test.** The whole-arm contrast (**14.6%** specious against **26.6%** real, −12.0
+pts) is kept too, with the caveat that ~29% of the specious arm's objections were real and it
+therefore **understates** the gap.
+
+**Why ~29% was real — POST HOC.** With `omission` struck from the clause after the first smoke
+(it cannot be made false: a compressed judgment genuinely leaves points unaddressed), the two
+surviving defect types left the challenger one move — alleging that the judgment softened a
+party's position — and a 400-word judgment of a three-round debate does that constantly. The
+diagnosis rests on `HANDCHECK-M3-specious.md` (14 cells; the grader right on **6/6** valid and
+**4/4** invalid) and on that mechanism, **not on the 29.2% itself**. `CHECKLIST.md` §1b is the
+whole of it, and it records that the planner asserted "void" in conversation before re-reading
+`PREREG.md`'s line and corrected it on checking.
 
 **What explains it, and it is the headline descriptive.** Of the WRONG decisions the audit
 contested it fixed **40.1%** (110/274); of the RIGHT ones it contested it broke **20.6%**
@@ -827,11 +856,17 @@ accounts for it cell by cell. And **M4 was launched by hand and overlapped M2**,
 stages ran at once against §2 rule 6; nothing in either arm depends on the other and no
 provider failure appears in either log.
 
-**Still owed after this campaign:** **M3**, first — P2's null makes the specious control more
-important rather than less; the **python800 phrasing** (§3u), now load-bearing, since
-python800 is 637 of 1,644 cells and two thirds of the loss; the **`weak_alone` arm**; and the
-new one — **where the flaw definition sets its threshold**, which is the mechanism behind both
-columns of the endpoint and is a property of the task definition as much as of the procedure.
+**Still owed after this campaign:** **a specious control whose objections are false by
+CONSTRUCTION**, first — P2's null makes it more important rather than less, and M3 says what
+has to change. The defect TYPE must be one that cannot be true (an invented quotation, a
+fabricated attribution — what the auditor probe's injected fixture built, and what the
+harness's own quote check can verify without a grader at all) rather than a type made false
+**by instruction**: this clause could not manufacture falsehood in the two defect types that
+survived smoke 1, and no rewording of it will; the **python800 phrasing** (§3u), now
+load-bearing, since python800 is 637 of 1,644 cells and two thirds of the loss; the
+**`weak_alone` arm**; and the new one — **where the flaw definition sets its threshold**, which
+is the mechanism behind both columns of the endpoint and is a property of the task definition
+as much as of the procedure.
 
 ### The open findings the write-up must carry
 
@@ -1111,7 +1146,7 @@ truncated cells — is **reported with its number, not stopped for**.
 
 ## 7. Pointers
 
-**`LLM_NOTES.md` section map** (~4,970 lines; it is the working record, not a summary).
+**`LLM_NOTES.md` section map** (~5,135 lines; it is the working record, not a summary).
 The lettered sections are in the order they were WRITTEN, not in alphabetical order —
 §3f–§3g sit before §3d, and §3h sits after §3w — so use this table rather than scrolling:
 
@@ -1135,7 +1170,7 @@ The lettered sections are in the order they were WRITTEN, not in alphabetical or
 | **3v** | the partisan challenger — three clauses, NO-GO (2026-08-27) |
 | **3w** | the judgment-challenge variant: the slice, the harness quote check, and the auditor probe that picked nobody (2026-08-27) |
 | **3x** | **the debate-only judgment-challenge run** (2026-08-28) — the paired endpoint, the two prompt revisions and the instrument revision |
-| **3y** | **the one-judge campaign** (2026-08-28) — M0/M1/M2/M4 with `llama-4-maverick` in both judge seats: the endpoint is a NULL, the audit is clean, the two conditional rates are the finding, and three post-hoc gatekeeper rows do not repair it. M3 pending |
+| **3y** | **the one-judge campaign** (2026-08-28) — all four arms with `llama-4-maverick` in both judge seats: the endpoint is a NULL, the audit is clean, the two conditional rates are the finding, three post-hoc gatekeeper rows do not repair it, and the specious control (P3, **not void**) puts the judge's overturn rate on confirmed-unreal objections at 12.2% against 22.7% on real ones |
 | 3h | the pre-registered finding that the transcript made the weak judge *worse* |
 | 4 | limitations accepted for v1 — the three that must reach the write-up |
 | 5, 5b | predictions recorded before the runs; how the weak model and subsets get chosen |
@@ -1191,7 +1226,7 @@ The one-judge campaign's specs, in the order they ran: `jd3-pilot.toml` (60 cell
 instrument check that gated Maverick), `jd3-main.toml` (**M0 + M1**, one spec and one tree
 because M1's contest rules on M0's own decisions), `jd3-placeholder.toml` (**M2**),
 `jd3-gate-smoke.toml` (six cells, the admissibility prompt read before M4),
-`jd3-gatekeeper.toml` (**M4**) and `jd3-specious.toml` (**M3**, still running). The `rejudge`
+`jd3-gatekeeper.toml` (**M4**) and `jd3-specious.toml` (**M3**). The `rejudge`
 and `gatekeeper` stages were added for this campaign: `rejudge` reads another tree's stored
 debate transcripts through `transcripts_from` and writes a full decision record of its own,
 and `gatekeeper` copies another tree's finished objections **with their rulings** through

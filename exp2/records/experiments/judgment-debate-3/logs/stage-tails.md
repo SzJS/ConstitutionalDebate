@@ -74,7 +74,37 @@ M4 was launched by hand rather than by `jd3-run-all.sh` and its window (14:48–
 read `jd3-main` and neither writes to it, and no rate-limit or provider failure appears in
 either log.
 
-## M3 — `jd3-specious`, started 15:37:17Z. **NOT RUN YET** — see `arm-M3/NOT-RUN-YET.md`.
+## M3 — `jd3-specious`, 15:37:17Z → 19:45:06Z (4 h 07 m 49 s), every stage exit 0
+
+| stage | exited | result line | cumulative spend |
+|---|---|---|---|
+| `contest` | 19:19:39Z | `completed=1643  failed=1  skipped=466` | $32.2825 |
+| `agreement` | 19:26:26Z | `completed=1642  skipped=468` | $35.0107 |
+| `ruling_agreement` | 19:33:19Z | `completed=1642  skipped=468` | $38.5971 |
+| `grade` | 19:45:02Z | `completed=1641  failed=1  skipped=468` | **$51.7238** |
+| `analyse` | 19:45:06Z | `indexed 1644 rows` | — |
+
+**It is the most expensive arm by a distance**, and by construction: the specious instruction
+forbids the decline, so it contests **every** decided cell rather than 54.5% of them, and every
+one of those is then graded. $51.72 against the estimate of ~$39.
+
+**The two failures, named:**
+
+    ! medqa-dev_0748__debate__r1: TruncatedOutputError: challenger response stopped on
+      finish_reason='error' at max_tokens=16384                      (contest)
+    ! python800-p02685-flawed__debate__r1: TruncatedOutputError: judgment_grader response
+      stopped on finish_reason='error' at max_tokens=4096            (grade)
+
+So 1,644 cells − 1 with no contest at all (`medqa-dev_0748`) − 1 `unclear`
+(`medqa-dev_0113`, no readable decision line, which seeks no ruling) = **1,642 contested and
+ruled**, and 1,641 graded.
+
+## The chain, closed
+
+`outputs/jd3-ALL-DONE.md`, 2026-08-28T19:46:18Z. Fingerprints at three points
+(`outputs/jd3-fingerprints.md`): `sweep` **`5e2eb4d6…`** before the first arm *and* after the
+last; `jd3-main` **`dfa9bdca…`** from the moment M1 finished to the end of M3. So M2, M3 and
+M4 each ruled against exactly the decisions that are on disk now.
 
 ## Wire health, counted from each tree's own `calls.jsonl` (excluding copied `parent/` logs)
 
@@ -83,6 +113,8 @@ either log.
 | `jd3-main` | 10,842 | **1** — one `ConnectError: Temporary failure in name resolution` on a challenger call for `python800-p03632-flawed`, retried by the client and completed |
 | `jd3-placeholder` | 1,791 | 0 |
 | `jd3-gatekeeper` | 896 | 0 |
+| `jd3-specious` | 11,380 | 0 |
+| **total** | **24,909** | **1** |
 
 ## The six-cell admissibility smoke — `gates/SMOKE-admissibility-6-cells.txt`
 

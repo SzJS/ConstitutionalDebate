@@ -10,15 +10,20 @@ directory. [`PREREG.md`](PREREG.md) was committed **before** M1's first paid cal
 amendment before M4's.
 
 Nothing here is an input to any stage. No code reads this directory; deleting it would break
-no command. It is evidence, and it is about 8 MB.
+no command. It is evidence, and it is about 11 MB.
 
 **Read [`CHECKLIST.md`](CHECKLIST.md) first**, and its §0 before any other number.
 
-> ## M3 HAS NOT LANDED
-> The specious-objection control started at 2026-08-28T15:37:17Z and is still running.
-> Every M3 row in `CHECKLIST.md` and in §3y says **NOT RUN YET**, `arm-M3/` holds a
-> placeholder, and `derivation.log` was produced with `--specious /nonexistent`. None of it
-> may be filled from a partial tree. See [`arm-M3/NOT-RUN-YET.md`](arm-M3/NOT-RUN-YET.md).
+> ## P3 IS NOT VOID — READ §1b BEFORE QUOTING THE SPECIOUS ARM
+> M3 landed at 2026-08-28T19:45:06Z. `PREREG.md` voids P3 only if the grader validates *most*
+> of the specious objections; it validated **479/1,641 = 29.2%**, so the condition was **not**
+> met and P3 is reported **as measured**. The number that survives is the comparison split by
+> the grader's verdict: **Maverick overturns 12.2% of the objections confirmed NOT real,
+> against M1's 22.7%** — it does not simply fold — while one confirmed-unreal objection in
+> eight still moved a decision. [`CHECKLIST.md`](CHECKLIST.md) **§1b** has that, the whole-arm
+> comparison with its caveat, and a clearly-labelled **post-hoc** diagnosis of why about a
+> third of the arm was real, resting on [`HANDCHECK-M3-specious.md`](HANDCHECK-M3-specious.md)
+> and on the mechanism rather than on the 29.2% itself.
 
 ## Why this phase exists
 
@@ -48,16 +53,20 @@ again for one call each.
 | **M1** | `jd3-main.toml`, stages `contest agreement ruling_agreement grade analyse` | flash audits M0's judgments; Maverick rules on materiality — **the primary endpoint** | 12:37:31 → 14:43:04 | $30.65 | raised 896/1,644; **P1 = −18, p = 0.27** |
 | **M2** | `jd3-placeholder.toml` | the placeholder objection on exactly the cells M1 contested — the second-look control | 14:43:50 → 15:37:17 | $3.11 | **P2 not separated**, −20, p = 0.21 |
 | **M4** | `jd3-gatekeeper.toml` | `gpt-4.1-mini` rules on **admissibility only**; M1's rulings reused unchanged — **POST HOC** | 14:48:03 → 15:01:21 | $2.26 | 896/896 admissions; net −14, gate discrimination −1.8 pts |
-| **M3** | `jd3-specious.toml` | the specious auditor on every decided cell — the sycophancy control | 15:37:17 → | est. $39 | **NOT RUN YET** |
+| **M3** | `jd3-specious.toml` | the specious auditor on every decided cell — the sycophancy control | 15:37:17 → 19:45:06 | $51.72 | **not void**; 29.2% graded valid, so ~a third of it was real |
 
-Total so far **$38.02**, plus the 60-cell instrument pilot **$1.1897** and the six-cell
-admissibility smoke **$0.0151**. Every stage exited 0; **13,529 wire calls with one non-2xx**
-— a `ConnectError: Temporary failure in name resolution` on one `jd3-main` challenger call
-(`python800-p03632-flawed`), retried by the client and completed, so no cell was lost to it. `logs/stage-tails.md` has every stage's own result line.
+Total **$89.75**, plus the 60-cell instrument pilot **$1.1897** and the six-cell admissibility
+smoke **$0.0151**. Every stage of every arm exited 0; **24,909 wire calls with one non-2xx** —
+a `ConnectError: Temporary failure in name resolution` on one `jd3-main` challenger call
+(`python800-p03632-flawed`), retried by the client and completed, so no cell was lost to it.
+M3 cost **more than the whole rest of the campaign** because it contests every cell rather
+than 54.5% of them and every one of those is graded. `logs/stage-tails.md` has every stage's own result line.
 
-Nothing was re-debated and nothing was re-decided after M0. The sweep tree was hashed before
-and after and is byte-identical
-(`5e2eb4d69ecabcce77533fd84a75e6d8d7c6a7676a00b05701737229bdfd2d2f`).
+Nothing was re-debated and nothing was re-decided after M0. Both source trees were hashed at
+three points (`outputs/jd3-fingerprints.md`) and are byte-identical throughout: `sweep`
+`5e2eb4d6…` before the first arm and after the last, and `jd3-main` `dfa9bdca…` from the
+moment M1 finished to the end of M3 — so M2, M3 and M4 all ruled against exactly the
+decisions on disk.
 
 ## What was found
 
@@ -79,6 +88,23 @@ wrong ones. Nearly-twice-as-likely-to-help still loses at that base rate.
 `REFERENCE-RATES.md` §7 puts the one comparable published pair beside it — Garrett's DNA
 exonerees, where ordinary appeal reversed ~14% of known-wrong convictions against a ~14%
 background rate, i.e. **no discrimination at all** — as context and never as a test.
+
+**And on sycophancy, the first thing this experiment has been able to say.** Split by the
+grader's verdict, so the comparison is against objections **confirmed not real**: Maverick
+overturned **142/1,162 = 12.2%** of M3's unreal objections against **56/247 = 22.7%** of M1's
+— it overturns *less* on objections that are not real, in both directions, so it is not
+simply folding under pushback. But **one confirmed-unreal objection in eight still moved a
+decision**, and the arm moved 239 decisions and cost the corpus 39 cells while carrying no
+information by construction. Descriptive, not a pre-registered test.
+
+**The whole-arm contrast (14.6% specious against 26.6% real, −12.0 pts) understates that
+gap**, because about 29% of the "specious" arm's objections were real. Why: with `omission`
+struck after the first smoke — it cannot be made false, a compressed judgment genuinely
+leaving points unaddressed — the two surviving defect types left the challenger one move,
+alleging that the judgment softened a party's position, and a 400-word judgment of a
+three-round debate does that constantly. That diagnosis is **post hoc** and rests on
+`HANDCHECK-M3-specious.md` (14 cells; the grader right on 6/6 valid and 4/4 invalid) and on
+the mechanism, not on the 29.2% itself.
 
 **And gatekeeping does not rescue it.** Three gates were recomputed post hoc (§5 of
 `CHECKLIST.md`): a mechanical one that admits an objection only if every quotation in it is
@@ -114,11 +140,12 @@ a fix. That is what a gate discrimination of −1.8 points looks like from the i
     HANDCHECK-A-objections-and-grades.md   20 objection + grade pairs
     HANDCHECK-B-rulings.md        20 rulings, 12 of them instrument alarms
     HANDCHECK-C-fixed-and-broken.md        10 fixed + 10 broken, end to end
+    HANDCHECK-M3-specious.md      14 specious cells; the grader right on 6/6 and 4/4
     logs/stage-tails.md           every stage's own result line, spend and failures
     arm-M0-M1/                    jd3-main: index.jsonl, metrics.json, cells.jsonl, experiment.json
     arm-M2/                       jd3-placeholder: index.jsonl, metrics.json, experiment.json
     arm-M4/                       jd3-gatekeeper: index.jsonl, metrics.json, experiment.json
-    arm-M3/NOT-RUN-YET.md         the specious control, still running
+    arm-M3/                       jd3-specious: index.jsonl, metrics.json, experiment.json
     gates/                        the mechanical gate's own file and log, and the 6-cell smoke
     transcripts/                  four records, each with a README saying what to look at
 
@@ -132,8 +159,8 @@ a fix. That is what a gate discrimination of −1.8 points looks like from the i
       --main        records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl \
       --placeholder records/experiments/judgment-debate-3/arm-M2/index.jsonl \
       --gatekeeper  records/experiments/judgment-debate-3/arm-M4/index.jsonl \
+      --specious    records/experiments/judgment-debate-3/arm-M3/index.jsonl \
       --gates       records/experiments/judgment-debate-3/gates/jd3-main-gates.jsonl \
-      --specious    /nonexistent \
       --jd1             records/experiments/judgment-debate/index.jsonl \
       --jd2-mav         records/experiments/judgment-debate-2/arm-maverick-real/index.jsonl \
       --jd2-mini        records/experiments/judgment-debate-2/arm-mini-real/index.jsonl \
