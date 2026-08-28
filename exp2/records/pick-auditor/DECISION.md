@@ -5,7 +5,7 @@ candidate was called, every candidate fails at least three of the seven floors; 
 fail `misquote`, `misattribution` and `omission`. The judgment-variant run therefore does
 not happen with any model in this pool, and the probe is the finding.
 
-Spend: **$6.34 on the wire** (2,014 calls, of which 292 were format repairs; the rows' own
+Spend: **$6.39 on the wire** (2,022 calls, of which 292 were format repairs; the rows' own
 total is $4.58 because a row carries only the completion it kept — $4.15 for the run and $0.43
 for the re-audit of 20 items × 6 models and 15 re-graded controls after the two instrument
 corrections). 251 audits per candidate over 60 real sweep
@@ -16,14 +16,15 @@ judgments; the fixture, the rules, the corrections and the manifest are in this 
 | model | misquote | misattrib. | contradiction | omission | pooled | misattributed quotes | false alarms | $/task |
 |---|---|---|---|---|---|---|---|---|
 | floor | ≥ 85% | ≥ 85% | ≥ 85% | ≥ 50% | ≥ 2× nano | ≤ 5% | ≤ 15% | |
-| `openai/gpt-4.1-nano` (floor) | 5% (2/38) | 6% (3/49) | 7% (4/59) | 4% (2/45) | 6% | 42% (21/50) | 12% (7/60) | $0.0007 |
-| `google/gemini-2.5-flash` | 58% (22/38) | 43% (21/49) | **88%** (52/59) | 22% (10/45) | 55% | **5%** (8/154) | 18% (11/60) | $0.0025 |
+| `openai/gpt-4.1-nano` (floor) | 5% (2/38) | 6% (3/49) | 7% (4/59) | 4% (2/45) | 6% | 32% (16/50) | 12% (7/60) | $0.0007 |
+| `google/gemini-2.5-flash` | 58% (22/38) | 43% (21/49) | **88%** (52/59) | 22% (10/45) | 55% | **2%** (3/154) | **13%** (8/60) | $0.0025 |
 | `openai/gpt-5.6-luna` | 45% (17/38) | 22% (11/49) | 56% (33/59) | 0% (0/45) | 32% | 8% (8/95) | **7%** (4/60) | $0.0012 |
-| `qwen/qwen3-32b` | 63% (24/38) | 39% (19/49) | 81% (48/59) | 44% (20/45) | 58% | 22% (65/295) | 65% (39/60) | $0.0018 |
-| `openai/gpt-4.1-mini` | 18% (7/38) | 6% (3/49) | 81% (48/59) | 9% (4/45) | 32% | 13% (10/77) | **10%** (6/60) | $0.0022 |
+| `qwen/qwen3-32b` | 63% (24/38) | 39% (19/49) | 81% (48/59) | 44% (20/45) | 58% | 19% (56/295) | 65% (39/60) | $0.0018 |
+| `openai/gpt-4.1-mini` | 18% (7/38) | 6% (3/49) | 81% (48/59) | 9% (4/45) | 32% | 6% (5/77) | **10%** (6/60) | $0.0022 |
 | `openai/gpt-4.1` | 16% (6/38) | 8% (4/49) | 76% (45/59) | 11% (5/45) | 31% | **0%** (0/66) | **3%** (2/60) | $0.0083 |
 
-Wilson intervals are in the log beside every rate. Floors passed are in bold. The pooled
+Wilson intervals are in the log beside every rate. Floors passed are in bold. (Table as
+re-scored after all three instrument corrections; the earlier states are in `RULES.md`.) The pooled
 floor (2 × nano = 12%) is passed by everyone and binds nothing; the per-type floors bind.
 
 ## What the numbers mean — the by-condition breakdown (`by-condition.log`)
@@ -32,7 +33,7 @@ The pooled table hides the finding. Split by the condition the judgment came fro
 
 | model | condition | misquote | misattrib. | contradiction | omission | false alarms |
 |---|---|---|---|---|---|---|
-| gemini-2.5-flash | **debate** | 71% (10/14) | **94%** (15/16) | **95%** (19/20) | 32% (6/19) | 30% (6/20) |
+| gemini-2.5-flash | **debate** | 71% (10/14) | **94%** (15/16) | **95%** (19/20) | 32% (6/19) | 15% (3/20) |
 | gemini-2.5-flash | self_critique | 58% | 24% | 95% | 24% | 25% |
 | gemini-2.5-flash | single | 42% | 12% | 74% | 0% (0/9) | 0% |
 | gpt-5.6-luna | debate | 79% | 69% | 60% | 0% | 15% |
@@ -58,13 +59,14 @@ Three things follow, and the hand read below is what they rest on.
    mini, nano) read for gist and report "no defects" — with their private reasoning
    naming the very check they then did not perform.
 3. **Omission is not found by anyone** (best 44%, qwen, at a 65% false-alarm rate), and
-   **false alarms track detection**: qwen alleges a defect on 18 of 20 debate controls.
-   No candidate is both a finder and a non-inventor.
+   **false alarms track detection** in the open-weights model: qwen alleges a defect on
+   18 of 20 debate controls. Flash, after the ellipsis correction, is the one candidate
+   that both finds and does not invent (13% of controls).
 
 The closest candidate is `google/gemini-2.5-flash` on debate judgments: it clears
-misattribution and contradiction, misses misquotes at 71% against a floor of 85%, misses
-two omissions in three, and invents on 30% of controls against a floor of 15%. It is not
-picked. Nothing in this pool is close on the two solo conditions.
+misattribution and contradiction and the two non-invention floors, misses misquotes at 71%
+against a floor of 85% (two of its four misses are the garbled word-swap injections), and
+misses two omissions in three. It is not picked. Nothing in this pool is close on the two solo conditions.
 
 ## The hand read (Fable, 20 audits; `handread-sample.txt`)
 
@@ -113,6 +115,30 @@ rates fell from 20–61% to 0–42% on recomputation; nano's 42% is real); and a
 the verdict (re-bought: contradiction detection rose for four of six models, gpt-4.1 by
 five items). Neither touches the detection scorer or the thresholds. The decision is the
 same before and after.
+
+**A third correction, 2026-08-28 — and the decision re-derived, not assumed.**
+`quote_in_text` compared the first 80 characters of a quotation as one string, so an
+**ellipsis-stitched** quotation failed unless the ellipsis happened to fall past the cut.
+Three of `gemini-2.5-flash`'s six `debate` control false alarms were exactly that — pieces
+each verbatim in the judgment, joined by an ellipsis — recorded as fabricated quotes and
+counted as false alarms with no grader call. Eliding the middle of a sentence is ordinary
+quotation, not misattribution. The check now requires every piece of ≥ 15 characters to be
+in the source, so a stitched quote with an invented half still fails. **Nothing was
+re-audited**: the fixture is byte-identical (verified — all 38 misquote items' ground truth
+still holds and none would be re-sited on a rebuild), every stored objection was re-checked
+from it for free, and only the 8 controls whose surviving-defect set changed were graded
+again, for $0.0520. Detection is untouched and no threshold moved.
+
+**Five cells of the table above are superseded by it** — misattributed quotes: `flash`
+5% → **2%** (3/154), `mini` 13% → **6%** (5/77), `nano` 42% → **32%** (16/50), `qwen`
+22% → **19%** (56/295); false alarms: `flash` 18% → **13%** (8/60). Everything else in the
+table, including every detection cell, is unchanged. **Two floor verdicts moved**:
+`gemini-2.5-flash` now clears the misattributed-quote floor (2%, having failed at 5.2%
+against a 5% bar) and the false-alarm floor (13%), so it fails **only** the three detection
+floors. `gpt-4.1-mini` still fails misattributed at 6%. Re-deriving the decision from the
+re-scored table rather than carrying it forward: all six candidates still fail `misquote`,
+`misattribution` and `omission`, so **every candidate still fails at least three floors and
+no model is picked**. Spend after this correction: **$6.39 on the wire** (2,022 calls).
 
 What the fixture cannot say: the injected defects are the plainest form of each type (a
 templated "In fact it is not the case that…", a single word changed inside a quotation),

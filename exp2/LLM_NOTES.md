@@ -3359,21 +3359,38 @@ did under the code that ran it.
 — `Judgment says: "The sentence states: 'X'"` — had the judgment's own double quotes
 nested as single ones, and an **accurate** quotation was recorded as a fabrication
 (difflib ratio 0.97–0.99 against the sentence it was quoting). Every quotation mark and
-markdown emphasis character now comes off **both** sides. Re-deciding every defect the
-probe had already collected, with no calls:
+markdown emphasis character now comes off **both** sides, and every defect the probe had
+already collected was re-decided from the fixture with no calls — the middle column of the
+table below.
 
-| model | misattributed quotes, as scored | re-checked |
-|---|---|---|
-| `google/gemini-2.5-flash` | 30/155 = 0.19 | **8/154 = 0.05** |
-| `openai/gpt-4.1` | 20/66 = 0.30 | **0/66 = 0.00** |
-| `openai/gpt-4.1-mini` | 28/77 = 0.36 | **10/77 = 0.13** |
-| `openai/gpt-4.1-nano` | 31/50 = 0.62 | **21/50 = 0.42** |
-| `openai/gpt-5.6-luna` | 10/95 = 0.11 | **8/95 = 0.08** |
-| `qwen/qwen3-32b` | 150/295 = 0.51 | **65/295 = 0.22** |
+**And it was wrong a second way, found the same way (2026-08-28).** It compared the first
+80 characters of a quotation as one string, so an **ellipsis-stitched** quotation —
+`"Given all this, the analysis does not contain a flaw...nor does it make false claims
+about Python's remove() behavior"` — matched nothing, although each of its pieces is
+verbatim in the judgment. Only a *trailing* ellipsis survived, and only by accident: the
+tail falls past the cut. Three of `gemini-2.5-flash`'s six `debate` control false alarms
+were exactly this, each recorded as a fabricated quotation and counted as a false alarm
+**with no grader call at all**. Eliding the middle of a sentence is ordinary quotation,
+not misattribution. The check now splits on `...`/`…`, drops pieces under 15 characters,
+and requires **every** remaining piece to be in the source — a stitched quote with an
+invented half still fails. Re-checked again, with **no audits re-bought** (the fixture is
+byte-identical and was verified to be so) and 8 controls re-graded for $0.05:
 
-Two readings follow and both matter beyond the probe. The **harness** check every future
-judgment run depends on was over-rejecting by a factor of two to four. And nano's
-corrected rate is still **0.42**: the original diagnosis survives its own instrument bug.
+| model | as scored | after the quote-mark fix | after the ellipsis fix |
+|---|---|---|---|
+| `google/gemini-2.5-flash` | 30/155 | 8/154 | **3/154 = 0.02** |
+| `openai/gpt-4.1` | 20/66 | 0/66 | **0/66 = 0.00** |
+| `openai/gpt-4.1-mini` | 28/77 | 10/77 | **5/77 = 0.06** |
+| `openai/gpt-4.1-nano` | 31/50 | 21/50 | **16/50 = 0.32** |
+| `openai/gpt-5.6-luna` | 10/95 | 8/95 | **8/95 = 0.08** |
+| `qwen/qwen3-32b` | 150/295 | 65/295 | **56/295 = 0.19** |
+
+Three readings follow and all matter beyond the probe. The **harness** check every future
+judgment run depends on was over-rejecting by a factor of two to five. A quote-check
+failure costs an objection its grader call, so an over-rejecting check does not merely
+mis-count — it **decides**, silently and for free, and both bugs were found only by reading
+raw replies. And nano's twice-corrected rate is still **0.32**: the original diagnosis
+survives both of its own instrument bugs.
 
 ### (c) The probe — a pre-registered auditing fixture
 
@@ -3448,24 +3465,27 @@ log, n as shown):
 
 | model | misquote | misattrib | contradiction | omission | pooled | misquoted | false alarm | $/task |
 |---|---|---|---|---|---|---|---|---|
-| `gpt-4.1-nano` *(floor)* | 2/38 | 3/49 | 4/59 | 2/45 | **11/191 = 0.06** | 21/50 | 7/60 | 0.0007 |
-| `gemini-2.5-flash` | 22/38 | 21/49 | **52/59 = 0.88** | 10/45 | **105/191 = 0.55** | 8/154 | 11/60 | 0.0025 |
-| `gpt-4.1` | 6/38 | 4/49 | 45/59 | 5/45 | 60/191 = 0.31 | **0/66** | 2/60 | 0.0083 |
-| `gpt-4.1-mini` | 7/38 | 3/49 | 48/59 | 4/45 | 62/191 = 0.32 | 10/77 | 6/60 | 0.0022 |
-| `gpt-5.6-luna` | 17/38 | 11/49 | 33/59 | **0/45** | 61/191 = 0.32 | 8/95 | 4/60 | 0.0012 |
-| `qwen/qwen3-32b` | 24/38 | 19/49 | 48/59 | **20/45 = 0.44** | **111/191 = 0.58** | 65/295 | 39/60 | 0.0018 |
+| `gpt-4.1-nano` *(floor)* | 2/38 | 3/49 | 4/59 | 2/45 | **11/191 = 0.06** | 16/50 | 7/60 | 0.0007 |
+| `gemini-2.5-flash` | 22/38 | 21/49 | **52/59 = 0.88** | 10/45 | **105/191 = 0.55** | **3/154** | **8/60** | 0.0026 |
+| `gpt-4.1` | 6/38 | 4/49 | 45/59 | 5/45 | 60/191 = 0.31 | **0/66** | **2/60** | 0.0083 |
+| `gpt-4.1-mini` | 7/38 | 3/49 | 48/59 | 4/45 | 62/191 = 0.32 | 5/77 | **6/60** | 0.0022 |
+| `gpt-5.6-luna` | 17/38 | 11/49 | 33/59 | **0/45** | 61/191 = 0.32 | 8/95 | **4/60** | 0.0012 |
+| `qwen/qwen3-32b` | 24/38 | 19/49 | 48/59 | **20/45 = 0.44** | **111/191 = 0.58** | 56/295 | 39/60 | 0.0018 |
 
 The floors were ≥ 85% on misquote, misattribution and contradiction, ≥ 50% on omission,
 ≥ 2× the floor model's pooled detection, ≤ 5% misattributed quotes and ≤ 15% false alarms.
 **Exactly one of the 24 detection cells clears its floor** — `gemini-2.5-flash` on
 contradiction, 0.88. All six candidates fail misquote, misattribution and omission. The
-misattributed-quote floor is cleared by `gpt-4.1` alone (0/66), the false-alarm floor by
-four of the six, and the pooled floor by five. **Every candidate fails at least three
-floors.** Under the rule stated before the numbers existed, **NO MODEL IS PICKED**: the
+misattributed-quote floor is cleared by `gpt-4.1` (0/66) and `gemini-2.5-flash` (3/154),
+the false-alarm floor by five of the six, and the pooled floor by five. **Every candidate
+fails at least three floors**, and `gemini-2.5-flash` fails exactly the three detection
+floors and nothing else. Under the rule stated before the numbers existed, **NO MODEL IS PICKED**: the
 probe is the finding, and the judgment-variant run does not happen.
 
-**Spend: $4.58** — $4.15 for the run, $0.43 for the correction (120 re-audits and 15
-control re-gradings). The slice before it cost $1.6429.
+**Spend: $6.39 on the wire** — 2,022 calls, of which 292 were format repairs. The
+probe's own report prints $4.15 for the run plus $0.43 and $0.05 for the two corrections,
+because a row carries only the completion it kept; the wire log is what every other cost
+figure in this file is on. The slice before it cost $1.6429.
 
 ### (d) Three observations from the replies, stated as observations
 
@@ -3520,7 +3540,7 @@ remaining four are ≤ 0.22. Reading the replies, the shape is that an omission 
 alleged by quoting a record passage and asserting silence, and models that will happily
 quote the judgment will not commit to "the judgment nowhere addresses this". Separately,
 the two models with the highest pooled detection also carry the highest false-alarm rates
-— `qwen` 39/60 controls and `flash` 11/60, against `gpt-4.1`'s 2/60 — and `qwen`'s alarms
+— `qwen` 39/60 controls and `flash` 8/60, against `gpt-4.1`'s 2/60 — and `qwen`'s alarms
 concentrate exactly where its detection does: **18 of its 20 `debate` controls** carry an
 alleged defect that fails the quote check or that the Haiku grader rejects. A control is a
 *real* judgment, so some alarms are real defects; what the rate bounds is invention, and

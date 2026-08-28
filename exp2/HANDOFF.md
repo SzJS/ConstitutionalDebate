@@ -239,22 +239,24 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$62.95** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+Total spent so far: **$63.00** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
 decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
 re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
 validation slice (**$0.38**), the re-rule's **$3.0887** (a three-variant prompt smoke
 **$0.0202**, a 69-ruling smoke **$0.1205**, `rerule-recontest` **$0.8109**, `rerule-sweep`
 **$2.1371**), the three partisan pilots' **$1.2234** (`advocate` **$0.4345**, `assigned`
 **$0.4026**, `auditor` **$0.3863**), the judgment-challenge slice's **$1.6429**, the
-auditor probe's **$6.3415** (its run plus the $0.43 correction of 2026-08-27), and a few
-cents of provider checks and liveness calls that nothing itemises.
+auditor probe's **$6.3935** (its run, the $0.43 correction of 2026-08-27 and the $0.05
+one of 2026-08-28), and a few cents of provider checks and liveness calls that nothing
+itemises.
 
-**One figure to read carefully.** The probe's own report prints **$4.15** and the
-correction **$0.43**, both computed from the rows, and a row carries the cost of the
-completion it kept. The wire log carries every attempt, including the 292 format repairs
-`qwen/qwen3-32b` and `gpt-4.1-nano` needed, and it says **$6.3415**. Every other figure
-on this page is the wire's, so the wire's is the one totalled here; the report's number
-is not wrong, it is answering "what did an audit cost" rather than "what was spent".
+**One figure to read carefully.** The probe's own report prints **$4.15** and the two
+corrections **$0.43** and **$0.05**, all computed from the rows, and a row carries the
+cost of the completion it kept. The wire log carries every attempt, including the 292
+format repairs `qwen/qwen3-32b` and `gpt-4.1-nano` needed, and it says **$6.3935** over
+2,022 calls. Every other figure on this page is the wire's, so the wire's is the one
+totalled here; the report's number is not wrong, it is answering "what did an audit cost"
+rather than "what was spent".
 
 Nothing below needs re-running, and section 6 says why.
 
@@ -586,9 +588,13 @@ about one that fails and makes **no call at all** when none survives; `index.jso
 `misattributed_quote` rate over defects. It is three-valued — `None` where the check does
 not apply — so an omission, a defect that quoted nothing, and every `challenge.json`
 written before it grade exactly as they did. The nano slice was **not** re-graded on
-purpose. The check was corrected once after the probe (it stripped only the outer quotation
-marks, so a nested quote read as a fabrication); both the bug and its before/after are in
-`RULES.md` under *Instrument corrections after the run*.
+purpose. The check was corrected **twice** after the probe — it stripped only the outer
+quotation marks, so a quote written with nested single quotes read as a fabrication; and
+it compared 80 characters as one string, so an ellipsis-stitched quote failed even when
+every piece of it was verbatim. Both bugs, their before/after tables and the floors they
+did and did not move are in `RULES.md` under *Instrument corrections after the run*. Both
+were found by reading raw replies, and a quote-check failure costs an objection its grader
+call — so the check does not merely count, it decides.
 
 **How to re-run the probe** — it is offline until the last step and cheap:
 
@@ -612,8 +618,11 @@ matches the fixture, re-audits exactly the items whose text moved (and any fixtu
 with no row at all), and writes what it replaced to
 `rows-audit-<model>.superseded.jsonl` — a paid measurement is evidence about the
 instrument that made it and is never deleted. The correction of 2026-08-27 re-bought 20
-items per candidate out of 251 for **$0.43** rather than re-running 1,500 audits. The
-control false-alarm gradings are reused wherever the surviving-defect set is unchanged.
+items per candidate out of 251 for **$0.43** rather than re-running 1,500 audits, and the
+quote-check correction of 2026-08-28 re-bought **nothing at all** ($0.05 of re-grading):
+the fixture was byte-identical, so every stored objection was re-checked from it offline.
+The control false-alarm gradings are reused wherever the surviving-defect set is
+unchanged.
 
 **The result: NO MODEL PICKED.** Six candidates — `gpt-4.1-nano` (the floor, not
 eligible), `qwen/qwen3-32b`, `google/gemini-2.5-flash`, `openai/gpt-4.1-mini`,

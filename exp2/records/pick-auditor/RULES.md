@@ -182,7 +182,7 @@ debates, and a challenger auditing a record it generated is a confound of its ow
 With no Pro in the pool, a "no model picked" outcome means *the weakest reliable auditor
 is above `openai/gpt-4.1`*, which is what rung 2 stands for here.
 
-## Instrument corrections after the run — 2026-08-27
+## Instrument corrections after the run — 2026-08-27, 2026-08-28
 
 The probe ran on 2026-08-27 (`outputs/pick-auditor.log`, $4.15, 1,500 audits, no
 candidate clearing every floor). Reading the raw replies turned up **two bugs in the
@@ -244,9 +244,50 @@ the rest reuse the ruling already paid for. Re-scored tables:
 `outputs/pick-auditor-rescored.log`, and appended to `outputs/pick-auditor.log` beneath
 the original.
 
-**What it changed in the verdict: nothing.** `google/gemini-2.5-flash` now clears
-contradiction (0.88) and `openai/gpt-4.1` clears the misattribution floor (0.00), but
-every candidate still fails at least three floors and **no model is picked**.
+**What corrections 1 and 2 changed in the verdict: nothing.**
+`google/gemini-2.5-flash` gained the contradiction floor (0.88) and `openai/gpt-4.1` the
+misattributed-quote floor (0.00), but every candidate still failed at least three floors
+and no model was picked.
+
+**3. An ellipsis-stitched quotation failed the check (found 2026-08-28).**
+`quote_in_text` compared the first 80 characters of a quotation as one string, so a quote
+whose middle had been elided — `"Given all this, the analysis does not contain a
+flaw...nor does it make false claims about Python's remove() behavior"` — matched nothing,
+even though each of its pieces is verbatim in the judgment. Only a *trailing* ellipsis
+survived, and only by accident: the tail falls past the 80-character cut. Three of
+`gemini-2.5-flash`'s six `debate` control false alarms were exactly this shape, and each
+was recorded as a fabricated quotation and counted as a false alarm **with no grader call
+at all**. Eliding the middle of a sentence is ordinary quotation, not misattribution. The
+check now splits the normalised quote on `...` / `…`, drops pieces shorter than 15
+characters, and requires **every** remaining piece to be in the source — so a stitched
+quote with one invented half still fails, and a quote with no substantial piece is read
+whole as before.
+
+| model | misattributed quotes | | control false alarms | |
+|---|---|---|---|---|
+| | before | after | before | after |
+| `google/gemini-2.5-flash` | 8/154 (0.05) | **3/154 (0.02)** | 11/60 (0.18) | **8/60 (0.13)** |
+| `openai/gpt-4.1` | 0/66 (0.00) | 0/66 (0.00) | 2/60 (0.03) | 2/60 (0.03) |
+| `openai/gpt-4.1-mini` | 10/77 (0.13) | **5/77 (0.06)** | 6/60 (0.10) | 6/60 (0.10) |
+| `openai/gpt-4.1-nano` | 21/50 (0.42) | **16/50 (0.32)** | 7/60 (0.12) | 7/60 (0.12) |
+| `openai/gpt-5.6-luna` | 8/95 (0.08) | 8/95 (0.08) | 4/60 (0.07) | 4/60 (0.07) |
+| `qwen/qwen3-32b` | 65/295 (0.22) | **56/295 (0.19)** | 39/60 (0.65) | 39/60 (0.65) |
+
+**Nothing was re-audited.** The fixture is byte-identical — checked, not assumed: all 38
+misquote items' ground truth still holds under the corrected check and none would be
+re-sited on a rebuild — so every stored objection was re-checked from it for free, and
+only the **8 controls whose surviving-defect set changed** were graded again ($0.0520).
+Note for a future rebuild: `inject_misquote` and `inject_omission` use this same function
+to certify ground truth, so a rebuild after this change is not guaranteed to reproduce the
+present fixture even though today it would.
+
+**Floor verdicts that moved.** `google/gemini-2.5-flash` now clears the misattributed-quote
+floor (0.02, from 0.05 — which had failed by three thousandths) and the false-alarm floor
+(0.13, from 0.18), leaving it failing only the three detection floors it already failed.
+`openai/gpt-4.1-mini` still fails misattributed at 0.06. **The decision is re-derived from
+the re-scored table and is unchanged: no candidate clears every floor, so no model is
+picked.** Tables: `outputs/pick-auditor-rescored.log`, a third section in
+`outputs/pick-auditor.log`, and `outputs/pick-auditor-by-condition.log`.
 
 ## What this file does not decide
 

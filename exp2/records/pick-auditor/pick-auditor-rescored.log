@@ -23,18 +23,18 @@ Pre-registered thresholds — records/pick-auditor/RULES.md, committed before an
 The measurements — candidates as rows, Wilson 95% intervals beneath each
 model                             misquote   misattrib  contradict    omission      POOLED   misquoted  falsealarm   $/task   p95 s  fail
 -----------------------------------------------------------------------------------------------------------------------------------------
-openai/gpt-4.1-nano (floor)   0.05   2/38 0.06   3/49 0.07   4/59 0.04   2/45 0.06  11/1910.42  21/50 0.12   7/60    0.0007     9.0     0
-                              [0.01,0.17][0.02,0.17][0.03,0.16][0.01,0.15][0.03,0.10][0.29,0.56][0.06,0.22]
-google/gemini-2.5-flash       0.58  22/38 0.43  21/49 0.88  52/59 0.22  10/45 0.55 105/1910.05   8/1540.18  11/60    0.0025    18.3     0
-                              [0.42,0.72][0.30,0.57][0.77,0.94][0.13,0.36][0.48,0.62][0.03,0.10][0.11,0.30]
+openai/gpt-4.1-nano (floor)   0.05   2/38 0.06   3/49 0.07   4/59 0.04   2/45 0.06  11/1910.32  16/50 0.12   7/60    0.0007     9.0     0
+                              [0.01,0.17][0.02,0.17][0.03,0.16][0.01,0.15][0.03,0.10][0.21,0.46][0.06,0.22]
+google/gemini-2.5-flash       0.58  22/38 0.43  21/49 0.88  52/59 0.22  10/45 0.55 105/1910.02   3/1540.13   8/60    0.0026    18.3     0
+                              [0.42,0.72][0.30,0.57][0.77,0.94][0.13,0.36][0.48,0.62][0.01,0.06][0.07,0.24]
 openai/gpt-4.1                0.16   6/38 0.08   4/49 0.76  45/59 0.11   5/45 0.31  60/1910.00   0/66 0.03   2/60    0.0083    10.2     0
                               [0.07,0.30][0.03,0.19][0.64,0.85][0.05,0.23][0.25,0.38][0.00,0.06][0.01,0.11]
-openai/gpt-4.1-mini           0.18   7/38 0.06   3/49 0.81  48/59 0.09   4/45 0.32  62/1910.13  10/77 0.10   6/60    0.0022    12.1     0
-                              [0.09,0.33][0.02,0.17][0.70,0.89][0.04,0.21][0.26,0.39][0.07,0.22][0.05,0.20]
+openai/gpt-4.1-mini           0.18   7/38 0.06   3/49 0.81  48/59 0.09   4/45 0.32  62/1910.06   5/77 0.10   6/60    0.0022    12.1     0
+                              [0.09,0.33][0.02,0.17][0.70,0.89][0.04,0.21][0.26,0.39][0.03,0.14][0.05,0.20]
 openai/gpt-5.6-luna           0.45  17/38 0.22  11/49 0.56  33/59 0.00   0/45 0.32  61/1910.08   8/95 0.07   4/60    0.0012     5.4     0
                               [0.30,0.60][0.13,0.36][0.43,0.68][0.00,0.08][0.26,0.39][0.04,0.16][0.03,0.16]
-qwen/qwen3-32b                0.63  24/38 0.39  19/49 0.81  48/59 0.44  20/45 0.58 111/1910.22  65/2950.65  39/60    0.0018    73.4     0
-                              [0.47,0.77][0.26,0.53][0.70,0.89][0.31,0.59][0.51,0.65][0.18,0.27][0.52,0.76]
+qwen/qwen3-32b                0.63  24/38 0.39  19/49 0.81  48/59 0.44  20/45 0.58 111/1910.19  56/2950.65  39/60    0.0018    73.4     0
+                              [0.47,0.77][0.26,0.53][0.70,0.89][0.31,0.59][0.51,0.65][0.15,0.24][0.52,0.76]
 
 Misquote detection by alteration — reported, NOT a floor
 model                                 number      negation          swap
@@ -52,7 +52,7 @@ Floor check — PASS/FAIL per pre-registered floor
 model                              misquote  misattribut  contradicti     omission       pooled  misattribut  false_alarm  verdict
 -----------------------------------------------------------------------------------------------------------------------------------------
 openai/gpt-4.1-nano                    FAIL         FAIL         FAIL         FAIL         FAIL         FAIL         PASS  the floor — not eligible
-google/gemini-2.5-flash                FAIL         FAIL         PASS         FAIL         PASS         FAIL         FAIL  fails: misquote, misattribution, omission, misattributed, false_alarm
+google/gemini-2.5-flash                FAIL         FAIL         PASS         FAIL         PASS         PASS         PASS  fails: misquote, misattribution, omission
 openai/gpt-4.1                         FAIL         FAIL         FAIL         FAIL         PASS         PASS         PASS  fails: misquote, misattribution, contradiction, omission
 openai/gpt-4.1-mini                    FAIL         FAIL         FAIL         FAIL         PASS         FAIL         PASS  fails: misquote, misattribution, contradiction, omission, misattributed
 openai/gpt-5.6-luna                    FAIL         FAIL         FAIL         FAIL         PASS         FAIL         PASS  fails: misquote, misattribution, contradiction, omission, misattributed

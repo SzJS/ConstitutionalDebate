@@ -569,6 +569,26 @@ def test_the_quote_check_is_lenient_about_form_and_strict_about_substance():
     assert quote_in_text("the log was **kept** for 15 years", quoting)
     assert quote_in_text("the log was kept for 15 years", "the log was _kept_ for 15 years")
 
+    # AN ELLIPSIS IS ORDINARY QUOTATION, not a fabrication. The probe measured three
+    # control false alarms that were nothing but this: pieces each verbatim in the
+    # judgment, joined by an ellipsis the 80-character rule could not survive unless it
+    # happened to fall at the end.
+    stitched = ("Given all this, the analysis does not contain a flaw in its reasoning, "
+                "nor does it make false claims about the remove() behaviour. Alice "
+                "counters that the phrase has been found does not appear anywhere.")
+    assert quote_in_text('"the analysis does not contain a flaw...nor does it make '
+                         'false claims about the remove() behaviour"', stitched)
+    assert quote_in_text('"...nor does it make false claims about the remove() '
+                         'behaviour"', stitched)                       # leading
+    assert quote_in_text('"Alice counters that... does not appear anywhere"', stitched)
+    assert quote_in_text('"the analysis does not contain a flaw in its reasoning…"',
+                         stitched)                                     # trailing, …
+    # but eliding is not a way to smuggle an invented half past the check
+    assert not quote_in_text('"the analysis does not contain a flaw...and the moon is '
+                             'made of green cheese"', stitched)
+    # a quote that is nothing but ellipsis has no piece to find, and is read whole
+    assert not quote_in_text('"..."', stitched)
+
     assert not quote_in_text("Bob conceded step 2", judgment)
     assert not quote_in_text("", judgment)       # no evidence is not a match
     assert not quote_in_text("   ", judgment)
