@@ -1,0 +1,64 @@
+# THE JUDGE PICK — mistralai/mistral-small-2603 re-ruling pilot 1's 45 stored objections.
+#
+# READ FIRST: `records/experiments/judgment-debate-2/PREREG.md` §Judge selection rule.
+# This spec is one CELL of the pick table, not an experiment: 82 objections
+# (45 from pilot 1 + 37 from pilot 2, the same 60 debate cells), re-ruled by every
+# candidate under the SAME materiality prompt, so that the only thing varying across the
+# table's rows is the model.
+#
+# WHY THIS MODEL. Index 12, -2 — in band, a sixth family. Artificial Analysis lists the non-reasoning row separately; the liveness call confirms `reasoning: enabled=false` is honoured on the API (0 reasoning tokens).
+#
+# WHAT THIS SPEC MAKES, AND WHAT IT ONLY READS. It makes RULINGS and nothing else.
+# `decisions_from` names the tree whose decisions are read (the sweep); `contests_from`
+# names the tree whose OBJECTIONS are read. Neither is ever written to. Each source
+# contest directory is copied into this tree minus its ruling, its wire log and its two
+# documents; the old ruling is kept beside the new one as `ruling.source.json`; one call
+# is made per contested cell. `decide`, `contest`, `agreement` and `grade` all refuse on
+# this spec — the objection and its grade came across with the copy, and regenerating
+# either would change the population as well as the ruling.
+#
+# THE RULING PROMPT IS KEYED ON THE OBJECTION'S ARM, NOT ON THIS CONFIG. Every stored
+# objection here carries `arm = "judgment"`, so every candidate is sent
+# `RECOURSE_JUDGE_USER_JUDGMENT` — the two-step materiality question — and
+# `ruling_prompt_form` reads `materiality` on every row. A candidate ruled under the
+# object-level prompt would be a different instrument and its numbers would not belong
+# in the same table.
+#
+# THE CHALLENGER IS UNCHANGED AND MAKES NO CALL. `challenger_model` is
+# `google/gemini-2.5-flash` because that is what wrote the objections being re-ruled and
+# it is what names the contest directory the re-rule reads from; not one challenger call
+# is made by this spec.
+#
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/judge-pick-mistral-small-4-pilot1.toml \
+#         > outputs/judge-pick-mistral-small-4-pilot1-driver.log 2>&1 &
+
+name = "judge-pick-mistral-small-4-pilot1"
+cases = "data/cases/pilot-3.jsonl"
+decisions_from = "outputs/experiments/sweep"
+contests_from = "outputs/experiments/judgment-debate-pilot"
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "google/gemini-2.5-flash"
+challenger_variant = "judgment"
+recourse_form = "third_party"
+# THE ONE FIELD THAT VARIES ACROSS THE TABLE.
+recourse_judge_model = "mistralai/mistral-small-2603"
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5"

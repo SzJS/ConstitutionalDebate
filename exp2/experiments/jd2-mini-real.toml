@@ -1,0 +1,90 @@
+# ARM A-mini — openai/gpt-4.1-mini re-rules the 1,148 REAL objections.
+#
+# READ FIRST: `records/experiments/judgment-debate-2/PREREG.md`, committed before this
+# arm's first paid call. The endpoints, the alpha split over the two judges, the judge
+# selection rule and the stop rules are all there and none of them is restated here.
+#
+# THE 3 x 3, and where this arm sits in it. Two flash-class judges were pre-registered
+# rather than one — the two in-band eligible candidates came out one cell apart on n = 82
+# and ranking on that would be reading noise as a decision — so the plan's 2 x 3 runs as a
+# 3 x 3 whose first row is already done:
+#
+#                             real audit        placeholder        specious auditor
+#     openai/gpt-4.1-nano     judgment-debate   B                  D
+#     meta-llama/llama-4-...  A-mav             C-mav              E-mav
+#     openai/gpt-4.1-mini     A-mini            C-mini             E-mini
+#
+# Only B and D generate anything. Every other arm RE-RULES objections that already exist,
+# which is what makes nine cells affordable: the challenger is paid for once per column.
+#
+# WHAT IT ASKS. P1 for this judge, on exactly the objections arm A-mav rules and exactly
+# those the finished run ruled with nano. **Tested at alpha = 0.025**, Bonferroni over the
+# two judges.
+#
+# WHY THIS JUDGE. Index 15, one point above flash's non-reasoning 14, and the LOWEST strict
+# ruling-line mismatch in the whole pick table: 1/82 = 1.2%, against nano's 9.5%. Its net
+# on the 82 was +14 against maverick's +15 — one cell, which is why both run.
+#
+# THE CONFOUND THIS ARM CARRIES AND MAVERICK DOES NOT. `openai/gpt-4.1-mini` shares a
+# family with `openai/gpt-4.1-nano`, the judge that DECIDED every one of these debates and
+# whose rulings this arm is being compared against. A same-family recourse judge is closer
+# to "the same kind of model marking its own homework" than maverick is, and the design's
+# reason for wanting different families (DESIGN.md, `## Recourse judge strength`) applies
+# to it. It is run because the mechanical rule ranked it eligible and one cell is not a
+# pick; the confound is stated, not resolved.
+#
+# WHAT THIS SPEC MAKES, AND WHAT IT ONLY READS. It makes RULINGS and nothing else.
+# `decisions_from` names the tree whose decisions are read; `contests_from` names the tree
+# whose OBJECTIONS are read. Nothing under either is ever written to. Each source contest
+# directory is copied into this tree minus its ruling, its wire log and its two documents,
+# the source ruling is kept beside the new one as `ruling.source.json`, and one call is
+# made per contested cell. `decide`, `contest`, `agreement` and `grade` all REFUSE on this
+# spec: the objection and its grade came across with the copy, and regenerating either
+# would change the population as well as the ruling.
+#
+# THE RULING PROMPT IS KEYED ON THE OBJECTION'S ARM, NOT ON THIS CONFIG. Every stored
+# objection this arm reads carries `arm = "judgment"` — the real audit's, the placeholder's
+# and the specious auditor's alike — so the judge is sent `RECOURSE_JUDGE_USER_JUDGMENT`,
+# the two-step materiality question, and `ruling_prompt_form` reads `materiality` on every
+# row. That is the whole reason the two controls are comparable with the real arm: a
+# control ruled under a different prompt would measure the prompt.
+#
+# THE CHALLENGER MAKES NO CALL HERE. `challenger_model` is `google/gemini-2.5-flash`
+# because that is what wrote the objections being re-ruled and it is what names the contest
+# directory this arm reads from. Not one challenger call is made by this spec.
+#
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd2-mini-real.toml \
+#         > outputs/jd2-mini-real-driver.log 2>&1 &
+#
+# The orchestration script `outputs/jd2-run-all.sh` runs every arm in dependency
+# order under one process; do not launch arms by hand out of that order.
+
+name = "jd2-mini-real"
+cases = "data/cases/ftf-all.jsonl"
+decisions_from = "outputs/experiments/sweep"
+contests_from = "outputs/experiments/judgment-debate"
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "google/gemini-2.5-flash"
+challenger_variant = "judgment"
+recourse_form = "third_party"
+recourse_judge_model = "openai/gpt-4.1-mini"
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5"

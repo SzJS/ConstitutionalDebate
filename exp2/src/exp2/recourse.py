@@ -34,13 +34,25 @@ from typing import Any
 
 from .arms import _split_solo
 from .client import ChatClient
-from .config import JUDGMENT_VARIANT, DebateConfig, GradingConfig
+from .config import (
+    JUDGMENT_FAMILY,
+    JUDGMENT_VARIANT,
+    PLACEHOLDER_VARIANT,
+    SPECIOUS_VARIANT,
+    DebateConfig,
+    GradingConfig,
+    arm_for_variant,
+)
 from .engine import _complete_with_repair
 from .prompts import (
     build_agreement_messages,
     build_challenger_messages,
     build_comprehension_messages,
     build_recourse_judge_messages,
+    PLACEHOLDER_DECISION_WORD,
+    PLACEHOLDER_OBJECTION_RAW,
+    PLACEHOLDER_OBJECTION_TEXT,
+    PLACEHOLDER_PARSE_MODE,
     RULING_READER_ROLES,
     build_ruling_agreement_messages,
     build_solo_recourse_message,
@@ -170,11 +182,20 @@ async def generate_challenge(
     claimed = claimed_verdict_for(word, decision)
     challenge = Challenge(
         text=text, origin="generated", raised=(stance == "contests"),
-        # The standpoint the objection was written from. Read off the config rather
-        # than hard-coded, so that `index.jsonl` can say which challenger wrote a row
-        # and the analysis can refuse to pool two of them.
-        arm=config.challenger_variant,
-        # Only the judgment variant is asked for a defect list, so only it is read for
+        # The arm the objection is RULED as. Read off the config rather than
+        # hard-coded, so that a reader of the row can tell which challenger wrote it and
+        # the analysis can refuse to pool two of them — but NOT the identity, because
+        # `arm` selects the ruling prompt and the ruling reader: `arm_for_variant` maps
+        # the specious auditor onto `judgment` so the materiality prompt applies to it
+        # exactly as it applies to the real audit, and a control ruled in another form
+        # would measure the form. What the objection actually IS survives beside it in
+        # `specious`, and `Challenge.variant` is the column `index.jsonl` writes.
+        arm=arm_for_variant(config.challenger_variant),
+        # DESIGN.md's sycophancy control, recorded on the objection rather than inferred
+        # from the spec that produced the tree: a specious objection pooled with a real
+        # one would put a deliberately-invalid audit into the valid-objection rate.
+        specious=config.challenger_variant == SPECIOUS_VARIANT,
+        # Only the judgment family is asked for a defect list, so only it is read for
         # one: running the parser over every arm would put an empty column on 5,724
         # neutral rows and, worse, could pick a stray "Type:" out of a stakeholder's
         # prose and report it as an audited defect.
@@ -184,7 +205,7 @@ async def generate_challenge(
         # against the very text the challenger was shown. Deciding it later would mean
         # re-deriving that text from the tree and hoping the derivation matched.
         defects=(parse_defects(text, record.decision_grounds)
-                 if config.challenger_variant == JUDGMENT_VARIANT else []),
+                 if config.challenger_variant in JUDGMENT_FAMILY else []),
         claimed_verdict=claimed, stance=stance,
         # Unreachable with one line, and recorded as False rather than dropped: a
         # column that reads 0 says the shape did not occur, a column that is absent
@@ -202,6 +223,58 @@ async def generate_challenge(
     if writer is not None:
         writer.record_challenge(challenge)
     return challenge, sent
+
+
+def placeholder_challenge(record: Any, config: DebateConfig, *,
+                          writer: Any | None = None) -> Challenge:
+    """The second-look control's objection. **No model call is made.**
+
+    `prompts.PLACEHOLDER_OBJECTION_TEXT` is a fixed, content-free, well-formed judgment
+    objection — one omission whose two quotations are the parenthetical placeholders the
+    judgment prompt itself asks for — and it is the same text on every cell. The
+    recourse judge therefore gets exactly what it got in the real arm (a second reading
+    of the record, under the materiality prompt, prompted by an objection) and nothing
+    else: no sentence is named, no claim is made, nothing is alleged that could be true
+    of this judgment rather than any judgment. A judge that overturns on this overturns
+    on nothing, and the difference between the two arms' after-states is the audit net of
+    the second look — which is the confound `records/experiments/judgment-debate/PREREG.md`
+    named and could not resolve.
+
+    Everything a generated challenge derives, this derives the same way: the stance comes
+    from `challenge_stance` and the claimed verdict from `claimed_verdict_for`, both
+    given the same `REVERSE` word a challenger would have written. What differs is
+    recorded rather than faked — `model` and `call_id` are None because there was no
+    call, `thinking` is empty because no model deliberated, and `parse_mode` says
+    `placeholder_no_call` rather than borrowing one of the parser's names.
+    """
+    if config.challenger_variant != PLACEHOLDER_VARIANT:
+        raise ValueError(
+            "placeholder_challenge is the placeholder arm's objection and must not be "
+            f"written under challenger_variant={config.challenger_variant!r}: the cell "
+            "would carry a control objection under an arm that claims a challenger "
+            "wrote it."
+        )
+    decision = record.verdict.verdict
+    challenge = Challenge(
+        text=PLACEHOLDER_OBJECTION_TEXT, origin="generated", raised=True,
+        # `judgment`, so the materiality ruling prompt and the materiality ruling reader
+        # apply. `placeholder=True` beside it is what says no challenger wrote it.
+        arm=arm_for_variant(config.challenger_variant),
+        placeholder=True,
+        defects=parse_defects(PLACEHOLDER_OBJECTION_TEXT, record.decision_grounds),
+        claimed_verdict=claimed_verdict_for(PLACEHOLDER_DECISION_WORD, decision),
+        stance=challenge_stance(PLACEHOLDER_DECISION_WORD),
+        contradictory=False, visibility="public",
+        # None, and deliberately not the configured challenger: no model produced this,
+        # and a row naming one would make the arm look like a cheap challenger rather
+        # than no challenger.
+        model=None, call_id=None, finish_reason=None,
+        parse_mode=PLACEHOLDER_PARSE_MODE, repair_attempts=0, thinking="",
+        raw=PLACEHOLDER_OBJECTION_RAW,
+    )
+    if writer is not None:
+        writer.record_challenge(challenge)
+    return challenge
 
 
 async def ask_comprehension(
@@ -574,6 +647,19 @@ async def run_recourse(
     recoursers = recoursers_for(config.recourse_form)
     if record.condition not in recoursers:
         raise ValueError(f"no recourse mechanism for condition {record.condition!r}")
+
+    if config.challenger_variant == PLACEHOLDER_VARIANT:
+        # The arm's whole cost is the ruling. No challenger call, and no comprehension
+        # probe either: that probe asks the reader how readable the record was, and
+        # there is no reader here — asking the question would buy a rating of a document
+        # nobody read, on every cell, for the price of a second full pass.
+        challenge = placeholder_challenge(record, config, writer=writer)
+        if not rule:
+            return RecourseOutcome(challenge=challenge, ruling=None, comprehension=None)
+        ruling = await recoursers[record.condition](record, challenge, config, client)
+        if writer is not None:
+            writer.record_ruling(ruling)
+        return RecourseOutcome(challenge=challenge, ruling=ruling, comprehension=None)
 
     challenge, conversation = await generate_challenge(
         record, config, client, writer=writer

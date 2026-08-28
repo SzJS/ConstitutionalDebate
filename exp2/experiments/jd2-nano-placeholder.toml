@@ -1,0 +1,83 @@
+# ARM B — the SECOND-LOOK control, ruled by nano. The only arm that contests a `contests_from` spec.
+#
+# READ FIRST: `records/experiments/judgment-debate-2/PREREG.md`, committed before this
+# arm's first paid call. The endpoints, the alpha split over the two judges, the judge
+# selection rule and the stop rules are all there and none of them is restated here.
+#
+# THE 3 x 3, and where this arm sits in it. Two flash-class judges were pre-registered
+# rather than one — the two in-band eligible candidates came out one cell apart on n = 82
+# and ranking on that would be reading noise as a decision — so the plan's 2 x 3 runs as a
+# 3 x 3 whose first row is already done:
+#
+#                             real audit        placeholder        specious auditor
+#     openai/gpt-4.1-nano     judgment-debate   B                  D
+#     meta-llama/llama-4-...  A-mav             C-mav              E-mav
+#     openai/gpt-4.1-mini     A-mini            C-mini             E-mini
+#
+# Only B and D generate anything. Every other arm RE-RULES objections that already exist,
+# which is what makes nine cells affordable: the challenger is paid for once per column.
+#
+# WHAT IT ASKS. P2 for nano, and the confound the finished run named and could not
+# resolve: with objections raised on 69.8% of cells, is the published +45 the AUDIT, or is
+# it "the same weak judge read the record a second time and changed its mind on some of
+# them"? This arm gives the judge the second look and NO INFORMATION.
+#
+# THE OBJECTION IS A CONSTANT AND NO MODEL WRITES IT. `prompts.PLACEHOLDER_OBJECTION_TEXT`
+# is one fixed, content-free, well-formed judgment objection — a single omission whose two
+# quotations are the parenthetical placeholders the judgment format itself asks for — and
+# it is byte-identical on every cell. It names no sentence, no speaker, no round and no
+# claim, so it is true of every judgment ever written. A judge that overturns on it
+# overturns on nothing.
+#
+# THIS IS THE ONE SPEC THAT CARRIES `contests_from` AND STILL RUNS `contest`. That is not a
+# loophole, it is the definition of the control: the placeholder must stand on EXACTLY the
+# cells the real arm objected to, or the two after-states are not paired and "which cells
+# get a second look" is no longer held constant. So the contest stage reads
+# `judgment-debate`'s stances and emits the placeholder where it contested and NOTHING
+# where it declined — those 496 cells keep their before-state here exactly as they do
+# there. Nothing under the source is written. The CLI asserts the placement count against
+# the source after the stage and prints MATCHES / DOES NOT MATCH; a mismatch means the P2
+# comparison must not be read until it is accounted for cell by cell.
+#
+# `agreement` AND `grade` STILL REFUSE, and the stages themselves skip with `not measured:
+# placeholder` / `not graded: placeholder`. There is nothing in a constant to read for
+# line-vs-prose agreement, and a grade of it would be one answer bought 1,148 times.
+#
+# THE WHOLE COST OF THIS ARM IS ITS RULINGS. No challenger call, no comprehension probe,
+# no agreement reading, no grade.
+#
+#     RUN_SWEEP_STAGES="contest ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd2-nano-placeholder.toml \
+#         > outputs/jd2-nano-placeholder-driver.log 2>&1 &
+#
+# The orchestration script `outputs/jd2-run-all.sh` runs every arm in dependency
+# order under one process; do not launch arms by hand out of that order.
+
+name = "jd2-nano-placeholder"
+cases = "data/cases/ftf-all.jsonl"
+decisions_from = "outputs/experiments/sweep"
+contests_from = "outputs/experiments/judgment-debate"
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+challenger_model = "google/gemini-2.5-flash"
+challenger_variant = "placeholder"
+recourse_form = "third_party"
+recourse_judge_model = "openai/gpt-4.1-nano"
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5"

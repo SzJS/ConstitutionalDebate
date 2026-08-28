@@ -795,3 +795,71 @@ def test_the_ruling_line_caveat_says_measured_or_says_it_was_not_measured():
 
     none_at_all = " ".join(caveats([row(ruling_form=None)], ["debate", "single"]))
     assert "No rulings are in this index" in none_at_all
+
+
+def test_the_specious_caveat_states_the_manipulation_check_before_any_number():
+    """The stopping rule, written where a reader of `metrics.json` cannot miss it.
+
+    Two of this module's rates would otherwise read as findings on a specious tree: the
+    raise rate, which the instruction fixes at 1.0, and `valid_objection_judgment`, which
+    is not the audit's validity but the check on whether the objections were specious at
+    all. If it comes out high, the arm failed and the sycophancy comparison is void — and
+    a stopping rule stated after the numbers are seen is not a stopping rule."""
+    absent = " ".join(caveats([judgment_row(), judgment_row(item_id="i2")], ["debate"]))
+    assert "THE CHALLENGER WAS SPECIOUS" not in absent
+
+    stated = " ".join(caveats(
+        [judgment_row(challenge_arm="judgment_specious"),
+         judgment_row(item_id="i2", challenge_arm="judgment_specious")], ["debate"]))
+    assert "THE CHALLENGER WAS SPECIOUS" in stated
+    assert "RAISE RATE IS 1.0 BY CONSTRUCTION" in stated
+    assert "MANIPULATION CHECK, not a finding" in stated
+    assert "should be LOW" in stated
+    assert "void" in stated
+    # one arm is one population, whichever arm it is
+    assert "MIXES arms" not in stated
+    # and it does not fire on the genuine judgment arm, nor claim to be partisan
+    assert "THE CHALLENGER WAS PARTISAN" not in stated
+
+    # the specious arm and the real audit in one index IS mixed, and worse than mixing
+    # two ordinary arms: pooling them moves the valid-objection rate by construction
+    mixed = " ".join(caveats(
+        [judgment_row(), judgment_row(item_id="i2",
+                                      challenge_arm="judgment_specious")], ["debate"]))
+    assert "MIXES arms" in mixed
+
+
+def test_the_placeholder_caveat_says_no_challenger_ran():
+    """Every challenger-side column on a placeholder index is a property of one constant
+    string. A reader meeting a raise rate of 1.0 beside an absent validity rate has no
+    other way to learn that no model wrote a word of it."""
+    absent = " ".join(caveats([row(challenge_arm="judgment")], ["debate"]))
+    assert "PLACEHOLDER ARM" not in absent
+
+    stated = " ".join(caveats(
+        [row(challenge_arm="placeholder", challenge_raised=True),
+         row(item_id="i2", challenge_arm="placeholder", challenge_raised=True)],
+        ["debate"]))
+    assert "THIS IS THE PLACEHOLDER ARM" in stated
+    assert "NO CHALLENGER RAN" in stated
+    assert "SAME fixed, content-free text" in stated
+    assert "not measured: placeholder" in stated
+    assert "not graded: placeholder" in stated
+    # and it says what the one meaningful quantity is, and that it is not computed here
+    assert "The ONE quantity that means anything here is the RULING" in stated
+    assert "made in the derivation, not here" in stated
+
+
+def test_the_arm_counts_keep_the_three_judgment_arms_apart(tmp_path):
+    """`challenge_arm` is what a derivation splits the 2x3 on. All three of these carry
+    `arm = "judgment"` on the Challenge so the materiality prompt rules them; if the
+    index wrote that instead of the variant, the three arms would be one column."""
+    index = tmp_path / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in [
+        row(item_id="i1", challenge_arm="judgment"),
+        row(item_id="i2", challenge_arm="judgment_specious"),
+        row(item_id="i3", challenge_arm="placeholder"),
+    ]), encoding="utf-8")
+    metrics = analyse(index, ["debate"])
+    assert metrics["challenge_arm"] == {
+        "judgment": 1, "judgment_specious": 1, "placeholder": 1}

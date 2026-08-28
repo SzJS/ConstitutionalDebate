@@ -33,7 +33,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from .config import CHALLENGER_VARIANTS, TurnStyle
+from .config import (
+    CHALLENGER_VARIANTS,
+    JUDGMENT_VARIANT,
+    PLACEHOLDER_VARIANT,
+    SPECIOUS_VARIANT,
+    TurnStyle,
+)
 
 EMPTY_TRANSCRIPT = "[This is the first round; no arguments have been made yet.]"
 
@@ -907,6 +913,28 @@ class Challenge:
     # phantom-shaped reply, which the `agreement` stage is what catches, so it is
     # recorded rather than repaired. The grader rules on these one at a time.
     defects: list[dict[str, Any]] = field(default_factory=list)
+    # The two CONTROLS of 2026-08-28, recorded as facts about the objection rather than
+    # folded into ``arm``. ``arm`` selects the ruling prompt and the ruling reader, and a
+    # control is only a control if it is ruled in the same form as the thing it controls
+    # for — so both of these carry ``arm = "judgment"`` and are told apart here.
+    #
+    # ``specious``  the challenger was instructed to allege plausible-but-INVALID defects
+    #               and to object every time (DESIGN.md, `## Challenger variants`). Its
+    #               raise rate is 100% by construction and its graded validity is the
+    #               manipulation check on that instruction, never a finding — the analysis
+    #               says so in a caveat keyed on this field.
+    # ``placeholder`` NO MODEL WROTE THIS. The contest stage emitted
+    #               ``prompts.PLACEHOLDER_OBJECTION_TEXT``, the same content-free text on
+    #               every cell, so that the recourse judge gets its second look and no
+    #               information. ``model`` is None and ``call_id`` is None on such a
+    #               challenge, which is the other way to tell: there is no wire call
+    #               behind it. Nothing grades it and nothing reads its prose.
+    #
+    # Defaulted False so that every challenge.json written before this date — the sweep's
+    # 5,724, the re-contest's, the judgment run's 1,643 — loads as a real objection,
+    # which is what it is.
+    specious: bool = False
+    placeholder: bool = False
     visibility: str | None = None  # "public" | "full" — what the generator saw
     model: str | None = None
     call_id: str | None = None
@@ -948,6 +976,47 @@ class Challenge:
             raise ValueError(
                 f"arm must be one of {CHALLENGER_VARIANTS} or None, got {self.arm!r}"
             )
+        if self.specious and self.placeholder:
+            raise ValueError(
+                "a challenge cannot be both specious and a placeholder: the first was "
+                "written by a challenger told to be wrong, the second by no challenger "
+                "at all"
+            )
+        if (self.specious or self.placeholder) and self.arm != JUDGMENT_VARIANT:
+            # The whole design of both controls is that they are RULED exactly as the
+            # real audit is. An arm of anything else would send them to the object-level
+            # ruling prompt, and the comparison the run exists to make would be between
+            # two different instruments.
+            raise ValueError(
+                "a specious or placeholder challenge must carry "
+                f"arm={JUDGMENT_VARIANT!r} so the materiality ruling prompt applies; "
+                f"got {self.arm!r}"
+            )
+        if self.placeholder and self.stance != "contests":
+            # A placeholder that declined would be a cell the judge never looked at,
+            # which is not a second-look control — it is a missing row. The contest stage
+            # mirrors a source decline by writing no placeholder at all.
+            raise ValueError(
+                "a placeholder challenge exists to put something to the judge; "
+                f"stance must be 'contests', got {self.stance!r}"
+            )
+
+    @property
+    def variant(self) -> str | None:
+        """The CHALLENGER VARIANT this objection was written under — the index's
+        ``challenge_arm``.
+
+        Not the same as ``arm``, and the difference is the point. ``arm`` is what the
+        recourse judge was asked (the ruling prompt is keyed on it), and both controls
+        deliberately share the real audit's arm. This is what the objection IS, and it is
+        what may never be pooled: a specious arm's rates and a real audit's rates over one
+        column called "judgment" would read as one population.
+        """
+        if self.placeholder:
+            return PLACEHOLDER_VARIANT
+        if self.specious:
+            return SPECIOUS_VARIANT
+        return self.arm
 
     @property
     def shown_private_reasoning(self) -> bool:

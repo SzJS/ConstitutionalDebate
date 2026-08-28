@@ -24,7 +24,8 @@ from exp2.client import Completion, FatalError, RetryableError
 
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
-                   "recourse_solo", "agreement", "ruling_reader", "judgment_grader"}
+                   "recourse_solo", "agreement", "ruling_reader",
+                   "ruling_reader_materiality", "judgment_grader"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
@@ -63,6 +64,17 @@ DEFAULT_REPLIES: dict[str, str] = {
     # conclusion above, so the default run measures agreement rather than a mismatch;
     # tests that want the mismatch ask for it.
     "ruling_reader": "The reasoning concludes the text is fine.\nReading: SOUND",
+    # The SAME instrument keyed on the materiality prompt, which is what rules every
+    # judgment-family objection (`prompts.RULING_READER_ROLES`). It answers in the
+    # materiality vocabulary — STANDS / CHANGED / NEITHER, mapped onto a verdict in code
+    # — not in the object-level reader's FLAWED / SOUND, so it needs its own default.
+    # Without one the fake fell through to the catch-all and every materiality reading in
+    # the offline harness died malformed after its one repair, which is exactly what
+    # `scripts/e2e_offline.py` was silently doing to the judgment pass. CHANGED is the
+    # consistent answer to the default judge above: it concludes SOUND against a FLAWED
+    # parent, so the decision changed, and `ruling_line_mismatch` is False.
+    "ruling_reader_materiality": ("The judge finds the defect real and material.\n"
+                                  "Reading: CHANGED"),
 }
 
 
@@ -106,6 +118,19 @@ class FakeClient:
         self.in_flight = 0
         self.max_in_flight = 0
 
+    # The one place the fake has to look at the MESSAGES and not only at the meta.
+    # `recourse.judge_ruling_prose` deliberately logs both readings under one wire role
+    # — `ruling_reader`, because accounting reads `meta` and the two readings are one
+    # probe — while asking two different questions in two different vocabularies:
+    # FLAWED/SOUND for an object-level ruling, STANDS/CHANGED/NEITHER for a materiality
+    # one. A fixture keyed on the role alone therefore answers the materiality reader in
+    # the object-level vocabulary, its parser rejects it, and the reading dies after its
+    # one repair — silently, since `ruling_agreement` is off the decision path. That is
+    # exactly what `scripts/e2e_offline.py` was doing to every judgment-arm ruling until
+    # 2026-08-28, and it is the arm the whole next phase re-rules. So the fake answers
+    # the question it was actually asked.
+    MATERIALITY_READER_MARK = "`Reading: STANDS`, `Reading: CHANGED`, or `Reading: NEITHER`"
+
     @staticmethod
     def key(meta: dict[str, Any]) -> Any:
         role = meta.get("role")
@@ -115,8 +140,26 @@ class FakeClient:
             return (role, meta.get("purpose"))
         return (meta.get("round"), meta.get("speaker"))
 
-    def reply_for(self, meta: dict[str, Any]) -> str:
+    @staticmethod
+    def asked_for_materiality(messages: list[dict[str, str]] | None) -> bool:
+        """Whether these messages are the MATERIALITY ruling reader's, not the
+        object-level one's — decided by the answer line the prompt asks for."""
+        if not messages:
+            return False
+        return FakeClient.MATERIALITY_READER_MARK in "".join(
+            m.get("content", "") for m in messages)
+
+    def reply_for(self, meta: dict[str, Any],
+                  messages: list[dict[str, str]] | None = None) -> str:
         key = self.key(meta)
+        # An explicit `ruling_reader_materiality` script wins over a generic
+        # `ruling_reader` one, so a pass that answers both readers can say so; a test
+        # that scripts only `ruling_reader` keeps meaning exactly what it meant.
+        if key == "ruling_reader" and self.asked_for_materiality(messages):
+            if "ruling_reader_materiality" in self.replies:
+                return self.replies["ruling_reader_materiality"]
+            if key not in self.replies:
+                return DEFAULT_REPLIES["ruling_reader_materiality"]
         if key in self.replies:
             return self.replies[key]
         role = meta.get("role")
@@ -163,7 +206,8 @@ class FakeClient:
                                                finish_reason="length")
                 if failure == "malformed":
                     return await self._deliver(self.malformed_content, request, meta)
-            return await self._deliver(self.reply_for(meta), request, meta)
+            return await self._deliver(self.reply_for(meta, messages),
+                                       request, meta)
         finally:
             self.in_flight -= 1
 

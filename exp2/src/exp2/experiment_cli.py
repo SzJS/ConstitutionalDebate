@@ -22,6 +22,14 @@ source contest is copied here minus its ruling and re-ruled by the recourse judg
 them being rewritten. ``contest``, ``agreement`` and ``grade`` refuse on such a spec —
 each would write a new objection, or a new grade of one, over the copy this tree holds —
 and ``--stage rerule`` refuses without it.
+
+One arm is exempt from that refusal and only one: ``challenger_variant = "placeholder"``,
+the second-look control. It carries ``contests_from`` and runs ``contest``, but it
+generates nothing — the stage writes one fixed, content-free objection with no model call
+and reads the source only to place itself on exactly the cells the source arm contested,
+which is the whole of what makes it a control. Nothing under the source is written.
+``agreement`` and ``grade`` stay refused for it, and the stages themselves skip it with
+an explicit reason, because there is nothing in a constant to read or to grade.
 """
 
 from __future__ import annotations
@@ -48,6 +56,8 @@ from .config import (
     CLIENT_WHY,
     GRADING_WHY,
     JUDGMENT_VARIANT,
+    PLACEHOLDER_VARIANT,
+    SPECIOUS_VARIANT,
     WHY,
     ClientConfig,
     DebateConfig,
@@ -137,6 +147,13 @@ def print_estimate(grid, config: DebateConfig,
     be read off the source tree rather than bounded by the grid. On the sweep the two
     differ by a factor of five, and quoting the bound would be quoting five times the
     spend at the moment it is being agreed to.
+
+    The PLACEHOLDER arm is the one spec that carries ``contests_from`` and still runs
+    ``contest``, and its estimate is the same shape for a different reason: the contest
+    term is zero because the objection is a constant this module writes rather than a
+    generation, and the ruling term is the source's contested count because that is
+    exactly where the placeholder is placed. Its whole spend is rulings plus the reading
+    of them.
     """
     by_condition: dict[str, int] = {}
     for cell in grid:
@@ -158,7 +175,12 @@ def print_estimate(grid, config: DebateConfig,
     # Quoting the flaw grader's 87 for a run that makes up to 207 grader calls would
     # understate the spend at the moment it is being agreed to, which is the one thing
     # this line exists not to do.
-    judgment = config.challenger_variant == JUDGMENT_VARIANT
+    # The specious arm is graded by the SAME judgment grader, on every contested cell —
+    # that grade is the manipulation check on the instruction and it is the whole reason
+    # the arm is readable — so it takes the judgment grading term too. The placeholder is
+    # not graded at all; `contests_from` already zeroes its term.
+    judgment = config.challenger_variant in (JUDGMENT_VARIANT, SPECIOUS_VARIANT)
+    placeholder = config.challenger_variant == PLACEHOLDER_VARIANT
     gradable = (0 if contests_from is not None
                 else len(grid) if judgment
                 else sum(1 for cell in grid if cell.case.gradable))
@@ -166,8 +188,11 @@ def print_estimate(grid, config: DebateConfig,
           "  ".join(f"{c}={n}" for c, n in sorted(by_condition.items())))
     decision_term = (f"decision 0 (read from {decisions_from})"
                      if decisions_from is not None else f"decision {decision}")
-    contest_term = (f"contest 0 (objections read from {contests_from})"
-                    if contests_from is not None else f"contest {contest}")
+    contest_term = (
+        "contest 0 (the placeholder objection is a fixed text written with NO model "
+        f"call, on the cells {contests_from} contested)" if placeholder
+        else f"contest 0 (objections read from {contests_from})"
+        if contests_from is not None else f"contest {contest}")
     print(f"estimated calls: {decision_term}, {contest_term}, "
           f"ruling <= {ruling}, agreement <= {agreement}, "
           f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}  "
@@ -181,6 +206,12 @@ def print_estimate(grid, config: DebateConfig,
         print(f"the ruling term is COUNTED, not bounded: {ruling} of the {len(grid)} "
               f"cells have a source objection whose stance is `contests`. The rest "
               "declined or were unreadable and put nothing to a judge.")
+    if placeholder:
+        print("this is the SECOND-LOOK CONTROL. It makes no challenger call, no "
+              "comprehension probe, no agreement reading and no grade: its whole spend "
+              f"is {ruling} rulings on a content-free objection plus the reading of "
+              "them. Every cell the source declined keeps its before-state, exactly as "
+              "it does there, so the two arms rule on the same cells.")
     # `max_decision_attempts` is deliberately NOT quoted here. It is loaded and
     # validated but consulted nowhere in `src/`, and the line that used to print it
     # promised a per-cell retry the harness does not make. What is true is stated
@@ -260,12 +291,30 @@ def main(argv: list[str] | None = None) -> int:
     # while claiming to re-rule the source's.
     contests_from = spec.get("contests_from")
     contest_root = Path(contests_from) if contests_from else None
-    if contest_root is not None and args.stage in ("contest", "agreement", "grade"):
+    # THE ONE EXCEPTION, and it is narrow. The placeholder arm carries `contests_from`
+    # and DOES run `contest` — but it generates nothing: the stage writes one fixed,
+    # content-free text with no model call, and reads the source only to place itself on
+    # exactly the cells the source arm objected to. Nothing under the source is written,
+    # for the same reason a re-rule writes nothing under it. The other two stages the
+    # refusal covers stay refused for that arm as well, and they are also the two the
+    # stage-level skips already decline to spend on.
+    placeholder_arm = config.challenger_variant == PLACEHOLDER_VARIANT
+    refused = ("agreement", "grade") if placeholder_arm else ("contest", "agreement",
+                                                              "grade")
+    if contest_root is not None and args.stage in refused:
         raise SystemExit(
             f"this spec re-rules contests in {contest_root}; it does not contest. "
             f"`{args.stage}` would write a new objection (or a new grade of one) over "
             "the copy this tree holds. Run --stage rerule / ruling_agreement / analyse "
             "against it, or drop contests_from to make a tree that contests for itself."
+        )
+    if placeholder_arm and contest_root is None:
+        raise SystemExit(
+            f"`challenger_variant = \"{PLACEHOLDER_VARIANT}\"` needs `contests_from = "
+            "\"<tree>\"`: the second-look control is defined by standing on exactly the "
+            "cells the real arm contested, and without the source tree it would place "
+            "itself on every decided cell instead — a different population, and not a "
+            "control for anything."
         )
     if contest_root is None and args.stage == "rerule":
         raise SystemExit(
@@ -370,7 +419,8 @@ def main(argv: list[str] | None = None) -> int:
             api_key=api_key, retry_failed=args.retry_failed),
         "contest": lambda: run_stage_contest(
             grid, root=root, config=config, client_config=client_config,
-            api_key=api_key, decision_root=decision_root),
+            api_key=api_key, decision_root=decision_root,
+            contest_root=contest_root),
         "rerule": lambda: run_stage_rerule(
             grid, root=root, config=config, client_config=client_config,
             api_key=api_key, decision_root=decision_root or root,
@@ -395,6 +445,25 @@ def main(argv: list[str] | None = None) -> int:
                else result.get("status", "unknown"))
         counts[key] = counts.get(key, 0) + 1
     print(f"\n{args.stage}: " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    # THE CONTROL'S ONE INVARIANT, asserted where it can still be acted on. The
+    # placeholder arm is a control only if it stands on exactly the cells the source arm
+    # objected to: one cell too many and the judge is given a second look the real arm
+    # never gave it, one too few and the two after-states are not paired. `completed +
+    # already contested` is the count that has to equal the source's, because a resumed
+    # run finds some of its own work already done.
+    if placeholder_arm and args.stage == "contest":
+        emitted = sum(1 for result in results
+                      if not isinstance(result, BaseException)
+                      and (result.get("status") == "completed"
+                           or result.get("reason") == "already contested"))
+        expected = n_source_contests or 0
+        verdict = "MATCHES" if emitted == expected else "DOES NOT MATCH"
+        print(f"\nplaceholder placement: {emitted} objections stand where "
+              f"{contest_root} raised {expected} — {verdict}.")
+        if emitted != expected:
+            print("  ! the second-look control is NOT paired with the arm it controls "
+                  "for. Do not read a P2 comparison off this tree until the difference "
+                  "is accounted for cell by cell.")
     for result in results:
         if isinstance(result, BaseException):
             print(f"  ! {type(result).__name__}: {result}")

@@ -481,3 +481,111 @@ async def test_the_contest_record_carries_a_hash_of_the_decision_it_contests(tmp
     manifest = json.loads((writer.dir / "run.json").read_text())
     assert manifest["parent_sha256"]
     assert (writer.dir / "parent" / "transcript.md").is_file()
+
+
+# --- the two controls of 2026-08-28 --------------------------------------------------
+
+
+SPECIOUS_REPLY = (
+    "Thinking: something that looks right and is not.\n"
+    "Argument:\n"
+    "1. Type: misstatement\n"
+    '   Judgment says: "The flawed side quoted the text"\n'
+    '   Record says: "Alice round 1 argument."\n'
+    "   Why it matters: the judgment attributes a quotation nobody made.\n"
+    "Decision: REVERSE"
+)
+
+
+async def test_a_specious_objection_is_recorded_as_specious_and_ruled_on_materiality(
+    tmp_path,
+):
+    """The control's whole design in one assertion pair.
+
+    `arm` is `judgment`, so the recourse judge is sent the MATERIALITY prompt and reads
+    the objection in exactly the form it reads a real audit — if it were sent the
+    object-level prompt instead, a difference in overturn rate between this arm and the
+    real one would be a difference between two prompts, not sycophancy. `specious` is
+    True beside it, so nothing downstream can pool the two.
+    """
+    config = make_config(challenger_variant="judgment_specious",
+                         recourse_form="third_party")
+    client = FakeClient(replies={"challenger": SPECIOUS_REPLY})
+    outcome, client, _, _ = await contest(tmp_path, "debate", client=client,
+                                          config=config)
+
+    challenge = outcome.challenge
+    assert challenge.arm == "judgment"        # ruled as the real audit is
+    assert challenge.specious is True         # and never counted as one
+    assert challenge.placeholder is False
+    assert challenge.variant == "judgment_specious"   # what the index writes
+    assert challenge.stance == "contests"
+    # the defect list is parsed, exactly as it is for the genuine arm
+    assert [d["type"] for d in challenge.defects] == ["misstatement"]
+
+    assert outcome.ruling.prompt_form == "materiality"
+    sent = "".join(m["content"] for m in client.sent_to("recourse_judge"))
+    assert "A stakeholder has audited that judgment against the record" in sent
+    # and the challenger really was sent the specious clause
+    challenger_sent = "".join(m["content"] for m in client.sent_to("challenger"))
+    assert "plausible but wrong" in challenger_sent
+
+
+async def test_a_placeholder_contest_makes_no_challenger_call_at_all(tmp_path):
+    """The arm's cost is rulings and nothing else.
+
+    Three calls are what an ordinary contest makes here — challenger, comprehension
+    probe, ruling. This makes ONE. The comprehension probe goes too, and deliberately:
+    it asks a reader how readable the record was, and no reader ran.
+    """
+    config = make_config(challenger_variant="placeholder",
+                         recourse_form="third_party")
+    outcome, client, _, _ = await contest(tmp_path, "debate", config=config)
+
+    assert list(client.roles()) == ["recourse_judge"]
+    assert "challenger" not in client.roles()
+    assert "comprehension" not in client.roles()
+    assert outcome.comprehension is None
+
+    challenge = outcome.challenge
+    assert challenge.placeholder is True and challenge.specious is False
+    assert challenge.variant == "placeholder"
+    assert challenge.arm == "judgment"
+    assert challenge.stance == "contests" and challenge.raised is True
+    # no model, no call, no private working — a row that named one would claim a
+    # generation that never happened
+    assert challenge.model is None and challenge.call_id is None
+    assert challenge.thinking == "" and challenge.repair_attempts == 0
+    assert challenge.parse_mode == "placeholder_no_call"
+    assert [d["type"] for d in challenge.defects] == ["omission"]
+
+    # and it IS ruled, under the materiality prompt
+    assert outcome.ruling is not None
+    assert outcome.ruling.prompt_form == "materiality"
+    assert outcome.ruling.form == "stated_conclusion"
+
+
+async def test_every_placeholder_is_the_same_text_whatever_the_record(tmp_path):
+    """Content-free, operationally: two different conditions, one string.
+
+    If the placeholder varied with the record it would carry information about the
+    record, and the arm would stop being the second-look control it exists to be."""
+    from exp2.prompts import PLACEHOLDER_OBJECTION_TEXT
+
+    config = make_config(challenger_variant="placeholder",
+                         recourse_form="third_party")
+    texts = set()
+    for condition in ("debate", "single"):
+        outcome, _, _, _ = await contest(tmp_path / condition, condition, config=config)
+        texts.add(outcome.challenge.text)
+    assert texts == {PLACEHOLDER_OBJECTION_TEXT}
+
+
+async def test_placeholder_challenge_refuses_to_be_written_under_another_arm(tmp_path):
+    """A control objection filed under an arm that claims a challenger wrote it is the
+    one failure that would be invisible in every artifact afterwards."""
+    from exp2.recourse import placeholder_challenge
+
+    record = await decided(tmp_path, "debate")
+    with pytest.raises(ValueError, match="must not be written under"):
+        placeholder_challenge(record, make_config(challenger_variant="judgment"))

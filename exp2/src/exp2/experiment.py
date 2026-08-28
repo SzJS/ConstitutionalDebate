@@ -38,7 +38,13 @@ from typing import Any, Callable, Sequence
 from .accounting import aggregate_calls, split_calls
 from .arms import CONDITIONS, DECIDERS
 from .client import OpenRouterClient
-from .config import JUDGMENT_VARIANT, ClientConfig, DebateConfig, GradingConfig
+from .config import (
+    JUDGMENT_VARIANT,
+    PLACEHOLDER_VARIANT,
+    ClientConfig,
+    DebateConfig,
+    GradingConfig,
+)
 from .grading import NotGradable, grade_objection
 from .persistence import RunWriter, load_flaw, load_run_record
 from .recourse import _rule_by_judge, judge_prose_stance, judge_ruling_prose, run_recourse
@@ -241,7 +247,7 @@ async def run_stage_decide(
 async def run_stage_contest(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     client_config: ClientConfig, api_key: str, rule: bool = True,
-    decision_root: Path | None = None,
+    decision_root: Path | None = None, contest_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Challenge, comprehension probe, and ruling — one coroutine, one resume key.
 
@@ -254,15 +260,56 @@ async def run_stage_contest(
     to — the sweep's 5,724 decisions are re-contested under a new protocol without
     regenerating one of them, and without an overwritten ``experiment.json`` or an
     ambiguous append to the source's ``cells.jsonl``.
+
+    ``contest_root`` is the PLACEHOLDER ARM's population, and it is the one case in which
+    a spec may carry ``contests_from`` and still run ``contest``. That arm writes no
+    objection of its own — it emits one fixed, content-free text with no model call — so
+    it cannot overwrite a source objection the way a real contest would, and its whole
+    validity as a control depends on landing on **exactly** the cells the source arm
+    contested. So it reads the source's stances and emits the placeholder where the
+    source objected and nothing at all where the source declined, leaving those cells
+    their before-state as the design requires. Any other variant with a ``contest_root``
+    is refused here rather than in the CLI, so the invariant holds for a direct caller
+    too.
     """
     decisions = decision_root or root
     challenger = config.challenger_model_for()
+    placeholder = config.challenger_variant == PLACEHOLDER_VARIANT
+    if contest_root is not None and not placeholder:
+        raise ValueError(
+            "run_stage_contest takes a contest_root only for "
+            f"challenger_variant='{PLACEHOLDER_VARIANT}', which generates nothing and "
+            f"reads the source only to place itself; got {config.challenger_variant!r}."
+        )
+    if placeholder and contest_root is None:
+        raise ValueError(
+            f"challenger_variant='{PLACEHOLDER_VARIANT}' needs `contests_from` naming "
+            "the tree whose objections it stands in for: the control is defined by "
+            "landing on exactly the cells that arm contested, and without the source "
+            "it would place itself on every decided cell instead."
+        )
+    # Read once, not per cell: the source is a finished tree of thousands of directories
+    # and a per-cell re-read would walk it once per cell.
+    source_contested: set[str] | None = None
+    if contest_root is not None:
+        source_contested = {
+            cell.cell_id for cell, _ in source_contests(
+                cells, source_root=contest_root, challenger_model=challenger)
+        }
+        log.info("placeholder arm: %d of %d cells carry a contested source objection",
+                 len(source_contested), len(cells))
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
 
     async def contest(cell: Cell) -> dict[str, Any]:
         if existing_contest(root, cell, challenger) is not None:
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "already contested"}
+        if source_contested is not None and cell.cell_id not in source_contested:
+            # The source declined, was unreadable, or never got a contest at all. The
+            # design holds "which cells get a second look" constant across the arms, so
+            # this cell keeps its before-state here exactly as it does there.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "source raised no objection; no placeholder emitted"}
         record = existing_decision(decisions, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
@@ -450,6 +497,14 @@ async def run_stage_agreement(
                     "reason": "already measured"}
         challenge = Challenge.from_dict(
             json.loads((directory / "challenge.json").read_text()))
+        if challenge.placeholder:
+            # Nothing to read. The placeholder is one fixed text on every cell, written
+            # by no model: its prose cannot disagree with its own decision line, and a
+            # grader call per cell would buy 1,148 identical readings of a constant.
+            # Recorded rather than silently absent, on the rule this stage exists to
+            # serve — "not measured" and "measured and agreed" are different facts.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "not measured: placeholder"}
         if challenge.stance not in ("contests", "declined"):
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": f"stance is {challenge.stance}; no line to compare"}
@@ -570,6 +625,15 @@ async def run_stage_grade(
                     "reason": "already graded"}
         challenge = Challenge.from_dict(
             json.loads((directory / "challenge.json").read_text()))
+        if challenge.placeholder:
+            # There is nothing to grade. Validity under the judgment grader is a property
+            # of the alleged defects against the record, and the placeholder alleges the
+            # same content-free omission on every cell — a grade of it would be one
+            # answer bought 1,148 times, and whichever way it came out it would be a
+            # property of this module's constant rather than of any run. The arm's whole
+            # cost is its rulings.
+            return {"cell_id": cell.cell_id, "status": "skipped",
+                    "reason": "not graded: placeholder"}
         if challenge.stance != "contests":
             # The gate is the stance, not ``raised``. An objection that agrees with the
             # verdict it objects to is not a detection of anything, and grading it
@@ -737,8 +801,23 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             # WHICH challenger wrote it. A neutral raise rate and a partisan one are
             # not the same quantity, and without this column an index that pooled two
             # runs would read as one population.
-            row["challenge_arm"] = challenge.arm
+            #
+            # `challenge.variant`, NOT `challenge.arm`. The two differ for the two
+            # controls of 2026-08-28: both carry `arm = "judgment"` so the materiality
+            # ruling prompt applies to them, and this column is what says which of the
+            # three actually wrote the objection. A specious arm pooled with the real
+            # audit under one "judgment" label would put deliberately-invalid objections
+            # into the valid-objection rate, and a placeholder pooled with either would
+            # put a constant into a measurement.
+            row["challenge_arm"] = challenge.variant
+            # The two control flags, as their own columns rather than only encoded in
+            # the arm name, so a derivation can filter on a boolean it cannot misspell.
+            # Written on every judgment-family row (False included): here "measured and
+            # false" is the useful fact, since the whole 2×3 design turns on which arm a
+            # row belongs to.
             if challenge.arm == JUDGMENT_VARIANT:
+                row["challenge_specious"] = challenge.specious
+                row["challenge_placeholder"] = challenge.placeholder
                 # How much was alleged, and how much of it was built on a quotation the
                 # judgment does not contain. Written only under the judgment arm, on the
                 # rule the graded columns follow: a 0 on a neutral row would read as "it

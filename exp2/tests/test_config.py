@@ -9,6 +9,7 @@ down at the point someone hits it.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import fields
 from pathlib import Path
 
@@ -291,7 +292,8 @@ def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
     # decision run's value for it
     assert "challenger_variant" in RECOURSE_ONLY_KEYS
     assert CHALLENGER_VARIANTS == ("neutral", "partisan_advocate", "partisan_assigned",
-                                   "partisan_auditor", "judgment")
+                                   "partisan_auditor", "judgment",
+                                   "judgment_specious", "placeholder")
     for variant in CHALLENGER_VARIANTS:
         assert DebateConfig(
             **debate_kwargs(challenger_variant=variant)).challenger_variant == variant
@@ -305,19 +307,27 @@ def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
     `prompts` imports `config` rather than the other way round, so nothing structural
     keeps them equal.
 
-    One name is deliberately NOT in the clause table: `judgment` is a mode, not a
-    standpoint. It has its own system prompt because the challenger's task changes, so a
-    clause selected by name would be the wrong shape for it — and the whole point of
-    `challenger_arm_clause` raising on an unknown name is that a mode which fell through
-    to a clause would be a judgment run wearing a stakeholder's prompt.
+    THREE names are deliberately NOT in the clause table, and they are exactly
+    `JUDGMENT_FAMILY`. `judgment` is a mode, not a standpoint: it has its own system
+    prompt because the challenger's task changes, so a clause selected by name would be
+    the wrong shape for it — and the whole point of `challenger_arm_clause` raising on an
+    unknown name is that a mode which fell through to a clause would be a judgment run
+    wearing a stakeholder's prompt. `judgment_specious` is that mode plus a spliced
+    clause, so it has a prompt of its own rather than an entry here, and `placeholder`
+    has no prompt at all — it makes no call.
     """
-    from exp2.config import CHALLENGER_VARIANTS, JUDGMENT_VARIANT
-    from exp2.prompts import CHALLENGER_ARMS, CHALLENGER_SYSTEM_JUDGMENT
+    from exp2.config import CHALLENGER_VARIANTS, JUDGMENT_FAMILY, JUDGMENT_VARIANT
+    from exp2.prompts import (
+        CHALLENGER_ARMS,
+        CHALLENGER_SYSTEM_JUDGMENT,
+        CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS,
+    )
 
-    assert set(CHALLENGER_ARMS) | {JUDGMENT_VARIANT} == set(CHALLENGER_VARIANTS)
-    assert JUDGMENT_VARIANT not in CHALLENGER_ARMS
+    assert set(CHALLENGER_ARMS) | set(JUDGMENT_FAMILY) == set(CHALLENGER_VARIANTS)
+    assert not set(CHALLENGER_ARMS) & set(JUDGMENT_FAMILY)
     assert JUDGMENT_VARIANT in CHALLENGER_VARIANTS
     assert CHALLENGER_SYSTEM_JUDGMENT  # the prompt that stands in for the missing clause
+    assert CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS  # and the control's spliced copy of it
 
 
 def test_recourse_form_defaults_to_what_every_paid_run_actually_did():
@@ -555,3 +565,93 @@ def test_max_decision_attempts_is_documented_as_unwired():
         "max_decision_attempts is now read outside config.py; wire it properly and "
         "rewrite config.WHY and the dry-run line, which both say it is unwired"
     )
+
+
+def test_the_two_controls_are_ruled_as_the_judgment_arm_and_named_as_themselves():
+    """`arm_for_variant` is deliberately not the identity, and this is where that is
+    pinned.
+
+    `Challenge.arm` selects the RULING prompt and the ruling reader. Both controls of
+    2026-08-28 exist to be ruled under exactly the prompt the real audit was ruled under
+    — a specious objection ruled in a different form would measure the form rather than
+    the judge's sycophancy, and a placeholder ruled in a different form would not be a
+    second-look control at all. So both map onto `judgment`, and what they ARE is kept in
+    `Challenge.specious` / `Challenge.placeholder` and surfaced by `Challenge.variant`.
+    """
+    from exp2.config import (
+        JUDGMENT_FAMILY,
+        JUDGMENT_VARIANT,
+        NEUTRAL_VARIANT,
+        PLACEHOLDER_VARIANT,
+        SPECIOUS_VARIANT,
+        arm_for_variant,
+    )
+
+    assert JUDGMENT_FAMILY == {"judgment", "judgment_specious", "placeholder"}
+    assert SPECIOUS_VARIANT == "judgment_specious"
+    assert PLACEHOLDER_VARIANT == "placeholder"
+    for variant in JUDGMENT_FAMILY:
+        assert arm_for_variant(variant) == JUDGMENT_VARIANT
+    # everything else is its own arm, unchanged
+    for variant in ("neutral", "partisan_advocate", "partisan_assigned",
+                    "partisan_auditor"):
+        assert arm_for_variant(variant) == variant
+    assert arm_for_variant(NEUTRAL_VARIANT) == NEUTRAL_VARIANT
+
+
+def test_the_why_table_says_what_the_two_controls_are_and_are_not():
+    """The dry-run table is the last thing read before the money is spent, and the two
+    facts a reader must not miss are stopping rules: the specious arm's validity rate is
+    a manipulation check that should be LOW (a high one voids the comparison), and the
+    placeholder makes no model call."""
+    from exp2.config import WHY
+
+    entry = WHY["challenger_variant"]
+    assert "judgment_specious" in entry and "placeholder" in entry
+    assert "MANIPULATION CHECK" in entry
+    assert "BY CONSTRUCTION" in entry
+    assert "void" in entry
+    assert "NO model call" in entry
+    assert "MATERIALITY" in entry
+
+
+def test_the_estimate_prices_the_placeholder_arm_as_rulings_and_nothing_else(capsys):
+    """The one spec that carries `contests_from` and still runs `contest`, and the line
+    its spend is approved from has to say why that is not a contradiction: the objection
+    is a constant, not a generation, so the contest term is zero calls rather than zero
+    because they were read from somewhere."""
+    from exp2.experiment import build_grid
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    debate = dataclasses.replace(debate, challenger_variant="placeholder")
+    grid = build_grid(_two_cases(), ["debate"])
+    print_estimate(grid, debate, decisions_from=Path("outputs/experiments/sweep"),
+                   contests_from=Path("outputs/experiments/judgment-debate"),
+                   n_source_contests=2)
+    out = capsys.readouterr().out
+    assert "the placeholder objection is a fixed text written with NO model call" in out
+    assert "ruling <= 2" in out and "ruling_agreement <= 2" in out
+    assert "agreement <= 0" in out and "grading <= 0" in out
+    assert "=> up to 4" in out
+    assert "SECOND-LOOK CONTROL" in out
+    assert "no challenger call, no comprehension probe" in out
+    assert "keeps its before-state" in out
+
+
+def test_the_estimate_grades_the_specious_arm_over_the_whole_grid(capsys):
+    """The specious objections are graded by the SAME judgment grader — that grade IS the
+    manipulation check — so the arm takes the judgment grading term, not the flaw
+    grader's much smaller one. Understating it here would understate the spend at the
+    moment it is being agreed to."""
+    from exp2.experiment import build_grid
+    from exp2.experiment_cli import print_estimate
+
+    debate, _ = load_config()
+    grid = build_grid(_two_cases(), ["debate"])
+    for variant in ("judgment", "judgment_specious"):
+        print_estimate(grid, dataclasses.replace(debate,
+                                                 challenger_variant=variant))
+        out = capsys.readouterr().out
+        assert "grading <= 2" in out, variant
+        assert "the grading term is the whole grid" in out, variant

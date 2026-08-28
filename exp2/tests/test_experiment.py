@@ -1176,3 +1176,274 @@ def test_a_rerule_trees_experiment_json_names_both_trees_it_read(tmp_path, monke
     # and neither source grew a file
     for source in ("sweep", "recontest"):
         assert [p.name for p in (outputs / source).rglob("*")] == ["experiment.json"]
+
+
+# --- the two controls of 2026-08-28 --------------------------------------------------
+
+
+SPECIOUS_REPLY = (
+    "Thinking: something plausible and wrong.\n"
+    "Argument:\n"
+    "1. Type: misstatement\n"
+    '   Judgment says: "The sound side answered the objection"\n'
+    '   Record says: "Alice round 1 argument."\n'
+    "   Why it matters: the judgment attributes an answer nobody gave.\n"
+    "Decision: REVERSE"
+)
+
+
+async def _source_arm(tmp_path, no_network, *, challenger_reply=None):
+    """A → decisions, B → a real judgment contest of them. The placeholder's source."""
+    make_decisions_wrong(no_network)
+    if challenger_reply is not None:
+        no_network.replies["challenger"] = challenger_reply
+    grid = build_grid(cases(3), ["debate"])
+    decisions, source = tmp_path / "A", tmp_path / "B"
+    await run_stage_decide(grid, root=decisions, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    await run_stage_contest(grid, root=source,
+                            config=make_config(challenger_variant="judgment",
+                                               recourse_form="third_party"),
+                            client_config=client_config(), api_key="k",
+                            decision_root=decisions)
+    return grid, decisions, source
+
+
+async def test_the_placeholder_stands_on_exactly_the_cells_the_source_contested(
+    tmp_path, no_network
+):
+    """The control's defining property, and the one the run asserts before it reads a
+    number: the placeholder arm and the arm it controls for must rule on the SAME cells.
+
+    One cell here declines in the source; it gets no placeholder, keeps its before-state,
+    and is skipped by name — because the design holds "which cells get a second look"
+    constant across every arm of the 2x3, and a placeholder on a cell the real arm never
+    contested would give the judge a second look the real arm never gave it.
+    """
+    from exp2.prompts import PLACEHOLDER_OBJECTION_TEXT
+
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    # make ONE of the three source cells a decline, by contesting it under a client that
+    # declines — done by hand, since the stage resumes on what is already there
+    declined = grid[0]
+    for path in (source / "cells" / declined.cell_id).rglob("challenge.json"):
+        data = json.loads(path.read_text())
+        data.update(raised=False, stance="declined", claimed_verdict="SOUND")
+        path.write_text(json.dumps(data))
+        (path.parent / "ruling.json").unlink(missing_ok=True)
+
+    contested = {c.cell_id for c, _ in source_contests(
+        grid, source_root=source, challenger_model="strong/model")}
+    assert len(contested) == 2 and declined.cell_id not in contested
+
+    root = tmp_path / "C"
+    before = len(no_network.calls)
+    results = await run_stage_contest(
+        grid, root=root, config=make_config(challenger_variant="placeholder",
+                                            recourse_form="third_party"),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+    by_cell = {r["cell_id"]: r for r in results}
+    assert by_cell[declined.cell_id]["status"] == "skipped"
+    assert by_cell[declined.cell_id]["reason"] == (
+        "source raised no objection; no placeholder emitted")
+    assert sorted(c for c, r in by_cell.items() if r["status"] == "completed") == \
+        sorted(contested)
+
+    # ONE call per placed cell, and it is the ruling. No challenger, no probe.
+    made = [call for call in no_network.calls[before:]]
+    assert len(made) == 2
+    assert {call["meta"]["role"] for call in made} == {"recourse_judge"}
+
+    # every placed objection is the same content-free text, recorded as a placeholder
+    written = sorted(root.rglob("cells/*/contests/*/runs/*/challenge.json"))
+    assert len(written) == 2
+    for path in written:
+        challenge = json.loads(path.read_text())
+        assert challenge["text"] == PLACEHOLDER_OBJECTION_TEXT
+        assert challenge["placeholder"] is True and challenge["specious"] is False
+        assert challenge["arm"] == "judgment"
+        assert challenge["model"] is None and challenge["call_id"] is None
+        assert (path.parent / "ruling.json").is_file()
+        assert json.loads((path.parent / "ruling.json").read_text())["prompt_form"] \
+            == "materiality"
+        # and no comprehension probe was bought
+        assert not (path.parent / "comprehension.json").is_file()
+
+    # the source tree is untouched — this arm reads it and writes nothing to it
+    assert not list(source.rglob("*placeholder*"))
+
+
+async def test_the_placeholder_arm_refuses_to_run_without_a_source(tmp_path):
+    """Without the source it would place itself on every decided cell — a different
+    population, and not a control for anything."""
+    grid = build_grid(cases(1), ["debate"])
+    with pytest.raises(ValueError, match="needs `contests_from`"):
+        await run_stage_contest(
+            grid, root=tmp_path, config=make_config(challenger_variant="placeholder"),
+            client_config=client_config(), api_key="k")
+
+
+async def test_only_the_placeholder_arm_may_read_a_source_while_contesting(tmp_path):
+    """Any other variant with a `contest_root` would be generating objections into a
+    tree that claims to re-rule another's."""
+    grid = build_grid(cases(1), ["debate"])
+    with pytest.raises(ValueError, match="takes a contest_root only for"):
+        await run_stage_contest(
+            grid, root=tmp_path, config=make_config(challenger_variant="judgment"),
+            client_config=client_config(), api_key="k",
+            contest_root=tmp_path / "nowhere")
+
+
+async def test_grade_and_agreement_skip_a_placeholder_without_spending(tmp_path,
+                                                                      no_network):
+    """There is nothing in a constant to grade or to read, and the skip is recorded by
+    name so that "not graded" and "graded and failed" stay different facts."""
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    root = tmp_path / "C"
+    config = make_config(challenger_variant="placeholder",
+                         recourse_form="third_party")
+    await run_stage_contest(grid, root=root, config=config,
+                            client_config=client_config(), api_key="k",
+                            decision_root=decisions, contest_root=source)
+    before = len(no_network.calls)
+
+    agreed = await run_stage_agreement(
+        grid, root=root, config=config, grading=GradingConfig(),
+        client_config=client_config(), api_key="k", decision_root=decisions)
+    graded = await run_stage_grade(
+        grid, root=root, config=config, grading=GradingConfig(),
+        client_config=client_config(), api_key="k", decision_root=decisions)
+
+    placed = [r for r in agreed if r["reason"] != "no contest"]
+    assert placed and all(r["reason"] == "not measured: placeholder" for r in placed)
+    placed = [r for r in graded if r["reason"] != "no contest"]
+    assert placed and all(r["reason"] == "not graded: placeholder" for r in placed)
+    assert len(no_network.calls) == before        # not one call between them
+    assert not list(root.rglob("grade.json"))
+    assert not list(root.rglob("agreement.json"))
+
+
+async def test_the_index_names_the_control_arm_and_never_the_ruling_arm(tmp_path,
+                                                                        no_network):
+    """`challenge_arm` is what a derivation splits on, and both controls carry
+    `arm = "judgment"` so that the materiality prompt rules them. If the index wrote the
+    ruling arm, the placeholder's 1,148 rows and the real audit's 1,148 rows would be one
+    population of 2,296 under one label."""
+    grid, decisions, source = await _source_arm(tmp_path, no_network)
+    root = tmp_path / "C"
+    await run_stage_contest(
+        grid, root=root, config=make_config(challenger_variant="placeholder",
+                                            recourse_form="third_party"),
+        client_config=client_config(), api_key="k",
+        decision_root=decisions, contest_root=source)
+
+    rows = build_index(grid, root=root, challenger_model="strong/model",
+                       decision_root=decisions)
+    placed = [r for r in rows if "challenge_arm" in r]
+    assert placed
+    for row in placed:
+        assert row["challenge_arm"] == "placeholder"
+        assert row["challenge_placeholder"] is True
+        assert row["challenge_specious"] is False
+        assert row["challenge_raised"] is True
+        assert row["ruling_prompt_form"] == "materiality"
+        # nothing grades it, so the grade columns are absent rather than 0
+        assert "grade_mode" not in row and "grade_valid" not in row
+
+    # the source arm's own index says `judgment` on the same cells — the two are
+    # joinable cell by cell and are never the same label
+    source_rows = build_index(grid, root=source, challenger_model="strong/model",
+                              decision_root=decisions)
+    assert {r["challenge_arm"] for r in source_rows} == {"judgment"}
+
+
+async def test_a_specious_arm_is_graded_by_the_judgment_grader_unchanged(tmp_path,
+                                                                         no_network):
+    """The manipulation check. The grader runs on the specious objections exactly as it
+    runs on the real ones — that is what makes "were they actually specious?" a
+    measurement rather than an assumption — and the index says which arm wrote them."""
+    make_decisions_wrong(no_network)
+    no_network.replies["challenger"] = SPECIOUS_REPLY
+    grid = build_grid(cases(2), ["debate"])
+    config = make_config(challenger_variant="judgment_specious",
+                         recourse_form="third_party")
+    await decide(tmp_path, grid)
+    await run_stage_contest(grid, root=tmp_path, config=config,
+                            client_config=client_config(), api_key="k")
+    results = await run_stage_grade(grid, root=tmp_path, config=config,
+                                    grading=GradingConfig(),
+                                    client_config=client_config(), api_key="k")
+    assert all(r["status"] == "completed" and r["mode"] == "judgment" for r in results)
+
+    rows = build_index(grid, root=tmp_path, challenger_model="strong/model")
+    for row in rows:
+        assert row["challenge_arm"] == "judgment_specious"
+        assert row["challenge_specious"] is True
+        assert row["challenge_placeholder"] is False
+        assert row["grade_mode"] == "judgment"       # the same instrument, unchanged
+        assert row["ruling_prompt_form"] == "materiality"
+        assert row["challenge_defects_n"] == 1
+
+
+def test_only_the_placeholder_spec_may_contest_while_reading_another_trees_contests(
+    tmp_path, monkeypatch
+):
+    """The refusal that protects every re-rule stays in place, and the one arm exempt
+    from it is named in the spec rather than inferred.
+
+    A `contests_from` spec running `contest` would ordinarily write a NEW objection over
+    the copy the tree holds. The placeholder writes no objection — it emits a constant
+    with no model call, and reads the source only to place itself — so it is exempt, and
+    `agreement` and `grade` stay refused for it because there is still nothing to grade.
+    """
+    from exp2.experiment_cli import main
+
+    def spec_for(name, variant):
+        path = tmp_path / f"{name}.toml"
+        body = (f'name = "{name}"\n'
+                'cases = "data/cases/does-not-matter.jsonl"\n'
+                f'decisions_from = "{tmp_path / "A"}"\n'
+                f'contests_from = "{tmp_path / "B"}"\n')
+        if variant:
+            body += f'[debate]\nchallenger_variant = "{variant}"\n'
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    monkeypatch.chdir(tmp_path)
+
+    # the ordinary re-rule spec: contest still refused
+    rerule = spec_for("rerule-x", None)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(rerule), "--stage", "contest"])
+    assert "it does not contest" in str(excinfo.value)
+
+    # the placeholder spec: contest allowed (it dies later, on the missing cases file,
+    # which is proof it got past the refusal), agreement and grade still refused
+    placeholder = spec_for("jd2-nano-placeholder", "placeholder")
+    with pytest.raises(FileNotFoundError):
+        main(["--spec", str(placeholder), "--stage", "contest", "--dry-run"])
+    for stage in ("agreement", "grade"):
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--spec", str(placeholder), "--stage", stage])
+        assert "it does not contest" in str(excinfo.value)
+
+
+def test_a_placeholder_spec_without_a_source_is_refused_at_the_cli(tmp_path,
+                                                                   monkeypatch):
+    """Without `contests_from` the arm would place itself on every decided cell — a
+    different population from the one it controls for, and not a control for anything."""
+    from exp2.experiment_cli import main
+
+    spec = tmp_path / "jd2-nano-placeholder.toml"
+    spec.write_text(
+        'name = "jd2-nano-placeholder"\n'
+        'cases = "data/cases/does-not-matter.jsonl"\n'
+        f'decisions_from = "{tmp_path / "A"}"\n'
+        '[debate]\nchallenger_variant = "placeholder"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec), "--stage", "contest", "--dry-run"])
+    message = str(excinfo.value)
+    assert "needs `contests_from" in message
+    assert "not a control for anything" in message

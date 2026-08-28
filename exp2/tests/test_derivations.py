@@ -342,3 +342,273 @@ def test_the_math_needs_nothing_outside_the_standard_library(jd):
                    "from scipy", "import statsmodels", "from exp2"):
         assert banned not in source, banned
     assert math  # the one maths import it does make
+
+
+# --- judgment-debate-2: the 3 x 3, P1 / P2 / P3 per judge -----------------------------
+
+
+_JD2_FLAGS: dict = {}
+
+
+@pytest.fixture(scope="module")
+def jd2():
+    module = _load("judgment-debate-2.py")
+    _JD2_FLAGS.clear()
+    _JD2_FLAGS.update(module.ARM_FLAGS)
+    return module
+
+
+def _jd2_row(i, **kw):
+    """One debate row in the shape `build_index` writes for a judgment-family arm."""
+    row = {"cell_id": f"c{i}__debate__r1", "item_id": f"i{i}", "row_id": f"r{i}",
+           "subset": "theoremqa", "label_basis": "injected_pair", "condition": "debate",
+           "gold_flawed": True, "verdict": "FLAWED",
+           "initially_correct": True, "initially_incorrect": False}
+    row.update(kw)
+    return row
+
+
+def _jd2_only(*args):
+    """Arguments that run ONLY the arms named, with every other arm pointed at a path
+    that does not exist.
+
+    Without this the defaults pick up the live `outputs/experiments/judgment-debate`
+    tree, so the finished run's nano row prints into the same capture and an assertion
+    about "the arm under test" quietly reads the published one instead.
+    """
+    argv = []
+    named = set(args[::2])
+    for key, (flag, _) in {k: v for k, v in _JD2_FLAGS.items()}.items():
+        if flag in named:
+            continue
+        argv += [flag, "/nonexistent/index.jsonl"]
+    return list(args) + argv
+
+
+def _jd2_section(out: str, title: str) -> str:
+    """One section of the output, so an assertion cannot match a sentence in another."""
+    start = out.index(title)
+    rest = out[start + len(title):]
+    end = rest.find("\n(")
+    return rest[:end] if end != -1 else rest
+
+
+def _jd2_arm(path: Path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    return path
+
+
+def _contested(i, *, before, after, **kw):
+    """A cell that was objected to and ruled. `final_correct` carries the after-state."""
+    return _jd2_row(
+        i, initially_correct=before, initially_incorrect=not before,
+        challenge_arm="judgment", challenge_raised=True,
+        ruling_form="stated_conclusion", ruling_prompt_form="materiality",
+        changed_the_decision=before != after, final_correct=after, **kw)
+
+
+def test_jd2_alphas_are_the_bonferroni_split_the_prereg_names(jd2):
+    """The one thing in this script that a refactor could silently undo. Two judges take
+    the corrected alpha; nano's P2 is one test and keeps 0.05. A p of 0.03 is significant
+    under one and not the other, so a shared constant would be a wrong answer, not a
+    tidier one."""
+    assert jd2.ALPHA_FAMILY == 0.025
+    assert jd2.ALPHA_SINGLE == 0.05
+    assert 2 * jd2.ALPHA_FAMILY == jd2.ALPHA_SINGLE
+    assert [j for j, _ in jd2.JUDGES] == ["nano", "maverick", "mini"]
+    # and the sentence names its own alpha rather than saying "significant"
+    assert "alpha=0.025" in jd2.verdict_at(0.01, jd2.ALPHA_FAMILY)
+    assert jd2.verdict_at(0.03, jd2.ALPHA_FAMILY).startswith("not significant")
+    assert jd2.verdict_at(0.03, jd2.ALPHA_SINGLE).startswith("SIGNIFICANT")
+
+
+def test_jd2_mcnemar_and_wilson_agree_with_the_other_derivation(jd, jd2):
+    """Two scripts will quote p-values side by side in the same write-up. If they drift
+    the reader sees two numbers for one test."""
+    for b, c in ((10, 3), (0, 0), (7, 7), (173, 128), (30, 2)):
+        assert jd2.mcnemar_exact(b, c) == jd.mcnemar_exact(b, c)
+    for k, n in ((0, 10), (10, 10), (173, 1644)):
+        assert jd2.wilson(k, n) == jd.wilson(k, n)
+    with pytest.raises(ValueError):
+        jd2.mcnemar_exact(-1, 3)
+
+
+def test_jd2_after_state_and_prose_substitution(jd2):
+    """The after-state rule is shared with every other derivation in this repo, and the
+    prose substitution applies ONLY to a materiality ruling the reader actually decided —
+    a NEITHER reading, an object-level ruling and an unruled cell all keep the line."""
+    assert jd2.after_state({}, True) is True
+    assert jd2.after_state({"final_correct": False}, True) is False
+
+    gold_flawed = {"gold_flawed": True}
+    # materiality + the reader answered: the prose wins
+    assert jd2.prose_after_state(
+        {**gold_flawed, "ruling_prompt_form": "materiality",
+         "ruling_prose_conclusion": "FLAWED", "final_correct": False}, True) is True
+    assert jd2.prose_after_state(
+        {**gold_flawed, "ruling_prompt_form": "materiality",
+         "ruling_prose_conclusion": "SOUND", "final_correct": True}, True) is False
+    # NEITHER, object-level, and no ruling at all: the line stands
+    for row in ({**gold_flawed, "ruling_prompt_form": "materiality",
+                 "ruling_prose_conclusion": "NEITHER", "final_correct": False},
+                {**gold_flawed, "ruling_prompt_form": "object_level",
+                 "ruling_prose_conclusion": "FLAWED", "final_correct": False},
+                {**gold_flawed, "final_correct": False}):
+        assert jd2.prose_after_state(row, True) is False
+
+
+def test_jd2_p1_counts_fixed_and_broken_over_a_synthetic_arm(tmp_path, capsys, jd2):
+    """5 fixed, 2 broken, and concordant cells in both corners so a script that forgot to
+    exclude them would be caught. b=5 c=2 -> 2 * (1+7+21) / 128 = 58/128 = 0.453125."""
+    rows = ([_contested(i, before=False, after=True) for i in range(5)]
+            + [_contested(100 + i, before=True, after=False) for i in range(2)]
+            + [_contested(200 + i, before=True, after=True) for i in range(4)]
+            + [_contested(300 + i, before=False, after=False) for i in range(3)])
+    arm = _jd2_arm(tmp_path / "mav" / "index.jsonl", rows)
+    jd2.main(_jd2_only("--real-maverick", str(arm)))
+    out = capsys.readouterr().out
+    assert "fixed   (BEFORE wrong -> AFTER correct)   b = 5" in out
+    assert "broken  (BEFORE correct -> AFTER wrong)   c = 2" in out
+    assert "NET                                    +3 cells" in out
+    assert "p = 0.453125" in out
+    # 0.453 is above BOTH alphas, and the line names the one that applies
+    assert "not significant at alpha=0.025" in out
+    # the arms that did not run say so rather than printing an empty table
+    assert out.count("NOT RUN") >= 2
+
+
+def test_jd2_p1_uses_the_corrected_alpha_for_a_flash_class_judge(tmp_path, capsys, jd2):
+    """The whole point of the Bonferroni split, on a p that lands between the two alphas.
+
+    b=8 c=1: 2 * (1 + 9) / 2^9 = 20/512 = 0.0390625 — significant at 0.05, NOT significant
+    at 0.025. A judge in this position must be reported as not significant, and the
+    temptation to quote it at 0.05 is exactly why the correction is written down first."""
+    rows = ([_contested(i, before=False, after=True) for i in range(8)]
+            + [_contested(100, before=True, after=False)]
+            + [_contested(200 + i, before=True, after=True) for i in range(3)])
+    arm = _jd2_arm(tmp_path / "mini" / "index.jsonl", rows)
+    jd2.main(_jd2_only("--real-mini", str(arm)))
+    out = capsys.readouterr().out
+    assert "p = 0.0390625" in out
+    assert "not significant at alpha=0.025" in out
+    # and nowhere in the run does this p get quoted at the uncorrected alpha
+    assert "SIGNIFICANT at alpha=0.05" not in out
+
+
+def test_jd2_p2_pairs_the_real_arm_against_the_placeholder(tmp_path, capsys, jd2):
+    """The second-look control. The same cells, ruled on a real objection and on a
+    content-free one; only the cells BOTH arms carry are paired, and a cell one arm lacks
+    is dropped and counted rather than defaulted to a before-state — defaulting would
+    compare an arm against itself."""
+    real = [_contested(i, before=False, after=True) for i in range(6)] \
+        + [_contested(100 + i, before=False, after=False) for i in range(4)]
+    placeholder = [_contested(i, before=False, after=False) for i in range(6)] \
+        + [_contested(100 + i, before=False, after=False) for i in range(4)]
+    # one cell only the real arm has: it must be dropped from the pairing
+    real.append(_contested(999, before=False, after=True))
+    a = _jd2_arm(tmp_path / "a" / "index.jsonl", real)
+    c = _jd2_arm(tmp_path / "c" / "index.jsonl", placeholder)
+    jd2.main(_jd2_only("--real-maverick", str(a), "--placeholder-maverick", str(c)))
+    out = capsys.readouterr().out
+    assert "paired on 10 cells both arms carry" in out
+    assert "(1 in one arm only, dropped rather than defaulted)" in out
+    # every one of the 6 is fixed by the real arm and not by the placeholder
+    assert "fixed   (PLACEHOLDER wrong -> REAL correct)   b = 6" in out
+    assert "THE AUDIT DID IT" in out
+
+
+def test_jd2_p2_says_a_second_look_did_it_when_the_arms_do_not_differ(tmp_path, capsys,
+                                                                      jd2):
+    """The null this control exists to be able to report. Identical after-states means the
+    audit added nothing the placeholder did not, and the script must say so in words
+    rather than printing a net of 0 and leaving the reader to infer it."""
+    rows = [_contested(i, before=False, after=True) for i in range(6)]
+    a = _jd2_arm(tmp_path / "a" / "index.jsonl", rows)
+    c = _jd2_arm(tmp_path / "c" / "index.jsonl", list(rows))
+    jd2.main(_jd2_only("--real-mini", str(a), "--placeholder-mini", str(c)))
+    out = capsys.readouterr().out
+    block = _jd2_section(out, "P2 — openai/gpt-4.1-mini")
+    assert "NOT SEPARATED at alpha=0.025" in block
+    assert "not distinguishable from a second look" in block
+    # the verdict sentence, not the legend in the section header
+    assert "-> THE AUDIT DID IT" not in block
+
+
+def test_jd2_p3_is_void_when_the_grader_validates_most_specious_objections(tmp_path,
+                                                                           capsys, jd2):
+    """The stopping rule PREREG.md states before the arm runs. A specious arm the grader
+    largely VALIDATES did not produce specious objections, so it is a failed manipulation
+    and not a null result about sycophancy — and no comparison may be printed from it."""
+    spec = [_contested(i, before=False, after=True, grade_mode="judgment",
+                       grade_valid=True) for i in range(5)] \
+        + [_contested(100, before=False, after=False, grade_mode="judgment",
+                      grade_valid=False)]
+    real = [_contested(i, before=False, after=True) for i in range(6)]
+    jd2.main(_jd2_only("--real-nano", str(_jd2_arm(tmp_path / "r" / "index.jsonl", real)),
+                       "--specious-nano",
+                       str(_jd2_arm(tmp_path / "s" / "index.jsonl", spec))))
+    out = capsys.readouterr().out
+    assert "graded VALID (the manipulation check) 5/6" in out
+    assert "P3 IS VOID" in out
+    assert "FAILED" in out and "MANIPULATION" in out
+    assert "overturn on SPECIOUS" not in out
+
+
+def test_jd2_p3_compares_overturn_rates_when_the_manipulation_held(tmp_path, capsys, jd2):
+    """The check passes (1 of 6 valid), so the comparison is printed — on the OVERLAP
+    only, with the cells the specious arm contested and the real one did not reported
+    separately rather than pooled."""
+    real = [_contested(i, before=False, after=True) for i in range(4)] \
+        + [_contested(100 + i, before=False, after=False) for i in range(4)]
+    spec = [_contested(i, before=False, after=True, grade_mode="judgment",
+                       grade_valid=(i == 0)) for i in range(4)] \
+        + [_contested(100 + i, before=False, after=True, grade_mode="judgment",
+                      grade_valid=False) for i in range(4)] \
+        + [_contested(500, before=False, after=True, grade_mode="judgment",
+                      grade_valid=False)]
+    jd2.main(_jd2_only("--real-nano", str(_jd2_arm(tmp_path / "r" / "index.jsonl", real)),
+                       "--specious-nano",
+                       str(_jd2_arm(tmp_path / "s" / "index.jsonl", spec))))
+    out = capsys.readouterr().out
+    assert "P3 IS VOID" not in out
+    assert "graded VALID (the manipulation check) 1/9" in out
+    # the real arm overturned 4 of the 8 shared; the specious arm overturned all 8
+    assert "4/8 50.0%" in out and "8/8 100.0%" in out
+    assert "+50.0 pts" in out
+    assert "1 specious cells outside the overlap" in out
+
+
+def test_jd2_the_grid_and_the_prose_sensitivity_cover_every_cell(tmp_path, capsys, jd2):
+    """(d) prints all nine cells and (g) prints the post-hoc shift per arm, labelled.
+
+    The prose row flips the two rulings whose reader answered against their line, so the
+    net moves and the shift column is non-zero — a sensitivity that always printed the
+    same number as the endpoint would be measuring nothing."""
+    rows = [_contested(i, before=False, after=True) for i in range(4)]
+    # two of them read the other way in prose: line says fixed, prose says still wrong
+    for row in rows[:2]:
+        row["ruling_prose_conclusion"] = "SOUND"
+    jd2.main(_jd2_only("--real-maverick",
+                       str(_jd2_arm(tmp_path / "m" / "index.jsonl", rows))))
+    out = capsys.readouterr().out
+    assert "(d) THE 3 x 3 — NET ACCURACY CHANGE IN EVERY CELL" in out
+    assert "+4  (4f/0b)" in out
+    assert "POST HOC, NOT THE ENDPOINT" in out
+    # line net +4, prose net +2, shift -2
+    assert "            +4            +2        -2" in out
+
+
+def test_jd2_reproduces_the_finished_runs_published_endpoint(capsys, jd2):
+    """The regression that matters most: the nano row of this script's P1 must reproduce
+    `records/experiments/judgment-debate/`'s published 173 / 128 / +45 / p = 0.0110865
+    exactly. If it does not, the two derivations disagree about the same cells and the
+    write-up would carry two numbers for one result."""
+    committed = (Path(__file__).resolve().parent.parent / "records" / "experiments"
+                 / "judgment-debate" / "index.jsonl")
+    jd2.main(_jd2_only("--real-nano", str(committed)))
+    out = capsys.readouterr().out
+    assert "b = 173" in out and "c = 128" in out
+    assert "NET                                    +45 cells" in out
+    assert "p = 0.0110865" in out
+    assert "SIGNIFICANT at alpha=0.05" in out
