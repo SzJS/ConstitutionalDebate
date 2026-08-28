@@ -148,6 +148,8 @@ Note that only a debate has a judgment, so the way we will measure success here 
 
 **Recourse for a judgment-challenge (materiality).** A procedural objection does not claim the verdict is wrong, so the recourse judge is not asked to re-decide the problem. It is shown the judgment and rules in two steps: is the alleged defect real, checked against the record; and if so, does addressing it — the omitted point, the corrected quotation, the resolved contradiction — change the conclusion about the text? The decision stands otherwise. The neutral arm keeps its ruling; each arm is ruled in the form its objection has.
 
+On the debate-only judgment-challenge, re-rule with a recourse judge at the challenger's level but from a different family, paired with a content-free placeholder objection as the second-look control and the specious auditor as the sycophancy control.
+
 ## Challenger and judge model variance
 We should check whether contestability is lower when the challenger and the judge models are different; maybe the judge would simply agree with its own reasoning. This now applies to the *recourse* judge as well: the challenger and the recourse judge are the same weak model, so a ruling may be the model agreeing with its own objection.
 
