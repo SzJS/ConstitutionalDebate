@@ -1,0 +1,427 @@
+====================================================================================================
+judgment-debate-3 — one judge throughout: P1, P2, P3
+====================================================================================================
+Pre-registration: records/experiments/judgment-debate-3/PREREG.md
+alpha: 0.05 for P1 and for P2. One judge, one test each; no Bonferroni
+       family, and PREREG.md says so before either arm ran. P3 is descriptive.
+
+arm                   index                                                             rows
+----------------------------------------------------------------------------------------------------
+real                  records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl       1644
+placeholder           records/experiments/judgment-debate-3/arm-M2/index.jsonl          1644
+specious              /nonexistent                                                   NOT RUN
+jd1                   records/experiments/judgment-debate/index.jsonl                   1644
+jd2_mav               records/experiments/judgment-debate-2/arm-maverick-real/index.jsonl    1644
+jd2_mini              records/experiments/judgment-debate-2/arm-mini-real/index.jsonl    1644
+jd2_placeholder       records/experiments/judgment-debate-2/arm-nano-placeholder/index.jsonl    1644
+gates                 records/experiments/judgment-debate-3/gates/jd3-main-gates.jsonl     896
+gatekeeper            records/experiments/judgment-debate-3/arm-M4/index.jsonl          1644
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(0) THE TWO CONDITIONAL RATES  [DESCRIPTIVE, PROMOTED TO FIRST 2026-08-28]
+====================================================================================================
+Of the WRONG decisions this arm contested, how many ended RIGHT; of the RIGHT
+decisions it contested, how many ended WRONG; and the difference. Denominator
+is the CONTESTED cells in both columns — a cell nobody objected to cannot be
+fixed or broken by an objection, and leaving it in would dilute both rates by
+the decline rate and make two arms with different decline rates incomparable.
+
+WHY THIS IS THE FIRST TABLE. The net below is these two rates multiplied by two
+populations that are not the same size. With a judge that is right about three
+quarters of the time, an audit that contests indiscriminately meets a RIGHT
+decision three times as often as a wrong one — so a broken rate well below the
+fixed rate still loses more cells than it fixes. The net alone hides that.
+
+DESCRIPTIVE. No alpha and no test. It was promoted to the first table AFTER M1's
+preliminary numbers were seen; the quantity is the discrimination every
+derivation here already printed, in the vocabulary of the funnel. Section (f)
+repeats these two rates and does not recompute them — one number, one place.
+
+arm                                               n       fixed | wrong      broken | right        diff
+----------------------------------------------------------------------------------------------------
+M1 — the real audit                             896       110/274 40.1%       128/622 20.6%   +19.6 pts
+M2 — the placeholder (second-look control)      896          7/274 2.6%          5/622 0.8%    +1.8 pts
+M3 — the specious auditor (sycophancy control)                                                    NOT RUN
+----------------------------------------------------------------------------------------------------
+`fixed | wrong` is P(ends right | was wrong and contested);
+`broken | right` is P(ends wrong | was right and contested).
+On M3 the denominators are every decided cell, because the specious instruction
+forbids the decline — that is a property of the instruction and not a detection
+rate, and it is why M3's row is never read beside M1's as if they were one
+population.
+
+====================================================================================================
+(a) P1 — DEBATE + PROCEDURAL RECOURSE AGAINST DEBATE ALONE  [PRE-REGISTERED]
+====================================================================================================
+Population: every debate cell M0 decided — Maverick's own judgment of a stored
+transcript. BEFORE is that judgment against the gold label; AFTER is the
+ruling's verdict where M1's contest produced a ruling and the judgment's own
+verdict otherwise.
+
+alpha = 0.05. ONE JUDGE, ONE TEST: judgment-debate-2 ran two judges and
+split its alpha over them; there is no family here to correct over.
+
+The same model judged the debate and ruled on the appeal against its own
+judgment. That is the design, it is stated in PREREG.md, and sections (b) and
+(c) are what bound it — a second look with no information, and one with wrong
+information.
+
+====================================================================================================
+  P1 — M0 (before) against M1 (after)
+====================================================================================================
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                          1083               128      1211
+BEFORE wrong                             110               323       433
+----------------------------------------------------------------------------------------------------
+total                                   1193               451      1644
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 110
+  broken  (BEFORE correct -> AFTER wrong)   c = 128
+  NET                                    -18 cells
+  discordant pairs                       238   (concordant 1406, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.27045   not significant at alpha=0.05
+
+  accuracy BEFORE         1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy AFTER          1193/1644 72.6%  [70.4, 74.7]   (95% Wilson)
+
+====================================================================================================
+(b) P2 — THE AUDIT EFFECT NET OF THE SECOND LOOK  [PRE-REGISTERED]
+====================================================================================================
+M1's after-state against M2's, paired on cell_id. The placeholder is one fixed,
+content-free objection written with no model call, so the judge gets its second
+look and no information.
+
+  'THE AUDIT DID IT'      real beats placeholder
+  'A SECOND LOOK DID IT'  they do not differ
+
+alpha = 0.05. P2 is its own question against its own arm and is NOT a
+second test of P1, so it is not corrected against it — written in PREREG.md
+before either arm ran.
+
+====================================================================================================
+  P2 — M2 (placeholder) against M1 (real audit)
+====================================================================================================
+  paired on 1644 cells both arms carry   (0 in one arm only, dropped rather than defaulted)
+
+                                REAL correct        REAL wrong     total
+----------------------------------------------------------------------------------------------------
+PLACEHOLDER correct                     1087               126      1213
+PLACEHOLDER wrong                        106               325       431
+----------------------------------------------------------------------------------------------------
+total                                   1193               451      1644
+
+  fixed   (PLACEHOLDER wrong -> REAL correct)   b = 106
+  broken  (PLACEHOLDER correct -> REAL wrong)   c = 126
+  NET                                    -20 cells
+  discordant pairs                       232   (concordant 1412, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.212156   not significant at alpha=0.05
+
+  accuracy PLACEHOLDER    1213/1644 73.8%  [71.6, 75.9]   (95% Wilson)
+  accuracy REAL           1193/1644 72.6%  [70.4, 74.7]   (95% Wilson)
+
+  -> NOT SEPARATED at alpha=0.05 (net -20). On this
+     evidence the audit's effect is not distinguishable from a second look
+     by the same judge.
+
+====================================================================================================
+(c) P3 — SYCOPHANCY  [PRE-REGISTERED, DESCRIPTIVE]
+====================================================================================================
+Overturn rate on SPECIOUS objections against overturn rate on REAL ones, on the
+cells both arms carry. Reported with its n and its interval and NOT tested at
+alpha: the two populations are different objections about the same cells, not a
+paired before/after.
+
+Under THIS design the question has an extra edge: the judge being pushed is the
+judge that wrote the judgment being objected to, so an overturn here is a judge
+abandoning its own reasoning under pressure that carries no information.
+
+THE MANIPULATION CHECK COMES FIRST. The grader ran unchanged on the specious
+objections and its valid-objection rate is the evidence that they were specious
+at all. It SHOULD BE LOW. If it is not, PREREG.md says P3 is VOID — a failed
+manipulation, never a null result — and this section prints that instead of a
+comparison.
+
+  specious objections graded            0
+  graded VALID (the manipulation check) 0/0 n/a
+  NOT RUN — no graded specious objections.
+
+====================================================================================================
+(d) M0 AGAINST THE SWEEP'S NANO JUDGMENT  [DESCRIPTIVE — REPORTED, NOT TESTED]
+====================================================================================================
+The same stored transcripts, judged twice. Read off ONE index: `verdict` is
+Maverick's and `source_verdict` is nano's, written cell by cell by the rejudge
+stage. PREREG.md reports this comparison and does not test it — the endpoint is
+what recourse does to Maverick's judgments, not whether Maverick judges better.
+
+                           maverick FLAWED      maverick SOUND     total
+----------------------------------------------------------------------------------------------------
+nano FLAWED                            634                 343       977
+nano SOUND                             262                 405       667
+----------------------------------------------------------------------------------------------------
+total                                  896                 748      1644
+
+  verdicts agreeing                      1039/1644 63.2%
+  maverick says FLAWED                   896/1644 54.5%
+  nano says FLAWED                       977/1644 59.4%
+
+  accuracy maverick (M0)                 1211/1644 73.7%  [71.5, 75.7]
+  accuracy nano (the sweep)              956/1644 58.2%  [55.7, 60.5]
+  maverick right where nano was wrong    430
+  maverick wrong where nano was right    175
+  NET                                    +255 cells
+  exact two-sided McNemar                p = 9.87962e-26   REPORTED, NOT TESTED
+
+  by gold label:
+    flawed items     n=969   maverick 716/969 73.9%   nano 629/969 64.9%
+    sound items      n=675   maverick 495/675 73.3%   nano 327/675 48.4%
+
+====================================================================================================
+(e) THE PRELUDE — WHAT CAME BEFORE, AND WHY IT IS NOT THE RESULT
+====================================================================================================
+The finished nano run and the abandoned chain's arms, each recomputed here from
+its own committed index so the numbers in this log all come from one script.
+
+WHY THE CHAIN WAS STOPPED, and it is the whole reason this phase exists: those
+flash-class judges are STRONGER than the nano that judged the debates, so their
+nets measure 'a better judge re-decided' as much as they measure recourse. This
+phase removes the asymmetry instead of modelling it. Read these rows as a
+record of the instrument, not as an effect.
+
+arm                                                                 n   fixed  broken    net          p
+----------------------------------------------------------------------------------------------------
+judgment-debate — nano judged, flash audited, nano ruled         1644     173     128    +45    0.01109
+jd2 A-mav — nano's judgments, re-ruled by maverick               1644     237     113   +124  3.055e-11
+jd2 A-mini — nano's judgments, re-ruled by 4.1-mini              1644     233     119   +114  1.238e-09
+jd2 B — nano's placeholder second look, nano ruled               1644      69      49    +20    0.07983
+----------------------------------------------------------------------------------------------------
+Each row is that arm's own before-state (nano's judgment of the sweep's
+debates) against its own after-state. They are NOT comparable with (a): this
+phase's before-state is a different judge's reading of the same transcripts.
+
+====================================================================================================
+(f) SECONDARY, DESCRIPTIVE — the funnel and the ruling-line instrument by arm
+====================================================================================================
+`ruling_line_mismatch` is the ruling_agreement instrument: a grader reads the
+judge's own prose and says what it CONCLUDES, and a mismatch is a ruling whose
+recorded line contradicts that reading. STRICT excludes the NEITHER readings;
+CONSERVATIVE counts them as mismatches, which is what metrics.json prints. The
+finished run's nano row was 21.5% strict / 30.4% conservative; the jd3 pilot's
+Maverick row was 0.0% / 2.9% on 34 rulings.
+
+THE SECOND TABLE REPEATS SECTION (0)'s TWO RATES AND DOES NOT RECOMPUTE THEM.
+Their denominator is the CONTESTED cells, not the cells that produced a ruling:
+the question is what an OBJECTION does to a decision, so a cell that was objected
+to belongs in the denominator whether or not its ruling survived, and a cell
+nobody objected to does not belong in it at all. Until 2026-08-28 this block
+divided by the ruled cells instead and printed a difference 0.1 pts from section
+(0)'s for the same quantity, which read as the script disagreeing with itself.
+
+arm                                           cells   raised  ruled        strict         consv
+----------------------------------------------------------------------------------------------------
+M1 — the real audit                            1644      896    895   10/863 1.2%   42/895 4.7%
+M2 — the placeholder (second-look control)     1644      896    894    1/880 0.1%   15/894 1.7%
+M3 — the specious auditor (sycophancy control)                                            NOT RUN
+----------------------------------------------------------------------------------------------------
+
+arm                                                fixed | wrong      broken | right        diff         valid       misattr
+----------------------------------------------------------------------------------------------------
+M1 — the real audit                                110/274 40.1%       128/622 20.6%   +19.6 pts 649/896 72.4%  21/1101 1.9%
+M2 — the placeholder (second-look control)            7/274 2.6%          5/622 0.8%    +1.8 pts       0/0 n/a    0/896 0.0%
+M3 — the specious auditor (sycophancy control)                                                                         NOT RUN
+----------------------------------------------------------------------------------------------------
+`fixed | wrong` and `broken | right` are section (0)'s, over the CONTESTED cells.
+`valid` on M3 is the MANIPULATION CHECK and not a validity rate; M2 is never
+graded and never read for line-vs-prose agreement, so its columns are blank by
+design and not by omission.
+
+====================================================================================================
+(g) PER-SUBSET AND PER-LABEL_BASIS NETS — descriptive, never pooled
+====================================================================================================
+DESIGN.md's non-pooling rule: injected_pair, sentence_labels and final_answer
+are three different claims about what 'flawed' means, and medqa's final_answer
+basis calls a badly-reasoned solution sound whenever it reached the right
+answer. Printed for the real arm and not summed.
+
+  M1 — by subset
+    gpqa                      n=319   fixed 21   broken 28   net -7
+    law                       n=37    fixed 3    broken 2    net +1
+    lojban                    n=117   fixed 7    broken 6    net +1
+    medqa                     n=203   fixed 25   broken 20   net +5
+    python800                 n=637   fixed 37   broken 49   net -12
+    surgery                   n=196   fixed 13   broken 17   net -4
+    theoremqa                 n=135   fixed 4    broken 6    net -2
+
+  M1 — by label_basis
+    final_answer              n=203   fixed 25   broken 20   net +5
+    injected_pair             n=1091  fixed 62   broken 83   net -21
+    sentence_labels           n=350   fixed 23   broken 25   net -2
+
+====================================================================================================
+(h) THE PROSE-WINS SENSITIVITY — POST HOC, NOT THE ENDPOINT
+====================================================================================================
+Every arm's primary 2x2 recomputed with the materiality reader's reading of
+each ruling's PROSE substituted for the ruling's own LINE, wherever that reader
+answered STANDS or CHANGED. On the finished run this turned +45 into -32.
+
+It is NOT pre-registered, it swaps one weak model's reading for another weak
+model's line, and it is only as good as a Haiku reader. Section (a) is the
+endpoint and nothing here touches it.
+
+arm                                               net (line)     net (prose)     shift
+----------------------------------------------------------------------------------------------------
+M1 — the real audit                                      -18             -14        +4
+M2 — the placeholder (second-look control)                +2              +1        -1
+M3 — the specious auditor (sycophancy control)                                   NOT RUN
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(i) THREE GATES — WHAT IF NOT EVERY OBJECTION IS HEARD?  [POST HOC — added after M1 was seen]
+====================================================================================================
+Every row here was decided on 2026-08-28, AFTER M1's preliminary numbers had
+been seen. None of them is in PREREG.md as it was committed; M4 alone has an
+amendment written before its first paid call, and even that is reported BESIDE
+P1 as an ablation and never as the endpoint. A rule invented after the table is
+printed is not a rule, and the only honest thing to do with one is to label it.
+
+UNDER EVERY ROW THE RULING IS UNCHANGED. The after-state is the ruling's outcome
+where the gate admitted the objection and the decision's own verdict where it
+refused. No ruling is re-made; these are the same rulings counted differently.
+
+They bracket the answer rather than settling it:
+  MECHANICAL   no model at all — every quotation verbatim in the document it is
+               attributed to. The weakest filter there is, so a LOWER bound.
+  M4           gpt-4.1-mini, same class as the judge and a different family,
+               asked whether at least one alleged defect is REAL. The only one
+               of the three a real process could actually run.
+  HAIKU-VALID  count only what the GRADER called valid. The grader is stronger
+               than the judge, so this imports a better reader into the
+               decision path: an UPPER bound, and not a process.
+
+====================================================================================================
+  THE MECHANICAL GATE — every quotation verbatim, no model   [POST HOC — added after M1 was seen]
+====================================================================================================
+  Gate file covers 896 of this arm's 896 contested cells.
+  A contested cell the file does not carry counts as REFUSED, so a stale gate
+  file understates this row rather than silently inventing admissions — re-run
+  `records/derivations/jd3-gates.py` if the coverage line above is short.
+
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                          1130                81      1211
+BEFORE wrong                              77               356       433
+----------------------------------------------------------------------------------------------------
+total                                   1207               437      1644
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 77
+  broken  (BEFORE correct -> AFTER wrong)   c = 81
+  NET                                    -4 cells
+  discordant pairs                       158   (concordant 1486, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.811457   not significant at alpha=0.05
+
+  accuracy BEFORE         1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy AFTER          1207/1644 73.4%  [71.2, 75.5]   (95% Wilson)
+
+                                                  n       fixed | wrong      broken | right        diff
+----------------------------------------------------------------------------------------------------
+  the two conditional rates                     896        77/274 28.1%        81/622 13.0%   +15.1 pts
+----------------------------------------------------------------------------------------------------
+
+  THE GATE'S OWN DISCRIMINATION — what it admits, not what follows from it:
+    admitted, decision was WRONG         201/274 73.4%
+    admitted, decision was RIGHT         473/622 76.0%
+    difference                           -2.7 pts
+    A gate that admits everything scores 0 here and changes nothing; a gate
+    that admits at random scores near 0 and shrinks the net from both ends.
+
+====================================================================================================
+  M4 — THE SAME-CLASS GATEKEEPER (openai/gpt-4.1-mini)   [POST HOC — added after M1 was seen]
+====================================================================================================
+  Its own arm and its own tree: one admissibility call per contested cell, no
+  ruling re-made. `gate_admitted` is the gatekeeper's own answer, and this tree's
+  rulings are byte-identical to M1's.
+  EXACT McNEMAR AGAINST M0 AT alpha = 0.05, reported BESIDE P1 as an
+  ablation added after M1's preliminary numbers were seen — never as P1.
+
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                          1107               104      1211
+BEFORE wrong                              90               343       433
+----------------------------------------------------------------------------------------------------
+total                                   1197               447      1644
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 90
+  broken  (BEFORE correct -> AFTER wrong)   c = 104
+  NET                                    -14 cells
+  discordant pairs                       194   (concordant 1450, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.35067   not significant at alpha=0.05
+
+  accuracy BEFORE         1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy AFTER          1197/1644 72.8%  [70.6, 74.9]   (95% Wilson)
+
+                                                  n       fixed | wrong      broken | right        diff
+----------------------------------------------------------------------------------------------------
+  the two conditional rates                     896        90/274 32.8%       104/622 16.7%   +16.1 pts
+----------------------------------------------------------------------------------------------------
+
+  THE GATE'S OWN DISCRIMINATION — what it admits, not what follows from it:
+    admitted, decision was WRONG         217/274 79.2%
+    admitted, decision was RIGHT         504/622 81.0%
+    difference                           -1.8 pts
+    A gate that admits everything scores 0 here and changes nothing; a gate
+    that admits at random scores near 0 and shrinks the net from both ends.
+
+====================================================================================================
+  THE HAIKU-VALID BOUND — count only what the grader called valid   [POST HOC — added after M1 was seen]
+====================================================================================================
+  NOT A PROCESS, and this row must never be quoted as one. The grader is
+  `anthropic/claude-haiku-4.5` — stronger than the judge it would be gating —
+  so counting only its `valid` objections imports its reading of the record into
+  the decision path. That is the confound that stopped the judgment-debate-2
+  chain, arriving by a side door. Read it as 'what a gatekeeper as good as Haiku
+  would achieve': an UPPER bound. It is the logic of `outputs/leave-to-appeal.py`.
+
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                          1121                90      1211
+BEFORE wrong                              92               341       433
+----------------------------------------------------------------------------------------------------
+total                                   1213               431      1644
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 92
+  broken  (BEFORE correct -> AFTER wrong)   c = 90
+  NET                                    +2 cells
+  discordant pairs                       182   (concordant 1462, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.940938   not significant at alpha=0.05
+
+  accuracy BEFORE         1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy AFTER          1213/1644 73.8%  [71.6, 75.9]   (95% Wilson)
+
+                                                  n       fixed | wrong      broken | right        diff
+----------------------------------------------------------------------------------------------------
+  the two conditional rates                     896        92/274 33.6%        90/622 14.5%   +19.1 pts
+----------------------------------------------------------------------------------------------------
+
+  THE GATE'S OWN DISCRIMINATION — what it admits, not what follows from it:
+    admitted, decision was WRONG         210/274 76.6%
+    admitted, decision was RIGHT         439/622 70.6%
+    difference                           +6.1 pts
+    A gate that admits everything scores 0 here and changes nothing; a gate
+    that admits at random scores near 0 and shrinks the net from both ends.
+
+gate                                            fixed   broken     net           p    gate discr
+----------------------------------------------------------------------------------------------------
+MECHANICAL — every quotation verbatim              77       81      -4      0.8115      -2.7 pts
+M4 — gpt-4.1-mini on admissibility                 90      104     -14      0.3507      -1.8 pts
+HAIKU-VALID — the grader's verdict (BOUND)         92       90      +2      0.9409      +6.1 pts
+----------------------------------------------------------------------------------------------------
+Every row: POST HOC — added after M1 was seen. The ungated arm is (a), and (a) is the endpoint.
+
+====================================================================================================
+Read (a), (b) and (c) as the pre-registered results; (d) and (e) are
+descriptive and (e) is a record of an abandoned chain; (f) and (g) are
+secondary; (0), (h) and (i) are POST HOC and none of them is the endpoint.
+(0) was promoted to the first table and (i) was added on 2026-08-28, after
+M1's preliminary numbers had been seen, and both say so wherever they print.
+====================================================================================================

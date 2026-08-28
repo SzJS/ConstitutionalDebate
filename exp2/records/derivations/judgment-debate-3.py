@@ -72,7 +72,9 @@ fixes. A reader given only the net cannot see that; a reader given these two can
 
 It was promoted to the first table on 2026-08-28, AFTER M1's preliminary numbers were
 seen, and it is descriptive — no alpha, no test. The quantity itself is not new: it is the
-discrimination row section (f) has always printed, in the vocabulary of the funnel.
+discrimination every derivation in this repository already printed, in the vocabulary of
+the funnel. Section (f) used to compute its own copy over a different denominator; since
+2026-08-28 it REPEATS this one, so there is one number and one place that makes it.
 
 The two conditional rates and their difference are the framing this write-up uses. The
 alternative framing that treats a challenge as a diagnostic instrument, with the machinery
@@ -404,8 +406,9 @@ def section_conditional_rates(arms: dict[str, dict[str, dict]]) -> dict:
     print("fixed rate still loses more cells than it fixes. The net alone hides that.")
     print()
     print("DESCRIPTIVE. No alpha and no test. It was promoted to the first table AFTER M1's")
-    print("preliminary numbers were seen; the quantity is the discrimination row section")
-    print("(f) has always printed, in the vocabulary of the funnel.")
+    print("preliminary numbers were seen; the quantity is the discrimination every")
+    print("derivation here already printed, in the vocabulary of the funnel. Section (f)")
+    print("repeats these two rates and does not recompute them — one number, one place.")
     print()
     print(f"{'arm':<44}{'n':>7}{'fixed | wrong':>20}{'broken | right':>20}{'diff':>12}")
     rule()
@@ -644,13 +647,21 @@ def section_prelude(prelude: dict[str, dict[str, dict]]) -> None:
 
 
 def section_secondary(arms: dict[str, dict[str, dict]]) -> None:
-    head("(f) SECONDARY, DESCRIPTIVE — the funnel, coherence and discrimination by arm")
+    head("(f) SECONDARY, DESCRIPTIVE — the funnel and the ruling-line instrument by arm")
     print("`ruling_line_mismatch` is the ruling_agreement instrument: a grader reads the")
     print("judge's own prose and says what it CONCLUDES, and a mismatch is a ruling whose")
     print("recorded line contradicts that reading. STRICT excludes the NEITHER readings;")
     print("CONSERVATIVE counts them as mismatches, which is what metrics.json prints. The")
     print("finished run's nano row was 21.5% strict / 30.4% conservative; the jd3 pilot's")
     print("Maverick row was 0.0% / 2.9% on 34 rulings.")
+    print()
+    print("THE SECOND TABLE REPEATS SECTION (0)'s TWO RATES AND DOES NOT RECOMPUTE THEM.")
+    print("Their denominator is the CONTESTED cells, not the cells that produced a ruling:")
+    print("the question is what an OBJECTION does to a decision, so a cell that was objected")
+    print("to belongs in the denominator whether or not its ruling survived, and a cell")
+    print("nobody objected to does not belong in it at all. Until 2026-08-28 this block")
+    print("divided by the ruled cells instead and printed a difference 0.1 pts from section")
+    print("(0)'s for the same quantity, which read as the script disagreeing with itself.")
     print()
     print(f"{'arm':<44}{'cells':>7}{'raised':>9}{'ruled':>7}{'strict':>14}{'consv':>14}")
     rule()
@@ -669,31 +680,38 @@ def section_secondary(arms: dict[str, dict[str, dict]]) -> None:
               f"{rate(strict, len(decided)):>14}{rate(consv, len(read)):>14}")
     rule()
     print()
-    print(f"{'arm':<44}{'ovt wrong':>13}{'ovt right':>13}{'discr':>10}"
+    # ONE NUMBER, COMPUTED IN ONE PLACE. Until 2026-08-28 this block had its own
+    # discrimination: overturn rate on wrong against right, over the cells that produced a
+    # RULING. Section (0) computes the same quantity over the cells that were CONTESTED,
+    # and the two denominators differ by the handful of contested cells whose ruling was
+    # lost to a truncation — which printed +19.5 here beside +19.6 there and made a reader
+    # holding the two side by side think the script disagreed with itself. The contested
+    # denominator is the one kept, for the reason `conditional_rates` gives: the question
+    # is what an OBJECTION does to a decision, so a cell that was objected to belongs in
+    # the denominator whether or not the ruling survived, and a cell nobody objected to
+    # does not belong in it at all.
+    print(f"{'arm':<44}{'fixed | wrong':>20}{'broken | right':>20}{'diff':>12}"
           f"{'valid':>14}{'misattr':>14}")
     rule()
     for key, label in ARMS:
         rows = arms.get(key, {})
         if not rows:
-            print(f"{label:<44}{'NOT RUN':>64}")
+            print(f"{label:<44}{'NOT RUN':>80}")
             continue
-        ruled = [r for r in rows.values() if r.get("ruling_form") is not None]
-        wrong = [r for r in ruled if r.get("initially_incorrect")]
-        right = [r for r in ruled if r.get("initially_correct")]
-        ow = sum(1 for r in wrong if r.get("changed_the_decision"))
-        orr = sum(1 for r in right if r.get("changed_the_decision"))
-        discr = ((100.0 * (ow / len(wrong) - orr / len(right)))
-                 if wrong and right else None)
+        stats = conditional_rates(pairs_before_after(rows), contested_cells(rows))
         graded = [r for r in rows.values() if r.get("grade_valid") is not None]
         valid = sum(1 for r in graded if r["grade_valid"])
         contested = [r for r in rows.values() if r.get("challenge_raised")]
         defects = sum(r.get("challenge_defects_n") or 0 for r in contested)
         misattr = sum(r.get("challenge_defects_misattributed_n") or 0
                       for r in contested)
-        print(f"{label:<44}{pct(ow, len(wrong)):>13}{pct(orr, len(right)):>13}"
-              f"{(f'{discr:+.1f}' if discr is not None else 'n/a'):>10}"
+        diff = stats["difference"]
+        diff_cell = "n/a" if diff is None else f"{diff:+.1f} pts"
+        print(f"{label:<44}{rate(stats['fixed'], stats['n_wrong']):>20}"
+              f"{rate(stats['broken'], stats['n_right']):>20}{diff_cell:>12}"
               f"{rate(valid, len(graded)):>14}{rate(misattr, defects):>14}")
     rule()
+    print("`fixed | wrong` and `broken | right` are section (0)'s, over the CONTESTED cells.")
     print("`valid` on M3 is the MANIPULATION CHECK and not a validity rate; M2 is never")
     print("graded and never read for line-vs-prose agreement, so its columns are blank by")
     print("design and not by omission.")

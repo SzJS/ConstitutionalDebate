@@ -1018,6 +1018,61 @@ def test_jd3_the_haiku_bound_counts_only_the_grader_s_valid_objections(tmp_path,
     assert "admitted, decision was RIGHT         0/3 0.0%" in block
 
 
+def test_jd3_prints_the_two_rates_once_over_the_CONTESTED_cells(tmp_path, capsys, jd3):
+    """ONE number, over one denominator, printed in two places that must agree.
+
+    Until 2026-08-28 section (f) divided by the cells that produced a RULING while section
+    (0) divided by the cells that were CONTESTED, and on the real arm that printed +19.5
+    beside +19.6 for the same quantity — a reader holding the two side by side would think
+    the script disagreed with itself. The contested denominator is the one kept: the
+    question is what an OBJECTION does to a decision, so a cell that was objected to
+    belongs in it whether or not its ruling survived, and a cell nobody objected to does
+    not belong in it at all.
+
+    The fixture is built so the two denominators would DIFFER if they were ever separated
+    again: 4 wrong and 5 right cells contested, of which one wrong and one right lost their
+    ruling (`ruling_form` absent, after-state = before-state), plus 6 declines that belong
+    in neither. Ruled denominators would be 3 and 4; contested are 4 and 5.
+    """
+    contested = ([_rejudged(i, before=False, after=True) for i in range(2)]
+                 + [_rejudged(10 + i, before=False, after=False) for i in range(2)]
+                 + [_rejudged(100 + i, before=True, after=False) for i in range(2)]
+                 + [_rejudged(110 + i, before=True, after=True) for i in range(3)])
+    # two cells whose ruling was lost to a truncation: still contested, no ruling, and the
+    # after-state is the before-state — exactly the shape M1 and M2 each carry
+    for row in (contested[3], contested[8]):
+        row.pop("ruling_form")
+        row.pop("ruling_prompt_form")
+        row["changed_the_decision"] = False
+        row["final_correct"] = row["initially_correct"]
+    rows = contested + [_declined(300 + i, correct=False) for i in range(6)]
+
+    jd3.main(_jd3_only("--main", _jd3_arm(tmp_path / "m" / "index.jsonl", rows)))
+    out = capsys.readouterr().out
+
+    # 2 of 4 wrong cells fixed = 50.0%; 2 of 5 right cells broken = 40.0%; +10.0 pts.
+    # Over the RULED cells it would be 2/3 = 66.7% and 2/4 = 50.0%, +16.7 pts — so a
+    # regression that put the ruled denominator back cannot pass this test.
+    headline = out[out.index("(0) THE TWO CONDITIONAL RATES"):out.index("(a) P1")]
+    secondary = out[out.index("(f) SECONDARY"):out.index("(g) PER-SUBSET")]
+    for block in (headline, secondary):
+        assert "2/4 50.0%" in block
+        assert "2/5 40.0%" in block
+        assert "+10.0 pts" in block
+        assert "66.7%" not in block and "+16.7 pts" not in block
+
+    # and section (f) says whose numbers they are and what the denominator is, so the two
+    # tables cannot be read as two measurements
+    assert "REPEATS SECTION (0)'s TWO RATES AND DOES NOT RECOMPUTE THEM" in secondary
+    assert "denominator is the CONTESTED cells" in secondary
+    # the old column headings are gone with the old computation ("discr" on its own is
+    # not searchable — "indiscriminately" contains it — so the heading is matched whole)
+    assert "ovt wrong" not in out
+    assert "ovt right" not in out
+    assert "'discr':>10" not in (DERIVATIONS / "judgment-debate-3.py").read_text(
+        encoding="utf-8")
+
+
 def test_jd3_never_frames_a_challenge_as_a_diagnostic_instrument(jd3):
     """The user's call of 2026-08-28: the write-up uses the two conditional rates and
     their difference, and not the family of statistics that treats an objection as a test

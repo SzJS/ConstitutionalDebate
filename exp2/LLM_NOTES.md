@@ -3911,6 +3911,370 @@ these 1,644 cells; the **145 of 682** cells where the two rulers disagree (§3u)
 **`weak_alone` arm**; and now the **materiality rule the judge does not hold** — 30% of
 rulings, in both directions, which is a prompt-or-model question this run does not answer.
 
+## 3y. One judge throughout: the endpoint is a null, the audit is clean, and the arithmetic is the finding (2026-08-28)
+
+**Written after M0, M1, M2 and M4 finished and while M3 was still running. Every number here
+is quoted from `records/experiments/judgment-debate-3/` — the three `arm-*/index.jsonl` and
+`arm-*/metrics.json`, `derivation.log`, `logs/stage-tails.md`, `gates/`, and the four
+`HANDCHECK-*.md` files — or from `PREREG.md` and `REFERENCE-RATES.md` in that directory.**
+All of it is re-derivable on a bare clone with
+`records/derivations/judgment-debate-3.py`; the command is in that directory's `README.md`.
+
+**M3, THE SPECIOUS CONTROL, IS NOT RUN YET.** It started at 15:37:17Z. Every place below
+that would carry an M3 number says so, and none of them may be filled from a partial tree.
+
+**This section reports. It does not conclude beyond the pre-registered endpoints.** What it
+establishes is exactly two things: on the 1,644 debate cells a same-class judge decided, the
+accuracy after procedural recourse is **not** distinguishable from the accuracy before it
+(net −18, p = 0.27), and it is **not** distinguishable from what the same judge does when
+handed a content-free objection (net −20, p = 0.21). It does **not** establish that recourse
+is useless, that debate is uncontestable, that the audit is bad — it is the cleanest audit
+this experiment has run — or that a gate cannot help; and the sycophancy control that would
+bound the last of those is still running.
+
+### The question, and why the design changed
+
+§3x closed the debate-only judgment-challenge run at **+45, p = 0.011**, with
+`openai/gpt-4.1-nano` in both judge seats. The follow-up chain
+(`records/experiments/judgment-debate-2/PREREG.md`) re-ruled those same objections with two
+flash-class judges and got **Maverick +124** and **gpt-4.1-mini +114**.
+
+**Those two numbers are the problem, not the result.** Both judges are stronger than the nano
+that *judged the debates*, so "debate + recourse beats debate alone" could be nothing more
+than "a better judge re-decided". The chain was stopped after its arm B
+(`outputs/jd2-STOPPED-by-user.md`); A-mav, A-mini and B are kept as a record of what a
+stronger recourse judge does to a weaker judge's judgments, and are not a result.
+
+**The user's decision was to remove the asymmetry rather than model it.** The whole
+debate-only design was re-run with **`meta-llama/llama-4-maverick` as the debate judge and as
+the recourse judge**: intelligence index 14 with reasoning off — *exactly* the challenger's
+level, delta 0 — a fourth model family (Meta, against the debaters' DeepSeek, the
+challenger's Google and the grader's Anthropic), and the winner of the judge-selection rule
+written in `judgment-debate-2/PREREG.md` **before any candidate was called**. Nothing was
+re-debated: the sweep's 1,644 stored transcripts were read from disk through the
+`transcripts_from` key and judged again for one call each.
+
+The before-state is therefore no longer nano's judgment. It is Maverick's own reading of the
+same transcripts, and that changes the baseline enormously: **73.7% against nano's 58.2%.**
+
+### What ran, what it cost, and that every stage exited 0
+
+| arm | what it is | window (UTC, 2026-08-28) | spend |
+|---|---|---|---|
+| **M0** | Maverick re-judges the sweep's 1,644 stored debate transcripts | 11:43:59 → 12:37:31 | $2.0053 |
+| **M1** | flash audits M0's judgments; Maverick rules on materiality — **the primary endpoint** | 12:37:31 → 14:43:04 | $30.6515 |
+| **M2** | the placeholder objection on exactly the cells M1 contested | 14:43:50 → 15:37:17 | $3.1095 |
+| **M4** | `gpt-4.1-mini` on **admissibility only**; M1's rulings reused unchanged — **POST HOC** | 14:48:03 → 15:01:21 | $2.2585 |
+| **M3** | the specious auditor on every decided cell | 15:37:17 → | **NOT RUN YET**, est. $39 |
+
+**$38.02 so far**, plus the 60-cell instrument pilot **$1.1897** (`PREREG.md`, "The pilot")
+and the six-cell admissibility smoke **$0.0151**. **13,529 wire calls, one non-2xx** — a
+`ConnectError: Temporary failure in name resolution` on one `jd3-main` challenger call
+(`python800-p03632-flawed`), retried by the client and completed, so no cell was lost to it.
+Every stage of every arm exited 0.
+
+**0 of 1,644 Maverick judgments truncated or failed to parse**, which is what the pilot
+predicted (0 of 60) and what makes M0's population exactly the sweep's decided set.
+
+Four cells failed and all four are accounted for in `logs/stage-tails.md`: two M1 contests
+lost to a truncated comprehension probe and a truncated ruling, and two M2 placeholder
+rulings to the same truncation. **All four are concordant in their arms** — `final_correct ==
+initially_correct` — so none of them enters a discordant pair and none can move a net.
+
+**One departure from a ground rule, recorded because it happened.** M4 was launched by hand
+and its window overlaps M2's: two paid stages ran at once, against `HANDOFF.md` §2 rule 6.
+Nothing in either arm depends on the other — both read `jd3-main` and neither writes to it —
+and no rate-limit or provider failure appears in either log.
+
+### The pre-registered endpoints, verbatim from `PREREG.md`
+
+> **P1** — M1's after-state against M0's before-state, on the same cells: fixed / broken /
+> net, tested with an exact two-sided McNemar on the discordant pairs, **α = 0.05**. One
+> judge, one test.
+>
+> **P2** — M1's after-state against M2's after-state, paired on `cell_id`, exact two-sided
+> McNemar, **α = 0.05**. "The audit did it" means M1 beats M2. "A second look did it" means
+> they do not differ.
+>
+> **P3** — the overturn rate on specious objections against the rate on real ones, on the
+> overlap. **Descriptive**, with its n and its interval, and **not tested at α**.
+
+| | population | fixed | broken | net | discordant | p | |
+|---|---|---|---|---|---|---|---|
+| **P1** — M1 after vs M0 before | 1,644 | 110 | 128 | **−18** | 238 | **0.27045** | not significant at α = 0.05 |
+| **P2** — M1 after vs M2 after | 1,644 | 106 | 126 | **−20** | 232 | **0.212156** | **NOT SEPARATED** |
+| **P3** | — | — | — | — | — | — | **NOT RUN YET** |
+
+Accuracy: **73.7%** [71.5, 75.7] before → **72.6%** [70.4, 74.7] after; M2's own after-state
+is **73.8%**.
+
+**P2 is two nulls, not an explanation, and this is the sentence most likely to be misread.**
+"Not separated" here does *not* mean the placeholder reproduced the audit's effect. The
+placeholder moved **12 cells in total against M0** — 7 fixed, 5 broken, for a net of +2 —
+where the real audit moved **238** (110 fixed, 128 broken). The two after-states then differ
+on **232** cells (P2's own discordant pairs: 106 + 126), which is almost exactly the audit's
+own 238 — i.e. P2's discordant set is the audit's movement, not the placeholder's. A
+content-free second look barely moves this judge at all; the audit moves it a great deal, in
+both directions, and the two directions cancel. **Check it in one line: 238 discordant pairs
+in P1, 232 in P2, 12 cells moved by the placeholder.** The confound §3x named
+and could not resolve is *still* not resolved by a P2 that compares one null with another;
+what would resolve it is M3.
+
+**M2's placement assertion fired and it is accounted for.** The harness printed `placeholder
+placement: 894 objections stand where jd3-main raised 896 — DOES NOT MATCH` and told the
+reader not to read P2 until the difference was accounted for cell by cell. It is: the
+placeholder was **written on all 896** cells (`challenge_arm = "placeholder"` on 896 index
+rows) and **two lost their ruling to a truncation**; both are concordant in both arms. The
+bound on the damage is 2 cells against a net of −20.
+
+### The headline descriptive: the two conditional rates
+
+Promoted to the first table of the derivation on 2026-08-28 — **after M1's preliminary
+numbers had been read** (876 cells: 65 fixed / 75 broken), which is why the *placement* is
+post hoc even though the quantity is the discrimination row every derivation in this
+repository already printed. Denominator is the **contested** cells in both columns.
+
+| arm | contested | fixed \| wrong | broken \| right | difference |
+|---|---|---|---|---|
+| **M1** | 896 | **110/274 = 40.1%** | **128/622 = 20.6%** | **+19.6 pts** |
+| M2 | 896 | 7/274 = 2.6% | 5/622 = 0.8% | +1.8 pts |
+| M3 | — | — | — | **NOT RUN YET** |
+
+**This is the finding, and it is arithmetic.** The audit is nearly **twice** as likely to fix
+a wrong decision as to break a right one. It still loses cells, because M0 is right on 73.7%
+of them: the audit met **622 right decisions and 274 wrong ones**, and 20.6% of 622 is bigger
+than 40.1% of 274. The net is those two rates multiplied by two populations that are not the
+same size, and a reader given only the net cannot see that. Nothing about the audit needs to
+be wrong for the net to be negative — and, as the next section says, nothing about it *is*.
+
+**The denominator is the CONTESTED cells, in both columns.** The question is what an
+*objection* does to a decision, so a cell that was objected to belongs in the denominator
+whether or not its ruling survived — one M1 cell lost its ruling to a truncation and is
+still in the 896 — and a cell nobody objected to does not belong in it at all. Section (f)
+of the derivation **repeats these two rates and does not recompute them**; until 2026-08-28
+it divided by the 895 ruled cells and printed +19.5 beside this +19.6 for the same quantity,
+which read as the script disagreeing with itself. A test pins the denominator on a fixture
+where the two would differ.
+
+**Context, and not a test.** `REFERENCE-RATES.md` §7 was assembled by a read-only research
+agent and holds the only published pair that measures anything like both of our rates:
+Garrett, *Judging Innocence* (2008), tracking DNA exonerees through direct appeal and habeas
+*before* exoneration — ordinary appeal reversed **~14%** of convictions later proven wrong,
+"indistinguishable from the background reversal rates of comparable rape and murder
+convictions" (**~14%**). That is a discrimination of roughly **zero**, on a procedure the
+legal system accepts. Ours is **+19.6 points** and still loses cells, because our base rate
+of wrong decisions is 26.3% against that analogue's few percent, and our overturn rate on
+right decisions (20.6%) is far above appeal's 7–15%. **Nothing in this phase is tested
+against any number in that file**, and the populations, the standards of review and the
+meaning of "wrong" are all different. It is there to say what overturn rates look like in
+procedures people accept, and that the diagnosticity question is not one those systems can
+answer about themselves.
+
+### The audit is clean — cleaner than anything this experiment has run
+
+| | M1 | M2 | for comparison, §3x's nano run |
+|---|---|---|---|
+| objection raised | **896/1,644 = 54.5%** | 896 placed by construction | 1,148/1,644 = 69.8% |
+| declined / `unclear` | 747 / 1 | — | 496 / 0 |
+| graded valid | **649/896 = 72.4%** | never graded, by design | 881/1,148 = 76.7% |
+| **misattributed quotes** | **21/1,101 defects = 1.9%** | 0/896 | 45/1,523 = 3.0% |
+| phantom contests | **1/896 = 0.1%** | 0 | 0/1,148 |
+| grader summary vs its own defect lines | **0/896** | — | — |
+| `ruling_line_mismatch` strict / conservative | **10/863 = 1.2% / 42/895 = 4.7%** | 0.1% / 1.7% | **21.5% / 30.4%** |
+
+**The instrument residual collapsed, and that is the largest single change from §3x.** The
+same materiality prompt and the same Haiku reader, with a judge at the challenger's level
+rather than below it, took the ruling-line mismatch from 30.4% to **4.7%** conservative and
+from 21.5% to **1.2%** strict. §3x's whole "the judge will not hold its own rule" section —
+349 of 1,147 rulings, concentrated on FLAWED parents, the 165 upheld-and-CHANGED and the 82
+overturned-and-STANDS — **does not reproduce under a same-class judge**. The consequence
+runs through everything: §3x's post-hoc prose-wins sensitivity turned **+45 into −32**;
+here it moves the endpoint from −18 to **−14**, four cells, because there is almost nothing
+left for it to flip.
+
+So the null is not an instrument failure, and it is not a junk-objection failure either.
+
+### Fable's hand checks
+
+Four, all read against the records rather than against the index, and all filed in the
+record directory. What they say, without adding to it:
+
+- **`HANDCHECK-M0-judgments.md`** — 20 Maverick judgments beside their transcripts, 10 where
+  Maverick and nano disagree and 10 where they agree. **Every one is a judgment of the
+  debate**: it summarises what Alice and Bob argued, names the point of contention, applies
+  the flaw definition in its own words and ends on one Verdict line; 0 truncations, 0
+  repairs, all `strict`. Accuracy *in that sample* 15/20 — 9/10 where the judges disagree,
+  6/10 where they agree, and the four shared errors are all SOUND items called FLAWED
+  because a loosely worded statement was read as untrue. The check also records what the
+  judgments look like from the auditor's side: **they hedge in the open** — "technically
+  incorrect, but…", "can be seen as potentially misleading, but…" — which is what makes them
+  auditable, and what the audit then turns against them.
+- **`HANDCHECK-A-objections-and-grades.md`** — 20 objection + grade pairs, 10 valid and 10
+  invalid. **20/20 agree with the grader** (one quibble, on an omission the grader conceded
+  was real and ruled immaterial). 0 of the 20 carried a quotation not in the judgment.
+  Rejections are principled: addressed ≠ omitted; disagreement with a debater ≠ a
+  contradiction in the judgment; and **three times in twenty the objection quotes the flaw
+  definition as "Record says"**, which the grader rejects because the definition is in the
+  prompt and not in the record.
+- **`HANDCHECK-B-rulings.md`** — 20 rulings, 12 of them from the 42 conservative alarms. The
+  two-step structure is present in 20/20; the alarms are **almost all NEITHER readings** on
+  long Step-2 prose that weighs both sides, with the line consistent with the prose's last
+  paragraph in every one read. One genuine tension in 20. **Judge-side incoherence of the
+  nano kind is absent from the sample.** Materiality is applied in both directions.
+- **`HANDCHECK-C-fixed-and-broken.md`** — 10 fixed and 10 broken, end to end. **Six of the
+  ten fixed** are the judgment's own concession turned against its verdict, with the grader
+  confirming and Maverick applying the strict reading of the definition; four are real
+  misstatements or omissions fixed on their merits. **Seven of the ten broken are the same
+  mechanism in the other direction**: the judgment said "technically incorrect / misleading,
+  but in context not a flaw" and was **right by the label**, the audit called the hedge a
+  contradiction, and the judge overturned on the strict reading. Three are omissions the
+  judge found material and re-decided wrongly on the merits.
+
+**That last check is the one to read.** Its own summary, which this section does not go
+beyond: *"the audit's most common valid defect is not a misreading of the record; it is the
+judgment's hedge between 'untrue' and 'a flaw'. The flaw definition — 'untrue, illogical, or
+misleading… not merely something they would have written differently' — leaves that
+threshold to the judge, and the dataset's labels do not consistently side with the strict
+reading. Recourse therefore moves those cells in both directions at similar rates, which is
+the null, and it is a property of the task definition as much as of the procedure."*
+
+Two of the four committed transcripts are that mechanism in the two directions and they
+should be read together: `broken__gpqa-120-sound` (the judgment calls step 2 "misleading",
+defines a flaw as "untrue, illogical, or misleading", concludes SOUND; the audit calls the
+contradiction; the grader agrees; the label says the judgment was right) and
+`gate-refusal__python800-p03959` (the same argument, where the label says the audit was
+right).
+
+### The gate rows — POST HOC, added after M1 was seen
+
+M1's preliminary read showed the mechanism above while the arm was still running, and the
+user's response was to ask what happens if not every objection is *heard* — a court grants
+leave to appeal before it hears one. Three gates were computed. **All three are post hoc**,
+all three carry the label wherever they print, and only M4 involved a paid call. Under every
+one of them **the ruling is unchanged**: the after-state is the ruling's outcome where the
+gate admitted the objection and the decision's own verdict where it refused, and M4's tree
+carries M1's rulings byte for byte.
+
+| gate | admits on | fixed | broken | net | p | **gate discrimination** |
+|---|---|---|---|---|---|---|
+| **MECHANICAL** — no model | every quotation verbatim in the document it is attributed to | 77 | 81 | **−4** | 0.81 | **−2.7 pts** (73.4% wrong / 76.0% right) |
+| **M4** — `gpt-4.1-mini` | at least one alleged defect is REAL | 90 | 104 | **−14** | 0.35 | **−1.8 pts** (79.2% / 81.0%) |
+| **HAIKU-VALID** — a bound, not a process | the grader called the objection valid | 92 | 90 | **+2** | 0.94 | +6.1 pts (76.6% / 70.6%) |
+
+**Two of the three admit objections to *right* decisions slightly more often than objections
+to wrong ones.** The only positive row is the one that is not a process at all: the Haiku
+grader is **stronger than the judge it would be gating**, so counting only its `valid`
+objections imports a better reader into the decision path — the confound that stopped the
+jd2 chain, arriving by a side door — and even that buys **+2 cells at p = 0.94**.
+
+M4's model was chosen the way the judge was: `openai/gpt-4.1-mini` is the other in-band pass
+of `judgment-debate-2/PREREG.md`'s selection rule, index 14 with reasoning off, a different
+family from Maverick. Its prompt asks for admissibility and says three times that materiality,
+the verdict and the problem are **not** its question. Smoked on six cells first
+(6/6 `strict`, 0 repairs, 4 admitted / 2 refused, and — read after the grades landed —
+**8/8 per-defect agreement with the grader**); at scale, 896 calls, 0 repairs, 0 non-2xx,
+$2.2585. The gate is *not* incompetent. It agrees with the grader and it refuses on the
+documents. It just cannot tell the two directions of the hedge apart, **because they are the
+same argument** — which is what the two transcripts above show and what a −1.8-point
+discrimination means.
+
+The mechanical gate is worth one more line because it is the only one that needs no model.
+It admitted **674/896 = 75.2%**. Of 1,101 defects, 21 (1.9%) fail the pre-registered
+judgment-side quote check and **233 (21.2%)** fail a new record-side one — of which about a
+quarter are the challenger quoting **the flaw definition from its own instructions** as if it
+were the record, independently caught three times in twenty by hand check A. That check is
+computed over the finished tree and **wired into nothing**: adding it to the decision path
+would change what the grader was asked about objections already written and paid for.
+
+### Per subset, and the one that carries the loss
+
+Never pooled — `injected_pair`, `sentence_labels` and `final_answer` are three different
+claims about what "flawed" means.
+
+| subset | n | fixed | broken | net | | `label_basis` | n | net |
+|---|---|---|---|---|---|---|---|---|
+| gpqa | 319 | 21 | 28 | **−7** | | final_answer | 203 | +5 |
+| law | 37 | 3 | 2 | +1 | | injected_pair | 1,091 | **−21** |
+| lojban | 117 | 7 | 6 | +1 | | sentence_labels | 350 | −2 |
+| medqa | 203 | 25 | 20 | **+5** | | | | |
+| python800 | 637 | 37 | 49 | **−12** | | | | |
+| surgery | 196 | 13 | 17 | −4 | | | | |
+| theoremqa | 135 | 4 | 6 | −2 | | | | |
+
+**python800 is 637 of 1,644 cells and two thirds of the loss.** The python800 phrasing
+question carried forward from §3u is still open, and it is now load-bearing for the headline.
+
+### M0 against nano — descriptive, reported and not tested
+
+The same transcripts judged twice, off one index (`verdict` and `source_verdict`, written
+cell by cell by the `rejudge` stage). Maverick **1,211/1,644 = 73.7%** against nano's
+**956/1,644 = 58.2%**; they agree on 63.2% of verdicts; 430 cells Maverick gets right where
+nano was wrong against 175 the other way, net +255, McNemar p = 9.9e-26 — **reported, not
+tested**, because "is Maverick a better debate judge" is a different question from the one
+this phase asks. Almost the whole gap is on **sound** items (73.3% against 48.4%): nano
+called 51.6% of sound solutions flawed.
+
+This matters for reading §3x's +45 rather than for reading P1. A recourse step has far less
+room above a 73.7% judge than above a 58.2% one, and the jd2 prelude is the same point from
+the other side:
+
+| arm | fixed | broken | net | p |
+|---|---|---|---|---|
+| §3x — nano judged, flash audited, **nano** ruled | 173 | 128 | **+45** | 0.011 |
+| jd2 A-mav — nano's judgments, re-ruled by **Maverick** | 237 | 113 | **+124** | 3.1e-11 |
+| jd2 A-mini — nano's judgments, re-ruled by **gpt-4.1-mini** | 233 | 119 | **+114** | 1.2e-09 |
+| jd2 B — nano's placeholder second look, nano ruled | 69 | 49 | +20 | 0.080 |
+
+**With the asymmetry, +124. Without it, −18.** Those rows are not comparable with P1 — their
+before-state is a different, weaker judge — and that is exactly why they are a record of an
+instrument rather than an effect.
+
+### What this does and does not show
+
+**Shows.** On these 1,644 cells, with this challenger, this judge in both seats and this
+ruling prompt: procedural recourse leaves accuracy statistically unchanged (−18 of 1,644,
+238 discordant pairs, p = 0.27), and is not separable from a content-free second look
+(p = 0.21) — though both arms are nulls and the placeholder moves 12 cells against the
+audit's 238. The audit itself is sound: 54.5% raise rate, 72.4% graded valid, 1.9%
+misattributed quotations, one phantom, a hand read agreeing with the grader 20/20, and a
+ruling-line residual of 1.2% strict. The audit **discriminates**: it fixes 40.1% of the wrong
+decisions it contests and breaks 20.6% of the right ones. And with a 26.3% base rate of wrong
+decisions, that discrimination is not enough to make the net positive — which three post-hoc
+gates, including a paid same-class one, do not repair.
+
+**Does not show.**
+
+- **That recourse cannot help.** A null at n = 238 discordant pairs is a null; the 95%
+  interval on the accuracy difference includes zero in both directions. What is measured is
+  that *this* procedure at *this* base rate does not.
+- **That the audit is at fault.** Every instrument says otherwise, and the mechanism the
+  hand checks name is a dispute about where the flaw definition sets its threshold — a
+  property of the task definition as much as of the procedure.
+- **That the second look is the explanation.** P2 does not separate two nulls — and its
+  232 discordant pairs are the audit's 238 movements rather than the placeholder's 12, so
+  it is not evidence that a second look reproduces the audit. The arm that would settle
+  what the audit adds, **M3, is still running.**
+- **That a gatekeeper cannot work.** Three were tried, two of them post hoc recomputations
+  and one a paid arm; all three were built on *this* audit's objections and *this* judge's
+  rulings, and the best of them is an upper bound that is not a process.
+- **That this transfers.** One challenger, chosen after a pre-registered rule that picked
+  nobody; one judge, which decided the debates it then ruled on; one corpus, two thirds of
+  whose loss sits in one subset.
+- **Anything about `single` or `self_critique`.** They were not run and the procedure is
+  undefined for them.
+
+### Still owed
+
+**M3, the specious control** — first, and P2's null makes it more important rather than
+less: it is the arm that says how much of M1's movement needs a real defect at all. Then,
+carried forward: the **python800 phrasing** (§3u), now load-bearing for the headline; the
+**`weak_alone` arm** (§3s, §3t, §3u, §3x); the **flaw definition's threshold**, which is new
+here and is the mechanism behind both columns of the endpoint — the corpus does not
+consistently side with either reading of "untrue, illogical, or misleading… not merely
+something they would have written differently"; and the **same-model property**, which is
+the design and is unrepaired: M2 bounds what this judge does with no information, M3 will
+bound what it does with wrong information, and M4 changed the gate rather than the ruler.
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

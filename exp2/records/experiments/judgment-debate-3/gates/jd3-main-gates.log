@@ -1,0 +1,31 @@
+====================================================================================================
+THE MECHANICAL GATE — every quotation verbatim, no model  [POST HOC, added after M1 was seen]
+====================================================================================================
+tree: outputs/experiments/jd3-main   (read-only)
+out:  outputs/jd3-main-gates.jsonl
+
+contested objections gated              896
+  contests skipped (declined/unreadable) 748
+ADMITTED (every quotation verbatim)     674/896 75.2%
+  refused for alleging NO defect at all  1/896 0.1%
+
+defects alleged                         1101
+  failing the JUDGMENT-side check       21/1101 1.9%   (pre-registered; on the decision path)
+  failing the RECORD-side check         233/1101 21.2%   (POST HOC; wired into nothing)
+  objections refused by the RECORD half alone   200/896 22.3%
+
+recomputed judgment flag vs the one the harness stored: 0 disagreement(s) over 1101 defects
+
+record-side failures by defect type — an OMISSION is excused from quoting
+the judgment and is NOT excused from quoting the record, so this is where the
+unchecked half had the most room:
+    omission         75/582 12.9%
+    misstatement     79/291 27.1%
+    contradiction    79/228 34.6%
+
+====================================================================================================
+This is a DESCRIPTIVE row and a POST HOC one. It is not an endpoint, it was
+decided after M1's preliminary numbers were seen, and it is the LOWER bound of
+the three gate rows: no model reads anything, so nothing but the existence of
+the evidence is being asked.
+====================================================================================================

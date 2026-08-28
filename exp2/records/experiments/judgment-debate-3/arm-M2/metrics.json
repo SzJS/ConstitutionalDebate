@@ -1,0 +1,3870 @@
+{
+  "rows": 1644,
+  "caveats": [
+    "NOT INTERSECTED \u2014 read this before the rates. Each condition's P(revised | initially incorrect) is computed over that condition's OWN wrong decisions, and those sets are not the same items (debate n=433; wrong in every condition: 433). A condition that errs only on hard items is being compared against one that errs on easy ones, so a between-condition difference is confounded with item difficulty.",
+    "The debate condition is adjudicated by the WEAK judge while single and self_critique are decided by the STRONG model, so the wrong-sets differ in size and character by construction. There is no weak_alone condition, so a debate-vs-single difference cannot separate the mechanism from model strength.",
+    "There is no specious-objection control, so a high revision rate cannot be distinguished from a judge that overturns under any pushback. Every ruling here was made by the third-party recourse judge, so no condition adjudicates its own appeal \u2014 but one asymmetry survives it: that judge is the same weak model that DECIDED the debate condition, and debate is the run's ONLY condition, so it is ruling on its own decision on every cell here \u2014 the asymmetry is not one condition of several, it is the whole run.",
+    "Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived from them is bounded by the rate at which a ruling's recorded outcome disagrees with the judge's own reasoning: where the two disagree, the revision is an artifact of the ruling line and not a re-decision. Measured here at 15/894 (1.7%) of the rulings the `ruling_agreement` stage could read (forms present: stated_conclusion); `ruling_line_mismatch_on_flawed_parent` is the number to read, since that is where the collision lives. NEITHER counts as a mismatch, so this is an upper bound \u2014 `ruling_prose_conclusion` in the index separates the outright contradictions from the reasonings that settled on nothing.",
+    "Rates are not pooled across label_basis: injected_pair, sentence_labels and final_answer are three different claims about what 'flawed' means. medqa's final_answer basis in particular labels a badly-reasoned solution 'sound' whenever it reached the right answer.",
+    "`agreed_with_decision` is structurally 0 and says nothing: the challenger now writes one line stated relative to the decision (`Decision: STANDS|REVERSE`), and a reply cannot both ask for a reversal and name the verdict it is reversing to. The stance it used to count is measured instead by the `agreement` stage, whose cross-tab is `line_vs_prose` \u2014 read `phantom_contest` there before reading any `contests` number.",
+    "Natural errors only: a weak judge errs where the correct side argued badly, so debate's incorrect cell selects the debates in which debate worked worst. This understates debate; single has no equivalent filter, so it applies asymmetrically.",
+    "DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS (outputs/experiments/sweep): the debates behind these 1644 cells were argued in another run and this one only judged them again, so `verdict` and `initially_correct` are this spec's judge reading a record it did not commission, `source_verdict` beside them is what the source tree's judge made of the same transcript, and `decision_cost_usd` is the one judge call rather than the debate that preceded it.",
+    "THIS IS THE PLACEHOLDER ARM (challenger_variant = \"placeholder\") AND NO CHALLENGER RAN. Every one of these 896 objections is the SAME fixed, content-free text \u2014 one omission alleging that the judgment does not weigh what the record says, true of every judgment ever written \u2014 emitted by the contest stage with no model call. So every challenger-side quantity in this file is a property of that constant: the raise rate is 1.0 by construction, there is no comprehension probe, no line-vs-prose reading and no grade (the stages skip them with `not measured: placeholder` / `not graded: placeholder`), and the misattributed-quote rate is undefined because the placeholder quotes nothing. The ONE quantity that means anything here is the RULING: what the recourse judge does when it is given a second look at the record and no information. Its value is the comparison against the real arm's after-state on the same cells \u2014 that is the second-look control, and it is made in the derivation, not here."
+  ],
+  "challenge_arm": {
+    "placeholder": 896
+  },
+  "small_cells": [],
+  "matching": {
+    "per_condition": {
+      "debate": 433
+    },
+    "in_every_condition": 433,
+    "pairwise_overlap": {},
+    "item_ids_in_every_condition": [
+      "gpqa-10-flawed",
+      "gpqa-100-sound",
+      "gpqa-101-sound",
+      "gpqa-104-sound",
+      "gpqa-106-sound",
+      "gpqa-108-sound",
+      "gpqa-115-sound",
+      "gpqa-117-flawed",
+      "gpqa-118-flawed",
+      "gpqa-119-sound",
+      "gpqa-12-sound",
+      "gpqa-120-flawed",
+      "gpqa-121-sound",
+      "gpqa-125-sound",
+      "gpqa-126-flawed",
+      "gpqa-127-sound",
+      "gpqa-129-sound",
+      "gpqa-13-sound",
+      "gpqa-130-sound",
+      "gpqa-131-sound",
+      "gpqa-132-sound",
+      "gpqa-133-flawed",
+      "gpqa-133-sound",
+      "gpqa-135-sound",
+      "gpqa-136-sound",
+      "gpqa-137-sound",
+      "gpqa-138-flawed",
+      "gpqa-139-flawed",
+      "gpqa-14-sound",
+      "gpqa-142-sound",
+      "gpqa-144-flawed",
+      "gpqa-145-sound",
+      "gpqa-147-flawed",
+      "gpqa-148-flawed",
+      "gpqa-151-sound",
+      "gpqa-152-sound",
+      "gpqa-158-flawed",
+      "gpqa-158-sound",
+      "gpqa-159-flawed",
+      "gpqa-159-sound",
+      "gpqa-16-sound",
+      "gpqa-160-sound",
+      "gpqa-164-flawed",
+      "gpqa-166-sound",
+      "gpqa-168-sound",
+      "gpqa-169-sound",
+      "gpqa-17-sound",
+      "gpqa-170-sound",
+      "gpqa-171-sound",
+      "gpqa-185-sound",
+      "gpqa-187-sound",
+      "gpqa-188-sound",
+      "gpqa-19-flawed",
+      "gpqa-190-flawed",
+      "gpqa-192-sound",
+      "gpqa-194-sound",
+      "gpqa-195-sound",
+      "gpqa-196-sound",
+      "gpqa-22-sound",
+      "gpqa-23-flawed",
+      "gpqa-23-sound",
+      "gpqa-25-sound",
+      "gpqa-27-flawed",
+      "gpqa-3-sound",
+      "gpqa-31-sound",
+      "gpqa-33-flawed",
+      "gpqa-34-sound",
+      "gpqa-35-flawed",
+      "gpqa-39-flawed",
+      "gpqa-45-sound",
+      "gpqa-48-sound",
+      "gpqa-51-flawed",
+      "gpqa-52-sound",
+      "gpqa-53-flawed",
+      "gpqa-54-sound",
+      "gpqa-56-sound",
+      "gpqa-57-sound",
+      "gpqa-6-sound",
+      "gpqa-60-flawed",
+      "gpqa-63-flawed",
+      "gpqa-64-flawed",
+      "gpqa-67-sound",
+      "gpqa-69-sound",
+      "gpqa-7-sound",
+      "gpqa-74-sound",
+      "gpqa-75-flawed",
+      "gpqa-78-flawed",
+      "gpqa-78-sound",
+      "gpqa-8-flawed",
+      "gpqa-8-sound",
+      "gpqa-81-sound",
+      "gpqa-82-sound",
+      "gpqa-85-sound",
+      "gpqa-86-sound",
+      "gpqa-87-sound",
+      "gpqa-88-flawed",
+      "gpqa-88-sound",
+      "gpqa-89-sound",
+      "gpqa-94-sound",
+      "gpqa-99-sound",
+      "law-con1_gpt3-5_A-s2",
+      "law-con1_gpt4_A-s8",
+      "law-con2_gpt3-5_A-s6",
+      "law-con3_gpt3-5_B-s6",
+      "law-con3_gpt4_B-s15",
+      "law-con4_gpt4_B-s13",
+      "law-con5_gpt3-5_A-s8",
+      "law-evi1_gpt4_A-s4",
+      "law-evi1_gpt4_B-s16",
+      "law-evi2_gpt3-5_B-s6",
+      "law-evi2_gpt4_B-s10",
+      "law-evi3_gpt3-5_A-s7",
+      "law-evi4_gpt4_A-s11",
+      "lojban-stim145_gpt3-5_B-s1",
+      "lojban-stim147_gpt4_B-s1",
+      "lojban-stim151_gpt3-5_A-s7",
+      "lojban-stim151_gpt4_B-s7",
+      "lojban-stim153_gpt4_A-s3",
+      "lojban-stim154_gpt4_A-s17",
+      "lojban-stim155_gpt3-5_B-s1",
+      "lojban-stim156_gpt4_B-s15",
+      "lojban-stim157_gpt4_B-s2",
+      "lojban-stim158_gpt3-5_B-s5",
+      "lojban-stim159_gpt3-5_A-s1",
+      "lojban-stim159_gpt4_A-s10",
+      "lojban-stim159_gpt4_B-s7",
+      "lojban-stim160_gpt4_B-s2",
+      "lojban-stim161_gpt4_B-s1",
+      "lojban-stim162_gpt3-5_B-s2",
+      "lojban-stim163_gpt4_B-s15",
+      "lojban-stim165_gpt4_A-s2",
+      "lojban-stim165_gpt4_B-s7",
+      "lojban-stim168_gpt4_B-s8",
+      "lojban-stim169_gpt4_A-s2",
+      "lojban-stim169_gpt4_B-s5",
+      "lojban-stim170_gpt3-5_B-s2",
+      "lojban-stim171_gpt4_A-s6",
+      "lojban-stim174_gpt4_B-s12",
+      "lojban-stim175_gpt3-5_A-s2",
+      "lojban-stim177_gpt3-5_A-s3",
+      "lojban-stim177_gpt4_B-s10",
+      "lojban-stim180_gpt3-5_B-s1",
+      "lojban-stim181_gpt4_B-s5",
+      "lojban-stim182_gpt3-5_B-s5",
+      "lojban-stim182_gpt4_A-s16",
+      "lojban-stim191_gpt3-5_A-s4",
+      "medqa-dev_0012",
+      "medqa-dev_0021",
+      "medqa-dev_0041",
+      "medqa-dev_0042",
+      "medqa-dev_0047",
+      "medqa-dev_0055",
+      "medqa-dev_0060",
+      "medqa-dev_0093",
+      "medqa-dev_0094",
+      "medqa-dev_0110",
+      "medqa-dev_0114",
+      "medqa-dev_0115",
+      "medqa-dev_0116",
+      "medqa-dev_0118",
+      "medqa-dev_0128",
+      "medqa-dev_0133",
+      "medqa-dev_0139",
+      "medqa-dev_0157",
+      "medqa-dev_0166",
+      "medqa-dev_0177",
+      "medqa-dev_0180",
+      "medqa-dev_0184",
+      "medqa-dev_0214",
+      "medqa-dev_0342",
+      "medqa-dev_0364",
+      "medqa-dev_0382",
+      "medqa-dev_0463",
+      "medqa-dev_0524",
+      "medqa-dev_0707",
+      "medqa-dev_0748",
+      "medqa-dev_0750",
+      "medqa-dev_0845",
+      "medqa-dev_0853",
+      "medqa-dev_1059",
+      "medqa-dev_1205",
+      "medqa-train_0380",
+      "medqa-train_0595",
+      "medqa-train_0641",
+      "medqa-train_0740",
+      "medqa-train_0855",
+      "medqa-train_0908",
+      "medqa-train_0930",
+      "medqa-train_0968",
+      "medqa-train_0970",
+      "medqa-train_0986",
+      "medqa-train_0996",
+      "medqa-train_1124",
+      "medqa-train_1133",
+      "medqa-train_1136",
+      "medqa-train_1228",
+      "medqa-train_1352",
+      "medqa-train_1354",
+      "medqa-train_1357",
+      "medqa-train_1392",
+      "medqa-train_1478",
+      "medqa-train_1566",
+      "medqa-train_1614",
+      "medqa-train_1641",
+      "medqa-train_1646",
+      "medqa-train_1696",
+      "medqa-train_2587",
+      "medqa-train_2723",
+      "medqa-train_2769",
+      "medqa-train_2790",
+      "medqa-train_2797",
+      "medqa-train_2801",
+      "medqa-train_2855",
+      "medqa-train_2874",
+      "medqa-train_2937",
+      "medqa-train_2950",
+      "medqa-train_2979",
+      "medqa-train_2991",
+      "medqa-train_3055",
+      "medqa-train_3155",
+      "medqa-train_3196",
+      "medqa-train_3328",
+      "medqa-train_3334",
+      "medqa-train_3395",
+      "medqa-train_3472",
+      "medqa-train_3545",
+      "medqa-train_3576",
+      "medqa-train_3615",
+      "medqa-train_3661",
+      "medqa-train_3673",
+      "python800-p02260-sound",
+      "python800-p02585-flawed",
+      "python800-p02597-sound",
+      "python800-p02602-flawed",
+      "python800-p02602-sound",
+      "python800-p02606-sound",
+      "python800-p02646-flawed",
+      "python800-p02658-flawed",
+      "python800-p02675-flawed",
+      "python800-p02696-flawed",
+      "python800-p02699-sound",
+      "python800-p02700-flawed",
+      "python800-p02708-flawed",
+      "python800-p02709-flawed",
+      "python800-p02715-sound",
+      "python800-p02716-flawed",
+      "python800-p02718-flawed",
+      "python800-p02735-flawed",
+      "python800-p02741-flawed",
+      "python800-p02744-flawed",
+      "python800-p02769-flawed",
+      "python800-p02790-sound",
+      "python800-p02795-sound",
+      "python800-p02804-flawed",
+      "python800-p02838-sound",
+      "python800-p02842-sound",
+      "python800-p02853-flawed",
+      "python800-p02859-flawed",
+      "python800-p02866-flawed",
+      "python800-p02887-sound",
+      "python800-p02909-sound",
+      "python800-p02910-flawed",
+      "python800-p02912-flawed",
+      "python800-p02912-sound",
+      "python800-p02921-sound",
+      "python800-p02927-sound",
+      "python800-p02933-flawed",
+      "python800-p02939-sound",
+      "python800-p02947-flawed",
+      "python800-p02959-flawed",
+      "python800-p02960-sound",
+      "python800-p02973-sound",
+      "python800-p02991-flawed",
+      "python800-p02996-flawed",
+      "python800-p03012-flawed",
+      "python800-p03024-sound",
+      "python800-p03036-flawed",
+      "python800-p03047-flawed",
+      "python800-p03048-flawed",
+      "python800-p03053-flawed",
+      "python800-p03075-sound",
+      "python800-p03076-flawed",
+      "python800-p03109-flawed",
+      "python800-p03168-flawed",
+      "python800-p03192-sound",
+      "python800-p03197-flawed",
+      "python800-p03273-sound",
+      "python800-p03289-flawed",
+      "python800-p03291-flawed",
+      "python800-p03292-flawed",
+      "python800-p03293-flawed",
+      "python800-p03327-flawed",
+      "python800-p03331-flawed",
+      "python800-p03338-flawed",
+      "python800-p03352-flawed",
+      "python800-p03353-sound",
+      "python800-p03354-sound",
+      "python800-p03359-sound",
+      "python800-p03386-flawed",
+      "python800-p03386-sound",
+      "python800-p03425-flawed",
+      "python800-p03447-sound",
+      "python800-p03448-sound",
+      "python800-p03457-flawed",
+      "python800-p03473-sound",
+      "python800-p03485-sound",
+      "python800-p03503-sound",
+      "python800-p03523-flawed",
+      "python800-p03547-flawed",
+      "python800-p03547-sound",
+      "python800-p03549-sound",
+      "python800-p03559-sound",
+      "python800-p03573-flawed",
+      "python800-p03573-sound",
+      "python800-p03612-flawed",
+      "python800-p03651-flawed",
+      "python800-p03671-flawed",
+      "python800-p03672-sound",
+      "python800-p03700-flawed",
+      "python800-p03705-flawed",
+      "python800-p03712-sound",
+      "python800-p03733-flawed",
+      "python800-p03737-flawed",
+      "python800-p03739-sound",
+      "python800-p03774-sound",
+      "python800-p03806-sound",
+      "python800-p03821-sound",
+      "python800-p03829-sound",
+      "python800-p03837-flawed",
+      "python800-p03838-flawed",
+      "python800-p03844-flawed",
+      "python800-p03946-sound",
+      "python800-p03959-flawed",
+      "python800-p04001-flawed",
+      "python800-p04013-flawed",
+      "python800-p04046-flawed",
+      "surgery-sur10_gpt3-5_A-s1",
+      "surgery-sur10_gpt4_B-s6",
+      "surgery-sur13_gpt4_B-s8",
+      "surgery-sur14_gpt3-5_A-s3",
+      "surgery-sur16_gpt4_B-s13",
+      "surgery-sur17_gpt3-5_B-s6",
+      "surgery-sur17_gpt4_B-s4",
+      "surgery-sur18_gpt4_A-s8",
+      "surgery-sur19_gpt3-5_A-s3",
+      "surgery-sur1_gpt3-5_A-s2",
+      "surgery-sur1_gpt3-5_B-s4",
+      "surgery-sur20_gpt3-5_B-s7",
+      "surgery-sur20_gpt4_B-s12",
+      "surgery-sur22_gpt3-5_A-s4",
+      "surgery-sur22_gpt4_A-s1",
+      "surgery-sur23_gpt4_B-s13",
+      "surgery-sur24_gpt3-5_A-s11",
+      "surgery-sur24_gpt4_A-s9",
+      "surgery-sur26_gpt3-5_A-s4",
+      "surgery-sur26_gpt4_A-s14",
+      "surgery-sur27_gpt3-5_B-s2",
+      "surgery-sur27_gpt4_A-s7",
+      "surgery-sur28_gpt3-5_B-s4",
+      "surgery-sur28_gpt4_B-s17",
+      "surgery-sur29_gpt3-5_B-s5",
+      "surgery-sur29_gpt4_B-s8",
+      "surgery-sur2_gpt3-5_B-s6",
+      "surgery-sur30_gpt3-5_A-s1",
+      "surgery-sur30_gpt4_A-s6",
+      "surgery-sur30_gpt4_B-s12",
+      "surgery-sur31_gpt4_B-s8",
+      "surgery-sur32_gpt3-5_A-s7",
+      "surgery-sur32_gpt4_A-s6",
+      "surgery-sur33_gpt4_B-s5",
+      "surgery-sur36_gpt4_B-s1",
+      "surgery-sur37_gpt3-5_A-s6",
+      "surgery-sur38_gpt3-5_A-s1",
+      "surgery-sur38_gpt3-5_B-s2",
+      "surgery-sur39_gpt4_B-s1",
+      "surgery-sur3_gpt3-5_A-s3",
+      "surgery-sur3_gpt4_A-s4",
+      "surgery-sur3_gpt4_B-s8",
+      "surgery-sur40_gpt3-5_A-s7",
+      "surgery-sur40_gpt4_A-s15",
+      "surgery-sur41_gpt3-5_A-s4",
+      "surgery-sur42_gpt4_A-s12",
+      "surgery-sur43_gpt4_A-s4",
+      "surgery-sur44_gpt4_B-s12",
+      "surgery-sur45_gpt4_A-s2",
+      "surgery-sur46_gpt4_B-s1",
+      "surgery-sur47_gpt3-5_A-s2",
+      "surgery-sur47_gpt3-5_B-s4",
+      "surgery-sur49_gpt3-5_A-s4",
+      "surgery-sur4_gpt3-5_A-s6",
+      "surgery-sur4_gpt4_A-s8",
+      "surgery-sur51_gpt3-5_A-s1",
+      "surgery-sur51_gpt3-5_B-s8",
+      "surgery-sur51_gpt4_A-s10",
+      "surgery-sur52_gpt3-5_A-s12",
+      "surgery-sur54_gpt3-5_A-s9",
+      "surgery-sur54_gpt4_A-s3",
+      "surgery-sur55_gpt3-5_B-s11",
+      "surgery-sur55_gpt4_A-s3",
+      "surgery-sur5_gpt3-5_A-s4",
+      "surgery-sur6_gpt3-5_A-s8",
+      "surgery-sur6_gpt4_B-s11",
+      "surgery-sur8_gpt3-5_A-s5",
+      "surgery-sur8_gpt4_A-s5",
+      "surgery-sur9_gpt3-5_A-s5",
+      "surgery-sur9_gpt3-5_B-s5",
+      "theoremqa-solutions-Cayley_2-txt-flawed",
+      "theoremqa-solutions-Cayley_4-txt-sound",
+      "theoremqa-solutions-Lah_number_1-txt-flawed",
+      "theoremqa-solutions-Ramsey_4-txt-flawed",
+      "theoremqa-solutions-Stirling_number_second_kind_1-txt-sound",
+      "theoremqa-solutions-center_of_mass1-png-flawed",
+      "theoremqa-solutions-circular_orbit1-png-sound",
+      "theoremqa-solutions-dag_3-txt-sound",
+      "theoremqa-solutions-divisibility1-txt-flawed",
+      "theoremqa-solutions-earnings_multiplier_2-png-sound",
+      "theoremqa-solutions-elaine_econ_micro_11-txt-sound",
+      "theoremqa-solutions-elaine_econ_micro_14-txt-sound",
+      "theoremqa-solutions-elaine_econ_micro_4-txt-sound",
+      "theoremqa-solutions-elaine_econ_micro_7-png-sound",
+      "theoremqa-solutions-energy_conservation1-png-flawed",
+      "theoremqa-solutions-force_and_power1-png-flawed",
+      "theoremqa-solutions-kite1-png-sound",
+      "theoremqa-solutions-math_abstract_algebra_7_3-txt-flawed",
+      "theoremqa-solutions-math_abstract_algebra_7_3-txt-sound",
+      "theoremqa-solutions-math_abstract_algebra_7_5-txt-sound",
+      "theoremqa-solutions-maxku_basic-electronics-6-3-png-sound",
+      "theoremqa-solutions-maxplanar2-txt-sound",
+      "theoremqa-solutions-mingyin_Lebesgue-measure3-txt-sound",
+      "theoremqa-solutions-put_call_parity_2-png-sound",
+      "theoremqa-solutions-quantum5-png-sound",
+      "theoremqa-solutions-statisticalphysics1-png-flawed",
+      "theoremqa-solutions-sunk_costs-png-flawed"
+    ]
+  },
+  "overall": {
+    "n": 1644,
+    "n_judgment_graded": 0,
+    "judgment_defects": {},
+    "n_incorrect": 433,
+    "n_correct": 1211,
+    "n_false_negative": 253,
+    "n_false_positive": 180,
+    "n_detectable_false_negative": 253,
+    "n_characterisable_false_negative": 223,
+    "n_ruled": 894,
+    "rates": {
+      "decision_error": {
+        "name": "decision_error",
+        "k": 433,
+        "n": 1644,
+        "rate": 0.26338199513381993,
+        "ci_low": 0.24265915877838826,
+        "ci_high": 0.2852080828302712
+      },
+      "objection_raised_given_incorrect": {
+        "name": "objection_raised_given_incorrect",
+        "k": 274,
+        "n": 274,
+        "rate": 1.0,
+        "ci_low": 0.9861734167957571,
+        "ci_high": 1.0,
+        "coverage": {
+          "measured": 274,
+          "eligible": 433
+        }
+      },
+      "false_alarm_given_correct": {
+        "name": "false_alarm_given_correct",
+        "k": 622,
+        "n": 622,
+        "rate": 1.0,
+        "ci_low": 0.9938617055817318,
+        "ci_high": 1.0,
+        "coverage": {
+          "measured": 622,
+          "eligible": 1211
+        }
+      },
+      "false_alarm_given_correct_flawed_item": {
+        "name": "false_alarm_given_correct_flawed_item",
+        "k": 298,
+        "n": 298,
+        "rate": 1.0,
+        "ci_low": 0.9872727947373723,
+        "ci_high": 1.0,
+        "coverage": {
+          "measured": 298,
+          "eligible": 716
+        }
+      },
+      "false_alarm_given_correct_sound_item": {
+        "name": "false_alarm_given_correct_sound_item",
+        "k": 324,
+        "n": 324,
+        "rate": 1.0,
+        "ci_low": 0.9882821460119766,
+        "ci_high": 1.0,
+        "coverage": {
+          "measured": 324,
+          "eligible": 495
+        }
+      },
+      "identified_flaw": {
+        "name": "identified_flaw",
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci_low": null,
+        "ci_high": null,
+        "coverage": {
+          "measured": 0,
+          "eligible": 253
+        }
+      },
+      "valid_objection": {
+        "name": "valid_objection",
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci_low": null,
+        "ci_high": null,
+        "coverage": {
+          "measured": 0,
+          "eligible": 223
+        }
+      },
+      "revised_given_incorrect": {
+        "name": "revised_given_incorrect",
+        "k": 7,
+        "n": 274,
+        "rate": 0.025547445255474453,
+        "ci_low": 0.012428986479017853,
+        "ci_high": 0.051786019481212725,
+        "coverage": {
+          "measured": 274,
+          "eligible": 433
+        }
+      },
+      "revised_given_correct": {
+        "name": "revised_given_correct",
+        "k": 5,
+        "n": 622,
+        "rate": 0.008038585209003215,
+        "ci_low": 0.003438299359201617,
+        "ci_high": 0.018678479071634557,
+        "coverage": {
+          "measured": 622,
+          "eligible": 1211
+        }
+      },
+      "revised_given_false_negative": {
+        "name": "revised_given_false_negative",
+        "k": 7,
+        "n": 190,
+        "rate": 0.03684210526315789,
+        "ci_low": 0.01795866325734832,
+        "ci_high": 0.07408349900297143,
+        "coverage": {
+          "measured": 190,
+          "eligible": 253
+        }
+      },
+      "revised_given_false_positive": {
+        "name": "revised_given_false_positive",
+        "k": 0,
+        "n": 84,
+        "rate": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.043733265332143306,
+        "coverage": {
+          "measured": 84,
+          "eligible": 180
+        }
+      },
+      "declined": {
+        "name": "declined",
+        "k": 0,
+        "n": 896,
+        "rate": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.004269195822909276,
+        "coverage": {
+          "measured": 896,
+          "eligible": 1644
+        }
+      },
+      "agreed_with_decision": {
+        "name": "agreed_with_decision",
+        "k": 0,
+        "n": 896,
+        "rate": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.004269195822909276,
+        "coverage": {
+          "measured": 896,
+          "eligible": 1644
+        }
+      },
+      "unclear_stance": {
+        "name": "unclear_stance",
+        "k": 0,
+        "n": 896,
+        "rate": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.004269195822909276,
+        "coverage": {
+          "measured": 896,
+          "eligible": 1644
+        }
+      },
+      "phantom_contest": {
+        "name": "phantom_contest",
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci_low": null,
+        "ci_high": null,
+        "coverage": {
+          "measured": 0,
+          "eligible": 896
+        }
+      },
+      "ruling_line_mismatch": {
+        "name": "ruling_line_mismatch",
+        "k": 15,
+        "n": 894,
+        "rate": 0.016778523489932886,
+        "ci_low": 0.010193881474261163,
+        "ci_high": 0.02749829050796822
+      },
+      "ruling_line_mismatch_on_flawed_parent": {
+        "name": "ruling_line_mismatch_on_flawed_parent",
+        "k": 3,
+        "n": 381,
+        "rate": 0.007874015748031496,
+        "ci_low": 0.002681368617999178,
+        "ci_high": 0.022891750296380138
+      },
+      "ruling_line_mismatch_on_sound_parent": {
+        "name": "ruling_line_mismatch_on_sound_parent",
+        "k": 12,
+        "n": 513,
+        "rate": 0.023391812865497075,
+        "ci_low": 0.013430655487791392,
+        "ci_high": 0.0404380733451818
+      },
+      "misattributed_quote": {
+        "name": "misattributed_quote",
+        "k": 0,
+        "n": 896,
+        "rate": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.004269195822909276
+      }
+    },
+    "stances": {
+      "n_contests": 896,
+      "counts": {
+        "contests": 896,
+        "agrees": 0,
+        "declined": 0,
+        "unclear": 0
+      }
+    },
+    "line_vs_prose": {
+      "measured": 0,
+      "eligible": 896,
+      "table": {
+        "REVERSE": {
+          "RIGHT": 0,
+          "WRONG": 0,
+          "NEITHER": 0
+        },
+        "STANDS": {
+          "RIGHT": 0,
+          "WRONG": 0,
+          "NEITHER": 0
+        }
+      },
+      "agree": 0,
+      "disagree": 0,
+      "no_direction": 0,
+      "phantom_contests": 0,
+      "n_contests_measured": 0,
+      "declines_arguing_for_reversal": 0,
+      "n_declines_measured": 0
+    },
+    "ruling_line_vs_prose": {
+      "measured": 894,
+      "eligible": 894,
+      "table": {
+        "FLAWED": {
+          "FLAWED": 383,
+          "SOUND": 1,
+          "NEITHER": 1
+        },
+        "SOUND": {
+          "FLAWED": 0,
+          "SOUND": 496,
+          "NEITHER": 13
+        }
+      },
+      "by_ruling_form": {
+        "stated_conclusion": {
+          "measured": 894,
+          "mismatch": 15
+        }
+      },
+      "line_sound_prose_flawed": 0,
+      "line_flawed_prose_sound": 1,
+      "no_direction": 14
+    },
+    "comprehension": {
+      "n": 0,
+      "distribution": {},
+      "mean": null
+    }
+  },
+  "by_condition": {
+    "debate": {
+      "n": 1644,
+      "n_judgment_graded": 0,
+      "judgment_defects": {},
+      "n_incorrect": 433,
+      "n_correct": 1211,
+      "n_false_negative": 253,
+      "n_false_positive": 180,
+      "n_detectable_false_negative": 253,
+      "n_characterisable_false_negative": 223,
+      "n_ruled": 894,
+      "rates": {
+        "decision_error": {
+          "name": "decision_error",
+          "k": 433,
+          "n": 1644,
+          "rate": 0.26338199513381993,
+          "ci_low": 0.24265915877838826,
+          "ci_high": 0.2852080828302712
+        },
+        "objection_raised_given_incorrect": {
+          "name": "objection_raised_given_incorrect",
+          "k": 274,
+          "n": 274,
+          "rate": 1.0,
+          "ci_low": 0.9861734167957571,
+          "ci_high": 1.0,
+          "coverage": {
+            "measured": 274,
+            "eligible": 433
+          }
+        },
+        "false_alarm_given_correct": {
+          "name": "false_alarm_given_correct",
+          "k": 622,
+          "n": 622,
+          "rate": 1.0,
+          "ci_low": 0.9938617055817318,
+          "ci_high": 1.0,
+          "coverage": {
+            "measured": 622,
+            "eligible": 1211
+          }
+        },
+        "false_alarm_given_correct_flawed_item": {
+          "name": "false_alarm_given_correct_flawed_item",
+          "k": 298,
+          "n": 298,
+          "rate": 1.0,
+          "ci_low": 0.9872727947373723,
+          "ci_high": 1.0,
+          "coverage": {
+            "measured": 298,
+            "eligible": 716
+          }
+        },
+        "false_alarm_given_correct_sound_item": {
+          "name": "false_alarm_given_correct_sound_item",
+          "k": 324,
+          "n": 324,
+          "rate": 1.0,
+          "ci_low": 0.9882821460119766,
+          "ci_high": 1.0,
+          "coverage": {
+            "measured": 324,
+            "eligible": 495
+          }
+        },
+        "identified_flaw": {
+          "name": "identified_flaw",
+          "k": 0,
+          "n": 0,
+          "rate": null,
+          "ci_low": null,
+          "ci_high": null,
+          "coverage": {
+            "measured": 0,
+            "eligible": 253
+          }
+        },
+        "valid_objection": {
+          "name": "valid_objection",
+          "k": 0,
+          "n": 0,
+          "rate": null,
+          "ci_low": null,
+          "ci_high": null,
+          "coverage": {
+            "measured": 0,
+            "eligible": 223
+          }
+        },
+        "revised_given_incorrect": {
+          "name": "revised_given_incorrect",
+          "k": 7,
+          "n": 274,
+          "rate": 0.025547445255474453,
+          "ci_low": 0.012428986479017853,
+          "ci_high": 0.051786019481212725,
+          "coverage": {
+            "measured": 274,
+            "eligible": 433
+          }
+        },
+        "revised_given_correct": {
+          "name": "revised_given_correct",
+          "k": 5,
+          "n": 622,
+          "rate": 0.008038585209003215,
+          "ci_low": 0.003438299359201617,
+          "ci_high": 0.018678479071634557,
+          "coverage": {
+            "measured": 622,
+            "eligible": 1211
+          }
+        },
+        "revised_given_false_negative": {
+          "name": "revised_given_false_negative",
+          "k": 7,
+          "n": 190,
+          "rate": 0.03684210526315789,
+          "ci_low": 0.01795866325734832,
+          "ci_high": 0.07408349900297143,
+          "coverage": {
+            "measured": 190,
+            "eligible": 253
+          }
+        },
+        "revised_given_false_positive": {
+          "name": "revised_given_false_positive",
+          "k": 0,
+          "n": 84,
+          "rate": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.043733265332143306,
+          "coverage": {
+            "measured": 84,
+            "eligible": 180
+          }
+        },
+        "declined": {
+          "name": "declined",
+          "k": 0,
+          "n": 896,
+          "rate": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.004269195822909276,
+          "coverage": {
+            "measured": 896,
+            "eligible": 1644
+          }
+        },
+        "agreed_with_decision": {
+          "name": "agreed_with_decision",
+          "k": 0,
+          "n": 896,
+          "rate": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.004269195822909276,
+          "coverage": {
+            "measured": 896,
+            "eligible": 1644
+          }
+        },
+        "unclear_stance": {
+          "name": "unclear_stance",
+          "k": 0,
+          "n": 896,
+          "rate": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.004269195822909276,
+          "coverage": {
+            "measured": 896,
+            "eligible": 1644
+          }
+        },
+        "phantom_contest": {
+          "name": "phantom_contest",
+          "k": 0,
+          "n": 0,
+          "rate": null,
+          "ci_low": null,
+          "ci_high": null,
+          "coverage": {
+            "measured": 0,
+            "eligible": 896
+          }
+        },
+        "ruling_line_mismatch": {
+          "name": "ruling_line_mismatch",
+          "k": 15,
+          "n": 894,
+          "rate": 0.016778523489932886,
+          "ci_low": 0.010193881474261163,
+          "ci_high": 0.02749829050796822
+        },
+        "ruling_line_mismatch_on_flawed_parent": {
+          "name": "ruling_line_mismatch_on_flawed_parent",
+          "k": 3,
+          "n": 381,
+          "rate": 0.007874015748031496,
+          "ci_low": 0.002681368617999178,
+          "ci_high": 0.022891750296380138
+        },
+        "ruling_line_mismatch_on_sound_parent": {
+          "name": "ruling_line_mismatch_on_sound_parent",
+          "k": 12,
+          "n": 513,
+          "rate": 0.023391812865497075,
+          "ci_low": 0.013430655487791392,
+          "ci_high": 0.0404380733451818
+        },
+        "misattributed_quote": {
+          "name": "misattributed_quote",
+          "k": 0,
+          "n": 896,
+          "rate": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.004269195822909276
+        }
+      },
+      "stances": {
+        "n_contests": 896,
+        "counts": {
+          "contests": 896,
+          "agrees": 0,
+          "declined": 0,
+          "unclear": 0
+        }
+      },
+      "line_vs_prose": {
+        "measured": 0,
+        "eligible": 896,
+        "table": {
+          "REVERSE": {
+            "RIGHT": 0,
+            "WRONG": 0,
+            "NEITHER": 0
+          },
+          "STANDS": {
+            "RIGHT": 0,
+            "WRONG": 0,
+            "NEITHER": 0
+          }
+        },
+        "agree": 0,
+        "disagree": 0,
+        "no_direction": 0,
+        "phantom_contests": 0,
+        "n_contests_measured": 0,
+        "declines_arguing_for_reversal": 0,
+        "n_declines_measured": 0
+      },
+      "ruling_line_vs_prose": {
+        "measured": 894,
+        "eligible": 894,
+        "table": {
+          "FLAWED": {
+            "FLAWED": 383,
+            "SOUND": 1,
+            "NEITHER": 1
+          },
+          "SOUND": {
+            "FLAWED": 0,
+            "SOUND": 496,
+            "NEITHER": 13
+          }
+        },
+        "by_ruling_form": {
+          "stated_conclusion": {
+            "measured": 894,
+            "mismatch": 15
+          }
+        },
+        "line_sound_prose_flawed": 0,
+        "line_flawed_prose_sound": 1,
+        "no_direction": 14
+      },
+      "comprehension": {
+        "n": 0,
+        "distribution": {},
+        "mean": null
+      }
+    }
+  },
+  "by_condition_and_subset": {
+    "debate": {
+      "gpqa": {
+        "n": 319,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 100,
+        "n_correct": 219,
+        "n_false_negative": 30,
+        "n_false_positive": 70,
+        "n_detectable_false_negative": 30,
+        "n_characterisable_false_negative": 0,
+        "n_ruled": 185,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 100,
+            "n": 319,
+            "rate": 0.31347962382445144,
+            "ci_low": 0.26504552883835475,
+            "ci_high": 0.36635265528661554
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 61,
+            "n": 61,
+            "rate": 1.0,
+            "ci_low": 0.9407540837980555,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 61,
+              "eligible": 100
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 125,
+            "n": 125,
+            "rate": 1.0,
+            "ci_low": 0.9701835432034374,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 125,
+              "eligible": 219
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 62,
+            "n": 62,
+            "rate": 1.0,
+            "ci_low": 0.9416539087749995,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 62,
+              "eligible": 137
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 63,
+            "n": 63,
+            "rate": 1.0,
+            "ci_low": 0.9425268096514744,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 63,
+              "eligible": 82
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 30
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 1,
+            "n": 61,
+            "rate": 0.01639344262295082,
+            "ci_low": 0.002899656114363977,
+            "ci_high": 0.08719065627768062,
+            "coverage": {
+              "measured": 61,
+              "eligible": 100
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 125,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0298164567965626,
+            "coverage": {
+              "measured": 125,
+              "eligible": 219
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 1,
+            "n": 26,
+            "rate": 0.038461538461538464,
+            "ci_low": 0.0068218089769898765,
+            "ci_high": 0.18893176991958405,
+            "coverage": {
+              "measured": 26,
+              "eligible": 30
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 35,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.09890426758938868,
+            "coverage": {
+              "measured": 35,
+              "eligible": 70
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 186,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.02023581765008302,
+            "coverage": {
+              "measured": 186,
+              "eligible": 319
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 186,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.02023581765008302,
+            "coverage": {
+              "measured": 186,
+              "eligible": 319
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 186,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.02023581765008302,
+            "coverage": {
+              "measured": 186,
+              "eligible": 319
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 186
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 1,
+            "n": 185,
+            "rate": 0.005405405405405406,
+            "ci_low": 0.0009548003385717804,
+            "ci_high": 0.0299790616918283
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 96,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03847694748481595
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 1,
+            "n": 89,
+            "rate": 0.011235955056179775,
+            "ci_low": 0.0019861320934023673,
+            "ci_high": 0.06093393821990546
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 186,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.02023581765008302
+          }
+        },
+        "stances": {
+          "n_contests": 186,
+          "counts": {
+            "contests": 186,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 186,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 185,
+          "eligible": 185,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 97,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 87,
+              "NEITHER": 1
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 185,
+              "mismatch": 1
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 1
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "law": {
+        "n": 37,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 13,
+        "n_correct": 24,
+        "n_false_negative": 10,
+        "n_false_positive": 3,
+        "n_detectable_false_negative": 10,
+        "n_characterisable_false_negative": 10,
+        "n_ruled": 17,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 13,
+            "n": 37,
+            "rate": 0.35135135135135137,
+            "ci_low": 0.2182540663110087,
+            "ci_high": 0.5124127048243043
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 6,
+            "n": 6,
+            "rate": 1.0,
+            "ci_low": 0.6096569663469354,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 6,
+              "eligible": 13
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 11,
+            "n": 11,
+            "rate": 1.0,
+            "ci_low": 0.7411599827511859,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 11,
+              "eligible": 24
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 4,
+            "n": 4,
+            "rate": 1.0,
+            "ci_low": 0.5100999795960008,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 4,
+              "eligible": 7
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 7,
+            "n": 7,
+            "rate": 1.0,
+            "ci_low": 0.6456611570247934,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 7,
+              "eligible": 17
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 10
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 10
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 0,
+            "n": 6,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.3903430336530645,
+            "coverage": {
+              "measured": 6,
+              "eligible": 13
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 11,
+            "rate": 0.0,
+            "ci_low": 2.7755575615628914e-17,
+            "ci_high": 0.2588400172488141,
+            "coverage": {
+              "measured": 11,
+              "eligible": 24
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 0,
+            "n": 6,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.3903430336530645,
+            "coverage": {
+              "measured": 6,
+              "eligible": 10
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 3
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 17,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.18432366037156456,
+            "coverage": {
+              "measured": 17,
+              "eligible": 37
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 17,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.18432366037156456,
+            "coverage": {
+              "measured": 17,
+              "eligible": 37
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 17,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.18432366037156456,
+            "coverage": {
+              "measured": 17,
+              "eligible": 37
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 17
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 0,
+            "n": 17,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.18432366037156456
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 4,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.48990002040399916
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 0,
+            "n": 13,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.22810184305529166
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 17,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.18432366037156456
+          }
+        },
+        "stances": {
+          "n_contests": 17,
+          "counts": {
+            "contests": 17,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 17,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 17,
+          "eligible": 17,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 4,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 13,
+              "NEITHER": 0
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 17,
+              "mismatch": 0
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 0
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "lojban": {
+        "n": 117,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 33,
+        "n_correct": 84,
+        "n_false_negative": 27,
+        "n_false_positive": 6,
+        "n_detectable_false_negative": 27,
+        "n_characterisable_false_negative": 27,
+        "n_ruled": 66,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 33,
+            "n": 117,
+            "rate": 0.28205128205128205,
+            "ci_low": 0.2084473173817141,
+            "ci_high": 0.3695125904645905
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 25,
+            "n": 25,
+            "rate": 1.0,
+            "ci_low": 0.8668035060468213,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 25,
+              "eligible": 33
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 41,
+            "n": 41,
+            "rate": 1.0,
+            "ci_low": 0.9143295511310926,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 41,
+              "eligible": 84
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 23,
+            "n": 23,
+            "rate": 1.0,
+            "ci_low": 0.8568788745827374,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 23,
+              "eligible": 50
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 18,
+            "n": 18,
+            "rate": 1.0,
+            "ci_low": 0.8241154494176252,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 18,
+              "eligible": 34
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 27
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 27
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 0,
+            "n": 25,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.13319649395317873,
+            "coverage": {
+              "measured": 25,
+              "eligible": 33
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 41,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.08567044886890744,
+            "coverage": {
+              "measured": 41,
+              "eligible": 84
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 0,
+            "n": 19,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.16818436536845052,
+            "coverage": {
+              "measured": 19,
+              "eligible": 27
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 6,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.3903430336530645
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 66,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05500446725160935,
+            "coverage": {
+              "measured": 66,
+              "eligible": 117
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 66,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05500446725160935,
+            "coverage": {
+              "measured": 66,
+              "eligible": 117
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 66,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05500446725160935,
+            "coverage": {
+              "measured": 66,
+              "eligible": 117
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 66
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 1,
+            "n": 66,
+            "rate": 0.015151515151515152,
+            "ci_low": 0.0026795715344567483,
+            "ci_high": 0.08096112398225534
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 29,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.11697359446555587
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 1,
+            "n": 37,
+            "rate": 0.02702702702702703,
+            "ci_low": 0.004786851054907726,
+            "ci_high": 0.13824378437563367
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 66,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05500446725160935
+          }
+        },
+        "stances": {
+          "n_contests": 66,
+          "counts": {
+            "contests": 66,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 66,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 66,
+          "eligible": 66,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 29,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 36,
+              "NEITHER": 1
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 66,
+              "mismatch": 1
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 1
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "medqa": {
+        "n": 203,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 84,
+        "n_correct": 119,
+        "n_false_negative": 62,
+        "n_false_positive": 22,
+        "n_detectable_false_negative": 62,
+        "n_characterisable_false_negative": 62,
+        "n_ruled": 122,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 84,
+            "n": 203,
+            "rate": 0.41379310344827586,
+            "ci_low": 0.34825475175342513,
+            "ci_high": 0.48253363897648605
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 55,
+            "n": 55,
+            "rate": 1.0,
+            "ci_low": 0.9347128562105721,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 55,
+              "eligible": 84
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 68,
+            "n": 68,
+            "rate": 1.0,
+            "ci_low": 0.9465268034119508,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 68,
+              "eligible": 119
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 41,
+            "n": 41,
+            "rate": 1.0,
+            "ci_low": 0.9143295511310926,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 41,
+              "eligible": 85
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 27,
+            "n": 27,
+            "rate": 1.0,
+            "ci_low": 0.8754409628553641,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 27,
+              "eligible": 34
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 62
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 62
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 4,
+            "n": 55,
+            "rate": 0.07272727272727272,
+            "ci_low": 0.028643596503688543,
+            "ci_high": 0.17260178091636796,
+            "coverage": {
+              "measured": 55,
+              "eligible": 84
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 2,
+            "n": 68,
+            "rate": 0.029411764705882353,
+            "ci_low": 0.008103009605045342,
+            "ci_high": 0.10104823424253043,
+            "coverage": {
+              "measured": 68,
+              "eligible": 119
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 4,
+            "n": 47,
+            "rate": 0.0851063829787234,
+            "ci_low": 0.033593579469713086,
+            "ci_high": 0.19931805195022648,
+            "coverage": {
+              "measured": 47,
+              "eligible": 62
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 8,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.3244156195108769,
+            "coverage": {
+              "measured": 8,
+              "eligible": 22
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 123
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 2,
+            "n": 122,
+            "rate": 0.01639344262295082,
+            "ci_low": 0.0045071521687355225,
+            "ci_high": 0.05780610513250667
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 49,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.07270029673590504
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 2,
+            "n": 73,
+            "rate": 0.0273972602739726,
+            "ci_low": 0.007545600452515573,
+            "ci_high": 0.09450328973196781
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828
+          }
+        },
+        "stances": {
+          "n_contests": 123,
+          "counts": {
+            "contests": 123,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 123,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 122,
+          "eligible": 122,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 53,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 67,
+              "NEITHER": 2
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 122,
+              "mismatch": 2
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 2
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "python800": {
+        "n": 637,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 106,
+        "n_correct": 531,
+        "n_false_negative": 63,
+        "n_false_positive": 43,
+        "n_detectable_false_negative": 63,
+        "n_characterisable_false_negative": 63,
+        "n_ruled": 310,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 106,
+            "n": 637,
+            "rate": 0.1664050235478807,
+            "ci_low": 0.13949911039487406,
+            "ci_high": 0.1973104849871985
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 75,
+            "n": 75,
+            "rate": 1.0,
+            "ci_low": 0.9512744540953,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 75,
+              "eligible": 106
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 235,
+            "n": 235,
+            "rate": 1.0,
+            "ci_low": 0.983915699777593,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 235,
+              "eligible": 531
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 134,
+            "n": 134,
+            "rate": 1.0,
+            "ci_low": 0.9721303293055217,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 134,
+              "eligible": 364
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 101,
+            "n": 101,
+            "rate": 1.0,
+            "ci_low": 0.9633580563440465,
+            "ci_high": 0.9999999999999998,
+            "coverage": {
+              "measured": 101,
+              "eligible": 167
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 63
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 63
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 2,
+            "n": 75,
+            "rate": 0.02666666666666667,
+            "ci_low": 0.00734353502360055,
+            "ci_high": 0.09211664843284882,
+            "coverage": {
+              "measured": 75,
+              "eligible": 106
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 3,
+            "n": 235,
+            "rate": 0.01276595744680851,
+            "ci_low": 0.00435082340847915,
+            "ci_high": 0.036854728723142806,
+            "coverage": {
+              "measured": 235,
+              "eligible": 531
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 2,
+            "n": 52,
+            "rate": 0.038461538461538464,
+            "ci_low": 0.010611488322077554,
+            "ci_high": 0.12981428744365978,
+            "coverage": {
+              "measured": 52,
+              "eligible": 63
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 23,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.14312112541726274,
+            "coverage": {
+              "measured": 23,
+              "eligible": 43
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 310,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.012240569765129924,
+            "coverage": {
+              "measured": 310,
+              "eligible": 637
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 310,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.012240569765129924,
+            "coverage": {
+              "measured": 310,
+              "eligible": 637
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 310,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.012240569765129924,
+            "coverage": {
+              "measured": 310,
+              "eligible": 637
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 310
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 8,
+            "n": 310,
+            "rate": 0.025806451612903226,
+            "ci_low": 0.013133166086347667,
+            "ci_high": 0.050088535561872316
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 3,
+            "n": 157,
+            "rate": 0.01910828025477707,
+            "ci_low": 0.006519360760184285,
+            "ci_high": 0.05466878956908377
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 5,
+            "n": 153,
+            "rate": 0.032679738562091505,
+            "ci_low": 0.014037827460974803,
+            "ci_high": 0.07421426892161757
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 310,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.012240569765129924
+          }
+        },
+        "stances": {
+          "n_contests": 310,
+          "counts": {
+            "contests": 310,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 310,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 310,
+          "eligible": 310,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 154,
+              "SOUND": 1,
+              "NEITHER": 1
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 148,
+              "NEITHER": 6
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 310,
+              "mismatch": 8
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 1,
+          "no_direction": 7
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "surgery": {
+        "n": 196,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 70,
+        "n_correct": 126,
+        "n_false_negative": 51,
+        "n_false_positive": 19,
+        "n_detectable_false_negative": 51,
+        "n_characterisable_false_negative": 51,
+        "n_ruled": 122,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 70,
+            "n": 196,
+            "rate": 0.35714285714285715,
+            "ci_low": 0.2933981532999014,
+            "ci_high": 0.42637991092696625
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 40,
+            "n": 40,
+            "rate": 1.0,
+            "ci_low": 0.9123754607496077,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 40,
+              "eligible": 70
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 82,
+            "n": 82,
+            "rate": 1.0,
+            "ci_low": 0.9552478052599207,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 82,
+              "eligible": 126
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 10,
+            "n": 10,
+            "rate": 1.0,
+            "ci_low": 0.7224598312333834,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 10,
+              "eligible": 19
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 72,
+            "n": 72,
+            "rate": 1.0,
+            "ci_low": 0.9493470601886036,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 72,
+              "eligible": 107
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 51
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 51
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 0,
+            "n": 40,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.08762453925039232,
+            "coverage": {
+              "measured": 40,
+              "eligible": 70
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 82,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.044752194740079396,
+            "coverage": {
+              "measured": 82,
+              "eligible": 126
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 0,
+            "n": 31,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.11025900073475385,
+            "coverage": {
+              "measured": 31,
+              "eligible": 51
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 9,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.2991527535509594,
+            "coverage": {
+              "measured": 9,
+              "eligible": 19
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 122,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0305272660233182,
+            "coverage": {
+              "measured": 122,
+              "eligible": 196
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 122,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0305272660233182,
+            "coverage": {
+              "measured": 122,
+              "eligible": 196
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 122,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0305272660233182,
+            "coverage": {
+              "measured": 122,
+              "eligible": 196
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 122
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 2,
+            "n": 122,
+            "rate": 0.01639344262295082,
+            "ci_low": 0.0045071521687355225,
+            "ci_high": 0.05780610513250667
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 19,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.16818436536845052
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 2,
+            "n": 103,
+            "rate": 0.019417475728155338,
+            "ci_low": 0.005341113332198465,
+            "ci_high": 0.06805351947000593
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 122,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0305272660233182
+          }
+        },
+        "stances": {
+          "n_contests": 122,
+          "counts": {
+            "contests": 122,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 122,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 122,
+          "eligible": 122,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 19,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 101,
+              "NEITHER": 2
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 122,
+              "mismatch": 2
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 2
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "theoremqa": {
+        "n": 135,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 27,
+        "n_correct": 108,
+        "n_false_negative": 10,
+        "n_false_positive": 17,
+        "n_detectable_false_negative": 10,
+        "n_characterisable_false_negative": 10,
+        "n_ruled": 72,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 27,
+            "n": 135,
+            "rate": 0.2,
+            "ci_low": 0.14124897201731929,
+            "ci_high": 0.2753523924152428
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 12,
+            "n": 12,
+            "rate": 1.0,
+            "ci_low": 0.7574992425007574,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 12,
+              "eligible": 27
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 60,
+            "n": 60,
+            "rate": 1.0,
+            "ci_low": 0.9398260695220669,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 60,
+              "eligible": 108
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 24,
+            "n": 24,
+            "rate": 1.0,
+            "ci_low": 0.8620194241710247,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 24,
+              "eligible": 54
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci_low": 0.9035781695514236,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 36,
+              "eligible": 54
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 10
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 10
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 0,
+            "n": 12,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.2425007574992425,
+            "coverage": {
+              "measured": 12,
+              "eligible": 27
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 60,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.06017393047793289,
+            "coverage": {
+              "measured": 60,
+              "eligible": 108
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 0,
+            "n": 9,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.2991527535509594,
+            "coverage": {
+              "measured": 9,
+              "eligible": 10
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 3,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.5615060804490177,
+            "coverage": {
+              "measured": 3,
+              "eligible": 17
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 72,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05065293981139638,
+            "coverage": {
+              "measured": 72,
+              "eligible": 135
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 72,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05065293981139638,
+            "coverage": {
+              "measured": 72,
+              "eligible": 135
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 72,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05065293981139638,
+            "coverage": {
+              "measured": 72,
+              "eligible": 135
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 72
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 1,
+            "n": 72,
+            "rate": 0.013888888888888888,
+            "ci_low": 0.002455888640432169,
+            "ci_high": 0.07456780284286987
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 27,
+            "rate": 0.0,
+            "ci_low": 6.938893903907228e-18,
+            "ci_high": 0.12455903714463581
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 1,
+            "n": 45,
+            "rate": 0.022222222222222223,
+            "ci_low": 0.003933497522757505,
+            "ci_high": 0.11566946388718813
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 72,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05065293981139638
+          }
+        },
+        "stances": {
+          "n_contests": 72,
+          "counts": {
+            "contests": 72,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 72,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 72,
+          "eligible": 72,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 27,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 44,
+              "NEITHER": 1
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 72,
+              "mismatch": 1
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 1
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      }
+    }
+  },
+  "by_condition_and_label_basis": {
+    "debate": {
+      "final_answer": {
+        "n": 203,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 84,
+        "n_correct": 119,
+        "n_false_negative": 62,
+        "n_false_positive": 22,
+        "n_detectable_false_negative": 62,
+        "n_characterisable_false_negative": 62,
+        "n_ruled": 122,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 84,
+            "n": 203,
+            "rate": 0.41379310344827586,
+            "ci_low": 0.34825475175342513,
+            "ci_high": 0.48253363897648605
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 55,
+            "n": 55,
+            "rate": 1.0,
+            "ci_low": 0.9347128562105721,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 55,
+              "eligible": 84
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 68,
+            "n": 68,
+            "rate": 1.0,
+            "ci_low": 0.9465268034119508,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 68,
+              "eligible": 119
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 41,
+            "n": 41,
+            "rate": 1.0,
+            "ci_low": 0.9143295511310926,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 41,
+              "eligible": 85
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 27,
+            "n": 27,
+            "rate": 1.0,
+            "ci_low": 0.8754409628553641,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 27,
+              "eligible": 34
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 62
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 62
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 4,
+            "n": 55,
+            "rate": 0.07272727272727272,
+            "ci_low": 0.028643596503688543,
+            "ci_high": 0.17260178091636796,
+            "coverage": {
+              "measured": 55,
+              "eligible": 84
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 2,
+            "n": 68,
+            "rate": 0.029411764705882353,
+            "ci_low": 0.008103009605045342,
+            "ci_high": 0.10104823424253043,
+            "coverage": {
+              "measured": 68,
+              "eligible": 119
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 4,
+            "n": 47,
+            "rate": 0.0851063829787234,
+            "ci_low": 0.033593579469713086,
+            "ci_high": 0.19931805195022648,
+            "coverage": {
+              "measured": 47,
+              "eligible": 62
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 8,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.3244156195108769,
+            "coverage": {
+              "measured": 8,
+              "eligible": 22
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828,
+            "coverage": {
+              "measured": 123,
+              "eligible": 203
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 123
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 2,
+            "n": 122,
+            "rate": 0.01639344262295082,
+            "ci_low": 0.0045071521687355225,
+            "ci_high": 0.05780610513250667
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 49,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.07270029673590504
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 2,
+            "n": 73,
+            "rate": 0.0273972602739726,
+            "ci_low": 0.007545600452515573,
+            "ci_high": 0.09450328973196781
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 123,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.03028659367273828
+          }
+        },
+        "stances": {
+          "n_contests": 123,
+          "counts": {
+            "contests": 123,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 123,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 122,
+          "eligible": 122,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 53,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 67,
+              "NEITHER": 2
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 122,
+              "mismatch": 2
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 2
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "injected_pair": {
+        "n": 1091,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 233,
+        "n_correct": 858,
+        "n_false_negative": 103,
+        "n_false_positive": 130,
+        "n_detectable_false_negative": 103,
+        "n_characterisable_false_negative": 73,
+        "n_ruled": 567,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 233,
+            "n": 1091,
+            "rate": 0.21356553620531624,
+            "ci_low": 0.19027377822586192,
+            "ci_high": 0.2388673870349393
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 148,
+            "n": 148,
+            "rate": 1.0,
+            "ci_low": 0.9746999504747053,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 148,
+              "eligible": 233
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 420,
+            "n": 420,
+            "rate": 1.0,
+            "ci_low": 0.9909362365562984,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 420,
+              "eligible": 858
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 220,
+            "n": 220,
+            "rate": 1.0,
+            "ci_low": 0.9828378639180564,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 220,
+              "eligible": 555
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 200,
+            "n": 200,
+            "rate": 1.0,
+            "ci_low": 0.9811539940816791,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 200,
+              "eligible": 303
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 103
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 73
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 3,
+            "n": 148,
+            "rate": 0.02027027027027027,
+            "ci_low": 0.00691716898447111,
+            "ci_high": 0.057897743397906314,
+            "coverage": {
+              "measured": 148,
+              "eligible": 233
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 3,
+            "n": 420,
+            "rate": 0.007142857142857143,
+            "ci_low": 0.0024320853378246715,
+            "ci_high": 0.0207879100566812,
+            "coverage": {
+              "measured": 420,
+              "eligible": 858
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 3,
+            "n": 87,
+            "rate": 0.034482758620689655,
+            "ci_low": 0.011795606761416902,
+            "ci_high": 0.09654242339216913,
+            "coverage": {
+              "measured": 87,
+              "eligible": 103
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 61,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05924591620194442,
+            "coverage": {
+              "measured": 61,
+              "eligible": 130
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 568,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.006717944269881728,
+            "coverage": {
+              "measured": 568,
+              "eligible": 1091
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 568,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.006717944269881728,
+            "coverage": {
+              "measured": 568,
+              "eligible": 1091
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 568,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.006717944269881728,
+            "coverage": {
+              "measured": 568,
+              "eligible": 1091
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 568
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 10,
+            "n": 567,
+            "rate": 0.01763668430335097,
+            "ci_low": 0.009607474068747528,
+            "ci_high": 0.03215822766006831
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 3,
+            "n": 280,
+            "rate": 0.010714285714285714,
+            "ci_low": 0.003650321368179693,
+            "ci_high": 0.03102253842404245
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 7,
+            "n": 287,
+            "rate": 0.024390243902439025,
+            "ci_low": 0.011863655205804902,
+            "ci_high": 0.04948107677201396
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 568,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.006717944269881728
+          }
+        },
+        "stances": {
+          "n_contests": 568,
+          "counts": {
+            "contests": 568,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 568,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 567,
+          "eligible": 567,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 278,
+              "SOUND": 1,
+              "NEITHER": 1
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 279,
+              "NEITHER": 8
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 567,
+              "mismatch": 10
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 1,
+          "no_direction": 9
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      },
+      "sentence_labels": {
+        "n": 350,
+        "n_judgment_graded": 0,
+        "judgment_defects": {},
+        "n_incorrect": 116,
+        "n_correct": 234,
+        "n_false_negative": 88,
+        "n_false_positive": 28,
+        "n_detectable_false_negative": 88,
+        "n_characterisable_false_negative": 88,
+        "n_ruled": 205,
+        "rates": {
+          "decision_error": {
+            "name": "decision_error",
+            "k": 116,
+            "n": 350,
+            "rate": 0.3314285714285714,
+            "ci_low": 0.2841766809135349,
+            "ci_high": 0.38234076644143966
+          },
+          "objection_raised_given_incorrect": {
+            "name": "objection_raised_given_incorrect",
+            "k": 71,
+            "n": 71,
+            "rate": 1.0,
+            "ci_low": 0.9486702582520953,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 71,
+              "eligible": 116
+            }
+          },
+          "false_alarm_given_correct": {
+            "name": "false_alarm_given_correct",
+            "k": 134,
+            "n": 134,
+            "rate": 1.0,
+            "ci_low": 0.9721303293055217,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 134,
+              "eligible": 234
+            }
+          },
+          "false_alarm_given_correct_flawed_item": {
+            "name": "false_alarm_given_correct_flawed_item",
+            "k": 37,
+            "n": 37,
+            "rate": 1.0,
+            "ci_low": 0.9059390425448564,
+            "ci_high": 1.0,
+            "coverage": {
+              "measured": 37,
+              "eligible": 76
+            }
+          },
+          "false_alarm_given_correct_sound_item": {
+            "name": "false_alarm_given_correct_sound_item",
+            "k": 97,
+            "n": 97,
+            "rate": 1.0,
+            "ci_low": 0.9619046107955446,
+            "ci_high": 0.9999999999999999,
+            "coverage": {
+              "measured": 97,
+              "eligible": 158
+            }
+          },
+          "identified_flaw": {
+            "name": "identified_flaw",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 88
+            }
+          },
+          "valid_objection": {
+            "name": "valid_objection",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 88
+            }
+          },
+          "revised_given_incorrect": {
+            "name": "revised_given_incorrect",
+            "k": 0,
+            "n": 71,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.05132974174790491,
+            "coverage": {
+              "measured": 71,
+              "eligible": 116
+            }
+          },
+          "revised_given_correct": {
+            "name": "revised_given_correct",
+            "k": 0,
+            "n": 134,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0278696706944783,
+            "coverage": {
+              "measured": 134,
+              "eligible": 234
+            }
+          },
+          "revised_given_false_negative": {
+            "name": "revised_given_false_negative",
+            "k": 0,
+            "n": 56,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.06419614448811528,
+            "coverage": {
+              "measured": 56,
+              "eligible": 88
+            }
+          },
+          "revised_given_false_positive": {
+            "name": "revised_given_false_positive",
+            "k": 0,
+            "n": 15,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.20388926630434784,
+            "coverage": {
+              "measured": 15,
+              "eligible": 28
+            }
+          },
+          "declined": {
+            "name": "declined",
+            "k": 0,
+            "n": 205,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.018394802568070728,
+            "coverage": {
+              "measured": 205,
+              "eligible": 350
+            }
+          },
+          "agreed_with_decision": {
+            "name": "agreed_with_decision",
+            "k": 0,
+            "n": 205,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.018394802568070728,
+            "coverage": {
+              "measured": 205,
+              "eligible": 350
+            }
+          },
+          "unclear_stance": {
+            "name": "unclear_stance",
+            "k": 0,
+            "n": 205,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.018394802568070728,
+            "coverage": {
+              "measured": 205,
+              "eligible": 350
+            }
+          },
+          "phantom_contest": {
+            "name": "phantom_contest",
+            "k": 0,
+            "n": 0,
+            "rate": null,
+            "ci_low": null,
+            "ci_high": null,
+            "coverage": {
+              "measured": 0,
+              "eligible": 205
+            }
+          },
+          "ruling_line_mismatch": {
+            "name": "ruling_line_mismatch",
+            "k": 3,
+            "n": 205,
+            "rate": 0.014634146341463415,
+            "ci_low": 0.004989101745671687,
+            "ci_high": 0.04213560903991893
+          },
+          "ruling_line_mismatch_on_flawed_parent": {
+            "name": "ruling_line_mismatch_on_flawed_parent",
+            "k": 0,
+            "n": 52,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.06879459041288215
+          },
+          "ruling_line_mismatch_on_sound_parent": {
+            "name": "ruling_line_mismatch_on_sound_parent",
+            "k": 3,
+            "n": 153,
+            "rate": 0.0196078431372549,
+            "ci_low": 0.0066903672665462426,
+            "ci_high": 0.05605829125262214
+          },
+          "misattributed_quote": {
+            "name": "misattributed_quote",
+            "k": 0,
+            "n": 205,
+            "rate": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.018394802568070728
+          }
+        },
+        "stances": {
+          "n_contests": 205,
+          "counts": {
+            "contests": 205,
+            "agrees": 0,
+            "declined": 0,
+            "unclear": 0
+          }
+        },
+        "line_vs_prose": {
+          "measured": 0,
+          "eligible": 205,
+          "table": {
+            "REVERSE": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            },
+            "STANDS": {
+              "RIGHT": 0,
+              "WRONG": 0,
+              "NEITHER": 0
+            }
+          },
+          "agree": 0,
+          "disagree": 0,
+          "no_direction": 0,
+          "phantom_contests": 0,
+          "n_contests_measured": 0,
+          "declines_arguing_for_reversal": 0,
+          "n_declines_measured": 0
+        },
+        "ruling_line_vs_prose": {
+          "measured": 205,
+          "eligible": 205,
+          "table": {
+            "FLAWED": {
+              "FLAWED": 52,
+              "SOUND": 0,
+              "NEITHER": 0
+            },
+            "SOUND": {
+              "FLAWED": 0,
+              "SOUND": 150,
+              "NEITHER": 3
+            }
+          },
+          "by_ruling_form": {
+            "stated_conclusion": {
+              "measured": 205,
+              "mismatch": 3
+            }
+          },
+          "line_sound_prose_flawed": 0,
+          "line_flawed_prose_sound": 0,
+          "no_direction": 3
+        },
+        "comprehension": {
+          "n": 0,
+          "distribution": {},
+          "mean": null
+        }
+      }
+    }
+  }
+}
