@@ -175,6 +175,56 @@ async def test_the_ruling_agreement_reader_catches_a_line_its_prose_contradicts(
     assert reading.mismatch is True
 
 
+async def test_a_materiality_ruling_is_read_by_the_materiality_reader(tmp_path):
+    """Keyed on the RULING's own `prompt_form`, so a finished — or mixed — tree is always
+    asked the question its rulings answer. The wire role stays `ruling_reader` in both
+    cases: accounting reads `meta`, and the two readings are one probe."""
+    from dataclasses import replace
+
+    from exp2.config import GradingConfig
+    from exp2.recourse import judge_ruling_prose
+
+    outcome, _, _, _ = await contest(tmp_path, "debate")
+    ruling = replace(outcome.ruling, prompt_form="materiality")
+    assert ruling.parent_verdict == "FLAWED" and ruling.verdict == "SOUND"
+
+    # STANDS on a FLAWED parent -> the prose concluded FLAWED, and the line said SOUND
+    client = FakeClient(replies={
+        "ruling_reader": "The defect is real but immaterial.\nReading: STANDS"})
+    reading = await judge_ruling_prose(
+        ruling, config=make_config(), grading=GradingConfig(), client=client)
+    assert reading.prose_conclusion == "FLAWED"
+    assert reading.line_conclusion == "SOUND"
+    assert reading.mismatch is True
+    assert client.roles() == ["ruling_reader"]
+    sent = "".join(m["content"] for m in client.sent_to("ruling_reader"))
+    assert "`Reading: STANDS`, `Reading: CHANGED`, or `Reading: NEITHER`" in sent
+    assert "Conclusion:" not in sent and "Ruling:" not in sent
+
+    # CHANGED on the same parent -> SOUND, which is what the line said: no mismatch
+    client = FakeClient(replies={
+        "ruling_reader": "A real, material defect.\nReading: CHANGED"})
+    reading = await judge_ruling_prose(
+        ruling, config=make_config(), grading=GradingConfig(), client=client)
+    assert reading.prose_conclusion == "SOUND"
+    assert reading.mismatch is False
+
+    # NEITHER passes through and still counts as a mismatch, as it does object-level
+    client = FakeClient(replies={"ruling_reader": "Hard to say.\nReading: NEITHER"})
+    reading = await judge_ruling_prose(
+        ruling, config=make_config(), grading=GradingConfig(), client=client)
+    assert reading.prose_conclusion == "NEITHER"
+    assert reading.mismatch is True
+
+    # and the object-level ruling beside it is still read the old way
+    client = FakeClient()
+    reading = await judge_ruling_prose(
+        outcome.ruling, config=make_config(), grading=GradingConfig(), client=client)
+    sent = "".join(m["content"] for m in client.sent_to("ruling_reader"))
+    assert "Reading: FLAWED`, `Reading: SOUND" in sent
+    assert "STANDS" not in sent
+
+
 async def test_a_solo_contest_replays_the_recorded_conversation(tmp_path):
     """Rebuilding the prompt instead would make this a fresh judgement by a model that
     merely shares a name with the decider — a different mechanism."""

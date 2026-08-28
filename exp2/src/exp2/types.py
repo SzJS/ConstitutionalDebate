@@ -1006,6 +1006,27 @@ RULING_FORMS: tuple[str, ...] = (
     "uphold_overturn", "restated_verdict", "stated_conclusion",
 )
 
+# WHICH PROMPT ruled, which is a different fact from which FORM the answer took. Both
+# values below produce `stated_conclusion` rulings — the same two `Conclusion:` lines,
+# the same derivation, the same `ruling_agreement` reading — so nothing downstream can
+# tell them apart, and a reader of one `ruling.json` could not tell either without
+# knowing which arm wrote the objection.
+#
+#   object_level  `RECOURSE_JUDGE_USER`, every arm but one. The objection is itself a
+#                 claim about the text under review, so the judge is told to rule on
+#                 that text and not on the objection's prose.
+#   materiality   `RECOURSE_JUDGE_USER_JUDGMENT`, the judgment arm, since 2026-08-28.
+#                 The objection is a claim about the JUDGMENT, so the judge is shown the
+#                 judgment and rules in two steps: is the alleged defect real, checked
+#                 against the record; and if so, does addressing it change what is true
+#                 of the text. The 60-cell instrument check is why — under the
+#                 object-level prompt the weak judge re-solved the problem with the
+#                 objection as a nudge and overturned 35% of CORRECT decisions.
+#
+# Defaulted to `object_level` so the 1,586 + 1,589 ruling.json files already on disk
+# still load through `from_dict` and still say something true about themselves.
+RULING_PROMPT_FORMS: tuple[str, ...] = ("object_level", "materiality")
+
 # The forms whose ``ruling`` word is UPHOLD/OVERTURN and whose ``verdict`` follows from
 # it by ``resolve_ruling``. They differ in what the model was ASKED — the relative word
 # or the absolute statement — and not at all in the arithmetic afterwards, which is why
@@ -1053,6 +1074,12 @@ class Ruling:
     # other two forms — and defaulted rather than required so the 1,586 ruling.json files
     # already on disk still load through ``from_dict``.
     conclusion_line: str = ""
+    # WHICH user prompt was sent, one of ``RULING_PROMPT_FORMS``. Not inferable from
+    # anything else on this record: both prompts produce ``stated_conclusion`` and the
+    # same two lines, so without this a materiality ruling and an object-level one are
+    # indistinguishable in the file. Defaulted for the rulings already on disk, every one
+    # of which was made under the object-level prompt.
+    prompt_form: str = "object_level"
 
     def __post_init__(self) -> None:
         if self.form not in RULING_FORMS:
@@ -1075,6 +1102,11 @@ class Ruling:
                 )
         elif self.ruling is not None:
             raise ValueError("the restated_verdict form must not carry a ruling word")
+        if self.prompt_form not in RULING_PROMPT_FORMS:
+            raise ValueError(
+                f"prompt_form must be one of {RULING_PROMPT_FORMS}, "
+                f"got {self.prompt_form!r}"
+            )
 
     @property
     def upheld(self) -> bool:

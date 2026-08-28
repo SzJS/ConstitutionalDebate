@@ -486,6 +486,112 @@ def test_the_judgment_prompt_never_assigns_the_challenger_a_side():
     assert CHALLENGE_DECISION_INSTRUCTION_JUDGMENT in against_sound
 
 
+def test_the_judgment_format_shows_the_argument_label_at_the_head_of_the_template():
+    """The instrument check measured the reason this is shown and not only asked for.
+
+    `google/gemini-2.5-flash` needed a format repair on 59 of 60 judgment objections
+    (`no_public_label` 35, `label_not_at_line_start` 24). The raw first attempts all
+    have the same shape: a correctly labelled `Thinking:` block, a long audit inside it,
+    and then the numbered list with no `Argument:` line — the model copying a template
+    that began at `1. Type:`. The label is now at the head of that template.
+    """
+    from exp2.prompts import CHALLENGE_DECISION_INSTRUCTION_JUDGMENT as text
+
+    # the label is SHOWN, on a line of its own, immediately above the numbered shape
+    assert "\nArgument:\n1. Type: <contradiction|misstatement|omission>" in text
+    # and said, in the sentence that names where the boundary goes
+    assert "write `Argument:` at the start of a new line" in text
+    assert "a list that is not under it cannot be published at all" in text
+
+    # The six-cell smoke took `no_public_label` to 0 of 6 and left all six on
+    # `label_not_at_line_start`: flash writes the label and glues it to its last word,
+    # "...stated rule.Argument:". A parser leniency is not available (a hyphenated
+    # "counter-argument:" inside the private block would publish the rest of it), so the
+    # template now shows the WHOLE reply — both labels line-anchored, a blank line
+    # between — and the instruction names the failing shape.
+    assert "Thinking:\n<your private working" in text
+    assert text.index("Thinking:\n<your private") < text.index("\nArgument:\n1. Type:")
+    assert "with a blank line between the sections" in text
+    assert "Never write `Argument:` at the end of a sentence" in text
+    assert "defect.Argument:` is not a label and the reply is thrown away" in text
+    # the empty-list branch is under the label too — the one measured
+    # `label_not_at_line_start` reply was "...alteration point.Argument:\nNo defect
+    # found."
+    assert "If you find no defect, say so under `Argument:` and list none." in text
+
+
+def test_the_judgment_format_change_moved_nothing_the_graders_read():
+    """A format change, and only that. Every field name, the three types, the quoting
+    rule, the omission carve-out and the `Decision:` line are what they were — anything
+    here that moved would make the pilot's grades and this run's incomparable."""
+    from exp2.prompts import CHALLENGE_DECISION_INSTRUCTION_JUDGMENT as text
+
+    for field in ("Type: <contradiction|misstatement|omission>",
+                  'Judgment says: "<quote from the judgment>"',
+                  'Record says: "<quote from the record>"',
+                  "Why it matters: <one sentence on how it bears on the verdict>"):
+        assert field in text, field
+    assert ("For a **contradiction**, give two `Judgment says:` quotes" in text)
+    assert ("For an **omission**, write `Judgment says: (the judgment does not address "
+            "this)`" in text)
+    assert "Quote exactly; do not paraphrase inside the quotation marks." in text
+    assert ("`Decision: REVERSE` — the judgment contains at least one defect listed "
+            "above and should be reconsidered." in text)
+    assert "`Decision: STANDS` — the judgment is faithful to the record." in text
+    assert text.rstrip().endswith("the judgment is faithful to the record.")
+    # still no format slot, so it is inserted verbatim into either decision phrasing
+    assert "{" not in text
+
+
+def test_a_doubled_argument_label_still_parses():
+    """The template now SHOWS `Argument:`, so a model may echo it and then write it
+    again. `_LABEL_RE` finds the first and `_REDUNDANT_LABEL_RE` strips the second from
+    the head of the extracted section — the published text must not start with a label,
+    and no repair must be spent on this."""
+    reply = (
+        "Thinking:\nprivate working\n\n"
+        "Argument:\n"
+        "Argument:\n"
+        "1. Type: misstatement\n"
+        '   Judgment says: "Alice conceded step 2"\n'
+        '   Record says: "Alice: step 2 holds"\n'
+        "   Why it matters: the concession is what the verdict rests on.\n"
+        "Decision: REVERSE"
+    )
+    thinking, word, body, mode = parse_objection_output(reply)
+    assert word == "REVERSE"
+    assert "private working" in thinking
+    assert not body.lstrip().lower().startswith("argument:")
+    assert body.lstrip().startswith("1. Type: misstatement")
+
+
+def test_the_shown_template_is_what_a_compliant_reply_looks_like():
+    """The end-to-end shape the instruction now asks for: a `Thinking:` block, the label
+    on its own line, the numbered list, the `Decision:` line. It has to parse strictly —
+    if the shape the prompt shows needed a repair, the prompt would be asking for
+    something the parser refuses."""
+    reply = (
+        "Thinking:\nI compared the judgment with the record.\n\n"
+        "Argument:\n"
+        "1. Type: omission\n"
+        "   Judgment says: (the judgment does not address this)\n"
+        '   Record says: "Bob: the integral diverges at the origin"\n'
+        "   Why it matters: it is the point the verdict turned on.\n"
+        "Decision: REVERSE"
+    )
+    thinking, word, body, mode = parse_objection_output(reply)
+    assert mode == "strict"
+    assert word == "REVERSE"
+    assert "I compared the judgment" in thinking
+    assert "I compared the judgment" not in body
+    assert "Decision:" not in body
+
+    from exp2.prompts import parse_defects
+
+    defects = parse_defects(body, "the judgment text")
+    assert len(defects) == 1 and defects[0]["type"] == "omission"
+
+
 def test_the_judgment_reply_parses_through_the_unchanged_objection_parser():
     """Reusing the `Decision:` token is what keeps the parser, the stance, the agreement
     stage and the whole recourse machinery untouched."""
@@ -782,6 +888,214 @@ def test_the_recourse_judge_sees_the_same_record_as_the_challenger():
                                           decision_verdict=FLAWED, objection="o")
     assert record.body in challenger[1]["content"]
     assert record.body in judge[1]["content"]
+
+
+def test_the_neutral_arms_ruling_prompt_is_byte_identical_to_what_it_always_was():
+    """The materiality prompt is keyed on the OBJECTION's arm, and the third paired arm
+    of the debate-only run (`rerule-recontest`) is neutral. If keying it had moved the
+    neutral prompt by one character, that arm would stop being the comparison it is —
+    so this rebuilds the neutral messages from the template directly and diffs.
+    """
+    from exp2.prompts import (
+        RECOURSE_JUDGE_SYSTEM, RECOURSE_JUDGE_USER, CHALLENGER_DEBATE_RECORD,
+        neutralise_tags, side_phrase,
+    )
+
+    item, sides = make_item(), make_sides()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+    expected = [
+        {"role": "system", "content": RECOURSE_JUDGE_SYSTEM},
+        {"role": "user", "content": RECOURSE_JUDGE_USER.format(
+            problem=neutralise_tags(item.problem),
+            solution=neutralise_tags(item.solution),
+            record_block=CHALLENGER_DEBATE_RECORD.format(
+                flawed_speaker=sides.speaker_for_side(FLAWED).value,
+                sound_speaker=sides.speaker_for_side(SOUND).value,
+                record=neutralise_tags(record.body)),
+            decision_phrase=side_phrase(FLAWED),
+            objection=neutralise_tags("o"))},
+    ]
+    # the call the harness made before the arm parameter existed
+    assert build_recourse_judge_messages(
+        item, sides, record, decision_verdict=FLAWED, objection="o") == expected
+    # every arm but one, and a judgment passed anyway must not change it: keying on the
+    # config rather than on the objection is the mistake this pins shut
+    for arm in ("neutral", "partisan_advocate", "partisan_assigned", "partisan_auditor"):
+        assert build_recourse_judge_messages(
+            item, sides, record, decision_verdict=FLAWED, objection="o",
+            judgment="the judge's reasoning", arm=arm) == expected, arm
+
+
+def test_the_judgment_arm_is_ruled_on_materiality_and_is_shown_the_judgment():
+    """The 60-cell instrument check is why: under the object-level prompt the weak judge
+    re-solved the problem with the objection as a nudge and overturned 20 of 45 rulings,
+    35% of them on decisions that were CORRECT."""
+    item, sides = make_item(), make_sides()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+    system, user = (m["content"] for m in build_recourse_judge_messages(
+        item, sides, record, decision_verdict=FLAWED,
+        objection="1. Type: omission\n   Judgment says: (the judgment does not "
+                  "address this)",
+        judgment="Alice showed step 2 fails.", arm="judgment"))
+
+    from exp2.prompts import RECOURSE_JUDGE_SYSTEM
+
+    assert system == RECOURSE_JUDGE_SYSTEM        # the system prompt is unchanged
+    # the judgment is there, in a block of its own, and is what the objection is about
+    assert "<judgment>\nAlice showed step 2 fails.\n</judgment>" in user
+    assert "The objection is about the JUDGMENT, not about the text in <solution>" in user
+    # both steps, in order
+    assert "**Step 1 — is each alleged defect real?**" in user
+    assert "**Step 2 — is any real defect material?**" in user
+    assert user.index("Step 1") < user.index("Step 2")
+    # step 1 asks for the record to be quoted; step 2 defines materiality
+    assert "check it against the record above and say so, quoting the record" in user
+    assert "changes what is true of the text inside <solution>" in user
+    # the standard, restated for defects rather than for a claim about the text
+    assert "The decision stands unless the objection shows it to be mistaken." in user
+    assert ("If no alleged defect is real, or every real defect is immaterial, the "
+            "decision stands") in user
+    # and the sentence that made the object-level prompt wrong here is gone
+    assert "not on the objection and not on the decision's reasoning" not in user
+    # everything the neutral prompt showed is still shown
+    for text in (item.problem, item.solution, record.body):
+        assert text in user
+
+
+def test_both_ruling_prompts_end_on_the_identical_conclusion_lines():
+    """`parse_ruling_output`, `ruling_conclusion_line`, `resolve_ruling`,
+    `Ruling(form="stated_conclusion")` and the `ruling_agreement` instrument all key off
+    these two lines. A materiality ruling has to be read by every one of them exactly as
+    an object-level ruling is."""
+    from exp2.prompts import (
+        RECOURSE_JUDGE_USER, RECOURSE_JUDGE_USER_JUDGMENT, RECOURSE_JUDGE_CLOSING,
+    )
+
+    lines = ("Conclusion: the original text in <solution> contains a flaw\n"
+             "Conclusion: the original text in <solution> does not contain a flaw")
+    for template in (RECOURSE_JUDGE_USER, RECOURSE_JUDGE_USER_JUDGMENT):
+        assert template.rstrip().endswith(lines)
+        assert ("state what is true of the text inside <solution>, formatted exactly as "
+                "one of:") in template
+    # the repair asks for the same line, so a materiality reply that misses it is
+    # repaired by the instruction it was already asked under
+    assert "contains a flaw" in RECOURSE_JUDGE_CLOSING
+
+    # and the parser reads a materiality-shaped reply
+    from exp2.prompts import parse_ruling_output, ruling_conclusion_line
+
+    reply = (
+        "Step 1: defect 1 is real — the record shows Bob's Round 3 point, and the "
+        "judgment does not address it.\n"
+        "Step 2: taking it into account does not change the conclusion.\n\n"
+        "Conclusion: the original text in <solution> contains a flaw"
+    )
+    conclusion, reasoning, mode = parse_ruling_output(reply)
+    assert conclusion == FLAWED
+    assert "Step 1" in reasoning and "Conclusion:" not in reasoning
+    assert ruling_conclusion_line(reply).endswith("contains a flaw")
+
+
+def test_the_materiality_prompt_names_the_line_that_restates_the_decision():
+    """Under `stated_conclusion` the judge states an absolute fact about the text, so
+    "the decision stands" is not a sentence it can write — it has to restate the
+    DECISION'S OWN conclusion, and which line that is depends on what the decision was.
+
+    The six-cell smoke measured what happens when it is not told: on `medqa-train_3754`
+    the judge wrote "no material defect exists" in step 2 and then ended on "does not
+    contain a flaw" over a FLAWED parent, breaking a correct decision with a line its own
+    reasoning contradicted. Seven of the nine smoke conclusion lines said SOUND.
+    """
+    from exp2.prompts import conclusion_line_for
+
+    item, sides = make_item(), make_sides()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+
+    def user(parent):
+        return build_recourse_judge_messages(
+            item, sides, record, decision_verdict=parent, objection="1. Type: omission",
+            judgment="the judge's reasoning", arm="judgment")[1]["content"]
+
+    flawed_parent, sound_parent = user(FLAWED), user(SOUND)
+
+    # the instruction, and the parent-specific line under it
+    for text in (flawed_parent, sound_parent):
+        assert ("If no alleged defect is real, or every real defect is immaterial, the "
+                "decision stands") in text
+        assert "your final line must be exactly:" in text
+        assert ("Only if a real, material defect changes what is true of the text do you "
+                "end on the other line instead.") in text
+
+    stands_flawed = "\n\nConclusion: the original text in <solution> contains a flaw\n\n"
+    stands_sound = ("\n\nConclusion: the original text in <solution> does not contain a "
+                    "flaw\n\n")
+    assert stands_flawed in flawed_parent and stands_sound not in flawed_parent
+    assert stands_sound in sound_parent and stands_flawed not in sound_parent
+
+    # it is the line that RESTATES the decision, not the other one — one `not` away from
+    # inverting every ruling in the experiment
+    assert conclusion_line_for(FLAWED).endswith("contains a flaw")
+    assert conclusion_line_for(SOUND).endswith("does not contain a flaw")
+    with pytest.raises(ValueError, match="verdict must be one of"):
+        conclusion_line_for("MAYBE")
+
+    # the two-line menu still closes both prompts, after the instruction
+    for text, parent in ((flawed_parent, FLAWED), (sound_parent, SOUND)):
+        assert text.rstrip().endswith(
+            "Conclusion: the original text in <solution> contains a flaw\n"
+            "Conclusion: the original text in <solution> does not contain a flaw")
+        assert text.index("your final line must be exactly:") < text.index(
+            "state what is true of the text inside <solution>, formatted exactly as one "
+            "of:")
+
+
+def test_the_two_conclusion_lines_are_one_pair_everywhere():
+    """`CONCLUSION_LINES` is written out verbatim in both ruling templates and parsed
+    back by `CONCLUSION_RE` / `_CONCLUSION_VERDICTS`. All three have to agree: this pair
+    is one `not` away from inverting every ruling in the experiment, and the materiality
+    prompt now interpolates one of them into its own body."""
+    from exp2.prompts import (
+        CONCLUSION_LINES, CONCLUSION_RE, RECOURSE_JUDGE_CLOSING, RECOURSE_JUDGE_USER,
+        RECOURSE_JUDGE_USER_JUDGMENT, parse_ruling_output,
+    )
+
+    assert set(CONCLUSION_LINES) == {FLAWED, SOUND}
+    for verdict, line in CONCLUSION_LINES.items():
+        # written out in both templates
+        assert line in RECOURSE_JUDGE_USER, verdict
+        assert line in RECOURSE_JUDGE_USER_JUDGMENT, verdict
+        # and named in the repair, so a reply that misses it is asked for the same thing
+        assert line.removeprefix("Conclusion: ") in RECOURSE_JUDGE_CLOSING, verdict
+        # and it parses back to the verdict it asserts
+        assert CONCLUSION_RE.search(line) is not None, verdict
+        assert parse_ruling_output(f"reasons\n\n{line}")[0] == verdict, verdict
+
+
+def test_the_ruling_records_which_prompt_ruled():
+    """Both prompts produce `stated_conclusion`, so nothing else on the record tells a
+    reader which was sent. It defaults to `object_level` for the ~3,175 ruling.json
+    files already on disk, every one of which was made under that prompt."""
+    from exp2.prompts import ruling_prompt_form
+    from exp2.types import RULING_PROMPT_FORMS, Ruling
+
+    assert ruling_prompt_form("judgment") == "materiality"
+    for arm in ("neutral", "partisan_advocate", "partisan_assigned", "partisan_auditor"):
+        assert ruling_prompt_form(arm) == "object_level", arm
+
+    def ruling(**kw):
+        return Ruling(form="stated_conclusion", ruling="UPHOLD", protocol="judge_only",
+                      parent_verdict=FLAWED, verdict=FLAWED, parse_mode="strict",
+                      raw="r", call_id="c", finish_reason="stop", correct=True, **kw)
+
+    assert ruling().prompt_form == "object_level"
+    assert ruling(prompt_form="materiality").to_dict()["prompt_form"] == "materiality"
+    # a record written before the field existed still loads, and says something true
+    old = ruling().to_dict()
+    del old["prompt_form"]
+    assert Ruling.from_dict(old).prompt_form == "object_level"
+    with pytest.raises(ValueError, match="prompt_form must be one of"):
+        ruling(prompt_form="whatever")
+    assert RULING_PROMPT_FORMS == ("object_level", "materiality")
 
 
 def test_the_solo_recourse_turn_asks_for_reconsideration_not_capitulation():
@@ -1107,6 +1421,106 @@ def test_the_ruling_agreement_reader_answers_in_the_judges_own_vocabulary():
                    build_ruling_agreement_messages("The step is wrong."))
     assert "The step is wrong." in sent
     assert "Conclusion:" not in sent and "Ruling:" not in sent
+
+
+def test_the_object_level_reader_is_byte_identical_for_every_other_ruling():
+    """The instrument is keyed on the RULING's `prompt_form`, and every ruling in every
+    finished tree — the sweep's 1,122, the re-contest's 464, all three rerule trees, and
+    every neutral or partisan ruling this run makes — is `object_level`. If keying it had
+    moved that prompt by one character, `ruling_line_mismatch` would stop being
+    comparable across them."""
+    from exp2.prompts import (
+        RULING_AGREEMENT_SYSTEM, RULING_AGREEMENT_USER, build_ruling_agreement_messages,
+        neutralise_tags,
+    )
+
+    expected = [
+        {"role": "system", "content": RULING_AGREEMENT_SYSTEM},
+        {"role": "user", "content": RULING_AGREEMENT_USER.format(
+            reasoning=neutralise_tags("The step is wrong."))},
+    ]
+    # the call as it was made before the mode parameter existed, and the explicit one
+    assert build_ruling_agreement_messages("The step is wrong.") == expected
+    assert build_ruling_agreement_messages(
+        "The step is wrong.", mode="object_level") == expected
+
+    with pytest.raises(ValueError, match="unknown ruling-agreement mode"):
+        build_ruling_agreement_messages("x", mode="materiality-ish")
+
+
+def test_the_materiality_reader_asks_the_question_that_prose_answers():
+    """Pilot 2 measured why. Under the materiality ruling prompt an UPHELD ruling's prose
+    argues about the DEFECT — "not real", "not material" — and reaches the text only by
+    implication, so the object-level reader mis-read it: `ruling_line_mismatch` read
+    13/37 = 35.1% and **12 of the 13 alarms were on upholds** (48% of upholds against 8%
+    of overturns), with `medqa-train_3754` hand-checked as the instrument's error and not
+    the judge's."""
+    from exp2.prompts import (
+        RULING_AGREEMENT_SYSTEM, build_ruling_agreement_messages,
+        parse_ruling_agreement_materiality_output,
+    )
+
+    system, user = (m["content"] for m in build_ruling_agreement_messages(
+        "The defect is real but does not change the conclusion.", mode="materiality"))
+    assert system != RULING_AGREEMENT_SYSTEM
+    # the two steps the judge was asked for, so the reader knows what it is reading
+    assert "is each alleged defect real" in system
+    assert "is it material" in system
+    # the three answers, and what each means
+    assert "STANDS — no alleged defect is real, or the real ones are not material" in system
+    assert "CHANGED — at least one alleged defect is real AND material" in system
+    assert "Answer NEITHER rather than picking the closer of the two." in system
+    # the trap the object-level reader also carries, restated for this vocabulary
+    assert ('"The defect is real but the text still reaches the right conclusion" is '
+            "STANDS, not CHANGED.") in system
+    # the prose is shown; no decision line, and NOT which way the decision went — the
+    # mapping needs the parent, the reading does not
+    assert "The defect is real but does not change the conclusion." in user
+    assert "Conclusion:" not in user and "Ruling:" not in user
+    assert "FLAWED" not in user and "SOUND" not in user
+    assert "`Reading: STANDS`, `Reading: CHANGED`, or `Reading: NEITHER`" in user
+
+    word, reasoning, mode = parse_ruling_agreement_materiality_output(
+        "It finds the defect real but immaterial.\nReading: STANDS")
+    assert word == "STANDS" and mode == "strict"
+    assert reasoning == "It finds the defect real but immaterial."
+    assert parse_ruling_agreement_materiality_output("Reading: NEITHER")[0] == "NEITHER"
+    assert parse_ruling_agreement_materiality_output(
+        "Reading: STANDS\nno wait\nReading: CHANGED")[0] == "CHANGED"   # last match
+    # the two vocabularies are separate patterns on purpose: a reader that answered the
+    # other prompt's words is refused and repaired, never read as something it did not say
+    for bad in ("Reading: FLAWED", "Reading: SOUND",
+                "Reading: <STANDS|CHANGED|NEITHER>", "Reading: MAYBE"):
+        with pytest.raises(MalformedOutputError):
+            parse_ruling_agreement_materiality_output(bad)
+
+
+def test_the_materiality_reading_maps_onto_the_parents_verdict():
+    """STANDS means the reasoning leaves the decision where it was, so what it concludes
+    about the text IS the decision's own verdict; CHANGED means the other one. Done in
+    code, not by the model: the failure being measured is a translation between two
+    vocabularies, and a model asked to translate would inherit it."""
+    from exp2.prompts import MATERIALITY_READINGS, prose_conclusion_for_reading
+
+    assert MATERIALITY_READINGS == ("STANDS", "CHANGED", "NEITHER")
+    # both parent directions, which is the whole of the mapping
+    assert prose_conclusion_for_reading("STANDS", FLAWED) == FLAWED
+    assert prose_conclusion_for_reading("CHANGED", FLAWED) == SOUND
+    assert prose_conclusion_for_reading("STANDS", SOUND) == SOUND
+    assert prose_conclusion_for_reading("CHANGED", SOUND) == FLAWED
+    # NEITHER passes through in both, and still counts as a mismatch downstream
+    assert prose_conclusion_for_reading("NEITHER", FLAWED) == "NEITHER"
+    assert prose_conclusion_for_reading("NEITHER", SOUND) == "NEITHER"
+    from exp2.prompts import PROSE_CONCLUSIONS
+
+    for reading in MATERIALITY_READINGS:
+        for parent in (FLAWED, SOUND):
+            assert prose_conclusion_for_reading(reading, parent) in PROSE_CONCLUSIONS
+
+    with pytest.raises(ValueError, match="reading must be one of"):
+        prose_conclusion_for_reading("MAYBE", FLAWED)
+    with pytest.raises(ValueError, match="parent_verdict must be one of"):
+        prose_conclusion_for_reading("STANDS", "NEITHER")
 
 
 def test_a_recorded_rulings_prose_is_stripped_of_both_decision_vocabularies():

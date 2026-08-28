@@ -771,6 +771,12 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             if ruling_path.is_file():
                 ruling = json.loads(ruling_path.read_text())
                 row["ruling_form"] = ruling.get("form")
+                # WHICH PROMPT ruled, not which form the answer took. Both prompts
+                # produce `stated_conclusion`, so without this column a materiality
+                # ruling and an object-level one are the same row. Defaulted here as
+                # well as on the dataclass, because the trees already on disk hold
+                # `ruling.json` files written before the field existed.
+                row["ruling_prompt_form"] = ruling.get("prompt_form", "object_level")
                 row["changed_the_decision"] = ruling.get("changed_the_decision")
                 row["final_correct"] = ruling.get("correct")
                 reading_path = contest / "ruling_agreement.json"

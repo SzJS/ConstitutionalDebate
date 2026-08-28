@@ -41,6 +41,7 @@ from .prompts import (
     build_challenger_messages,
     build_comprehension_messages,
     build_recourse_judge_messages,
+    RULING_READER_ROLES,
     build_ruling_agreement_messages,
     build_solo_recourse_message,
     conversation_spent_a_repair,
@@ -49,8 +50,11 @@ from .prompts import (
     parse_comprehension_output,
     parse_defects,
     parse_objection_output,
+    parse_ruling_agreement_materiality_output,
     parse_ruling_agreement_output,
     parse_ruling_output,
+    prose_conclusion_for_reading,
+    ruling_prompt_form,
     parse_verdict_output,
     ruling_conclusion_line,
     strip_decision_lines,
@@ -314,14 +318,27 @@ async def _rule_by_judge(
     judge was getting wrong. `outputs/rerule-smoke/review.md` is the three-variant smoke
     that chose the wording; DESIGN.md records the decision.
 
+    **Which user prompt is sent depends on the OBJECTION'S arm.** A judgment-variant
+    objection alleges defects in the judgment, and the object-level prompt tells the
+    judge to disregard the decision's reasoning — the only thing that objection is
+    about. So that arm gets `RECOURSE_JUDGE_USER_JUDGMENT`, which shows the judgment and
+    asks the two-step materiality question, and every other arm gets the prompt it
+    always got. `Ruling.prompt_form` records which, because both produce a
+    `stated_conclusion` ruling and nothing else on the record distinguishes them.
+
     The arithmetic goes through `resolve_ruling` in the same direction as before, so the
     `Ruling` invariant is checked rather than asserted: `ruling` is chosen so that
     `resolve_ruling(ruling, parent) == verdict`, and `Ruling.__post_init__` re-derives it
     and refuses the record if the two ever disagree.
     """
+    # `arm` is the OBJECTION's arm and not the config's variant. A re-rule pass reads
+    # finished objections out of another tree, so the config in front of it need not be
+    # the one that wrote them; keying on the challenge is what makes each objection ruled
+    # in the form it was written in — see `build_recourse_judge_messages`.
     messages = build_recourse_judge_messages(
         record.item, record.sides, record.challenger_view(),
         decision_verdict=record.verdict.verdict, objection=challenge.text,
+        judgment=record.decision_grounds, arm=challenge.arm,
     )
     (conclusion, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
@@ -338,6 +355,7 @@ async def _rule_by_judge(
     verdict = resolve_ruling(word, parent)
     return Ruling(
         form="stated_conclusion", ruling=word, protocol=config.recourse_protocol,
+        prompt_form=ruling_prompt_form(challenge.arm),
         parent_verdict=parent, verdict=verdict, parse_mode=parse_mode,
         conclusion_line=ruling_conclusion_line(completion.content),
         raw=completion.content, call_id=completion.call_id,
@@ -380,17 +398,32 @@ async def judge_ruling_prose(
     never sees it, or any decision line: `strip_decision_lines` takes both vocabularies
     off the prose first, so the reading cannot be steered by the answer.
     """
-    messages = build_ruling_agreement_messages(strip_decision_lines(ruling.reasoning))
-    (prose, reasoning, parse_mode), completion, repairs, _, _ = (
+    # Which question to ask is a property of the RULING, not of the config: a materiality
+    # ruling's prose argues about the defect and reaches the text only by implication, so
+    # the object-level reader mis-reads its upholds. Read off `prompt_form` so that a
+    # finished tree — or a mixed one — is always asked the question its rulings answer.
+    mode = ruling.prompt_form
+    materiality = mode == "materiality"
+    messages = build_ruling_agreement_messages(
+        strip_decision_lines(ruling.reasoning), mode=mode)
+    (answer, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=grading.grader_model, messages=messages,
             temperature=AGREEMENT_TEMPERATURE, config=config,
+            # The WIRE role is `ruling_reader` either way — accounting reads `meta`, and
+            # the two readings are one probe. Only the repair is per-question.
             meta={"role": "ruling_reader", "speaker": None, "round": None,
                   "purpose": "ruling_agreement"},
-            parse=parse_ruling_agreement_output, role="ruling_reader", word_limit=0,
+            parse=(parse_ruling_agreement_materiality_output if materiality
+                   else parse_ruling_agreement_output),
+            role=RULING_READER_ROLES[mode], word_limit=0,
             max_tokens=grading.max_tokens,
         )
     )
+    # STANDS -> the parent's own verdict, CHANGED -> the other, NEITHER unchanged. Done
+    # here so `prose_conclusion` keeps its three values and `mismatch` keeps its meaning.
+    prose = (prose_conclusion_for_reading(answer, ruling.parent_verdict)
+             if materiality else answer)
     return RulingAgreement(
         prose_conclusion=prose, line_conclusion=ruling.verdict, reasoning=reasoning,
         ruling_form=ruling.form, parent_verdict=ruling.parent_verdict,

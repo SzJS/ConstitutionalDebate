@@ -96,6 +96,13 @@ CHALLENGER_VARIANTS: tuple[str, ...] = (
 # of a string literal each, and so a reader of any of them can find the other two.
 JUDGMENT_VARIANT = "judgment"
 
+# The default arm, named for the same reason: it is what every paid run before
+# 2026-08-27 wrote, it is `Challenge.arm`'s default, and since 2026-08-28 it is also the
+# arm whose objections the recourse judge rules in the OBJECT-LEVEL form. A ruling
+# prompt keyed on a string literal would be one refactor away from re-ruling the neutral
+# arm under the materiality prompt its objections were never written for.
+NEUTRAL_VARIANT = CHALLENGER_VARIANTS[0]
+
 
 def _default_config_path() -> Path:
     """Locate ``default.toml``.
@@ -415,7 +422,7 @@ WHY: dict[str, str] = {
     "challenger_temperature": "0.7 — a generative role like a debater, not a verdict like the judge: at 0 every stakeholder would write the same objection, and variance across objections is part of what is measured.",
     "comprehension_model": "unset means the challenger model — the probe asks the reader about what it just read.",
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
-    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above.",
+    "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above. Since 2026-08-28 it also selects the RULING prompt, through the objection's arm rather than through this field: a judgment objection alleges defects in the judgment, and the object-level ruling prompt tells the judge to disregard the decision's reasoning, so that arm is ruled on MATERIALITY instead — is each alleged defect real against the record, and does addressing a real one change what is true of the text. Every other arm's ruling prompt is byte-identical to what it always was, and `ruling_prompt_form` in the index says which ruled.",
 }
 
 

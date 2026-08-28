@@ -146,6 +146,8 @@ How we should measure these: A) measure the rate of valid objections per all obj
 
 Note that only a debate has a judgment, so the way we will measure success here is by comparing debate with and without the judgment-contest. If, with contest, metrics improve in a statistically significant way, that's evidence that contestability works well for debate.
 
+**Recourse for a judgment-challenge (materiality).** A procedural objection does not claim the verdict is wrong, so the recourse judge is not asked to re-decide the problem. It is shown the judgment and rules in two steps: is the alleged defect real, checked against the record; and if so, does addressing it — the omitted point, the corrected quotation, the resolved contradiction — change the conclusion about the text? The decision stands otherwise. The neutral arm keeps its ruling; each arm is ruled in the form its objection has.
+
 ## Challenger and judge model variance
 We should check whether contestability is lower when the challenger and the judge models are different; maybe the judge would simply agree with its own reasoning. This now applies to the *recourse* judge as well: the challenger and the recourse judge are the same weak model, so a ruling may be the model agreeing with its own objection.
 
