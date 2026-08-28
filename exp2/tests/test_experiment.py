@@ -1158,12 +1158,26 @@ async def test_the_gate_adds_an_admission_and_replaces_nothing(tmp_path, no_netw
     # source contest may have had no calls.jsonl of its own to rename)
     assert any((path.parent / "calls.source.jsonl").is_file()
                for path in admissions)
-    # and the gate call is OFF the decision path, so it cannot inflate what it gates
+    # AND THE GATE CALL IS OFF THE DECISION PATH, so it cannot inflate what it gates.
+    #
+    # Summed over every wire log in the tree rather than read out of one cell's, for the
+    # reason the `calls.source.jsonl` line above already gives: the offline fixture shares
+    # ONE FakeClient across concurrent cells and hands it whichever writer's sink entered
+    # last, so all three records can land in one directory's `calls.jsonl` and another's
+    # may not exist at all. Which cell wins that race is asyncio scheduling, so an
+    # assertion about `admissions[0]`'s own log is a coin toss. What is true of the STAGE,
+    # and is what this check is for, is true of the union: three gatekeeper calls, none of
+    # them on the decision path.
     from exp2.accounting import aggregate_calls
 
-    totals = aggregate_calls(admissions[0].parent / "calls.jsonl")
-    assert "gatekeeper" not in totals["decision_path"]
-    assert totals["by_role"]["gatekeeper"]["calls"] == 1
+    per_run = [aggregate_calls(path) for path in
+               sorted(root.glob("cells/*/contests/*/runs/*/calls.jsonl"))]
+    assert sum(t["by_role"].get("gatekeeper", {}).get("calls", 0)
+               for t in per_run) == 3
+    assert all(set(t["by_role"]) == {"gatekeeper"} for t in per_run)
+    # every one of them counted OFF the path: the decision-path half of each log is empty
+    assert all(t["decision_path"]["calls"] == 0 for t in per_run)
+    assert sum(t["off_path"]["calls"] for t in per_run) == 3
     # temperature 0 and reasoning off, pinned at the call site rather than inherited
     gate_calls = [c for c in no_network.calls if c["meta"]["role"] == "gatekeeper"]
     assert {c["temperature"] for c in gate_calls} == {0.0}
