@@ -558,33 +558,82 @@ def matched_items(rows: Sequence[dict], conditions: Sequence[str]) -> dict[str, 
 # contradict itself is where "folds under any pushback" bites hardest; under
 # `third_party` nobody re-decides their own appeal and that sentence is simply false.
 # The rows say which happened — `ruling_form` is `restated_verdict` for an in-
-# conversation re-decision and `uphold_overturn` for a judge's ruling — so the caveat is
-# read off the index rather than asserted.
+# conversation re-decision, and `uphold_overturn` or `stated_conclusion` for a
+# third-party judge's ruling — so the caveat is read off the index rather than asserted.
+# Both judge forms count: `stated_conclusion` is the SAME third-party recourse judge
+# since 2026-08-27, asked for an absolute conclusion instead of a relative word
+# (`recourse._rule_by_judge`), and reading it as an in-conversation re-decision put the
+# sentence "this bites hardest on single and self_critique" on every run made after the
+# ruling-line fix — including debate-only ones that have neither condition.
 _SPECIOUS_CAVEAT_IN_CONVERSATION = (
     "There is no specious-objection control, so a high revision rate cannot be "
     "distinguished from a re-decider that folds under any pushback. This bites "
     "hardest on single and self_critique, whose contest asks a model to contradict "
     "itself in its own conversation."
 )
-_SPECIOUS_CAVEAT_THIRD_PARTY = (
+# The ruling forms the third-party recourse judge produces: the historical relative
+# line and the absolute conclusion that replaced it. `restated_verdict` is the only
+# form that is NOT one — it is the deciding model re-deciding in its own conversation.
+_THIRD_PARTY_FORMS = frozenset({"uphold_overturn", "stated_conclusion"})
+_SPECIOUS_CAVEAT_THIRD_PARTY_HEAD = (
     "There is no specious-objection control, so a high revision rate cannot be "
     "distinguished from a judge that overturns under any pushback. Every ruling here "
     "was made by the third-party recourse judge, so no condition adjudicates its own "
     "appeal — but one asymmetry survives it: that judge is the same weak model that "
-    "DECIDED the debate condition and decided neither single nor self_critique, so it "
-    "is ruling on its own decision in one condition of three."
+    "DECIDED the debate condition"
 )
+# Small words for small counts. A caveat is prose and "one condition of 3" reads as a
+# template that nobody finished; past six the digit is clearer than the word anyway.
+_COUNT_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
 
 
-def _specious_objection_caveat(rows: Sequence[dict]) -> str:
+def _joined(names: Sequence[str], conjunction: str) -> str:
+    names = list(names)
+    if len(names) == 1:
+        return names[0]
+    return f"{', '.join(names[:-1])} {conjunction} {names[-1]}"
+
+
+def _specious_caveat_third_party(conditions: Sequence[str]) -> str:
+    """The third-party caveat, with its tail read off THIS RUN's conditions.
+
+    The tail used to be the constant "and decided neither single nor self_critique, so
+    it is ruling on its own decision in one condition of three". That sentence is a
+    statement about the three-condition sweep, and the debate-only judgment run has one
+    condition: it named two conditions the run does not contain and put the asymmetry at
+    a third of the grid when it is the whole of it. The conditions are already threaded
+    into ``caveats``; this reads them rather than assuming them.
+    """
+    others = [c for c in conditions if c != "debate"]
+    if "debate" not in conditions:
+        # The recourse judge decided none of the conditions in front of it, so the
+        # asymmetry the rest of this sentence describes does not arise. Said explicitly:
+        # an absent caveat and an inapplicable one are different facts.
+        return (_SPECIOUS_CAVEAT_THIRD_PARTY_HEAD
+                + " — which this run does not contain, so on these "
+                + f"{_joined(list(conditions), 'and') or 'cells'} it is ruling on a "
+                "decision it did not make and that asymmetry does not arise here.")
+    if not others:
+        return (_SPECIOUS_CAVEAT_THIRD_PARTY_HEAD
+                + ", and debate is the run's ONLY condition, so it is ruling on its own "
+                "decision on every cell here — the asymmetry is not one condition of "
+                "several, it is the whole run.")
+    count = _COUNT_WORDS.get(len(conditions), str(len(conditions)))
+    return (_SPECIOUS_CAVEAT_THIRD_PARTY_HEAD
+            + f" and did not decide {_joined(others, 'or')}, so it is ruling on its own "
+            f"decision in one condition of {count}.")
+
+
+def _specious_objection_caveat(rows: Sequence[dict],
+                               conditions: Sequence[str]) -> str:
     """Which form of the caveat this run's rulings make true.
 
     An index with no rulings at all gets the historical text: the absence of evidence
     that every appeal went to a third party is not evidence that it did.
     """
     forms = {row.get("ruling_form") for row in rows} - {None}
-    if forms and forms <= {"uphold_overturn"}:
-        return _SPECIOUS_CAVEAT_THIRD_PARTY
+    if forms and forms <= _THIRD_PARTY_FORMS:
+        return _specious_caveat_third_party(conditions)
     return _SPECIOUS_CAVEAT_IN_CONVERSATION
 
 
@@ -689,7 +738,7 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         "self_critique are decided by the STRONG model, so the wrong-sets differ in "
         "size and character by construction. There is no weak_alone condition, so a "
         "debate-vs-single difference cannot separate the mechanism from model strength.",
-        _specious_objection_caveat(rows),
+        _specious_objection_caveat(rows, conditions),
         _ruling_line_caveat(rows),
         "Rates are not pooled across label_basis: injected_pair, sentence_labels and "
         "final_answer are three different claims about what 'flawed' means. medqa's "

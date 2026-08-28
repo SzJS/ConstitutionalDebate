@@ -1,0 +1,198 @@
+# The debate-only judgment-challenge run: the sweep's 1,644 decided debate cells,
+# audited, and their accuracy before and after.
+#
+# THE QUESTION, and it is not the between-condition one. Only a debate publishes a
+# judgment that is a document other than the decision itself: `single`'s record IS its
+# justification and `self_critique`'s is the same model's own drafts, so auditing the
+# judgment against the record is a procedure that exists in one condition and is
+# undefined in the other two (`records/pick-auditor/DECISION.md`). Success is therefore
+# measured WITHIN debate and PAIRED: the same decided debate cells, their accuracy
+# before recourse and after it. `DESIGN.md`, `## Judgment-challenge`: "only a debate has
+# a judgment, so the way we will measure success here is by comparing debate with and
+# without the judgment-contest. If, with contest, metrics improve in a statistically
+# significant way, that's evidence that contestability works well for debate."
+#
+#   * population — EVERY DEBATE CELL THE SWEEP DECIDED: 1,644 of the 2,110 debate cells,
+#     read through `decisions_from`; the other 466 were lost to truncation in the sweep
+#     and are skipped here with `no decision to contest`. Before recourse those 1,644
+#     are 956 correct / 688 wrong = 58.2%.
+#   * primary endpoint — NET ACCURACY CHANGE AFTER RECOURSE: cells fixed (wrong made
+#     right) minus cells broken (right made wrong), tested with an EXACT TWO-SIDED
+#     McNEMAR on the discordant pairs, alpha = 0.05. "Metrics improve" means this is
+#     positive and significant. The test, and every table under it, is
+#     `records/derivations/judgment-debate-vs-alone.py`, which reads committed
+#     `index.jsonl` files and nothing else.
+#   * secondary, descriptive — correction rate on wrong decisions and breakage rate on
+#     correct ones (their difference is the discrimination); accuracy after with a 95%
+#     Wilson interval; the valid-objection rate per objection, split by whether the
+#     decision was correct; defects alleged and valid by type; `misattributed_quote`;
+#     `ruling_line_mismatch`, whose measured ~6% residual applies here as everywhere.
+#   * third paired arm, already paid for — debate + NEUTRAL recourse
+#     (`records/experiments/rerule/recontest/`, the same cells, the same third-party
+#     recourse judge, the corrected ruling line). Procedural-after against
+#     neutral-after, by McNemar too. Its baseline on these 1,644 cells: 54 objections
+#     raised, 17 fixed, 16 broken, net +1.
+#
+# The pre-registration is `records/experiments/judgment-debate/PREREG.md` and is
+# COMMITTED BEFORE THIS SPEC IS RUN.
+#
+# THE CHALLENGER IS `google/gemini-2.5-flash`, AND THAT IS A DISCLOSED DEPARTURE. The
+# auditor probe (`records/pick-auditor/`) pre-registered floors in `RULES.md` before any
+# candidate was called, and NO CANDIDATE CLEARED THEM — the rule picked nobody. Flash is
+# the closest: on debate judgments it catches misattributions and contradictions (~95%),
+# misses a quarter of misquotes (71%) and two omissions in three (32%), and invents a
+# defect on 15% of controls. It is chosen AFTER the numbers, as the best available
+# auditor for a debate-only test, and that sentence stands in `DECISION.md`, in
+# `PREREG.md` and in the write-up. The 15% control false-alarm rate is the reason the
+# stated confound below is stated.
+#
+# THE STATED CONFOUND. A valid procedural objection does not imply a wrong verdict. If
+# flash raises on most cells, what the endpoint mostly measures is the third-party
+# recourse judge (`openai/gpt-4.1-nano`) re-ruling with an objection in hand. The
+# specious-objection control — every cell re-ruled on a placeholder objection — is what
+# separates "a second look" from "the audit", and it is NOT in this run.
+#
+# THE VARIANT, unchanged from `judgment.toml`. The challenger is not asked whether the
+# verdict is right. It audits the JUDGMENT — here always the debate judge's reasoning —
+# against the published record, for three defect types: a self-contradiction, a
+# misstatement of the record, or an omission (a point made in the record that bears on
+# the verdict and the judgment does not address). Object-level truth is explicitly out
+# of scope: it may not argue the physics, the law or the code, and an error the judgment
+# inherits from the record is not a defect of the judgment (DESIGN.md,
+# `## Judgment-challenge`). Downstream, all of it keyed off
+# `challenger_variant = "judgment"`:
+#
+#   * the objection is a numbered defect list, each defect quoting the judgment and the
+#     record, closing on the same `Decision: STANDS|REVERSE` line as every other arm;
+#   * `parse_defects` checks at parse time whether each `Judgment says:` quotation is
+#     really in the judgment, and a defect that fails is never sent to the grader —
+#     `challenge_defects_n` and `challenge_defects_misattributed_n` in the index, the
+#     `misattributed_quote` rate in the analysis;
+#   * the `agreement` stage asks its question about the JUDGMENT (does this text
+#     identify at least one defect) rather than about the verdict;
+#   * the grade is a JUDGMENT AUDIT: each alleged defect is checked against the record
+#     by the grader, with `flaw.json` never opened — so every subset is gradable, gpqa
+#     included, and validity is defined on sound items and on CORRECT decisions too.
+#
+# This spec CONTESTS decisions; it does not make any. `decisions_from` names the tree
+# whose decisions are read — nothing under it is ever written to — and this run writes
+# only its own contests, rulings, agreements, grades and index. `--stage decide` refuses
+# on a spec with that key. Nothing is regenerated: the cost is the measurement layers
+# only — contest, agreement, the rulings and their readings on however many objections
+# are raised, and the judgment grader on every contested cell.
+#
+#     RUN_SWEEP_STAGES="contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/judgment-debate.toml \
+#         > outputs/judgment-debate-driver.log 2>&1 &
+#
+# RUN ONLY ON GO, AND ONLY AFTER THE INSTRUMENT CHECK.
+# `experiments/judgment-debate-pilot.toml` runs these same stages on 60 of these cells
+# first; its gate is that the instrument works — flash raises objections, some are
+# graded valid, `misattributed_quote` is low, the grader verifies against the record
+# rather than rubber-stamping, and each ruling's line agrees with its own prose — not a
+# threshold on the result, which is what THIS run measures. Projected from that pilot's
+# per-stage spend: on the order of $22 and 1-1.5 h for 1,644 cells.
+#
+# READ FIRST: ../HANDOFF.md section 5 for the run order and the stop triggers.
+#
+name = "judgment-debate"
+cases = "data/cases/ftf-all.jsonl"
+decisions_from = "outputs/experiments/sweep"
+
+# ONE CONDITION, and it is the whole point. `single` and `self_critique` are not run
+# because the procedure under test is not defined for them, not because they lost a
+# comparison. 2,110 items x 1 condition x 1 repeat = 2,110 cells, of which the sweep
+# decided 1,644.
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# The decision-path models are copied from `sweep.toml` unedited, even though this run
+# makes no decisions: they are what `config.json` will say a re-contested cell was
+# decided by, and a spec that quietly differed from the tree it reads would make the
+# record wrong about its own provenance.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "openai/gpt-4.1-nano"
+
+# THE ONE MODEL THAT DIFFERS FROM `judgment.toml`, and the disclosed departure above.
+# `openai/gpt-4.1-nano` audited these judgments on the 194-cell slice and could not: 57%
+# of its objections were raised, 6% held up, and in a hand read of 66 of its
+# `Judgment says:` quotations 34 were not in the judgment at all. The probe was
+# commissioned to replace it, pre-registered its floors, and picked nobody; flash is the
+# best of the six on debate judgments and is chosen after the numbers. It is UNPINNED
+# and runs with `reasoning_effort = "off"` — verified live on 2026-08-27
+# (`outputs/pick-auditor/liveness.json`), which is what excluded every Pro-class Gemini
+# and `gemini-3.7-flash`: they answer `HTTP 400: Reasoning is mandatory for this
+# endpoint and cannot be disabled`, and a challenge written partly in a provider channel
+# no reader can inspect is what the transparency claim rules out.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE VARIANT. It selects the challenger's whole task — its system prompt, its objection
+# format, the `agreement` question asked of its prose, and which grader reads it — and
+# nothing else: the flaw definition, the record it is shown, the length rule, the
+# two-section format and the decide-last `Decision: STANDS|REVERSE` line are shared with
+# the neutral arm. It is written into every `challenge.json` as `arm` and into
+# `index.jsonl` as `challenge_arm`, and every `grade.json` it produces carries
+# `mode = "judgment"`.
+challenger_variant = "judgment"
+
+# Every condition's objection is ruled by a third party — the weak recourse judge — so no
+# decider adjudicates its own appeal. Unchanged from `judgment.toml`, and it is what
+# makes the neutral arm (`rerule-recontest`, same judge, same corrected line) a paired
+# comparison rather than a different mechanism.
+recourse_form = "third_party"
+
+# Stated rather than inherited, because under `third_party` it is no longer debate's
+# judge alone: it is the one party that hears every appeal in the experiment. Unset it
+# would mean `judge_model`, which is this same weak model — the value is identical and
+# the point is that it is now visible. It is also the residual asymmetry the analysis
+# caveat names: this judge decided the debate condition and now rules on its appeal.
+recourse_judge_model = "openai/gpt-4.1-nano"
+
+# Unchanged from `sweep.toml`. The cap for the roles that emit a decision line -- judge,
+# challenger, recourse judge, comprehension probe -- none of which has truncated in four
+# runs.
+max_tokens = 16384
+
+# Unchanged from `sweep.toml`. The cap for the roles that produce record text: debaters,
+# the solo stages, the critic. Nothing here generates record text, but the value is what
+# the copied decision was made under and is kept for that reason.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+# Copied from `sweep.toml` unedited. It binds the strong model, which this run does not
+# call; the challenger (`google/gemini-2.5-flash`) and the recourse judge
+# (`gpt-4.1-nano`) are not in this table and so are unpinned, as every challenger in
+# every run so far has been. Verify the slugs before any run that does call the strong
+# model:
+#     uv run python records/derivations/sweep-1-provider-check.py <spec>
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# provider_allow_fallbacks stays at its default False. No fallback is added to make a
+# row pass; a pin that silently falls back is not a pin.
+
+[client]
+# 16/8, as the sweep proved. The contest stages are two or three short calls per cell
+# where `decide` was up to seven strong-model ones, so this is if anything conservative
+# here.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each contest directory carries a full copy of the decision it contests — read out of
+# the SOURCE tree and written into this one. That is what makes a contest record
+# self-contained, and it is why this tree costs disk although it decides nothing.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint, for the `agreement` stage
+# that reads line against prose, for the `ruling_agreement` stage that reads the
+# recourse judge's line against its prose, and for the grader — which under this variant
+# is the JUDGMENT grader, checking each alleged defect against the record. Held equal to
+# the neutral run's so the phantom rate and the ruling-line residual stay measured by
+# the same reader. No `anthropic/*` challenger for the same reason: a challenger graded
+# by itself is a confound `DESIGN.md` names.
+grader_model = "anthropic/claude-haiku-4.5"

@@ -116,6 +116,65 @@ def test_the_grader_model_is_not_a_batch_tier_id():
         assert not model.endswith(":batch"), f"{spec} would send {model}"
 
 
+def test_the_debate_only_judgment_specs_differ_from_their_parents_in_three_places():
+    """`judgment-debate{,-pilot}.toml` are `judgment{,-pilot}.toml` with the name, the
+    condition list and the challenger changed, and nothing else.
+
+    The paired endpoint is "the same decided debate cells, before recourse and after",
+    so anything else that drifted — the recourse form, the recourse judge, the grader,
+    the challenger temperature, `decisions_from` — would make the two arms measure
+    different mechanisms rather than the same one with and without the audit. The
+    challenger is `google/gemini-2.5-flash` and that is a DISCLOSED departure: the
+    auditor probe's pre-registered rule picked nobody (`records/pick-auditor/RULES.md`)
+    and flash was chosen after the numbers.
+    """
+    import tomllib
+
+    from exp2.config import DEFAULT_CONFIG_PATH
+
+    experiments = DEFAULT_CONFIG_PATH.parent.parent / "experiments"
+
+    def load(name):
+        return tomllib.loads((experiments / name).read_text(encoding="utf-8"))
+
+    for parent_name, child_name in (("judgment-pilot.toml", "judgment-debate-pilot.toml"),
+                                    ("judgment.toml", "judgment-debate.toml")):
+        parent, child = load(parent_name), load(child_name)
+        assert child["conditions"] == ["debate"]
+        assert child["debate"]["challenger_model"] == "google/gemini-2.5-flash"
+        assert child["debate"]["challenger_variant"] == "judgment"
+        assert child["decisions_from"] == parent["decisions_from"]
+        # every other key, at both levels, is the parent's verbatim
+        # ([debate] is compared separately below, minus the one model that moved)
+        changed = {"name", "conditions", "debate"}
+        assert {k: v for k, v in child.items() if k not in changed} == {
+            k: v for k, v in parent.items() if k not in changed}, child_name
+        assert {k: v for k, v in child["debate"].items() if k != "challenger_model"} == {
+            k: v for k, v in parent["debate"].items() if k != "challenger_model"}
+
+        # the header has to carry the disclosure and the endpoint, because the spec is
+        # what a reader of the tree reaches first
+        text = (experiments / child_name).read_text(encoding="utf-8")
+        assert "McNEMAR" in text
+        assert "NO CANDIDATE CLEARED THEM" in text
+        assert "chosen AFTER the numbers" in text
+        assert "specious-objection control" in text
+
+        # and the loader has to accept it
+        debate, _ = load_config(experiments / child_name)
+        assert debate.challenger_model_for() == "google/gemini-2.5-flash"
+        assert debate.challenger_variant == "judgment"
+        assert debate.recourse_form == "third_party"
+        assert debate.recourse_judge_model == "openai/gpt-4.1-nano"
+        assert debate.challenger_temperature == 0.7
+        # unpinned, as every challenger in every run so far has been
+        assert debate.provider_routing_for("google/gemini-2.5-flash") is None
+        # and it inherits the run's reasoning setting, which is what the probe verified
+        # flash can honour (`outputs/pick-auditor/liveness.json`)
+        assert debate.challenger_reasoning_effort is None
+        assert debate.reasoning_effort == "off"
+
+
 # --- provider routing ---------------------------------------------------------------
 
 

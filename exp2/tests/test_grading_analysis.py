@@ -479,6 +479,103 @@ def test_the_specious_objection_caveat_is_read_off_the_rulings_that_happened():
     assert "contradict itself in its own conversation" in " ".join(
         caveats([row(), row()], ["debate", "single"]))
 
+    # `stated_conclusion` is the SAME third-party judge since the ruling-line fix of
+    # 2026-08-27, asked for an absolute conclusion rather than a relative word. Reading
+    # it as an in-conversation re-decision put "this bites hardest on single and
+    # self_critique" on every run made after that fix, debate-only ones included.
+    restated = " ".join(caveats(
+        [row(ruling_form="stated_conclusion"), row(ruling_form="stated_conclusion")],
+        ["debate"]))
+    assert "contradict itself in its own conversation" not in restated
+    assert "no condition adjudicates its own appeal" in restated
+
+    # mixed forms are still the historical text: one in-conversation ruling is enough
+    # for "a re-decider that folds under any pushback" to be a live reading of the run
+    mixed = " ".join(caveats(
+        [row(ruling_form="stated_conclusion"), row(ruling_form="restated_verdict")],
+        ["debate", "single"]))
+    assert "contradict itself in its own conversation" in mixed
+
+
+def test_the_third_party_caveats_tail_is_read_off_the_runs_own_conditions():
+    """"one condition of three" is a statement about the three-condition sweep.
+
+    The debate-only judgment run has one condition, and the constant tail named two
+    conditions the run does not contain while putting the asymmetry at a third of the
+    grid when it is the whole of it. The conditions are already threaded into
+    `caveats`, so the sentence reads them rather than assuming them.
+    """
+    third_party = [row(ruling_form="stated_conclusion") for _ in range(2)]
+
+    def specious(conditions, rows=third_party):
+        """Just this caveat. The others legitimately name conditions the run does not
+        have — `weak_alone` is a standing statement about the design — so asserting on
+        the joined text would test the wrong sentence."""
+        found = [c for c in caveats(rows, conditions)
+                 if "specious-objection control" in c]
+        assert len(found) == 1, found
+        return found[0]
+
+    # the three-condition sweep: the wording it has always had, with its own count
+    sweep = specious(["single", "self_critique", "debate"])
+    assert "DECIDED the debate condition" in sweep
+    assert "did not decide single or self_critique" in sweep
+    assert "one condition of three" in sweep
+    assert "ONLY condition" not in sweep
+
+    # the debate-only run: no other condition to name, and the asymmetry is the run
+    only = specious(["debate"])
+    assert "DECIDED the debate condition" in only
+    assert "debate is the run's ONLY condition" in only
+    assert "the asymmetry is not one condition of several, it is the whole run" in only
+    # and it must not name a condition the run does not contain, nor miscount the grid
+    assert "single" not in only and "self_critique" not in only
+    # "one condition of <count>" is the fraction-of-the-grid claim, and there is no
+    # fraction here; "one condition of several" is the phrase that replaces it
+    assert not any(f"one condition of {n}" in only
+                   for n in ("one", "two", "three", "1", "2", "3"))
+
+    # two conditions: grammatical, and counted as two
+    assert ("did not decide single, so it is ruling on its own decision in one "
+            "condition of two") in specious(["debate", "single"])
+
+    # a run without debate at all: the recourse judge decided none of what it is ruling
+    # on, so the asymmetry does not arise — said, rather than left absent
+    solo = specious(["single", "self_critique"])
+    assert "that asymmetry does not arise here" in solo
+    assert "single and self_critique" in solo
+    assert "one condition of" not in solo
+
+    # the in-conversation form is untouched by any of this
+    historical = specious(["debate"], rows=[row(ruling_form="restated_verdict")])
+    assert "contradict itself in its own conversation" in historical
+    assert "ONLY condition" not in historical
+
+
+def test_analyse_reads_a_tree_holding_one_condition(tmp_path):
+    """The debate-only judgment run writes an index with `debate` and nothing else.
+    Every per-condition table has to survive that — a KeyError or an empty
+    `set.intersection()` here would surface only after the money was spent."""
+    rows = [row(cell_id="c1", ruling_form="stated_conclusion", final_correct=True),
+            row(cell_id="c2", initially_correct=True, initially_incorrect=False,
+                ruling_form="stated_conclusion", final_correct=False, subset="law")]
+    index = tmp_path / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+
+    metrics = analyse(index, ["debate"])
+    assert metrics["rows"] == 2
+    assert list(metrics["by_condition"]) == ["debate"]
+    assert list(metrics["by_condition_and_subset"]) == ["debate"]
+    assert set(metrics["by_condition_and_subset"]["debate"]) == {"theoremqa", "law"}
+    assert list(metrics["by_condition_and_label_basis"]) == ["debate"]
+    # one condition means no pair to overlap, and the degenerate intersection is that
+    # condition's own wrong set rather than an exception
+    assert metrics["matching"]["per_condition"] == {"debate": 1}
+    assert metrics["matching"]["pairwise_overlap"] == {}
+    assert metrics["matching"]["in_every_condition"] == 1
+    # the caveat that names the other two conditions must not be the one it emits
+    assert "contradict itself in its own conversation" not in " ".join(metrics["caveats"])
+
 
 def test_the_partisan_caveat_fires_only_where_an_advocate_wrote_the_objections():
     """It is a statement about the run, not a standing limitation: on a neutral index it
