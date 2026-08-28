@@ -1,0 +1,68 @@
+# jd5 SMOKE, half 2 of 2 — THREE REAL objections re-ruled under the new Step 1.
+#
+# THIS HALF ASKS WHETHER THE CHECK FIRES TOO HARD, and it is the half that can stop the
+# campaign. The existence check added to Step 1 of `RECOURSE_JUDGE_USER_JUDGMENT` tells
+# the judge that a defect whose `Judgment says:` quotation is not in the judgment is not
+# real. A judge that reads that as "refuse anything not quoted word for word" would
+# throw out the genuine defects of `judgment-debate-3`'s M1 — the real audit, 72.4%
+# graded valid, 1.9% misattributed quotations — and the fix would cost more than it buys.
+#
+# THREE OF M1's OWN OVERTURNS, one per subset, each one graded VALID by Haiku and each
+# one carrying ZERO misattributed quotations, so the quotations really are in the
+# judgment and the check has nothing to fire on. Drawn by
+# `records/derivations/jd5-smoke-pick.py` with the same stated seed, excluding the nine
+# cells of `outputs/jd4-handcheck.md`.
+#
+# NOTHING IS GENERATED. `--stage rerule` copies each source contest here minus its
+# ruling, keeps the old one beside the new as `ruling.source.json`, and makes ONE
+# recourse-judge call per cell. `contest`, `agreement` and `grade` all REFUSE on this
+# spec, and nothing under `outputs/experiments/jd3-main` is written — the same tree is
+# both the decision source and the objection source, because M0 and M1 are one tree.
+#
+#     RUN_SWEEP_STAGES="rerule" scripts/run_sweep.sh \
+#         experiments/jd5-smoke-real.toml \
+#         2>&1 | tee outputs/jd5-smoke-real.log
+#
+# The read is `records/derivations/jd5-smoke-read.py` -> `outputs/jd5-smoke-read.txt`,
+# which prints these three beside the three fabricated ones. Cost: three short calls,
+# about $0.01.
+
+name = "jd5-smoke-real"
+cases = "data/cases/jd5-smoke-real.jsonl"
+
+# M0's decisions and M1's objections are the same tree: `jd3-main` holds both.
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block. No debater, challenger or
+# judge call is made by this spec.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The real audit's variant, stated because the spec re-rules its objections.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+
+# THE ONE MODEL THAT IS CALLED — the same judge that ruled M1.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5"

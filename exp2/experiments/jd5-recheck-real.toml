@@ -1,0 +1,99 @@
+# jd5, ARM 2 of 2 — M1's 896 REAL objections re-ruled under the corrected Step 1.
+#
+# READ FIRST: `records/experiments/judgment-debate-5/PREREG.md`, to be committed before
+# this arm's first paid call. The finding, the prompt change verbatim, the pre-registered
+# directions and the floor, the ablation, the stop rules and the cost are all there.
+#
+# THIS IS THE ARM THAT SAYS WHETHER THE FIX COSTS ANYTHING, and it is the reason the
+# campaign is two arms rather than one. `jd5-recheck-fabricated.toml` can only show that
+# the existence check refuses objections that quote the judgment as saying something it
+# does not say. A check that refuses those by refusing EVERYTHING would look identical on
+# that arm. So the same change is put to the same judge on the REAL audit — M1 of
+# `judgment-debate-3`: 896 objections, **72.4% graded valid**, **1.9% misattributed
+# quotations**, overturn rate **238/895 = 26.6%**, and the arm whose accuracy net against
+# M0 is **P1's −18 (110 fixed / 128 broken, p = 0.27)**.
+#
+# THE FLOOR, WRITTEN DOWN BEFORE THE RUN AND NOT AFTER: if this arm's overturn rate falls
+# below **13.3%**, half of 26.6%, the fix is judged TOO STRICT — the judge is refusing
+# genuine defects over wording — and neither arm's number is used to argue that the
+# existence check is an improvement. `PREREG.md` is where that rule lives and it is the
+# document that governs.
+#
+# NOTHING IS GENERATED AND NO CHALLENGER IS CALLED. `--stage rerule` copies each source
+# contest here minus its ruling, keeps the source ruling beside the new one as
+# `ruling.source.json`, and makes ONE recourse-judge call per contested cell. `contest`,
+# `agreement` and `grade` all REFUSE. `decisions_from` and `contests_from` are the SAME
+# tree because M0 and M1 are one tree by construction (M1's contest rules on M0's own
+# decisions, so the contest stage had to find them in the tree it was writing into), and
+# nothing under it is written — `jd3-main dfa9bdca…` before and after.
+#
+# THE SMOKE RAN FIRST: three of M1's own overturns, each graded VALID with zero
+# misattributed quotations, re-ruled under the new prompt
+# (`experiments/jd5-smoke-real.toml`, $0.0042, three calls) and read in
+# `outputs/jd5-smoke-read.txt`. This half PASSED OUTRIGHT 3/3 — each new ruling looks the
+# quotation up, says it IS in the judgment, and still finds the genuine defect real — which
+# is the evidence that the check does not fire on quotations that are there. Six cells is
+# six cells; this arm is the measurement.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd5-recheck-real.toml \
+#         > outputs/jd5-recheck-real-driver.log 2>&1 &
+#
+# ESTIMATE: the smoke measured $0.00140 per cell for the ruling and jd4's own
+# `ruling_agreement` stage cost $1.8900 over 896 cells = $0.00211, so 896 contested cells
+# cost about **$3.1**, about **$4.1** with 1.3x headroom. The grid is 2,110 cells, the
+# sweep decided 1,644 of them, and only the 896 that carry an objection put anything to a
+# judge; the rest declined or were never decided and are skipped with `no objection to
+# re-rule` / `no decision to rule against`.
+
+name = "jd5-recheck-real"
+
+# THE WHOLE DEBATE GRID, as `jd3-main.toml` ran it — 2,110 items, of which the sweep
+# decided 1,644 and M1 contested 896. The cases file is the corpus rather than jd4's
+# 896-cell file because this arm re-rules M1 in its own tree, and the rerule stage skips
+# every cell with no source objection; taking the population from the cases file instead
+# would silently drop M1's declines from the denominator of the raise rate the index
+# prints.
+cases = "data/cases/ftf-all.jsonl"
+
+# M0's decisions and M1's objections are the same tree. Read-only, both.
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block. No debater, challenger or judge
+# call is made by this spec.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The real audit's variant, stated because this spec re-rules its objections and the index
+# has to say `challenge_arm = "judgment"` rather than inherit the neutral default.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+
+# THE ONE MODEL THAT IS CALLED — the same judge that judged these debates and ruled these
+# objections the first time.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# For `ruling_agreement` only. The `grade` stage REFUSES on this spec: M1's grades came
+# across with the copy and are the same grades `judgment-debate-3` reported.
+grader_model = "anthropic/claude-haiku-4.5"

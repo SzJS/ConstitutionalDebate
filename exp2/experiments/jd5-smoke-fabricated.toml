@@ -1,0 +1,74 @@
+# jd5 SMOKE, half 1 of 2 — THREE FABRICATED objections re-ruled under the new Step 1.
+#
+# THE HOUSE RULE, and this spec exists only to satisfy it: a new or changed prompt is
+# read on about six chosen examples before any slice or paid arm (`HANDOFF.md` §2.8).
+# The change is an existence check at the head of Step 1 of
+# `RECOURSE_JUDGE_USER_JUDGMENT` — find the sentence the objection puts under
+# `Judgment says:` IN THE JUDGMENT before ruling on whether the alleged defect is real.
+# `judgment-debate-4` is why: 896 objections whose judgment quotations were invented by
+# string comparison, 91 of them (10.2%) overturned, and in 8 of 8 overturns read by hand
+# (`outputs/jd4-handcheck.md`) Step 1 was answered off the RECORD quotation alone.
+#
+# THIS HALF ASKS WHETHER THE CHECK FIRES. Three of jd4's OVERTURNS, one per subset,
+# every judgment quotation invented, drawn by `records/derivations/jd5-smoke-pick.py`
+# with a stated seed and excluding the nine cells the hand check already read. An
+# upheld cell could show nothing — the old ruling already refused the objection.
+#
+# NOTHING IS GENERATED. `--stage rerule` copies each source contest here minus its
+# ruling, keeps the old one beside the new as `ruling.source.json`, and makes ONE
+# recourse-judge call per cell. `contest`, `agreement` and `grade` all REFUSE on this
+# spec. Nothing under `outputs/experiments/jd4-fabricated` or
+# `outputs/experiments/jd3-main` is written.
+#
+#     RUN_SWEEP_STAGES="rerule" scripts/run_sweep.sh \
+#         experiments/jd5-smoke-fabricated.toml \
+#         2>&1 | tee outputs/jd5-smoke-fabricated.log
+#
+# The read is `records/derivations/jd5-smoke-read.py` -> `outputs/jd5-smoke-read.txt`,
+# which recomputes every quotation check from the documents and prints the OLD ruling's
+# Step 1 and conclusion beside the NEW one's. Cost: three short calls, about $0.01.
+
+name = "jd5-smoke-fabricated"
+cases = "data/cases/jd5-smoke-fabricated.jsonl"
+
+# The decisions are M0's, as jd4's rulings were made against them.
+decisions_from = "outputs/experiments/jd3-main"
+# The objections are jd4's, copied and ruled again. Read-only.
+contests_from = "outputs/experiments/jd4-fabricated"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd4-fabricated.toml`'s decision-path block. No debater, challenger
+# or judge call is made by this spec; these values name the tree being read and are what
+# `config.json` will say the copied contest was written under.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The variant the objections were WRITTEN under, stated so the index and the caveats say
+# what these objections are. Not one challenger call is made here.
+challenger_variant = "judgment_fabricated"
+
+recourse_form = "third_party"
+
+# THE ONE MODEL THAT IS CALLED, and it is the same judge jd4 used — the whole point is
+# that the same judge, on the same objections, under a prompt that differs in Step 1 and
+# nowhere else, is asked again.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+grader_model = "anthropic/claude-haiku-4.5"

@@ -1,0 +1,33 @@
+{
+  "defects": [
+    {
+      "index": 1,
+      "type": "misstatement",
+      "valid": false,
+      "reason": "quote not in judgment",
+      "alleged": true
+    },
+    {
+      "index": 2,
+      "type": "contradiction",
+      "valid": false,
+      "reason": "quote not in judgment",
+      "alleged": true
+    }
+  ],
+  "line_valid": false,
+  "model": "",
+  "parse_mode": "quote_check_only",
+  "raw": "",
+  "call_id": "",
+  "finish_reason": null,
+  "repair_attempts": 0,
+  "reasoning": "",
+  "native_reasoning": "",
+  "reasoning_withheld": false,
+  "mode": "judgment",
+  "valid": false,
+  "line_mismatch": false,
+  "defects_n": 2,
+  "defects_valid_n": 0
+}

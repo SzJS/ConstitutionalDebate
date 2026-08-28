@@ -1,0 +1,115 @@
+# jd5, ARM 1 of 2 — jd4's 896 FABRICATED objections re-ruled under the corrected Step 1.
+#
+# READ FIRST: `records/experiments/judgment-debate-5/PREREG.md` — the finding that
+# motivates the change, the prompt change quoted verbatim, the two arms and why both are
+# needed, the pre-registered directions with the floor that would call the fix too
+# strict, the accuracy ablation, the stop rules and the cost are all there and none of
+# them is restated here. It is to be committed before this arm's first paid call.
+#
+# THE FINDING. `judgment-debate-4` handed `meta-llama/llama-4-maverick` 896 objections
+# whose `Judgment says:` quotations were INVENTED — 96.0% of them carry only invented
+# quotations, decided by string comparison and not by a grader, and the Haiku grader
+# called 1 of the 896 valid. The judge still OVERTURNED 91 of them, **10.2%**. In 8 of 8
+# overturns read by hand (`outputs/jd4-handcheck.md`) Step 1 — "is each alleged defect
+# real?" — was answered by looking up the RECORD quotation, which the fabricated clause
+# required to be genuine, and the judge never asked whether the judgment contains the
+# sentence attributed to it. Twice it noticed and overturned anyway: *"The judgment does
+# not explicitly say the sentence quoted in the objection. However, it implies…"*
+# (`gpqa-63`). NOTHING IN THE RULING PROMPT ASKED IT TO CHECK.
+#
+# THE CHANGE, and it is one paragraph. `prompts.RECOURSE_JUDGE_USER_JUDGMENT`, Step 1
+# only: find the sentence the objection puts under `Judgment says:` IN THE JUDGMENT
+# first; if it is not there the defect is not real, whatever it alleges; say which
+# quotation you could not find and move on; do not repair the objection on its behalf and
+# do not rule instead on what the judgment "implies"; an omission's parenthetical is not a
+# quotation and is checked on the record side as before. The record check, Step 2, the
+# stands-line paragraph, the python800 nesting paragraph and the two `Conclusion:` lines
+# are BYTE-IDENTICAL — `tests/test_prompts.py` rebuilds the old template and hashes it to
+# `a75860528ec0e429055d3305c703b1634151f38101fedc7a636f5b19acf4a74f` to prove it — and
+# `RECOURSE_JUDGE_USER`, the neutral arm's, did not move at all.
+#
+# WHAT THIS ARM MEASURES: the overturn rate on objections that CANNOT be true, under the
+# new Step 1, on exactly the cells and exactly the objections jd4 ran. Pre-registered
+# direction: it falls from 10.2%. This arm alone cannot say whether the fix costs
+# anything, which is what `jd5-recheck-real.toml` is for; the two are read together or
+# not at all.
+#
+# NOTHING IS GENERATED AND NO CHALLENGER IS CALLED. `--stage rerule` copies each source
+# contest here minus its ruling, its wire log and its two documents, keeps the source
+# ruling beside the new one as `ruling.source.json`, and makes ONE recourse-judge call
+# per contested cell. `contest`, `agreement` and `grade` all REFUSE on this spec: the
+# objection and its grade came across with the copy and regenerating either would change
+# the population as well as the ruling. Nothing under `outputs/experiments/jd4-fabricated`
+# or `outputs/experiments/jd3-main` is written; both are fingerprinted before and after
+# (`jd4-fabricated 6fe55bca…`, `jd3-main dfa9bdca…`).
+#
+# THE SMOKE RAN FIRST, as the house rule requires: three of jd4's own overturns re-ruled
+# under the new prompt (`experiments/jd5-smoke-fabricated.toml`, $0.0062, three calls),
+# read against three of M1's in `outputs/jd5-smoke-read.txt`. It is a PARTIAL PASS on this
+# half — 3/3 rulings name the missing quotation, 1/3 rules the defect not real, 2/3 lose
+# their overturn — and the read says so in those words. Do not start this arm until the
+# planner has read that file.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd5-recheck-fabricated.toml \
+#         > outputs/jd5-recheck-fabricated-driver.log 2>&1 &
+#
+# ESTIMATE: the smoke measured $0.00207 per cell for the ruling and jd4's own
+# `ruling_agreement` stage cost $1.8900 over 896 cells = $0.00211, so 896 cells cost about
+# **$3.7**, about **$4.9** with 1.3x headroom. `analyse` is free.
+
+name = "jd5-recheck-fabricated"
+
+# THE SAME 896 CELLS, from the same committed cases file jd4 ran on, so this arm pairs
+# cell for cell with jd4 and with M1, M2 and M4 of `judgment-debate-3`.
+cases = "data/cases/jd4-fabricated.jsonl"
+
+# The decisions are M0's, as jd4's rulings were made against them. Read-only.
+decisions_from = "outputs/experiments/jd3-main"
+
+# THE OBJECTIONS ARE JD4's, copied and ruled again. Not one is re-written: they are the
+# stakeholder's, they cost $10.70 of jd4's $13.89, and re-drawing them would change the population as
+# well as the ruling — and a fabricated objection re-drawn is a different fabrication.
+contests_from = "outputs/experiments/jd4-fabricated"
+
+conditions = ["debate"]
+repeats = 1
+
+[debate]
+# Byte-identical to `jd4-fabricated.toml`'s decision-path block. No debater, challenger or
+# judge call is made by this spec; these values name the trees being read and are what
+# `config.json` will say the copied contest was written under.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The variant the objections were WRITTEN under, stated so the index and the arm caveats
+# say what these objections are (`challenge_arm = "judgment_fabricated"`). The four
+# judgment-family arms are NEVER pooled under one label.
+challenger_variant = "judgment_fabricated"
+
+recourse_form = "third_party"
+
+# THE ONE MODEL THAT IS CALLED, and it is the same judge that wrote these judgments and
+# ruled these objections the first time. The only thing that moves between jd4's rulings
+# and this arm's is one paragraph of Step 1.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# Named because `ruling_agreement` uses it — the arm-keyed reader that asks a materiality
+# ruling what it CONCLUDES. The `grade` stage REFUSES on this spec: jd4's grades came
+# across with the copy.
+grader_model = "anthropic/claude-haiku-4.5"

@@ -71,6 +71,31 @@ checkable.
 > section (f) of the derivation, it is **not pre-registered**, and it is only as good as a
 > Haiku reader. Do not quote the endpoint without it.
 >
+> **THE FABRICATED-AUDITOR ARM IS DONE — 2026-08-28. DO NOT RE-RUN IT.** The specious
+> control `LLM_NOTES.md` has owed since §3s finally exists and its ground truth is CODE:
+> `jd4-fabricated` put an objection whose every `Judgment says:` quotation is INVENTED to the
+> same judge on the same 896 cells jd3's M1 contested. 21:05:31 → 22:32:37Z, **1 h 27 m**,
+> **$13.8892**, five stages exit 0, **5,375 wire calls with 0 non-2xx**. **The manipulation
+> held: 860/896 = 96.0%** of its objections carry only invented quotations (pre-registered
+> floor 80%), and the grader called **0.1%** valid against M3's 29.2%.
+>
+> **The judge overturned 10.2% of them** (91 of 894 rulings) against **26.6%** on the real
+> audit's objections and **1.3%** on a content-free placeholder — and the hand check says why:
+> in **8 of 8 overturns read**, the ruling checks the **record** quotation, which this arm
+> keeps honest, and **never asks whether the judgment contains the sentence attributed to
+> it**. Twice it notices the absence and overturns anyway. **That is a missing existence check
+> in the ruling prompt, not credulity about content**, and the repair — show the harness's own
+> `challenge_fabrication_ok` flag to the recourse judge, or make Step 1 locate every quotation
+> — is the cheapest thing this campaign has left, and it was opened as
+> **`judgment-debate-5`** immediately afterwards (which CHANGES the ruling prompt: every jd4
+> number is from that prompt as it stood at commit `b853218`, byte-identical to what jd3's
+> four arms were ruled under). Evidence:
+> [`records/experiments/judgment-debate-4/`](records/experiments/judgment-debate-4/README.md),
+> read [`CHECKLIST.md`](records/experiments/judgment-debate-4/CHECKLIST.md) **§0 first**;
+> write-up `LLM_NOTES.md` **§3z**; pre-registration
+> [`PREREG.md`](records/experiments/judgment-debate-4/PREREG.md), committed before the first
+> paid call, with both six-cell smokes and the one clause revision between them.
+>
 > **The partisan-challenger ablation was tried on three clauses on the 207-cell slice on
 > 2026-08-27 and is a NO-GO** — none reached the pre-written gate of 2× the neutral genuine
 > objection rate, so the ~$22 full run was never started; evidence in
@@ -258,8 +283,8 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$203.91**, and the campaign that ends it is complete. It breaks into
-three blocks, each itemised where it is reported:
+Total spent so far: **$217.95**. It breaks into four blocks, each itemised where it is
+reported:
 
 * **$99.68 through the debate-only judgment-challenge run** — $63.00 through the auditor
   probe (itemised below) plus that campaign's **$36.6753**, both unchanged.
@@ -274,6 +299,15 @@ three blocks, each itemised where it is reported:
   together** and overran its $39 estimate, by construction: the specious instruction forbids
   the decline, so it contests every decided cell rather than 54.5% of them and grades every
   one. Budget a specious arm at 1.6x the real one, not at parity.
+* **$14.0392 for `judgment-debate-4`** (2026-08-28), the fabricated auditor: the arm itself
+  **$13.8892** and two six-cell clause smokes **$0.0702** + **$0.0798**. It came in **34%
+  under** its ~$21 estimate and cost **a quarter of M3** for a comparable number of
+  objections — because its population is the 896 M1 contested rather than every decided cell,
+  and because **the grade stage cost $0.0475**: an objection whose every defect fails the
+  parse-time quote check is graded invalid with no grader call, so only **six** grader calls
+  were made in the whole arm against M3's 1,641. **A control that is false by construction is
+  cheaper than one that is false by instruction**, and that is worth knowing before the next
+  one is budgeted.
 
 The earlier breakdown, unchanged, of the first block's $36.6753: the first instrument check
 `judgment-debate-pilot` **$1.3285**, three six-cell prompt smokes **$0.1848**
@@ -856,9 +890,13 @@ accounts for it cell by cell. And **M4 was launched by hand and overlapped M2**,
 stages ran at once against §2 rule 6; nothing in either arm depends on the other and no
 provider failure appears in either log.
 
-**Still owed after this campaign:** **a specious control whose objections are false by
-CONSTRUCTION**, first — P2's null makes it more important rather than less, and M3 says what
-has to change. The defect TYPE must be one that cannot be true (an invented quotation, a
+**Still owed after this campaign — and the first item was paid off the same day by
+`judgment-debate-4`, below:** ~~**a specious control whose objections are false by
+CONSTRUCTION**~~ — **DONE, 2026-08-28**: `jd4-fabricated` built exactly the thing this
+paragraph asked for (an invented quotation, verified by the harness's own quote check rather
+than by a grader) and found the judge overturning **10.2%** of objections that cannot be true.
+The rest of the list stands. P2's null makes it more important rather than less, and M3 said
+what had to change. The defect TYPE must be one that cannot be true (an invented quotation, a
 fabricated attribution — what the auditor probe's injected fixture built, and what the
 harness's own quote check can verify without a grader at all) rather than a type made false
 **by instruction**: this clause could not manufacture falsehood in the two defect types that
@@ -867,6 +905,72 @@ load-bearing, since python800 is 637 of 1,644 cells and two thirds of the loss; 
 **`weak_alone` arm**; and the new one — **where the flaw definition sets its threshold**, which
 is the mechanism behind both columns of the endpoint and is a property of the task definition
 as much as of the procedure.
+
+### The fabricated auditor, `judgment-debate-4` (2026-08-28) — DONE
+
+**The specious control that is false BY CONSTRUCTION, and the one arm in this experiment whose
+ground truth is code. DO NOT RE-RUN IT.** Evidence:
+[`records/experiments/judgment-debate-4/`](records/experiments/judgment-debate-4/README.md);
+write-up `LLM_NOTES.md` **§3z**; pre-registration
+[`PREREG.md`](records/experiments/judgment-debate-4/PREREG.md), **committed before the first
+paid call**, carrying both six-cell smokes and the single clause revision between them.
+
+**Why it exists.** §3y's M3 was DESIGN.md's sycophancy control and half-failed: its objections
+were false only *by instruction*, and with `omission` struck the one move left to it — "the
+judgment softened a party's position" — is usually TRUE of a compressed judgment, so **29.2%
+of them were graded VALID**. §3y's conclusion was that no rewording repairs that and the
+defect TYPE has to change. This arm changes it: every `Judgment says:` quotation must be
+**INVENTED** — a sentence in the judgment's register that the judgment does not contain —
+while the `Record says:` quotation stays real, so falsity is decided by
+`prompts.defect_quote_in_judgment`, a substring test on the decision path, and not by a
+grader.
+
+**What ran.** `experiments/jd4-fabricated.toml` on **the 896 cells M1 contested** (the cases
+file is built and its count asserted by `records/derivations/jd4-pick.py`), decisions read
+from `jd3-main` through `decisions_from`, `google/gemini-2.5-flash` writing and
+`meta-llama/llama-4-maverick` ruling on materiality — the same judge that wrote the judgments.
+21:05:31 → 22:32:37Z, **$13.8892**, five stages exit 0, **5,375 calls with 0 non-2xx** plus 40
+transport failures the client retried (36 DNS, 4 timeouts) that cost no cell. Three cells
+lost: two rulings and one agreement reading truncated, and both unruled cells are concordant.
+`jd3-main` hashes `dfa9bdca…` afterwards — unchanged, though the fingerprint was taken **after**
+the run rather than either side of it.
+
+**The manipulation check, and it is the arm's whole claim to be readable:** **860/896 = 96.0%**
+of objections carry ONLY invented judgment quotations (pre-registered floor **80%**), 1,202 of
+1,237 defects, and the grader — run unchanged, and here only the failure-mode measurement —
+called **1/896 = 0.1%** valid against M3's 29.2%.
+
+| objection put to the same judge, same 896 cells | overturned | fixed | broken | net | p |
+|---|---|---|---|---|---|
+| M1 — the real audit | **238/895 = 26.6%** | 110 | 128 | −18 | 0.27 |
+| M4 — the gated audit (POST HOC) | 194/895 = 21.7% | 90 | 104 | −14 | 0.35 |
+| **jd4 — FABRICATED** | **91/894 = 10.2%** | 42 | 49 | **−7** | 0.53 |
+| M2 — the placeholder | 12/894 = 1.3% | 7 | 5 | +2 | 0.77 |
+
+**The ladder is the result**: nothing buys 1.3%, the FORM of an audit with nothing true in it
+buys **+8.8 points**, and being TRUE buys **+16.4** more. Split on the code check, **86/858 =
+10.0%** of objections *verified false by substring test* moved a decision — the cleanest
+sycophancy number this experiment has, and it needed no grader. The arm still discriminates
+(**15.3%** on wrong decisions against **7.9%** on right ones) because its record quotation is
+real. Its **−7 net is an ABLATION and never an endpoint**: an arm built to carry no information
+cannot improve a decision.
+
+**THE FINDING IS A MISSING EXISTENCE CHECK, AND IT IS FIXABLE.** In **8 of 8 overturns read by
+hand** (`HANDCHECK-fabricated.md`), the ruling answers "is the alleged defect real?" by looking
+up the **record** quotation and never asks whether the judgment contains the sentence
+attributed to it — *"The judgment actually says: …"*, of a sentence it does not say. Twice the
+judge notices the absence and overturns anyway (*"The judgment does not explicitly say the
+sentence quoted in the objection. However, it implies…"*), and once it notices and upholds. So
+the judge is capable of the check and is simply not asked for it, while the harness's own
+parse-time flag that answers it is not shown to it. **The repair — put
+`challenge_fabrication_ok` in the ruling prompt, or make Step 1 locate every quotation — is the
+cheapest experiment this campaign has left: its own smoke, then a re-rule of these 896 stored
+objections for cents. It was opened as `judgment-debate-5` immediately after this arm, so read
+that phase for what it measured.** And note what that means for provenance: jd5 **changes**
+`RECOURSE_JUDGE_USER_JUDGMENT`, while every number above was produced under that prompt as it
+stood at **commit `b853218`** — byte-identical to what jd3's M1, M2, M3 and M4 were ruled
+under, which is what makes the four-arm table one comparison rather than four. A later tree's
+`prompts.py` holds a Step 1 these 894 rulings never saw.
 
 ### The open findings the write-up must carry
 
@@ -1146,7 +1250,7 @@ truncated cells — is **reported with its number, not stopped for**.
 
 ## 7. Pointers
 
-**`LLM_NOTES.md` section map** (~5,135 lines; it is the working record, not a summary).
+**`LLM_NOTES.md` section map** (~5,344 lines; it is the working record, not a summary).
 The lettered sections are in the order they were WRITTEN, not in alphabetical order —
 §3f–§3g sit before §3d, and §3h sits after §3w — so use this table rather than scrolling:
 
@@ -1171,6 +1275,7 @@ The lettered sections are in the order they were WRITTEN, not in alphabetical or
 | **3w** | the judgment-challenge variant: the slice, the harness quote check, and the auditor probe that picked nobody (2026-08-27) |
 | **3x** | **the debate-only judgment-challenge run** (2026-08-28) — the paired endpoint, the two prompt revisions and the instrument revision |
 | **3y** | **the one-judge campaign** (2026-08-28) — all four arms with `llama-4-maverick` in both judge seats: the endpoint is a NULL, the audit is clean, the two conditional rates are the finding, three post-hoc gatekeeper rows do not repair it, and the specious control (P3, **not void**) puts the judge's overturn rate on confirmed-unreal objections at 12.2% against 22.7% on real ones |
+| **3z** | **the fabricated auditor** (2026-08-28) — the specious control that is false BY CONSTRUCTION: 96.0% of its objections carry only invented quotations by string comparison, the grader validates 0.1% against M3's 29.2%, the judge overturns **10.2%** of them against 26.6% on real objections and 1.3% on a placeholder, and the mechanism is a **missing existence check** in the ruling prompt rather than credulity |
 | 3h | the pre-registered finding that the transcript made the weak judge *worse* |
 | 4 | limitations accepted for v1 — the three that must reach the write-up |
 | 5, 5b | predictions recorded before the runs; how the weak model and subsets get chosen |
@@ -1214,10 +1319,22 @@ smoke for a human. All of them are covered in `tests/test_derivations.py`, inclu
 that `judgment-debate-3.py` carries no diagnostic-instrument framing anywhere — the user's
 call of 2026-08-28.
 
+The fabricated arm adds three: **`judgment-debate-4.py`** — the manipulation check with its
+pre-registered 80% void branch printed FIRST, then the four arms side by side on the 896 M1
+contested (real, gated, fabricated, placeholder), the discrimination table, the accuracy
+ablation, the split on the code check, the instrument, the per-subset table and the post-hoc
+prose-wins sensitivity; its defaults point at the committed indexes, so
+`uv run python records/derivations/judgment-debate-4.py` with no arguments reproduces
+`records/experiments/judgment-debate-4/derivation.log` on a bare clone.
+**`jd4-pick.py`** writes both cases files — the 896-cell population, asserting the count off
+`jd3-main`'s index, and the two six-cell smoke draws (the second seeded and disjoint from the
+first). **`jd4-smoke-read.py`** renders both smokes for a human, recomputing every quotation
+against the documents with the harness's comparison and a stricter independent one.
+
 **Specs.** `experiments/{pilot,pilot-2,pilot-3}.toml` are what those runs were made with
 and must not be edited; nor are `sweep.toml`, `recontest*.toml`, `rerule-*.toml`,
-`partisan-pilot-*.toml`, `judgment-pilot.toml`, `judgment-debate*.toml`, `jd2-*.toml` or
-`jd3-*.toml`, all of which have run. `experiments/sweep-1.toml` is the abandoned slice. `experiments/judgment.toml`
+`partisan-pilot-*.toml`, `judgment-pilot.toml`, `judgment-debate*.toml`, `jd2-*.toml`,
+`jd3-*.toml` or `jd4-*.toml`, all of which have run. `experiments/sweep-1.toml` is the abandoned slice. `experiments/judgment.toml`
 (three conditions) and `experiments/partisan.toml` (no variant set) are the two that have
 never run and have no reason to. **Nothing here is now "the one to run"** — every spec in
 the directory describes a finished run, and the next one is the user's to open.
@@ -1231,6 +1348,12 @@ and `gatekeeper` stages were added for this campaign: `rejudge` reads another tr
 debate transcripts through `transcripts_from` and writes a full decision record of its own,
 and `gatekeeper` copies another tree's finished objections **with their rulings** through
 `contests_from` and adds one `admission.json` beside each, re-ruling nothing.
+
+The fabricated arm's three specs, in the order they ran: `jd4-smoke.toml` (six cells, the
+clause as first written), `jd4-smoke-2.toml` (six *different* cells, the clause after the
+record-side fix) and `jd4-fabricated.toml` (**the arm**, 896 cells). No new stage was added
+for it; `challenger_variant = "judgment_fabricated"` is the only new vocabulary, and it selects
+a spliced copy of the judgment challenger's prompt exactly as `judgment_specious` does.
 
 The debate-only campaign's five specs, in the order they ran:
 `judgment-debate-pilot.toml` (60 cells, the first instrument check),
