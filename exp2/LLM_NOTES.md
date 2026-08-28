@@ -3578,6 +3578,339 @@ at 0.65 it is not bounding much.
   **specious-objection control**, phantoms as a **challenger property**, the
   **`weak_alone` arm** and the **gloss leak**.
 
+## 3x. The debate-only judgment-challenge run: a paired endpoint, three revisions, and a judge that will not hold its own rule (2026-08-28)
+
+**Written after the run. Every number here is quoted from
+`records/experiments/judgment-debate/{index.jsonl,metrics.json,derivation.log}`, from
+`records/experiments/judgment-debate/logs/stage-tails.md`, from the three
+`HANDCHECK-*.md` files in that directory, or from the two 60-cell instrument checks in its
+`pilot-1/` and `pilot-2/`.** All of it is re-derivable on a bare clone with
+`records/derivations/judgment-debate-vs-alone.py`.
+
+**This section reports. It does not conclude beyond the pre-registered endpoint.** What it
+establishes is exactly one thing: on the sweep's 1,644 decided `debate` cells, the accuracy
+of the decision after procedural recourse is higher than before it by 45 cells, and an
+exact two-sided McNemar on the discordant pairs puts that at p = 0.011. It does **not**
+establish that debate is contestable, that the audit rather than the second look produced
+the gain, or that the same would happen with a different challenger, a different recourse
+judge or a specious-objection control — and the last of those is still not run.
+
+### The question, and why it is paired
+
+§3w ended with a variant built and unrun. What unblocked it was not a better model but the
+user's `DESIGN.md` paragraph settling the *comparison*: **only a debate has a judgment, so
+success is measured by comparing debate with and without the judgment-contest.** That is
+the design call §3w's `DECISION.md` had left open, and it changes the shape of the
+measurement completely. `single`'s record *is* its justification and `self_critique`'s is
+the same model's own drafts, so "audit the judgment against the record" is a procedure that
+exists in one condition and is undefined in the other two. There is nothing to compare
+across conditions. There is something to compare **within** debate: the same cells, before
+recourse and after.
+
+That also disposes of the between-condition confounds §3s and §3t carry. No wrong-set is
+being compared with a differently-sized wrong-set; the pairing is on `cell_id`, and the
+1,343 concordant cells carry no information about direction and are excluded by
+construction.
+
+`records/experiments/judgment-debate/PREREG.md` was **committed before the run**, and fixes
+the population (1,644), the endpoint (net accuracy change), the test (exact two-sided
+McNemar on the discordant pairs), α (0.05), the secondaries, the third paired arm, the stop
+rules, the stated confound and the disclosed departure. It was amended three times, each
+dated, and every amendment is before the run's first paid call.
+
+### The disclosed departure, restated because it is load-bearing
+
+**The challenger is `google/gemini-2.5-flash`, and it was chosen AFTER the numbers.** §3w's
+probe pre-registered floors in `RULES.md` before any candidate was called and **the rule
+picked nobody**. Flash is the closest: on debate judgments it catches misattributions and
+contradictions (~95%), misses a quarter of misquotes (71%) and two omissions in three
+(32%), and **invents a defect on 15% of controls**. It is used here as the best available
+auditor for a debate-only test. That sentence is in `PREREG.md`, in both spec headers, in
+`records/pick-auditor/DECISION.md`'s addendum of 2026-08-28 and in the run's `README.md`.
+Nothing was re-scored and no threshold was moved.
+
+One consequence a reader must carry: the probe measured flash under the **pre-revision**
+audit prompt with the format repair path in place, so its per-defect-type detection rates
+describe that instrument and not the one this run used.
+
+### Three revisions, each smoked first, and one of them a failure
+
+The house rule is that a new or changed prompt is read on ~6 chosen examples before any
+slice. All three were.
+
+**(1) The format instruction — tried twice, failed twice, and the run went with the repair
+path.** The first instrument check (`pilot-1/`, 60 cells, $1.3285) needed a format repair
+on **59 of 60** objections: flash opens a correctly labelled `Thinking:` block, audits at
+length inside it, and then runs into the numbered defect list **without ever writing
+`Argument:` on a line of its own** — `no_public_label` 35, `label_not_at_line_start` 24, one
+shape behind both counts. The diagnosis was that the model copies the SHOWN template, and
+the template began at `1. Type:`.
+
+Showing the label at the head of the template took `no_public_label` to 0 of 6 and left all
+six on `label_not_at_line_start`: flash now writes the label and **glues it to its last
+word** — `...is not a legitimate convention but an error.Argument:`. A second wording
+showing the whole reply, both labels line-anchored with a blank line between, got 5 of 6.
+The pre-written gate was ≤ 1 of 6 and **neither wording met it**. At scale: **1,588 of 1,644
+objections repaired**, exactly as before.
+
+A parser leniency was considered and **refused**. `_LABEL_RE` is line-anchored and
+accepting a glued label would let the public boundary fall wherever the word appears, so a
+hyphenated "counter-argument:" inside the private block would publish the rest of it —
+ground rule 7, and §3i's leak in a new dress.
+
+This joins §3h, §3n, §3u and §3v: **an instruction about form does not move these models**,
+and here it is flash rather than nano. What it costs is not cells — **0 were lost in
+1,644 + 60 + 60 + 6 + 6** — but a fact about what was graded: the repair instruction
+suppresses the private section, so **1,587 of the run's objections are second attempts
+written under a different instruction, with the first attempt's working discarded**.
+
+**(2) The recourse ruling — the real seam, and the one revision that worked.** `pilot-1`
+produced 37 valid objections out of 45 with **zero invented quotations**, and the same net
+outcome as nano's junk objections had (11 fixed / 9 broken against 12 / 10). Reading the
+ruling prompt says why. It tells the judge, verbatim:
+
+> You are ruling on the ORIGINAL text under review — the text inside `<solution>` — not on
+> the objection and not on the decision's reasoning.
+
+That is right for the **neutral** arm, where the objection is itself a claim about the
+text. Under the judgment variant the objection is a claim about the **judgment**, so the
+same sentence tells the judge to disregard the only thing the objection is about. A valid
+procedural objection then has no defined role, and `pilot-1` measured what filled the gap:
+nano re-solved the object-level question with the objection as a nudge and overturned
+**20 of 45, 35% of them on decisions that were CORRECT**.
+
+`RECOURSE_JUDGE_USER_JUDGMENT` shows the judge the judgment and asks two steps: is each
+alleged defect **real**, checked against the record and quoted; and if so, is it
+**material** — does addressing it change what is true of the text. If none is real or none
+material, the decision stands. `RECOURSE_JUDGE_SYSTEM` and both `Conclusion:` lines are
+unchanged, so `parse_ruling_output`, `resolve_ruling`, `Ruling(form="stated_conclusion")`
+and the repair are untouched. **The neutral arm is ruled in its own form**: the template is
+keyed on the OBJECTION's arm (`Challenge.arm`), not on a config field, so
+`rerule-recontest` — the third paired arm — keeps the prompt its objections were written
+for, byte for byte, and a test diffs it. `Ruling.prompt_form` and `ruling_prompt_form` in
+the index record which prompt ruled, because both produce `stated_conclusion` rulings and
+nothing else distinguishes them.
+
+The six-cell smoke found a defect in the first wording and it is worth recording. Under
+`stated_conclusion` the judge states an **absolute** fact about the text, so *"the decision
+stands"* is not a sentence it can write — it has to restate the decision's own conclusion,
+and the prompt did not say so. On `medqa-train_3754` the judge wrote "no material defect
+exists" and then ended on "does not contain a flaw" over a **FLAWED** parent, breaking a
+**correct** decision with a line its own reasoning contradicted; seven of the first nine
+smoke conclusion lines said SOUND. The fix interpolates a `{stands_line}` field — the
+parent's own line, derived from `decision_verdict` by the same table the two-line menu
+comes from. A third smoke re-ruled the same six objections through `contests_from`:
+`medqa-train_3754` upheld, and correct-after went 1 of 4 to 3 of 4.
+
+`pilot-2` (the same 60 cells under both revisions, $1.1483) against `pilot-1`:
+
+| | pilot-1 (object-level) | pilot-2 (materiality) |
+|---|---|---|
+| rulings | 45 | 37 |
+| prose shows Step 1 / Step 2 | **0/45** | **37/37** |
+| overturned | 20/45 44.4% | 12/37 32.4% |
+| overturn on a **CORRECT** decision | **9/26 34.6%** | **4/18 22.2%** |
+| fixed / broken / net | 11 / 9 / +2 | 8 / **4** / **+4** |
+
+Overturns fall and breakage of correct decisions falls most, which is the shape the change
+predicted. Two 60-cell runs at `challenger_temperature = 0.7` differ by **sampling** as well
+as by prompt, so none of it is attributable to the revision alone; what the revision
+demonstrably did is put a two-step, record-checking ruling where there had been none.
+
+**(3) The `ruling_agreement` instrument.** `pilot-2`'s first reading put
+`ruling_line_mismatch` at 13/37 = 35.1% with **12 of 13 alarms on upholds**. A hand check of
+`medqa-train_3754` found the judge doing exactly what it was told and the reader answering
+SOUND because the prose said the solution's reasoning "remains valid": under materiality an
+upheld ruling's prose argues about the **defect** and reaches the text only by implication,
+so the reader's question was partly ill-posed for half the rulings. The reader is now
+arm-keyed too, exactly as `agreement` already was — it asks a materiality ruling what its
+reasoning concludes (**STANDS / CHANGED / NEITHER**) and the answer is translated **in
+code**, STANDS to the parent's verdict and CHANGED to the other, so `mismatch` keeps its
+meaning and `ruling_prose_conclusion` keeps its three values. The object-level prompt is
+byte-identical for every other ruling and a test asserts it. On `pilot-2` the rate fell
+**35.1% → 16.2%**; re-reading its 37 rulings cost $0.0766 and the superseded readings are
+kept in the tree. Haiku at temperature 0, off the decision path: an **instrument revision,
+not a change to the run**.
+
+### What ran
+
+**1,644 decided `debate` cells, 2026-08-28 01:48:17Z → 03:18:22Z, 1 h 30 m, $33.9371**,
+five stages sequentially under `scripts/run_sweep.sh`, **every stage exit 0**, **9,982 wire
+calls and 0 non-2xx**, 1,643 of 1,644 contested. The driver's cumulative total and the wire
+log agree exactly, which is not what happened with the probe (§3w) — there is one figure
+here, not two.
+
+Nothing was decided and nothing regenerated: `decisions_from` routes every lookup into the
+sweep tree, and that tree is byte-identical before and after
+(`5e2eb4d69ecabcce77533fd84a75e6d8d7c6a7676a00b05701737229bdfd2d2f`). The single failure is
+`lojban-stim181_gpt4_B-s5__debate__r1`, whose **comprehension probe** — off the decision
+path — truncated at `max_tokens`; it is in every denominator below.
+
+### The primary endpoint
+
+Verbatim from `derivation.log` §(a), n = 1,644:
+
+```
+                               AFTER correct       AFTER wrong     total
+BEFORE correct                           828               128       956
+BEFORE wrong                             173               515       688
+total                                   1001               643      1644
+
+  fixed   b = 173      broken  c = 128      NET +45
+  discordant pairs 301   (concordant 1343)
+  EXACT TWO-SIDED McNEMAR   p = 0.0110865   SIGNIFICANT at alpha=0.05
+
+  accuracy BEFORE   956/1644  58.2%  [55.7, 60.5]
+  accuracy AFTER   1001/1644  60.9%  [58.5, 63.2]
+```
+
+**Positive and significant at the pre-registered α.** The Wilson intervals overlap
+substantially, which is the correct impression for a paired test to leave a reader who
+looks only at the margins: the test is on the 301 discordant pairs, not on the two
+proportions.
+
+### The third paired arm, and the reference
+
+| | n | fixed | broken | net | p |
+|---|---|---|---|---|---|
+| BEFORE → PROCEDURAL (**the endpoint**) | 1,644 | 173 | 128 | **+45** | **0.0110865** |
+| BEFORE → NEUTRAL (`rerule-recontest`) | 1,644 | 17 | 16 | +1 | 1 |
+| NEUTRAL → PROCEDURAL | 1,644 | 183 | 139 | **+44** | **0.0164285** |
+
+The neutral decide-last challenger raised **54** objections on these same cells; the
+judgment challenger raised **1,148**. The third-arm test says the two procedures reach
+different answers on the same decisions. It does not say which is right, and the two arms
+are not the same quantity: one asks whether the verdict is right, the other whether the
+reasoning is faithful.
+
+### The secondaries
+
+| | |
+|---|---|
+| objection raised | 1,148/1,644 = **69.8%** |
+| declined | 496 = 30.2% |
+| **phantom** | **0/1,148 = 0.0%** |
+| graded valid | **881/1,148 = 76.7%** — on correct decisions 473/633 = 74.7%, on wrong ones 408/515 = 79.2% |
+| defects alleged / valid | 1,519 / 1,065 = 70.1%; by type contradiction 163/307 = 53.1%, misstatement 410/603 = 68.0%, omission 489/613 = 79.8% |
+| misattributed_quote | **45/1,523 defects = 3.0%** |
+| overturn on wrong / correct | 33.6% / 20.3%, **discrimination +13.3 pts** |
+| format repairs | 1,588 of 1,644; parse modes `salvaged_no_thinking` 1,587, `strict` 56, `salvaged_no_labels` 1 |
+| ruling prose with both steps | **1,125/1,147 = 98.1%**, all `prompt_form = "materiality"` |
+
+Three of those deserve a sentence. **Phantoms are gone** — 0 of 1,148, against 51.8% in the
+sweep and 13.4% in the re-contest — which is what asking a question the reader can answer
+does to the line-vs-prose collision. **Misattributed quotes are 3.0%**, against the 34 of 66
+a hand read found in nano's slice (§3w); that is the capability limit the probe was
+commissioned over, and flash does not have it. And under this variant a valid defect on a
+**correct** decision is a real finding and **not** a false alarm — validity is a claim about
+the record, graded without opening `flaw.json` — which is why the rate is split by
+`initially_correct` rather than conditioned on it.
+
+### The finding that governs everything above: the judge will not hold its own rule
+
+`ruling_line_mismatch` fired on **349 of 1,147 rulings = 30.4%**, and it is **concentrated
+on FLAWED parents — 50.8% against 8.2%**, worst on FLAWED-parent overturns (87/110 = 79.1%).
+That is the same shape the OLD `Ruling: UPHOLD|OVERTURN` line failed in (§3t), where the
+re-rule's replacement measured a **flat ~6%** (§3u). It lands on the endpoint's own cells:
+**27.2% of the fixed and 38.3% of the broken**.
+
+The alarms split cleanly, and the hand check read both large groups:
+
+| ruling | reader said | n | what it is |
+|---|---|---|---|
+| upheld | CHANGED | **165** | the judge finds the defect real **and material** in Step 2 and then ends on the parent's own line |
+| overturned | STANDS | **82** | the judge says the defect is not real or not material and then **re-decides the item anyway** |
+| either | NEITHER | 102 | the reader would not settle; counted as a mismatch by the conservative rule |
+
+**`HANDCHECK-B-rulings.md` found the reader right about what the prose says in 12/12 and
+8/8**, with the two-step structure present in 20/20. So the 30.4% is **not** instrument
+error. It is a measurement of the weak judge's coherence under the materiality prompt, and
+the two groups are two different failures:
+
+- The **165 upheld-and-CHANGED** are the judge contradicting the rule it was given — under
+  that rule a material defect is by definition one that changes what is true of the text.
+  The mechanism is visible in the prose: "the original *judgment* is flawed" followed by
+  "the original *text* contains a flaw", the §3n nesting collision one layer up. **Ten of
+  the twelve read were CORRECT decisions**, and the `{stands_line}` anchor is what kept them
+  correct — the revision's most consequential effect, and it was made for a different
+  reason.
+- The **82 overturned-and-STANDS** are the judge **setting the materiality rule aside** and
+  re-deciding the item on object-level grounds, its line following that. These are not
+  line-vs-prose contradictions at all. **They are the stated confound, occurring inside the
+  new prompt.**
+
+### The post-hoc sensitivity, and why it is not a result
+
+Section (f) of the derivation recomputes the 2×2 under the rule "where the materiality
+reader answered STANDS or CHANGED, take the prose's conclusion; otherwise keep the line".
+247 cells move.
+
+| | pre-registered (the line) | post hoc (the prose) |
+|---|---|---|
+| fixed / broken / net | 173 / 128 / **+45** | 176 / 208 / **−32** |
+| McNemar p | **0.0110865** | 0.11354 |
+| accuracy after | 60.9% | 56.2% |
+
+**The sign flips and the significance goes.** It is post hoc, chosen after the mismatch rate
+was seen, and — now that the hand check has cleared the reader — its real weakness is
+different from the one first suspected: the two groups it flips are **not the same kind of
+thing**. Flipping the 165 takes the judge's Step 2 at its word; flipping the 82 imposes a
+rule the judge did not follow. Neither direction is obviously the truth. The pre-registered
+endpoint is the line, as the run produced it, and this is the size of what rides on it.
+
+`HANDCHECK-C-fixed-and-broken.md` puts a floor under that on a 10 + 10 sample: **~1 of 10
+fixed and ~3 of 10 broken** cells turn on a line contradicting its own prose. The other
+seven broken cells are coherent two-step rulings that are **wrong on the merits** — the weak
+judge siding with the debater the dataset label says lost. That is not an instrument
+failure and no prompt fixes it.
+
+### The hand checks
+
+| | read | found |
+|---|---|---|
+| A | 20 objection + grade pairs, 10 valid / 10 invalid | **20/20 agree with the grader**; rejections for stated, right reasons; **0/20** quotations not in the judgment |
+| B | 40 rulings, weighted to alarms | two-step **20/20**; reader right **12/12** and **8/8** on the two large alarm groups |
+| C | 10 fixed + 10 broken end to end | residual ≈ 1/10 fixed, 3/10 broken; the rest are coherent rulings wrong on the merits |
+
+Hand check A is what lets the 76.7% valid rate and the 3.0% misattributed rate be quoted at
+all — compare §3s, where 6 of 99 graded rows carried no reasoning and 3 of those were
+`valid=True`, and the sweep's `agreement` instrument agreed with a hand read only 14 of 20.
+This grader and this challenger audit clean.
+
+### What this does and does not show
+
+**Shows.** On these 1,644 cells, with this challenger, this recourse judge and this ruling
+prompt, decisions are more often right after procedural recourse than before it, by 45 cells
+on 301 discordant pairs, p = 0.011 — the pre-registered endpoint, positive and significant.
+The audit itself is sound: no phantoms, 3% misattributed quotes, 77% of objections graded
+valid, and a hand read that agrees with the grader 20 times out of 20. The recourse judge's
+discrimination is positive (+13.3 pts).
+
+**Does not show.**
+
+- **That the audit rather than the second look did it.** `PREREG.md` states this confound
+  before the run and it is not resolved: the challenger raised on 69.8% of cells, so much of
+  the endpoint is the recourse judge re-ruling **with an objection in hand**. The
+  materiality revision narrows it — the objection now has a defined role — and the 82
+  overturned-and-STANDS rulings show the judge stepping outside that role anyway. **The
+  specious-objection control is still not run**, and it is the thing that would settle it.
+- **That the ruling line is trustworthy.** 30.4% of rulings end on a line their own Step 2
+  does not support, concentrated on FLAWED parents, and a defensible alternative reading
+  turns +45 into −32.
+- **That this transfers.** One challenger, chosen after a rule that picked nobody; one weak
+  recourse judge, which is also the model that decided the debates it is now ruling on; one
+  corpus.
+- **Anything about `single` or `self_critique`.** They were not run and the procedure is
+  undefined for them. Nothing here speaks to the between-condition question of §3s.
+
+### Still owed
+
+Carried forward, and the first is the one that matters most: the **specious-objection
+control**; the **python800 phrasing** (§3u), still a design decision, and python800 is 637 of
+these 1,644 cells; the **145 of 682** cells where the two rulers disagree (§3u); the
+**`weak_alone` arm**; and now the **materiality rule the judge does not hold** — 30% of
+rulings, in both directions, which is a prompt-or-model question this run does not answer.
+
 ## 3h. PRE-REGISTERED FINDING (2026-08-24): the transcript made the weak judge *worse*
 
 Recorded here **before the pilot and before the sweep**, so it cannot be presented later

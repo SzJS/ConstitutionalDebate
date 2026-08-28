@@ -61,6 +61,14 @@ that model invents a defect on 15% of controls. And every number that passes thr
 ruling inherits the `ruling_line_mismatch` residual, which the run measures rather than
 assumes.
 
+**Section (f) is POST HOC and is not the endpoint.** It recomputes the primary 2x2 with
+the materiality reader's reading of each ruling's prose substituted for the ruling's own
+line, wherever that reader answered STANDS or CHANGED. It was written after the run,
+because `ruling_line_mismatch` fired on 30% of the rulings; it swaps one weak model's
+reading for another weak model's line and is only as good as that reader, whose precision
+on these alarms is a question for a hand check. Section (a) is the pre-registered
+endpoint and nothing in (f) touches it.
+
 Definitions are shared with `records/derivations/sweep-phantom-corrected.py` and
 `rerule-compare.py` and must stay identical to them:
 
@@ -80,6 +88,7 @@ from pathlib import Path
 
 CONDITION = "debate"
 DEFECT_TYPES = ("contradiction", "misstatement", "omission")
+VERDICTS = ("FLAWED", "SOUND")
 W = 96
 
 
@@ -188,6 +197,33 @@ def after_state(row, before) -> bool | None:
     """
     final = row.get("final_correct")
     return before if final is None else bool(final)
+
+
+def gold_verdict(row):
+    """The dataset's label as a verdict. ``None`` where the item carries no label."""
+    flawed = row.get("gold_flawed")
+    return None if flawed is None else (VERDICTS[0] if flawed else VERDICTS[1])
+
+
+def prose_after_state(row, before):
+    """POST HOC. The after-state a cell would have if the READER's reading of the
+    ruling's prose were taken over the ruling's own line.
+
+    Applies only where the materiality reader actually answered STANDS or CHANGED — that
+    is, where ``ruling_prose_conclusion`` is a verdict rather than NEITHER, and the
+    ruling was made under the materiality prompt. Everywhere else (NEITHER, an
+    object-level ruling, no ruling at all) the line stands and this is ``after_state``.
+
+    ``ruling_prose_conclusion`` is already the mapped verdict: the reader answers
+    STANDS / CHANGED / NEITHER and ``prose_conclusion_for_reading`` turns the first two
+    into the parent's verdict and its complement before the record is written. So the
+    substitution here is a straight read of that column, not a second translation.
+    """
+    prose = row.get("ruling_prose_conclusion")
+    if row.get("ruling_prompt_form") == "materiality" and prose in VERDICTS:
+        gold = gold_verdict(row)
+        return None if gold is None else prose == gold
+    return after_state(row, before)
 
 
 def phantom(row):
@@ -453,6 +489,123 @@ def defects_by_type(tree: Path, cells: list[str]):
 
 
 # --------------------------------------------------------------------------- #
+# (f) the post-hoc sensitivity analysis
+# --------------------------------------------------------------------------- #
+
+
+def sensitivity(before_all, proc_all, labelled, primary):
+    """What the endpoint would be if the reader's reading beat the judge's line.
+
+    NOT PRE-REGISTERED. `PREREG.md` fixes one endpoint — net accuracy change after
+    recourse, from `final_correct`, which is the ruling's own line — and that number is
+    section (a) and is not touched by anything here. This block exists because the
+    ruling-line instrument fired on 30% of the run's rulings, concentrated on FLAWED
+    parents, and a reader is owed some sense of how much of the endpoint rides on the
+    line rather than on the reasoning behind it.
+
+    THE RULE, stated before the numbers: where the materiality reader answered STANDS or
+    CHANGED, take the PROSE's conclusion as the cell's after-state (STANDS -> the
+    decision's own verdict, CHANGED -> the other); where it answered NEITHER, or the
+    ruling was made under the object-level prompt, or there is no ruling, keep the line.
+
+    THREE REASONS IT IS DESCRIPTIVE AND NOT A RESULT.
+
+      * It is post hoc, chosen after the mismatch rate was seen.
+      * It substitutes one weak model's reading for another weak model's line. Haiku at
+        temperature 0 reading prose it did not write is an instrument, not an oracle,
+        and its precision on these alarms is a question for a hand check, not for this
+        script. Every number below is conditional on that reader being right.
+      * The reader answers a question about the REASONING. A judge whose reasoning and
+        whose line disagree has not told us which of the two it meant.
+    """
+    head("(f) POST-HOC SENSITIVITY — NOT PRE-REGISTERED, descriptive only")
+    print("PREREG.md fixes ONE endpoint — net accuracy change after recourse, computed")
+    print("from `final_correct`, which is the ruling's own line. That is section (a) and")
+    print("nothing here touches it. This block exists because the ruling-line instrument")
+    print("fired on 30% of this run's rulings, concentrated on FLAWED parents, and a")
+    print("reader is owed some sense of how much of the endpoint rides on the line rather")
+    print("than on the reasoning behind it.")
+    print()
+    print("THE RULE, stated before the numbers: where the materiality reader answered")
+    print("STANDS or CHANGED, take the PROSE's conclusion as the cell's after-state")
+    print("(STANDS -> the decision's own verdict, CHANGED -> the other); where it answered")
+    print("NEITHER, or the ruling was made under the object-level prompt, or there is no")
+    print("ruling, keep the line.")
+    print()
+    print("THREE REASONS IT IS DESCRIPTIVE AND NOT A RESULT.")
+    print("  * It is post hoc, chosen after the mismatch rate was seen.")
+    print("  * It substitutes one weak model's reading for another weak model's line.")
+    print("    Haiku at temperature 0 reading prose it did not write is an instrument,")
+    print("    not an oracle, and its precision on these alarms is a question for a hand")
+    print("    check. Every number below is conditional on that reader being right.")
+    print("  * The reader answers a question about the REASONING. A judge whose reasoning")
+    print("    and whose line disagree has not told us which of the two it meant.")
+
+    meas = [c for c in labelled
+            if proc_all[c].get("ruling_prose_conclusion") is not None]
+    readings = Counter()
+    for cell in meas:
+        row = proc_all[cell]
+        prose = row.get("ruling_prose_conclusion")
+        answer = ("NEITHER" if prose == "NEITHER"
+                  else "STANDS" if prose == row.get("verdict") else "CHANGED")
+        readings[(("OVERTURNED" if row.get("changed_the_decision") else "upheld"),
+                  answer)] += 1
+
+    print()
+    print("THE ALARMS, by what the ruling did and what the reader made of its prose")
+    print()
+    print(f"{'ruling':<14}{'reader said':<14}{'n':>7}{'mismatch?':>12}"
+          f"{'substituted?':>15}")
+    rule()
+    for (outcome, answer), n in sorted(readings.items()):
+        upheld = outcome == "upheld"
+        mism = answer == "NEITHER" or (upheld != (answer == "STANDS"))
+        subst = answer != "NEITHER" and mism
+        print(f"{outcome:<14}{answer:<14}{n:>7}{('YES' if mism else 'no'):>12}"
+              f"{('YES' if subst else 'no'):>15}")
+    rule()
+    total_alarms = sum(n for (o, a), n in readings.items()
+                       if a == "NEITHER" or ((o == "upheld") != (a == "STANDS")))
+    neither = sum(n for (o, a), n in readings.items() if a == "NEITHER")
+    print(f"{'alarms':<28}{total_alarms:>7}   of {len(meas)} rulings the reader read")
+    print(f"{'  of those, NEITHER':<28}{neither:>7}   kept as the line said — the reader")
+    print(f"{'':<28}{'':>7}   settled on nothing, so there is nothing to substitute")
+    print(f"{'  substituted below':<28}{total_alarms - neither:>7}")
+
+    print()
+    print("THE 2x2 UNDER THE RULE")
+    print()
+    triples = [(c, before_state(before_all[c]),
+                prose_after_state(proc_all[c], before_state(before_all[c])))
+               for c in labelled]
+    triples = [(c, b, a) for c, b, a in triples if a is not None]
+    alt = paired_block(triples, "BEFORE", "PROSE")
+
+    moved = [c for c in labelled
+             if prose_after_state(proc_all[c], before_state(before_all[c]))
+             != after_state(proc_all[c], before_state(before_all[c]))]
+    to_correct = [c for c in moved
+                  if prose_after_state(proc_all[c], before_state(before_all[c]))]
+    print()
+    print(f"cells whose after-state moved under the rule   {len(moved)}")
+    print(f"  line said WRONG, prose says correct          {len(to_correct)}")
+    print(f"  line said correct, prose says WRONG          {len(moved) - len(to_correct)}")
+    print()
+    print(f"{'':<26}{'PRE-REGISTERED (the line)':>28}{'post hoc (the prose)':>26}")
+    rule()
+    print(f"{'fixed':<26}{primary['fixed']:>28}{alt['fixed']:>26}")
+    print(f"{'broken':<26}{primary['broken']:>28}{alt['broken']:>26}")
+    print(f"{'net':<26}{primary['net']:>+28d}{alt['net']:>+26d}")
+    print(f"{'McNemar p':<26}{primary['p']:>28.6g}{alt['p']:>26.6g}")
+    rule()
+    print()
+    print("SECTION (a) IS THE ENDPOINT. This is a sensitivity check on it, it was chosen")
+    print("after the mismatch rate was seen, and it is only as good as the reader.")
+    return alt
+
+
+# --------------------------------------------------------------------------- #
 
 
 def main() -> None:
@@ -619,6 +772,8 @@ def main() -> None:
           f"{primary['fixed']:>7}{primary['broken']:>8}{primary['net']:>+6d}"
           f"{primary['p']:>12.4g}")
 
+    alt = sensitivity(before_all, proc_all, labelled, primary)
+
     print()
     rule("=")
     print("SUMMARY")
@@ -632,6 +787,9 @@ def main() -> None:
     print(f"third arm NEUTRAL -> PROCEDURAL  n={arm['n']}  "
           f"fixed {arm['fixed']}  broken {arm['broken']}  "
           f"net {arm['net']:+d}  p = {arm['p']:.6g}")
+    print(f"post hoc  BEFORE -> PROSE         n={alt['n']}  "
+          f"fixed {alt['fixed']}  broken {alt['broken']}  "
+          f"net {alt['net']:+d}  p = {alt['p']:.6g}   NOT PRE-REGISTERED")
     print()
     print("Read the confound in this module's docstring before quoting any of it.")
     rule("=")

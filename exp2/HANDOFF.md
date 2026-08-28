@@ -52,6 +52,25 @@ checkable.
 > [`records/experiments/rerule/`](records/experiments/rerule/README.md), write-up
 > `LLM_NOTES.md` **§3u**, and §4 below.
 >
+> **THE DEBATE-ONLY JUDGMENT-CHALLENGE RUN IS DONE — 2026-08-28. DO NOT RE-RUN IT.**
+> The sweep's **1,644 decided `debate` cells** were audited and re-ruled: 01:48–03:18Z,
+> **1 h 30 m**, **$33.9371**, **9,982 wire calls with 0 non-2xx**, five stages exit 0,
+> 1,643 of 1,644 contested. Nothing was decided and nothing regenerated; the sweep tree is
+> byte-identical (`5e2eb4d6…`). The **pre-registered endpoint is positive and
+> significant** — 173 fixed, 128 broken, **net +45, exact two-sided McNemar p = 0.0111**.
+> Evidence:
+> [`records/experiments/judgment-debate/`](records/experiments/judgment-debate/README.md) —
+> read [`CHECKLIST.md`](records/experiments/judgment-debate/CHECKLIST.md) **§0 first**;
+> write-up `LLM_NOTES.md` **§3x**; pre-registration
+> [`PREREG.md`](records/experiments/judgment-debate/PREREG.md), committed before the run.
+>
+> **§0 is not optional.** `ruling_line_mismatch` fired on **30.4% of the rulings**,
+> concentrated on **FLAWED parents (50.8% against 8.2%)** — the same shape the OLD ruling
+> line failed in — and a **post-hoc** sensitivity that takes the reader's reading of each
+> ruling's prose over the ruling's own line turns **+45 into −32**. That sensitivity is
+> section (f) of the derivation, it is **not pre-registered**, and it is only as good as a
+> Haiku reader. Do not quote the endpoint without it.
+>
 > **The partisan-challenger ablation was tried on three clauses on the 207-cell slice on
 > 2026-08-27 and is a NO-GO** — none reached the pre-written gate of 2× the neutral genuine
 > objection rate, so the ~$22 full run was never started; evidence in
@@ -239,7 +258,14 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$63.00** — $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
+Total spent so far: **$99.68** — $63.00 through the auditor probe (itemised below), plus
+the debate-only judgment-challenge campaign's **$36.6753**: the first instrument check
+`judgment-debate-pilot` **$1.3285**, three six-cell prompt smokes **$0.1848**
+(`judgment-debate-smoke` $0.0921, `-smoke-2` $0.0793, `-smoke-3` $0.0134), the second
+instrument check `judgment-debate-pilot-2` **$1.1483** plus **$0.0766** to re-read its
+rulings under the adapted instrument, and **the full run's $33.9371**.
+
+The $63.00 breaks down as: $6.67 through pilot 3, roughly $0.40 for sweep-1's 80
 decided cells, the full sweep's **$32.1326**, the ~$0.13 paid smoke that preceded it, the
 re-contest's **$10.8942** with its two 18-cell smokes (**$0.06**) and its 207-cell
 validation slice (**$0.38**), the re-rule's **$3.0887** (a three-variant prompt smoke
@@ -557,6 +583,15 @@ committed `index.jsonl` files, no run tree and no key.
 
 ### The judgment variant (2026-08-27) — built, sliced, probed, and NOT run
 
+**SUPERSEDED IN PART on 2026-08-28 — read the section below this one first.** What
+follows is the state as of 2026-08-27 and is kept because the probe, the slice and the
+harness quote check are all still exactly as described. What changed is the conclusion:
+the user settled that success for this variant is measured **within debate**, flash was
+run as a **disclosed departure** from the rule that picked nobody, and
+`experiments/judgment-debate.toml` **has run**. The three-condition
+`experiments/judgment.toml` is still unrun and there is no reason to run it — its two solo
+conditions have no judgment separate from their record to audit.
+
 **The judgment-challenge variant is in the code and must not be run at scale.** No
 challenger model has cleared `records/pick-auditor/RULES.md`, and until one does,
 `experiments/judgment.toml` stays unrun. Write-up: `LLM_NOTES.md` **§3w**; decision and
@@ -644,10 +679,71 @@ deleted sentence, alteration, `copies_edited`). In `outputs/` (git-ignored, rebu
 fixture, the rows, the superseded rows and every wire call.
 
 **Do not** re-grade the nano slice, edit `RULES.md`'s thresholds after seeing numbers, or
-run `experiments/judgment.toml`. If the audit prompt is revised — a verification procedure
+run `experiments/judgment.toml`. (`experiments/judgment-debate.toml` is a different spec
+and it is DONE — see the next section; do not re-run that either.) If the audit prompt is revised — a verification procedure
 is the obvious candidate, see §3w(e) — the house rule applies (read it on ~6 examples
 first) and the floors must be restated as kept or changed **in `RULES.md`, before the
 run**, because a re-run under a new prompt is a new measurement.
+
+### The debate-only judgment-challenge run (2026-08-28) — done
+
+**The sweep's 1,644 decided `debate` cells, audited and re-ruled. DO NOT RE-RUN IT.**
+01:48:17Z → 03:18:22Z, **1 h 30 m**, **$33.9371**, five stages exit 0, **9,982 wire calls
+with 0 non-2xx**, 1,643 of 1,644 cells contested (one lost to a truncated *comprehension*
+probe, off the decision path). Nothing decided, nothing regenerated: `decisions_from`
+routes every lookup into the sweep tree, which is byte-identical either side
+(`5e2eb4d6…`). Evidence:
+[`records/experiments/judgment-debate/`](records/experiments/judgment-debate/README.md);
+write-up `LLM_NOTES.md` **§3x**; pre-registration
+[`PREREG.md`](records/experiments/judgment-debate/PREREG.md), **committed before the run**.
+
+**What it asks, and why it is paired.** Only a debate publishes a judgment that is a
+document other than the decision itself, so procedural recourse is defined in one
+condition and undefined in the other two. The comparison is therefore within debate: the
+same decided cells, before recourse and after. **Endpoint: net accuracy change, exact
+two-sided McNemar on the discordant pairs, α = 0.05.**
+
+**The numbers, reported and not concluded from.** **173 fixed, 128 broken, net +45,
+p = 0.0110865** — positive and significant; accuracy **58.2% → 60.9%** [58.5, 63.2]. The
+neutral arm (`rerule-recontest`) on the same cells nets **+1**; procedural against neutral
+is **+44, p = 0.0164**. Objections were raised on **1,148/1,644 = 69.8%**, **0 phantoms**,
+**881/1,148 = 76.7% graded valid**, misattributed quotes **45/1,523 defects = 3.0%**,
+discrimination **+13.3 pts** (overturn 33.6% on wrong decisions against 20.3% on correct
+ones).
+
+**Read `CHECKLIST.md` §0 before quoting any of that.** `ruling_line_mismatch` fired on
+**349/1,147 = 30.4%** of rulings and is **concentrated on FLAWED parents — 50.8% against
+8.2%**, and worst on FLAWED-parent overturns (79.1%). That is the same shape the OLD
+`Ruling: UPHOLD|OVERTURN` line failed in (§3t), where the re-rule's replacement measured a
+**flat ~6%**. It lands on the endpoint's own cells: 27.2% of the *fixed* and 38.3% of the
+*broken*. A **post-hoc, not pre-registered** sensitivity — take the reader's reading of
+each ruling's prose over the ruling's own line wherever that reader answered STANDS or
+CHANGED — turns **+45 into −32, p = 0.114**. It is section (f) of the derivation and it is
+only as good as a Haiku reader.
+
+**Three revisions preceded it, all dated in `PREREG.md` and all smoked first.**
+
+| | what | outcome |
+|---|---|---|
+| format (prompt) | the `Argument:` label shown at the head of the response template | **failed its gate twice** (6/6 then 5/6 repairs on a six-cell smoke); the run went with the repair path, and **1,588 of 1,644** objections were repaired with **0 cells lost** |
+| recourse (materiality) | for this arm only, the judge is shown the judgment and rules in two steps — is each defect real against the record, and if so is it material — with the decision's own `Conclusion:` line supplied as the line to end on when it stands | pilot 1 → pilot 2: overturns **44.4% → 32.4%**, breakage of CORRECT decisions **34.6% → 22.2%**, net **+2 → +4**; two-step prose **0/45 → 37/37** |
+| instrument (`ruling_agreement`) | arm-keyed reader asking a materiality ruling what it CONCLUDES (STANDS / CHANGED / NEITHER), mapped in code onto the verdict vocabulary | pilot 2 mismatch **35.1% → 16.2%**; off the decision path, so an instrument revision and not a change to the run |
+
+**The challenger is `google/gemini-2.5-flash` and that is a disclosed departure**: the
+auditor probe's pre-registered rule picked nobody, and flash was chosen after the numbers
+(`records/pick-auditor/DECISION.md`, addendum of 2026-08-28). The probe measured it under
+the **pre-revision** prompt.
+
+**Every repaired objection is a second attempt written under the repair instruction, which
+suppresses the private section** — so 1,587 of the graded objections carry no `Thinking:`
+block and their first attempt's working was discarded. That is a property of what was
+graded, not a loss of cells.
+
+**Still owed after this run:** the **specious-objection control** (every cell re-ruled on a
+placeholder objection) is what separates "the audit" from "a second look", and it is still
+not run; the **python800 phrasing** from §3u is still a design decision; and the
+30.4% ruling-line residual above wants a hand read of its alarms before the endpoint is
+quoted anywhere outside this repository.
 
 ### The open findings the write-up must carry
 
@@ -666,7 +762,11 @@ must not have to discover them (`LLM_NOTES.md` §4, §3l–§3o):
   "the judge was too weak". The probe's own solo-vs-judge rows are that reference point
   and are already paid for (`records/pick-weak/rows-*.jsonl`).
 - **No specious-objection control.** The challenger is neutral only, so a high revision
-  rate cannot be told apart from a re-decider that capitulates to any pushback.
+  rate cannot be told apart from a re-decider that capitulates to any pushback. **Still
+  true after the 2026-08-28 debate-only run**, which is why its `PREREG.md` states the
+  confound rather than resolving it: the materiality ruling gives a procedural objection a
+  defined role, but the same weak model still decides materiality, and no cell has ever
+  been re-ruled on a placeholder objection.
 - **The informed judge.** `DESIGN.md` puts the problem and the solution in front of the
   judge and the challenger, so this is "argument-assisted weak judge", not the
   information-asymmetric debate of the literature. The probe measured the consequence:
@@ -923,7 +1023,9 @@ truncated cells — is **reported with its number, not stopped for**.
 
 ## 7. Pointers
 
-**`LLM_NOTES.md` section map** (~2,240 lines; it is the working record, not a summary):
+**`LLM_NOTES.md` section map** (~4,620 lines; it is the working record, not a summary).
+The lettered sections are in the order they were WRITTEN, not in alphabetical order —
+§3f–§3g sit before §3d, and §3h sits after §3w — so use this table rather than scrolling:
 
 | § | what |
 |---|---|
@@ -931,13 +1033,21 @@ truncated cells — is **reported with its number, not stopped for**.
 | 2 | dataset findings: CELS sentence annotations, medqa's `final_answer` basis, gpqa's unusable flaw text, python800's unreliable control side |
 | 3 | where the code departs from `DESIGN.md`'s wording, and why |
 | 3b–3c | the port's departures from exp1; two decisions the design does not settle |
-| 3d, 3i | the leaks, and the parser rules that came out of them |
+| 3f–3g | the funnel's denominators — read before quoting any graded rate |
+| 3d, 3i | the two leaks, and the parser rules that came out of them |
 | 3e, 3k | the two documents per run: readable `transcript.md`, verbatim `transcript_full.md` |
-| 3f–3g | the funnel's denominators |
-| 3h | the pre-registered finding that the transcript made the weak judge *worse* |
 | 3j | the lost instruction — no prompt defined what a flaw is, until 2026-08-25 |
 | 3l, 3m, 3n | what each pilot found and what was changed before the next |
 | 3o | the critique-truncation fix, and the `"running"` resume rule |
+| 3p, 3q | fixes from the second and third hand-off reviews (2026-08-25, 2026-08-26) |
+| 3r | the user chose retry-on-resume for the sweep |
+| **3s** | **the first full sweep** (2026-08-26) — the headline funnel, and the phantom correction |
+| **3t** | **the re-contest** (2026-08-26): a challenger that decides last, a weak third-party recourse judge in every condition — and §3t(d), the ruling line contradicting its own reasoning |
+| **3u** | **the re-rule** (2026-08-27): the ruling line fixed, every objection re-ruled, the ~6% residual measured |
+| **3v** | the partisan challenger — three clauses, NO-GO (2026-08-27) |
+| **3w** | the judgment-challenge variant: the slice, the harness quote check, and the auditor probe that picked nobody (2026-08-27) |
+| **3x** | **the debate-only judgment-challenge run** (2026-08-28) — the paired endpoint, the two prompt revisions and the instrument revision |
+| 3h | the pre-registered finding that the transcript made the weak judge *worse* |
 | 4 | limitations accepted for v1 — the three that must reach the write-up |
 | 5, 5b | predictions recorded before the runs; how the weak model and subsets get chosen |
 | 6 | open decisions |
@@ -957,6 +1067,27 @@ read-only stratified draw, used for the abandoned `sweep-1`), `scripts/e2e_offli
 five-stage driver: one `nohup`, sequential stages, `STOP.md`/`DONE.md`; tested by
 `tests/test_run_sweep.py`).
 
+**Derivations** (`records/derivations/`, stdlib only, each runs on a bare clone from
+committed indexes): `sweep-checks.py` (the ten-row checklist over any finished tree),
+`sweep-phantom-corrected.py` (the sweep's headline funnel), `recontest-vs-sweep.py`,
+`rerule-compare.py`, `partisan-vs-neutral.py`, and **`judgment-debate-vs-alone.py`** — the
+paired endpoint, the exact McNemar, the third arm, the secondaries, the per-subset table
+and the post-hoc sensitivity, tested in `tests/test_derivations.py` against a
+hand-computed p. `judgment-debate-smoke-pick.py` and `recontest-smoke-pick.py` write the
+six-item cases files their smokes ran on; `sweep-1-provider-check.py` is the one real
+pinned call to verify provider slugs before a run that calls the strong model.
+
 **Specs.** `experiments/{pilot,pilot-2,pilot-3}.toml` are what those runs were made with
-and must not be edited. `experiments/sweep-1.toml` is the abandoned slice.
-`experiments/sweep.toml` is the one to run.
+and must not be edited; nor are `sweep.toml`, `recontest*.toml`, `rerule-*.toml`,
+`partisan-pilot-*.toml`, `judgment-pilot.toml` or `judgment-debate*.toml`, all of which
+have run. `experiments/sweep-1.toml` is the abandoned slice. `experiments/judgment.toml`
+(three conditions) and `experiments/partisan.toml` (no variant set) are the two that have
+never run and have no reason to. **Nothing here is now "the one to run"** — every spec in
+the directory describes a finished run, and the next one is the user's to open.
+
+The debate-only campaign's five specs, in the order they ran:
+`judgment-debate-pilot.toml` (60 cells, the first instrument check),
+`judgment-debate-smoke.toml` and `-smoke-2.toml` (six cells each, the two format
+wordings), `judgment-debate-smoke-3.toml` (the same six objections re-ruled after the
+conclusion-line fix, via `contests_from`), `judgment-debate-pilot-2.toml` (60 cells under
+both revisions), and `judgment-debate.toml` (**the run**, 1,644 cells).

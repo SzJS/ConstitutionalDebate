@@ -157,3 +157,48 @@ addresses — on the same fixture and the same floors, as a pre-registered promp
 whether the judgment variant should be defined only for debate, the one condition whose
 record is a document other than the judgment; and whether the thresholds stand (they
 should: flash fails omission and false alarms by a margin, not a whisker).
+
+---
+
+## Addendum, 2026-08-28 — flash was used anyway, for the debate-only run, and that is a departure
+
+**The rule above picked nobody. `google/gemini-2.5-flash` was nevertheless run as the
+judgment-challenging challenger on the debate-only measurement, and that is a disclosed
+departure from a pre-registered selection rule.** It is recorded here, where the rule is,
+so that a reader of this file cannot reach the decision without reaching the departure from
+it.
+
+**What was decided, and by whom.** The user's `DESIGN.md` paragraph (`## Judgment-challenge`)
+settles that success for this variant is measured *within* debate — "only a debate has a
+judgment, so the way we will measure success here is by comparing debate with and without
+the judgment-contest" — which is the second of the two design calls this file left open. The
+first, whether to revise the audit prompt and re-run the probe against these same floors,
+was **not** taken: the floors here stand unrevised and unrepeated, and flash's numbers
+against them are the ones already in the table above.
+
+**Why flash and not nothing.** Restricted to `debate` judgments it is the best of the six:
+it catches misattributions and contradictions at ~95%, misses a quarter of misquotes (71%)
+and two omissions in three (32%), and invents a defect on **15% of controls**. The three
+detection floors it fails are floors on *recall*; the run's own measurements are dominated
+by what it *does* allege, and the false-alarm rate is the number that most directly limits
+them. Nothing in this paragraph is a claim that the floors were wrong.
+
+**Where the reasoning is set out in full**, with the population, the endpoint, the test and
+the confounds: `records/experiments/judgment-debate/PREREG.md`, committed before the run.
+The departure is stated there, in both spec headers
+(`experiments/judgment-debate{,-pilot}.toml`), in
+`records/experiments/judgment-debate/README.md` and in `LLM_NOTES.md` §3x.
+
+**Two things this addendum does not do.** It does not re-derive the table above, move a
+threshold, or re-score a candidate — the probe's numbers are as they were, and
+`RULES.md`'s "Instrument corrections after the run" remains the only thing that ever
+changed them. And it does not license the variant for `single` or `self_critique`: the
+run it justifies is debate-only precisely because those two conditions have no judgment
+separate from their record to audit.
+
+**One caveat on reading the probe's numbers against that run.** The probe measured flash
+under the audit prompt **as it stood before 2026-08-28**, with the format repair path in
+place. The run revised that prompt's format instruction (`PREREG.md`, "Prompt revision")
+and 96.6% of its objections were written on a repaired second attempt. The probe's
+per-defect-type detection rates therefore describe that instrument, not the one the run
+used, and they were not re-measured.

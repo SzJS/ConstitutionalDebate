@@ -1,0 +1,298 @@
+================================================================================================
+DEBATE + PROCEDURAL RECOURSE vs DEBATE ALONE — paired, within debate
+================================================================================================
+BEFORE      records/experiments/sweep/index.jsonl
+NEUTRAL     records/experiments/rerule/recontest/index.jsonl
+PROCEDURAL  records/experiments/judgment-debate/index.jsonl
+run tree    outputs/experiments/judgment-debate   (defects-by-type only)
+
+Restricted to `condition == debate`. The other two conditions are not run and
+not compared: their record IS their judgment, so there is nothing to audit it
+against, and the procedure under test is undefined there.
+
+================================================================================================
+JOIN
+================================================================================================
+BEFORE debate rows                 1644
+PROCEDURAL debate rows             1644
+NEUTRAL debate rows                1644
+in BEFORE and PROCEDURAL           1644
+  of those, carrying a gold label  1644   <- the population
+in BEFORE only                     0   (decided but not contested by this run)
+in PROCEDURAL only                 0
+
+identity asserted cell by cell on verdict and initially_correct: 1644/1644 identical.
+The PROCEDURAL run reads its decisions out of the BEFORE tree through
+`decisions_from` and never writes to it, so this is a check that the join is
+the join it claims to be, not a measurement.
+
+================================================================================================
+(a) PRIMARY ENDPOINT — accuracy BEFORE recourse vs AFTER the judgment audit
+================================================================================================
+The population is every debate cell the source tree decided and this run
+contested, carrying a dataset label. A cell's after-state is the ruling's
+verdict where the contest produced a ruling and the decision's own otherwise.
+
+                               AFTER correct       AFTER wrong     total
+------------------------------------------------------------------------------------------------
+BEFORE correct                           828               128       956
+BEFORE wrong                             173               515       688
+------------------------------------------------------------------------------------------------
+total                                   1001               643      1644
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 173
+  broken  (BEFORE correct -> AFTER wrong)   c = 128
+  NET                                    +45 cells
+  discordant pairs                       301   (concordant 1343, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.0110865   SIGNIFICANT at alpha=0.05
+
+  accuracy BEFORE       956/1644 58.2%  [55.7, 60.5]   (95% Wilson)
+  accuracy AFTER        1001/1644 60.9%  [58.5, 63.2]   (95% Wilson)
+
+The dataset labels are the outer bound on `correct` and none of this changes
+them: a ruling that agrees with a wrong label counts as wrong.
+
+================================================================================================
+(b) THE THIRD PAIRED ARM — neutral recourse vs the judgment audit
+================================================================================================
+Same cells, same third-party recourse judge (openai/gpt-4.1-nano), same
+corrected ruling line. What differs is the QUESTION the challenger was asked:
+the neutral arm re-decides the item, this one audits the judgment against the
+record. A neutral cell nobody objected to keeps its before-state, which is the
+substitution counted below.
+
+cells paired on cell_id            1644
+  neutral rows with no ruling      1590   (after-state = before-state)
+  neutral rows with a final_correct  54
+cells in the population but not in the neutral index: 0
+
+b1 — BEFORE vs NEUTRAL, the same test on the same cells, for reference
+
+                             NEUTRAL correct     NEUTRAL wrong     total
+------------------------------------------------------------------------------------------------
+BEFORE correct                           940                16       956
+BEFORE wrong                              17               671       688
+------------------------------------------------------------------------------------------------
+total                                    957               687      1644
+
+  fixed   (BEFORE wrong -> NEUTRAL correct)   b = 17
+  broken  (BEFORE correct -> NEUTRAL wrong)   c = 16
+  NET                                    +1 cells
+  discordant pairs                       33   (concordant 1611, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 1   not significant at alpha=0.05
+
+  accuracy BEFORE       956/1644 58.2%  [55.7, 60.5]   (95% Wilson)
+  accuracy NEUTRAL      957/1644 58.2%  [55.8, 60.6]   (95% Wilson)
+
+b2 — NEUTRAL-after vs PROCEDURAL-after, paired on cell_id
+
+                          PROCEDURAL correct  PROCEDURAL wrong     total
+------------------------------------------------------------------------------------------------
+NEUTRAL correct                          818               139       957
+NEUTRAL wrong                            183               504       687
+------------------------------------------------------------------------------------------------
+total                                   1001               643      1644
+
+  fixed   (NEUTRAL wrong -> PROCEDURAL correct)   b = 183
+  broken  (NEUTRAL correct -> PROCEDURAL wrong)   c = 139
+  NET                                    +44 cells
+  discordant pairs                       322   (concordant 1322, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.0164285   SIGNIFICANT at alpha=0.05
+
+  accuracy NEUTRAL      957/1644 58.2%  [55.8, 60.6]   (95% Wilson)
+  accuracy PROCEDURAL   1001/1644 60.9%  [58.5, 63.2]   (95% Wilson)
+
+A significant b2 says the two recourse procedures reach different answers on
+the same decisions. It does not say which is right on its own — read it beside
+b1 and (a), whose accuracies are against the dataset label.
+
+================================================================================================
+(c) SECONDARY, DESCRIPTIVE — what the challenger did, and what held up
+================================================================================================
+Every rate here is conditional on the step before it, so read the raise rate
+first: a valid-objection rate is over OBJECTIONS, not over cells, and
+multiplying through is what the funnel does. None of these is the endpoint.
+
+cells                                1644
+objection raised                     1148/1644 69.8%
+  stance contests                    1148/1644 69.8%
+  stance declined                    496/1644 30.2%
+phantom (line REVERSE, prose RIGHT)  0/1148 0.0%   of objections
+genuine (line REVERSE, prose WRONG)  1146/1148 99.8%   of objections
+
+VALID-OBJECTION RATE, per objection, split by whether the decision was right.
+Under the judgment variant this is a PROCESS claim graded against the record —
+`flaw.json` is never opened — so a valid defect on a CORRECT decision is a real
+finding and not a false alarm, and both rows below mean something.
+
+decision was            objections    graded                 valid   defects alleged   defects valid
+------------------------------------------------------------------------------------------------
+CORRECT                        633       633         473/633 74.7%               831   572/831 68.8%
+wrong                          515       515         408/515 79.2%               688   493/688 71.7%
+both                          1148      1148        881/1148 76.7%              1519 1065/1519 70.1%
+
+objections raised but never graded: 0 (a defect whose quotation failed the
+parse-time check is never sent to the grader, and an objection all of whose
+defects failed it gets no grader call at all — that is the design, not a loss.
+
+MISATTRIBUTED QUOTES — the parse-time check, over DEFECTS not objections. A
+defect whose `Judgment says:` quotation is not in the judgment is the failure
+mode that made `gpt-4.1-nano` unusable here (34 of 66 quotations, by hand).
+  misattributed_quote                45/1523 3.0%   of defects over 1644 objections
+
+OVERTURN RATE — what the third-party recourse judge did with the objection it
+was handed, split by whether the decision it was ruling on was in fact wrong.
+The difference is the DISCRIMINATION, and it is the one figure here a judge
+cannot raise by overturning everything.
+
+bucket                             n            overturned
+------------------------------------------------------------------------------------------------
+decision wrong                   515         173/515 33.6%
+decision CORRECT                 632         128/632 20.3%
+  of those, genuine|wrong        515         173/515 33.6%
+  of those, genuine|corr         630         128/630 20.3%
+------------------------------------------------------------------------------------------------
+  DISCRIMINATION (overturn on wrong minus on correct)  +13.3 pts
+
+RULING LINE vs THE JUDGE'S OWN PROSE — the residual every revision number
+inherits. Haiku reads the judge's reasoning with the conclusion line stripped
+and says what it concludes; a mismatch is a ruling whose line contradicts the
+reasoning that produced it. Measured at ~6% on the full re-rule, concentrated
+in python800.
+  ruling_line_mismatch               349/1147 30.4%   of rulings the stage could read
+    on a FLAWED  parent            304/598 50.8%
+    on a SOUND   parent            45/549 8.2%
+
+================================================================================================
+(d) DEFECTS BY TYPE  (read from the run tree; no table above uses it)
+================================================================================================
+tree outputs/experiments/judgment-debate
+contest records opened 1644   cells with none 0
+
+type                         alleged     misattributed      graded valid   valid / alleged
+------------------------------------------------------------------------------------------------
+contradiction                    307                23               163     163/307 53.1%
+misstatement                     603                22               410     410/603 68.0%
+omission                         613                 0               489     489/613 79.8%
+(type not recorded)                0                 0                 3           3/0 n/a
+------------------------------------------------------------------------------------------------
+TOTAL                           1523                45              1065   1065/1523 69.9%
+
+the graders' own totals, for comparison: 1519 defects ruled on, 1065 valid
+THESE DISAGREE. The grader ruled on 1519 defects and the parsed
+challenge lists hold 1523. On a tree written before
+`parse_defects` stored the list, `challenge.json`'s `defects` is empty and
+the grade's per-defect `type` is null with it — read the by-type split as
+covering only the objections whose list WAS stored, and the (c) table's
+counts, which come from the index, as the authority on how many there were.
+
+A defect whose quotation failed the parse-time check is counted as alleged and
+is never sent to the grader, so it can never be valid. `misattributed` is that
+column; the probe measured flash inventing a defect on 15% of controls, and
+this is where that shows up as a rate of this run's own.
+
+================================================================================================
+(e) PER SUBSET — fixed / broken / net, and the endpoint restated
+================================================================================================
+Seven subsets, three label bases, and `label_basis` is not pooled: injected_pair,
+sentence_labels and final_answer are three different claims about what 'flawed'
+means. A per-subset McNemar on tens of cells is descriptive; the endpoint is the
+pooled test in (a).
+
+subset          basis                  n   acc before   acc after          raised  fixed  broken   net   McNemar p
+------------------------------------------------------------------------------------------------
+gpqa            injected_pair        319        56.1%       58.3%   217/319 68.0%     28      21    +7      0.3916
+law             sentence_labels       37        73.0%       70.3%     28/37 75.7%      3       4    -1           1
+lojban          sentence_labels      117        62.4%       61.5%    85/117 72.6%      5       6    -1           1
+medqa           final_answer         203        59.1%       57.1%   141/203 69.5%     18      22    -4      0.6358
+python800       injected_pair        637        61.9%       64.7%   436/637 68.4%     61      43   +18     0.09504
+surgery         sentence_labels      196        49.5%       54.1%   142/196 72.4%     28      19    +9       0.243
+theoremqa       injected_pair        135        48.9%       61.5%    99/135 73.3%     30      13   +17     0.01372
+------------------------------------------------------------------------------------------------
+POOLED                              1644                                             173     128   +45     0.01109
+
+================================================================================================
+(f) POST-HOC SENSITIVITY — NOT PRE-REGISTERED, descriptive only
+================================================================================================
+PREREG.md fixes ONE endpoint — net accuracy change after recourse, computed
+from `final_correct`, which is the ruling's own line. That is section (a) and
+nothing here touches it. This block exists because the ruling-line instrument
+fired on 30% of this run's rulings, concentrated on FLAWED parents, and a
+reader is owed some sense of how much of the endpoint rides on the line rather
+than on the reasoning behind it.
+
+THE RULE, stated before the numbers: where the materiality reader answered
+STANDS or CHANGED, take the PROSE's conclusion as the cell's after-state
+(STANDS -> the decision's own verdict, CHANGED -> the other); where it answered
+NEITHER, or the ruling was made under the object-level prompt, or there is no
+ruling, keep the line.
+
+THREE REASONS IT IS DESCRIPTIVE AND NOT A RESULT.
+  * It is post hoc, chosen after the mismatch rate was seen.
+  * It substitutes one weak model's reading for another weak model's line.
+    Haiku at temperature 0 reading prose it did not write is an instrument,
+    not an oracle, and its precision on these alarms is a question for a hand
+    check. Every number below is conditional on that reader being right.
+  * The reader answers a question about the REASONING. A judge whose reasoning
+    and whose line disagree has not told us which of the two it meant.
+
+THE ALARMS, by what the ruling did and what the reader made of its prose
+
+ruling        reader said         n   mismatch?   substituted?
+------------------------------------------------------------------------------------------------
+OVERTURNED    CHANGED           205          no             no
+OVERTURNED    NEITHER            14         YES             no
+OVERTURNED    STANDS             82         YES            YES
+upheld        CHANGED           165         YES            YES
+upheld        NEITHER            88         YES             no
+upheld        STANDS            593          no             no
+------------------------------------------------------------------------------------------------
+alarms                          349   of 1147 rulings the reader read
+  of those, NEITHER             102   kept as the line said — the reader
+                                      settled on nothing, so there is nothing to substitute
+  substituted below             247
+
+THE 2x2 UNDER THE RULE
+
+                               PROSE correct       PROSE wrong     total
+------------------------------------------------------------------------------------------------
+BEFORE correct                           748               208       956
+BEFORE wrong                             176               512       688
+------------------------------------------------------------------------------------------------
+total                                    924               720      1644
+
+  fixed   (BEFORE wrong -> PROSE correct)   b = 176
+  broken  (BEFORE correct -> PROSE wrong)   c = 208
+  NET                                    -32 cells
+  discordant pairs                       384   (concordant 1260, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.11354   not significant at alpha=0.05
+
+  accuracy BEFORE       956/1644 58.2%  [55.7, 60.5]   (95% Wilson)
+  accuracy PROSE        924/1644 56.2%  [53.8, 58.6]   (95% Wilson)
+
+cells whose after-state moved under the rule   247
+  line said WRONG, prose says correct          85
+  line said correct, prose says WRONG          162
+
+                             PRE-REGISTERED (the line)      post hoc (the prose)
+------------------------------------------------------------------------------------------------
+fixed                                              173                       176
+broken                                             128                       208
+net                                                +45                       -32
+McNemar p                                    0.0110865                   0.11354
+------------------------------------------------------------------------------------------------
+
+SECTION (a) IS THE ENDPOINT. This is a sensitivity check on it, it was chosen
+after the mismatch rate was seen, and it is only as good as the reader.
+
+================================================================================================
+SUMMARY
+================================================================================================
+primary   BEFORE -> PROCEDURAL   n=1644  fixed 173  broken 128  net +45  p = 0.0110865
+reference BEFORE -> NEUTRAL      n=1644  fixed 17  broken 16  net +1  p = 1
+third arm NEUTRAL -> PROCEDURAL  n=1644  fixed 183  broken 139  net +44  p = 0.0164285
+post hoc  BEFORE -> PROSE         n=1644  fixed 176  broken 208  net -32  p = 0.11354   NOT PRE-REGISTERED
+
+Read the confound in this module's docstring before quoting any of it.
+================================================================================================
+end

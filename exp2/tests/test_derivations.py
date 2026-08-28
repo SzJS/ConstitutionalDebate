@@ -236,6 +236,97 @@ def test_a_join_over_different_decisions_is_refused(tmp_path, capsys, jd):
         run(jd, paths)
 
 
+def test_the_post_hoc_sensitivity_substitutes_only_where_the_reader_answered(jd):
+    """Section (f)'s rule, unit by unit. It is post hoc and descriptive, but it feeds a
+    2x2 that a reader will hold beside the endpoint, so the substitution has to be exact.
+
+    `ruling_prose_conclusion` is ALREADY the mapped verdict — the reader answers
+    STANDS / CHANGED / NEITHER and `prose_conclusion_for_reading` turns the first two
+    into the parent's verdict and its complement before the record is written — so this
+    is a straight read of that column, never a second translation.
+    """
+    def row(**kw):
+        base = {"gold_flawed": True, "verdict": "FLAWED", "initially_correct": True,
+                "ruling_prompt_form": "materiality", "final_correct": True}
+        base.update(kw)
+        return base
+
+    # STANDS on a FLAWED parent whose gold is FLAWED -> correct, whatever the line said
+    assert jd.prose_after_state(
+        row(ruling_prose_conclusion="FLAWED", final_correct=False), True) is True
+    # CHANGED on the same parent -> SOUND, and gold is FLAWED, so wrong
+    assert jd.prose_after_state(
+        row(ruling_prose_conclusion="SOUND", final_correct=True), True) is False
+    # the same two against a SOUND gold
+    assert jd.prose_after_state(
+        row(gold_flawed=False, ruling_prose_conclusion="SOUND"), True) is True
+    assert jd.prose_after_state(
+        row(gold_flawed=False, ruling_prose_conclusion="FLAWED"), True) is False
+
+    # NEITHER is NOT substituted — the reader settled on nothing, so the line stands
+    assert jd.prose_after_state(
+        row(ruling_prose_conclusion="NEITHER", final_correct=False), True) is False
+    # an object-level ruling is not substituted either, whatever the reader said
+    assert jd.prose_after_state(
+        row(ruling_prompt_form="object_level", ruling_prose_conclusion="SOUND",
+            final_correct=True), True) is True
+    # a row with no ruling at all keeps its before-state
+    assert jd.prose_after_state({"gold_flawed": True}, False) is False
+    # and an unlabelled item stays unlabelled rather than being scored against nothing
+    assert jd.prose_after_state(
+        row(gold_flawed=None, ruling_prose_conclusion="FLAWED"), True) is None
+
+
+def test_the_sensitivity_block_prints_the_endpoint_beside_it(tmp_path, capsys, jd):
+    """Whatever (f) says, (a) must still be the pre-registered number on the page, and
+    (f) must be labelled post hoc everywhere it appears — the log body, the alarm table
+    and the summary line."""
+    # every cell in the fixture is `gold_flawed` on a FLAWED parent, and every ruled cell
+    # gets a reader answer of STANDS — so under the rule every ruled cell is scored
+    # against the parent verdict, which is the gold, and comes out CORRECT whatever its
+    # line said. A maximal, hand-countable substitution.
+    paths = synthetic(tmp_path, fixed=3, broken=2)
+    rows = [json.loads(l) for l in paths["procedural"].read_text().splitlines()]
+    ruled = 0
+    for r in rows:
+        if r.get("ruling_form"):
+            ruled += 1
+            r["ruling_prompt_form"] = "materiality"
+            r["ruling_prose_conclusion"] = r["verdict"]      # STANDS
+            r["ruling_line_mismatch"] = bool(r["changed_the_decision"])
+    _write(paths["procedural"], rows)
+    assert ruled == 17          # every cell in the fixture is contested and ruled
+    run(jd, paths)
+    out = capsys.readouterr().out
+
+    assert "(f) POST-HOC SENSITIVITY — NOT PRE-REGISTERED, descriptive only" in out
+    assert "It is post hoc, chosen after the mismatch rate was seen." in out
+    assert "SECTION (a) IS THE ENDPOINT." in out
+    assert "NOT PRE-REGISTERED" in out.split("SUMMARY")[-1]
+    # the pre-registered endpoint is unchanged by the block below it
+    assert "primary   BEFORE -> PROCEDURAL   n=17  fixed 3  broken 2  net +1" in out
+    # under the rule every ruled cell is correct: the 5 that were wrong before become
+    # fixed, plus the 3 the line had already fixed = 8, and nothing is broken
+    assert "post hoc  BEFORE -> PROSE         n=17  fixed 8  broken 0  net +8" in out
+    # the 5 whose line disagreed with the reader, plus the 2 concordant-wrong cells the
+    # line left wrong and the reader calls correct
+    assert "cells whose after-state moved under the rule   7" in out
+    assert "line said WRONG, prose says correct          7" in out
+    assert "line said correct, prose says WRONG          0" in out
+    # the alarm table names both the mismatch and the substitution decision
+    assert "reader said" in out and "substituted?" in out
+
+    # NEITHER is never substituted, however loudly it disagrees
+    for r in rows:
+        if r.get("ruling_form"):
+            r["ruling_prose_conclusion"] = "NEITHER"
+    _write(paths["procedural"], rows)
+    run(jd, paths)
+    out = capsys.readouterr().out
+    assert "cells whose after-state moved under the rule   0" in out
+    assert "post hoc  BEFORE -> PROSE         n=17  fixed 3  broken 2  net +1" in out
+
+
 def test_the_committed_indexes_are_what_the_defaults_name(jd):
     """The two committed inputs must exist on a bare clone, or the script's defaults
     are a promise the repository does not keep."""
