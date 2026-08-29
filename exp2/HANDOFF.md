@@ -96,6 +96,36 @@ checkable.
 > [`PREREG.md`](records/experiments/judgment-debate-4/PREREG.md), committed before the first
 > paid call, with both six-cell smokes and the one clause revision between them.
 >
+> **THE EXISTENCE CHECK WAS MEASURED — `judgment-debate-5`, 2026-08-29. DONE, DO NOT RE-RUN
+> IT.** The repair jd4 named was made — one paragraph at the head of Step 1 of
+> `RECOURSE_JUDGE_USER_JUDGMENT`: find the `Judgment says:` sentence in the judgment; if the
+> words are not there the defect is not real; name the quotation you could not find; do not
+> repair the objection; do not rule on what the judgment "implies"; omissions exempt. It is
+> committed at `8ec5384` **with `PREREG.md` and before either arm's first paid call**, and it
+> changes the ruling prompt's digest from `a758605…` to `e77eb5da…`. Two paired arms then
+> re-ruled STORED objections — **no challenger call in either** — 23:43:00Z → 01:12:13Z,
+> **1 h 29 m**, **$6.2675**, three stages each, all exit 0, **896 of 896 cells ruled in both**,
+> **0 non-2xx**.
+>
+> **THE TWO ARMS MOVE IN OPPOSITE DIRECTIONS.** On jd4's 896 objections whose every judgment
+> quotation is invented, the overturn rate **halves: 10.2% → 5.5%** (65 lost their overturn, 23
+> gained one, exact McNemar **p = 8.5e-06**). On jd3 M1's 896 real objections, it **rises by
+> eight points: 26.6% → 34.7%** (122 gained one, 49 lost one, **p = 2.3e-08**). Both accuracy
+> nets are **ABLATIONS**: fabricated −7 → **+9**, real −18 → **−23** (P1 stays a null, p = 0.21).
+>
+> **AND THE CAMPAIGN CANNOT SAY WHY.** Two explanations survive every number — *verification
+> licenses conviction* (a judge that has just confirmed a quotation treats the defect as
+> established) and *the added paragraph changed the ruling's shape* (it is longer and
+> front-loads defect-checking, which may cost the "the decision stands unless" instruction some
+> weight). Both predict the halving, the rise and the widened gap. **The arm that separates them
+> — the same real objections re-ruled with the check delivered MECHANICALLY from the harness's
+> own `defect_quote_in_judgment`, ~$3 — has not been run and is first in "still owed".**
+> `PREREG.md`'s 13.3% floor is **met and uninformative**: it is one-sided and could only have
+> fired on a fall. Evidence:
+> [`records/experiments/judgment-debate-5/`](records/experiments/judgment-debate-5/README.md),
+> read [`CHECKLIST.md`](records/experiments/judgment-debate-5/CHECKLIST.md) **§0 first**;
+> write-up `LLM_NOTES.md` **§3aa**.
+
 > **The partisan-challenger ablation was tried on three clauses on the 207-cell slice on
 > 2026-08-27 and is a NO-GO** — none reached the pre-written gate of 2× the neutral genuine
 > objection rate, so the ~$22 full run was never started; evidence in
@@ -283,7 +313,7 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$217.95**. It breaks into four blocks, each itemised where it is
+Total spent so far: **$224.23**. It breaks into five blocks, each itemised where it is
 reported:
 
 * **$99.68 through the debate-only judgment-challenge run** — $63.00 through the auditor
@@ -308,6 +338,15 @@ reported:
   were made in the whole arm against M3's 1,641. **A control that is false by construction is
   cheaper than one that is false by instruction**, and that is worth knowing before the next
   one is budgeted.
+* **$6.2779 for `judgment-debate-5`** (2026-08-29), the existence check: arm A
+  `jd5-recheck-fabricated` **$2.9305**, arm B `jd5-recheck-real` **$3.3370**, and two three-call
+  smokes **$0.0062** + **$0.0042**. It came in **9% under** its ≈$6.9 estimate and is the
+  cheapest phase in the campaign, because **nothing is generated**: 1,794 call records per arm,
+  one recourse-judge call and one ruling-reader call per cell, and not a single challenger,
+  debater, judge or grader call in either. **The ruling reader cost more than the judge in both
+  arms** ($1.64 against $1.29, $1.93 against $1.41) — `anthropic/claude-haiku-4.5` reading 896
+  rulings is the more expensive half of a re-rule, which is worth knowing before the next one
+  is budgeted.
 
 The earlier breakdown, unchanged, of the first block's $36.6753: the first instrument check
 `judgment-debate-pilot` **$1.3285**, three six-cell prompt smokes **$0.1848**
@@ -965,12 +1004,87 @@ the judge is capable of the check and is simply not asked for it, while the harn
 parse-time flag that answers it is not shown to it. **The repair — put
 `challenge_fabrication_ok` in the ruling prompt, or make Step 1 locate every quotation — is the
 cheapest experiment this campaign has left: its own smoke, then a re-rule of these 896 stored
-objections for cents. It was opened as `judgment-debate-5` immediately after this arm, so read
-that phase for what it measured.** And note what that means for provenance: jd5 **changes**
+objections for cents. It was opened as `judgment-debate-5` immediately after this arm, **DONE
+2026-08-29** — the fabricated overturn rate halved to 5.5% and the real audit's rose to 34.7%;
+read the section below and `LLM_NOTES.md` §3aa for what it measured and for the two
+explanations it cannot separate.** And note what that means for provenance: jd5 **changes**
 `RECOURSE_JUDGE_USER_JUDGMENT`, while every number above was produced under that prompt as it
 stood at **commit `b853218`** — byte-identical to what jd3's M1, M2, M3 and M4 were ruled
 under, which is what makes the four-arm table one comparison rather than four. A later tree's
 `prompts.py` holds a Step 1 these 894 rulings never saw.
+
+### The existence check, `judgment-debate-5` (2026-08-29) — DONE
+
+**The repair jd4 named, made and measured on both the objections that motivated it and the
+real audit. DO NOT RE-RUN IT.** Evidence:
+[`records/experiments/judgment-debate-5/`](records/experiments/judgment-debate-5/README.md);
+write-up `LLM_NOTES.md` **§3aa**; pre-registration
+[`PREREG.md`](records/experiments/judgment-debate-5/PREREG.md), committed at `8ec5384`
+**together with the prompt change and before either arm's first paid call**.
+
+**The change is one paragraph** at the head of Step 1 of `RECOURSE_JUDGE_USER_JUDGMENT`: find
+the `Judgment says:` sentence in the judgment; if the words are not there the defect is **not
+real**; say which quotation you could not find; **do not repair the objection on its behalf**
+and do not rule on what the judgment "implies"; an omission's parenthetical is not a quotation
+and is checked on the record side as before. The rest of the template is byte-identical — a
+test rebuilds the old Step 1 and hashes it to `a758605…` to prove it — and
+**`RECOURSE_JUDGE_USER`, the neutral arm's, did not move at all**. New digest `e77eb5da…`.
+**A ruling made under the new digest is never pooled with one made under the old.**
+
+**What ran.** Two arms over STORED objections through the `rerule` stage and `contests_from`,
+**no challenger call in either**: `jd5-recheck-fabricated` (jd4's 896 fabricated objections)
+and `jd5-recheck-real` (jd3 M1's 896 real ones), both ruled by `meta-llama/llama-4-maverick`
+against M0's decisions, sequentially in one process. 23:43:00Z → 01:12:13Z, **$6.2675**, three
+stages each (`rerule ruling_agreement analyse`), all exit 0, **896/896 ruled in both**, **3,586
+HTTP 200 and 0 non-2xx**, 2 transport retries and 2 parser repairs in total. `jd3-main`
+(`dfa9bdca…`) and `jd4-fabricated` (`6fe55bca…`) fingerprinted **before and after**, unchanged.
+
+| the same objection, ruled twice | old Step 1 | new Step 1 | McNemar |
+|---|---|---|---|
+| **fabricated** (every judgment quotation invented) | 91/894 = **10.2%** | **49/894 = 5.5%** | **p = 8.5e-06** |
+| **real** (M1's audit, 72.4% graded valid) | 238/895 = **26.6%** | **311/895 = 34.7%** | **p = 2.3e-08** |
+| fabricated: net against M0 **[ABLATION]** | −7 (42/49) | **+9** (29/20) | p = 0.25 |
+| real: net against M0 **[ABLATION]** | −18 (110/128) — **P1** | **−23** (144/167) | p = 0.21 |
+
+**The rulings visibly run the check**: a keyword instrument (hand-read for precision, and *not*
+an index column) reports a missing quotation in **93.1%** of the fabricated arm's rulings and
+**3.0%** of the real arm's. **And the fix is partial**: **11 of the 49** fabricated objections
+that still move a decision (22.4%) are ones whose ruling names the sentence it could not find
+and then rules on "the essence" of the objection anyway — the smoke's disclosed partial pass,
+surviving at scale.
+
+**THE CAMPAIGN CANNOT SAY WHY EITHER RATE MOVED, AND THE RECORD SAYS SO.** Two explanations
+survive every number: **(a) verification licenses conviction** — a judge that has just confirmed
+a quotation treats the defect as established and moves more readily to Step 2 — and **(b) the
+added paragraph changed the ruling's shape**, front-loading defect-checking at the cost of the
+system prompt's "the decision stands unless the objection shows it to be mistaken". Both predict
+the halving, the rise and the widened gap (+16.4 → +29.3 pts).
+`transcripts/flipped-to-overturn__gpqa-119-sound` shows why: the defect is real under **both**
+prompts and **the flip is at Step 2**.
+
+**Two things a reader must carry.** `PREREG.md`'s **13.3% floor is met and uninformative** — it
+is one-sided, it could only have fired if arm B's overturn rate FELL, and it rose; it was
+written against the wrong risk and that is recorded rather than rewritten. And
+**`meta-llama/llama-4-maverick` is not provider-pinned in any of these specs**: 34% of M1's
+rulings were served by DeepInfra against 4.8% of arm B's, so "only the paragraph moved" is the
+intent and not a measured fact (`logs/stage-tails.md`).
+
+**Still owed after this campaign, in order:**
+
+1. **The mechanical-check arm, and it is what separates (a) from (b).** Re-rule the same 896
+   real objections with the existence check delivered **mechanically** — the harness already
+   computes `defect_quote_in_judgment` per quotation at parse time, so hand the judge its
+   verdict instead of asking it to look. Same cells, same judge, one added **line** rather than
+   one added **paragraph**, **~$3**. If arm B's rise survives, the paragraph is not what did it;
+   if it does not, the paragraph is. **Pin the judge's provider**, which this campaign did not.
+2. **The contestability debate round — the user's chosen next ablation**: objection → a
+   **defence round** → re-ruling, so the recourse judge rules on an argued exchange rather than
+   on an unanswered objection. Nothing in this experiment has ever put a reply in front of the
+   recourse judge, and it is the closest thing to the contestable process `DESIGN.md` describes.
+3. Carried forward unchanged: the **python800 phrasing** (§3u), still load-bearing and still
+   carrying arm B's whole loss (−12 of −23, unchanged from M1's −12); the **`weak_alone` arm**;
+   the **flaw definition's threshold**; and the **same-model property**, which these arms bound
+   once more and do not repair.
 
 ### The open findings the write-up must carry
 
@@ -1250,7 +1364,7 @@ truncated cells — is **reported with its number, not stopped for**.
 
 ## 7. Pointers
 
-**`LLM_NOTES.md` section map** (~5,344 lines; it is the working record, not a summary).
+**`LLM_NOTES.md` section map** (~5,612 lines; it is the working record, not a summary).
 The lettered sections are in the order they were WRITTEN, not in alphabetical order —
 §3f–§3g sit before §3d, and §3h sits after §3w — so use this table rather than scrolling:
 
@@ -1276,6 +1390,7 @@ The lettered sections are in the order they were WRITTEN, not in alphabetical or
 | **3x** | **the debate-only judgment-challenge run** (2026-08-28) — the paired endpoint, the two prompt revisions and the instrument revision |
 | **3y** | **the one-judge campaign** (2026-08-28) — all four arms with `llama-4-maverick` in both judge seats: the endpoint is a NULL, the audit is clean, the two conditional rates are the finding, three post-hoc gatekeeper rows do not repair it, and the specious control (P3, **not void**) puts the judge's overturn rate on confirmed-unreal objections at 12.2% against 22.7% on real ones |
 | **3z** | **the fabricated auditor** (2026-08-28) — the specious control that is false BY CONSTRUCTION: 96.0% of its objections carry only invented quotations by string comparison, the grader validates 0.1% against M3's 29.2%, the judge overturns **10.2%** of them against 26.6% on real objections and 1.3% on a placeholder, and the mechanism is a **missing existence check** in the ruling prompt rather than credulity |
+| **3aa** | **the existence check, measured** (2026-08-29) — one paragraph at the head of Step 1, put to the same judge twice over stored objections: the FABRICATED overturn rate **halves, 10.2% → 5.5%** (p = 8.5e-06) and the REAL audit's **rises, 26.6% → 34.7%** (p = 2.3e-08); both nets are ablations (−7 → +9, −18 → −23); the rulings report a missing quotation on 93.1% of the fabricated arm against 3.0% of the real one; 22.4% of the surviving fabricated overturns still rule on "the essence"; the 13.3% floor is met and **uninformative**; and the section **reports two explanations it cannot separate** rather than choosing one |
 | 3h | the pre-registered finding that the transcript made the weak judge *worse* |
 | 4 | limitations accepted for v1 — the three that must reach the write-up |
 | 5, 5b | predictions recorded before the runs; how the weak model and subsets get chosen |
@@ -1331,10 +1446,25 @@ prose-wins sensitivity; its defaults point at the committed indexes, so
 first). **`jd4-smoke-read.py`** renders both smokes for a human, recomputing every quotation
 against the documents with the harness's comparison and a stricter independent one.
 
+The existence-check phase adds three: **`judgment-debate-5.py`** — the two PAIRED ruling tables
+first (the same objection ruled twice, with its exact McNemar), then the overturn ladder under
+both prompt digests, the four accuracy ablations, the discrimination table, the keyword
+instrument of §4b, the arms' own columns, the per-subset table, the post-hoc prose-wins
+sensitivity and the three pre-registered directions checked one by one. **It imports its
+loaders, its exact McNemar and its Wilson interval from `judgment-debate-4.py` rather than
+copying them** — the two scripts print rates about the same 896 cells in one write-up and a
+definition that drifted between them would be invisible — and `tests/test_derivations.py` pins
+that by identity as well as pinning 49/896, 91→49, p = 8.50111e-06 and 311/896 against the
+committed indexes. Its one section that needs a run tree, the ruling-language scan, writes
+`arm-*/ruling-language.jsonl` under `--scan-* --write-language` so the default invocation stays
+index-only. **`jd5-smoke-pick.py`** draws the six smoke cells with a stated seed, one per
+subset, excluding the nine cells of `outputs/jd4-handcheck.md`; **`jd5-smoke-read.py`** renders
+all six with every quotation recomputed and the old ruling beside the new.
+
 **Specs.** `experiments/{pilot,pilot-2,pilot-3}.toml` are what those runs were made with
 and must not be edited; nor are `sweep.toml`, `recontest*.toml`, `rerule-*.toml`,
 `partisan-pilot-*.toml`, `judgment-pilot.toml`, `judgment-debate*.toml`, `jd2-*.toml`,
-`jd3-*.toml` or `jd4-*.toml`, all of which have run. `experiments/sweep-1.toml` is the abandoned slice. `experiments/judgment.toml`
+`jd3-*.toml`, `jd4-*.toml` or `jd5-*.toml`, all of which have run. `experiments/sweep-1.toml` is the abandoned slice. `experiments/judgment.toml`
 (three conditions) and `experiments/partisan.toml` (no variant set) are the two that have
 never run and have no reason to. **Nothing here is now "the one to run"** — every spec in
 the directory describes a finished run, and the next one is the user's to open.
@@ -1348,6 +1478,13 @@ and `gatekeeper` stages were added for this campaign: `rejudge` reads another tr
 debate transcripts through `transcripts_from` and writes a full decision record of its own,
 and `gatekeeper` copies another tree's finished objections **with their rulings** through
 `contests_from` and adds one `admission.json` beside each, re-ruling nothing.
+
+The existence check's four specs, in the order they ran: `jd5-smoke-fabricated.toml` and
+`jd5-smoke-real.toml` (three cells each, the six-cell prompt smoke), then
+`jd5-recheck-fabricated.toml` and `jd5-recheck-real.toml` (**the two arms**, 896 cells each,
+`rerule ruling_agreement analyse` only). No new stage was added for them either — `rerule` and
+`contests_from` already existed — and no new vocabulary; the two arms differ from the runs they
+re-rule in exactly one thing, the ruling prompt's text.
 
 The fabricated arm's three specs, in the order they ran: `jd4-smoke.toml` (six cells, the
 clause as first written), `jd4-smoke-2.toml` (six *different* cells, the clause after the

@@ -1,0 +1,359 @@
+====================================================================================================
+judgment-debate-5 — an existence check in Step 1, put to the same judge twice
+====================================================================================================
+Pre-registration: records/experiments/judgment-debate-5/PREREG.md
+Section (0) is the measurement. (b) is an ABLATION and never an endpoint;
+(d) is a KEYWORD INSTRUMENT; (g) is POST HOC. Everything else is descriptive.
+
+arm             index                                                                         rows
+----------------------------------------------------------------------------------------------------
+real            records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl                   1644
+placeholder     records/experiments/judgment-debate-3/arm-M2/index.jsonl                      1644
+gatekeeper      records/experiments/judgment-debate-3/arm-M4/index.jsonl                      1644
+fabricated      records/experiments/judgment-debate-4/arm-jd4/index.jsonl                      896
+jd5_fabricated  records/experiments/judgment-debate-5/arm-fabricated/index.jsonl               896
+jd5_real        records/experiments/judgment-debate-5/arm-real/index.jsonl                    1644
+jd5_fabricated langrecords/experiments/judgment-debate-5/arm-fabricated/ruling-language.jsonl     896
+jd5_real lang   records/experiments/judgment-debate-5/arm-real/ruling-language.jsonl           896
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+POPULATION — THE SAME 896 CELLS jd3's M1 CONTESTED
+====================================================================================================
+Read off `challenge_raised` in M1's index, exactly as judgment-debate-4.py reads
+it, and intersected with every arm present. jd4's cases file is the same set.
+
+index                                             rows   rows on the 896     ruled
+----------------------------------------------------------------------------------------------------
+M1 — the real audit (jd3)                         1644               896       895
+jd4 — the fabricated audit                         896               896       894
+jd5 arm A — fabricated, re-ruled                   896               896       896
+jd5 arm B — real, re-ruled                        1644               896       896
+----------------------------------------------------------------------------------------------------
+population size: 896
+M0's before-state on these cells: 622/896 69.4% correct — 274 wrong. Unchanged; no decision was re-made.
+
+TWO CELLS DIFFER IN DENOMINATOR AND IT IS NOT A LOSS. jd4 lost two rulings to
+truncation and M1 lost one; jd5 ruled 896/896 in both arms, so each paired
+table below stands on the cells BOTH arms ruled and the margins differ from the
+column totals by exactly those cells.
+
+====================================================================================================
+(0) THE TWO PAIRED TABLES — THE SAME OBJECTION, RULED TWICE  [THE MEASUREMENT]
+====================================================================================================
+Every cell here carries ONE stored objection ruled by ONE judge
+(`meta-llama/llama-4-maverick`) under two versions of one prompt. No challenger,
+debater or grader call was made by either arm: the objections are jd4's and M1's,
+copied and ruled again. So the only thing that moves within a row is the
+existence check — and the sampling, which is not zero and is why the concordant
+cells are worth reading beside the discordant ones.
+
+====================================================================================================
+  ARM A — THE FABRICATED OBJECTIONS (jd4 -> jd5)
+====================================================================================================
+                                  jd5-A OVERTURN        jd5-A UPHOLD     total
+----------------------------------------------------------------------------------------------------
+jd4 OVERTURN                                  26                  65        91
+jd4 UPHOLD                                    23                 780       803
+----------------------------------------------------------------------------------------------------
+total                                         49                 845       894
+
+  jd4 overturn rate                91/894 10.2%  [8.4, 12.3]
+  jd5-A overturn rate                49/894 5.5%  [4.2, 7.2]
+  moved OVERTURN -> UPHOLD            65
+  moved UPHOLD -> OVERTURN            23
+  discordant rulings                  88   (concordant 806, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR             p = 8.50111e-06   SIGNIFICANT at alpha=0.05
+
+====================================================================================================
+  ARM B — THE REAL AUDIT'S OBJECTIONS (M1 -> jd5)
+====================================================================================================
+                                  jd5-B OVERTURN        jd5-B UPHOLD     total
+----------------------------------------------------------------------------------------------------
+M1 OVERTURN                                  189                  49       238
+M1 UPHOLD                                    122                 535       657
+----------------------------------------------------------------------------------------------------
+total                                        311                 584       895
+
+  M1 overturn rate                238/895 26.6%  [23.8, 29.6]
+  jd5-B overturn rate                311/895 34.7%  [31.7, 37.9]
+  moved OVERTURN -> UPHOLD            49
+  moved UPHOLD -> OVERTURN            122
+  discordant rulings                  171   (concordant 724, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR             p = 2.26826e-08   SIGNIFICANT at alpha=0.05
+
+====================================================================================================
+THE TWO ARMS MOVE IN OPPOSITE DIRECTIONS, AND THAT IS THE RESULT.
+  arm A  fabricated  10.2% -> 5.5%   (65 lost their overturn, 23 gained one)
+  arm B  real        26.6% -> 34.7%   (49 lost their overturn, 122 gained one)
+  the gap between them  +16.4 pts -> +29.3 pts   (pre-registered direction 3: it WIDENS)
+====================================================================================================
+
+====================================================================================================
+(a) THE OVERTURN RATES SIDE BY SIDE, ON THE SAME 896 CELLS  [DESCRIPTIVE]
+====================================================================================================
+The margins of section (0), plus the two arms of jd3 that are not re-ruled here,
+for the ladder jd4 printed. NOT tested at alpha: the rows are different
+objections or different prompts about the same cells. The prompt each row was
+ruled under is named, because a ruling made under the new digest is a different
+measurement from one made under the old and the two are NEVER pooled.
+
+arm                                     ruling prompt               overturned        95% Wilson
+----------------------------------------------------------------------------------------------------
+M1 — the real audit                     b853218                  238/895 26.6%      [23.8, 29.6]
+jd5 B — the same, new Step 1            8ec5384                  311/896 34.7%      [31.7, 37.9]
+jd4 — the fabricated audit              b853218                   91/894 10.2%       [8.4, 12.3]
+jd5 A — the same, new Step 1            8ec5384                    49/896 5.5%        [4.2, 7.2]
+M4 — the gated audit [POST HOC]         b853218                  194/895 21.7%      [19.1, 24.5]
+M2 — the placeholder                    b853218                    12/894 1.3%        [0.8, 2.3]
+----------------------------------------------------------------------------------------------------
+THE LADDER UNDER THE NEW STEP 1, in one line each:
+  an objection that CANNOT be true   5.5%   (was 10.2% under the old Step 1)
+  an audit that is TRUE              34.7%   (was 26.6%)
+  the difference                     +29.2 pts, against +16.4 before
+  (on each row's OWN ruled denominator. Section (0)'s +29.3 is the same
+   quantity on the PAIRED denominators, 894 and 895, and the tenth of a
+   point between them is those cells and nothing else.)
+
+====================================================================================================
+(b) THE ACCURACY NETS AGAINST M0  [ABLATION — NEVER AN ENDPOINT]
+====================================================================================================
+Each arm's after-state against M0's before-state on the same cells: fixed /
+broken / net, exact two-sided McNemar, alpha = 0.05 — the same formula, alpha and
+after-state definition as jd3's P1, whose net is -18, for comparability and
+nothing else. This campaign changes a prompt and measures what the change does to
+two overturn rates. A net that moves is a fact about the judge under a new
+instruction, not evidence that recourse improves decisions; and on arm A, whose
+objections CANNOT be true, a positive net is the artefact jd3 had to write about
+M3 rather than an improvement.
+
+====================================================================================================
+  ABLATION — M0 (before) against jd4  — fabricated, OLD Step 1 (after)
+====================================================================================================
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                           573                49       622
+BEFORE wrong                              42               232       274
+----------------------------------------------------------------------------------------------------
+total                                    615               281       896
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 42
+  broken  (BEFORE correct -> AFTER wrong)   c = 49
+  NET                                    -7 cells
+  discordant pairs                       91   (concordant 805, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.529602   not significant at alpha=0.05
+
+  accuracy BEFORE         622/896 69.4%  [66.3, 72.3]   (95% Wilson)
+  accuracy AFTER          615/896 68.6%  [65.5, 71.6]   (95% Wilson)
+
+====================================================================================================
+  ABLATION — M0 (before) against jd5 A — fabricated, NEW Step 1 (after)
+====================================================================================================
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                           602                20       622
+BEFORE wrong                              29               245       274
+----------------------------------------------------------------------------------------------------
+total                                    631               265       896
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 29
+  broken  (BEFORE correct -> AFTER wrong)   c = 20
+  NET                                    +9 cells
+  discordant pairs                       49   (concordant 847, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.25287   not significant at alpha=0.05
+
+  accuracy BEFORE         622/896 69.4%  [66.3, 72.3]   (95% Wilson)
+  accuracy AFTER          631/896 70.4%  [67.4, 73.3]   (95% Wilson)
+
+====================================================================================================
+  ABLATION — M0 (before) against M1   — real audit, OLD Step 1  (this is P1) (after)
+====================================================================================================
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                           494               128       622
+BEFORE wrong                             110               164       274
+----------------------------------------------------------------------------------------------------
+total                                    604               292       896
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 110
+  broken  (BEFORE correct -> AFTER wrong)   c = 128
+  NET                                    -18 cells
+  discordant pairs                       238   (concordant 658, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.27045   not significant at alpha=0.05
+
+  accuracy BEFORE         622/896 69.4%  [66.3, 72.3]   (95% Wilson)
+  accuracy AFTER          604/896 67.4%  [64.3, 70.4]   (95% Wilson)
+
+====================================================================================================
+  ABLATION — M0 (before) against jd5 B — real audit, NEW Step 1 (after)
+====================================================================================================
+                               AFTER correct       AFTER wrong     total
+----------------------------------------------------------------------------------------------------
+BEFORE correct                           455               167       622
+BEFORE wrong                             144               130       274
+----------------------------------------------------------------------------------------------------
+total                                    599               297       896
+
+  fixed   (BEFORE wrong -> AFTER correct)   b = 144
+  broken  (BEFORE correct -> AFTER wrong)   c = 167
+  NET                                    -23 cells
+  discordant pairs                       311   (concordant 585, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.212144   not significant at alpha=0.05
+
+  accuracy BEFORE         622/896 69.4%  [66.3, 72.3]   (95% Wilson)
+  accuracy AFTER          599/896 66.9%  [63.7, 69.9]   (95% Wilson)
+
+====================================================================================================
+  THE FOUR NETS IN ONE TABLE  [ALL FOUR ARE ABLATIONS]
+====================================================================================================
+arm                                            fixed  broken    net         p
+----------------------------------------------------------------------------------------------------
+jd4  — fabricated, OLD Step 1                     42      49     -7      0.53
+jd5 A — fabricated, NEW Step 1                    29      20     +9     0.253
+M1   — real audit, OLD Step 1 (P1)               110     128    -18      0.27
+jd5 B — real audit, NEW Step 1                   144     167    -23     0.212
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(c) DISCRIMINATION — DOES THE OBJECTION LAND WHERE THE DECISION WAS WRONG?
+====================================================================================================
+Overturn rate on objections to WRONG decisions minus the rate on objections to
+RIGHT ones, on the same 896. An objection carrying no information should score
+zero. jd4's reading was that a fabricated objection still discriminates because
+its RECORD quotation is real, which is the half the judge checked.
+
+arm                                         on WRONG (fixed|wrong)    on RIGHT (broken|right)     diff
+----------------------------------------------------------------------------------------------------
+M1 — real audit, OLD Step 1                          110/274 40.1%              128/622 20.6%    +19.6
+jd5 B — real audit, NEW Step 1                       144/274 52.6%              167/622 26.8%    +25.7
+jd4 — fabricated, OLD Step 1                          42/274 15.3%                49/622 7.9%     +7.5
+jd5 A — fabricated, NEW Step 1                        29/274 10.6%                20/622 3.2%     +7.4
+----------------------------------------------------------------------------------------------------
+Arm B's two rates BOTH rise. Arm A's both fall, and its difference barely moves —
+the new Step 1 refuses fabricated objections roughly evenly on right and wrong
+decisions, which is what a check on the objection rather than on the decision
+should do.
+
+====================================================================================================
+(d) WHAT THE RULINGS SAY THEY DID  [KEYWORD INSTRUMENT — NOT AN INDEX COLUMN]
+====================================================================================================
+Regexes over the ruling's prose, printed in two readings because one regex is
+one opinion: STRICT requires the absence to be asserted of a QUOTATION and in
+the JUDGMENT, in one of four templates; BROAD accepts any absence cue in a
+sentence that also names a quotation. The patterns are in
+`RULING_LANGUAGE_PATTERNS` and `ruling_language()` and are re-derivable from a
+run tree with `--scan-fabricated` / `--scan-real`.
+
+THE CONTRAST IS WHAT THIS SUPPORTS, NOT THE ABSOLUTE RATE. A five-cell hand read
+of arm B's strict hits found about half of them to be the phrase used about
+something other than a `Judgment says:` quotation (CHECKLIST section 4).
+
+arm                              names a MISSING quotation   (broad)    confirms PRESENT           essence
+----------------------------------------------------------------------------------------------------
+jd5 A — fabricated, NEW                      834/896 93.1%     95.6%       134/896 15.0%     194/896 21.7%
+jd5 B — real audit, NEW                        27/896 3.0%      6.9%       412/896 46.0%     107/896 11.9%
+----------------------------------------------------------------------------------------------------
+An objection whose quotations are INVENTED gets an absence report; one whose
+quotations are REAL does not. That is the check doing what it was written to do,
+and it is the strongest single line of evidence that the paragraph was read.
+
+THE RESIDUAL, AND IT IS THE SMOKE'S PARTIAL PASS SURVIVING AT SCALE. The new
+paragraph forbids repairing the objection on its behalf. `essence` counts
+rulings using 'essence', 'captures the' or 'paraphrase' anywhere:
+
+                                 rulings           essence   overturns     essence among overturns
+----------------------------------------------------------------------------------------------------
+jd5 A — fabricated, NEW              896     194/896 21.7%          49                 11/49 22.4%
+jd5 B — real audit, NEW              896     107/896 11.9%         311                 15/311 4.8%
+----------------------------------------------------------------------------------------------------
+A fabricated objection that still moves a decision under the new prompt is, one
+time in five, one the judge said it could not find and then ruled on anyway.
+
+====================================================================================================
+(e) THE INSTRUMENT — the arms' own columns, before and after
+====================================================================================================
+                                                 ruled       phantom  line_mismatch strict    conservative
+----------------------------------------------------------------------------------------------------
+jd4 — fabricated, OLD Step 1             894/896 99.8%    1/895 0.1%            3/839 0.4%     58/894 6.5%
+jd5 A — fabricated, NEW Step 1          896/896 100.0%    1/895 0.1%            0/865 0.0%     31/896 3.5%
+M1 — real audit, OLD Step 1              895/896 99.9%    1/896 0.1%           10/863 1.2%     42/895 4.7%
+jd5 B — real audit, NEW Step 1          896/896 100.0%    1/896 0.1%            4/852 0.5%     48/896 5.4%
+----------------------------------------------------------------------------------------------------
+`ruling_line_mismatch` strict counts rulings whose prose contradicts their line;
+conservative counts a reader's NEITHER as a mismatch, which is what metrics.json
+prints. The objections, their defect counts, their grades and their phantom flags
+are INHERITED — no challenger or grader call was made by either jd5 arm — so a
+phantom row that moves between an old arm and its re-ruling is the ruling reader,
+not the objection.
+
+====================================================================================================
+(f) PER SUBSET AND PER label_basis — NEVER POOLED
+====================================================================================================
+Net cells against M0 for both jd5 arms beside the arms they re-rule.
+
+subset                       n   jd4 net  jd5-A net   M1 net  jd5-B net
+----------------------------------------------------------------------------------------------------
+gpqa                       186        -8         +1       -7         -8
+law                         17        +2         +1       +1         +0
+lojban                      66        +1         +1       +1         -2
+medqa                      123        +2         +2       +5         +2
+python800                  310        -4         +3      -12        -12
+surgery                    122        +0         +2       -4         +0
+theoremqa                   72        +0         -1       -2         -3
+----------------------------------------------------------------------------------------------------
+
+label_basis                  n   jd4 net  jd5-A net   M1 net  jd5-B net
+----------------------------------------------------------------------------------------------------
+final_answer               123        +2         +2       +5         +2
+injected_pair              568       -12         +3      -21        -23
+sentence_labels            205        +3         +4       -2         -2
+----------------------------------------------------------------------------------------------------
+injected_pair, sentence_labels and final_answer are three different claims about
+what 'flawed' means and are never pooled.
+
+====================================================================================================
+(g) THE PROSE-WINS SENSITIVITY  [POST HOC]
+====================================================================================================
+The materiality reader's reading of each ruling's PROSE substituted for the
+ruling's own line wherever that reader answered STANDS or CHANGED. Not
+pre-registered, only as good as a Haiku reader, and labelled wherever it appears.
+
+arm                                         line net   prose net    move
+----------------------------------------------------------------------------------------------------
+jd4 — fabricated, OLD Step 1                      -7         -10      -3
+jd5 A — fabricated, NEW Step 1                    +9          +9      +0
+M1 — real audit, OLD Step 1                      -18         -14      +4
+jd5 B — real audit, NEW Step 1                   -23         -25      -2
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(h) THE PRE-REGISTERED DIRECTIONS, CHECKED ONE BY ONE
+====================================================================================================
+`records/experiments/judgment-debate-5/PREREG.md`, committed before the first
+paid call. They are DIRECTIONAL predictions on descriptive quantities and are
+not tested at alpha; the only alpha in that document is the ablation's.
+
+1. ARM A's fabricated overturn rate FALLS from 10.2%:  10.2% -> 5.5%   MET
+2. ARM B's real overturn rate DOES NOT COLLAPSE below 13.3%:  26.6% -> 34.7%   MET
+
+   *** AND THE FLOOR WAS WRITTEN AGAINST THE WRONG RISK. *** It is one-sided:
+   it can only fire if the real audit's overturn rate FALLS. It ROSE, by more
+   than eight points, and the pre-registration has nothing to say about that
+   direction. The floor is reported as MET because it is, and as UNINFORMATIVE
+   because it is: no threshold in that document could have been tripped by
+   what actually happened.
+
+3. THE GAP WIDENS beyond +16.4 pts:  +29.3 pts   MET
+   This is the quantity the change is actually about — a judge that can tell a
+   real objection from an invented one — and it is the one number that needed
+   both arms to exist. It is also the number the two explanations in the
+   header cannot be told apart by: both predict it.
+
+====================================================================================================
+WHAT THIS FILE DOES NOT SEPARATE. Every number above is consistent with BOTH
+(a) verification licensing conviction and (b) the added paragraph changing the
+ruling's shape. Nothing here chooses between them, and the write-up does not
+either. The arm that would — the same real objections re-ruled with the
+existence check delivered MECHANICALLY from `defect_quote_in_judgment` instead
+of asked for — has not been run.
+====================================================================================================

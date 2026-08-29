@@ -1,0 +1,69 @@
+{
+  "name": "jd5-recheck-fabricated",
+  "conditions": [
+    "debate"
+  ],
+  "repeats": 1,
+  "cases": "data/cases/jd4-fabricated.jsonl",
+  "cells": 896,
+  "decisions_from": "outputs/experiments/jd3-main",
+  "decisions_from_experiment_sha256": "655b99a56b6f959d5b38a5fce9b7b802362f45f113d51e2ad3a3cbd5bd54126c",
+  "contests_from": "outputs/experiments/jd4-fabricated",
+  "contests_from_experiment_sha256": "692904e7497a75cab533ceb09d9eb489ddd30667fc9f8ddf8ada722e709c8321",
+  "transcripts_from": null,
+  "transcripts_from_experiment_sha256": null,
+  "config": {
+    "debater_model": "deepseek/deepseek-v4-flash-0731",
+    "judge_model": "meta-llama/llama-4-maverick",
+    "n_rounds": 3,
+    "turn_style": "simultaneous",
+    "word_limit": 400,
+    "debater_temperature": 0.7,
+    "judge_temperature": 0.0,
+    "max_tokens": 16384,
+    "reasoning_effort": "off",
+    "judge_cot": true,
+    "seed": 0,
+    "frequency_penalty": 0.0,
+    "max_decision_attempts": 2,
+    "generation_max_tokens": 8192,
+    "n_critique_rounds": 3,
+    "provider_order": {
+      "deepseek/deepseek-v4-flash-0731": [
+        "gmicloud/fp8",
+        "coreweave/fp8"
+      ]
+    },
+    "provider_allow_fallbacks": false,
+    "debater_model_b": null,
+    "critic_model": null,
+    "recourse_rounds": 0,
+    "recourse_judge_model": "meta-llama/llama-4-maverick",
+    "challenger_model": "google/gemini-2.5-flash",
+    "challenge_word_limit": null,
+    "challenger_reasoning_effort": null,
+    "challenger_temperature": 0.7,
+    "recourse_form": "third_party",
+    "comprehension_model": null,
+    "challenger_may_decline": true,
+    "challenger_variant": "judgment_fabricated",
+    "gatekeeper_model": null
+  },
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 16,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 8,
+    "copy_parent": true
+  },
+  "grading": {
+    "grader_model": "anthropic/claude-haiku-4.5",
+    "grader_temperature": 0.0,
+    "max_tokens": 4096
+  }
+}

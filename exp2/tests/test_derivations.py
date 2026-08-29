@@ -1218,3 +1218,129 @@ def test_jd4_is_stdlib_only_like_every_other_derivation(jd4):
     for banned in ("import numpy", "import scipy", "import pandas",
                    "from scipy", "import statsmodels", "from exp2"):
         assert banned not in source, banned
+
+
+# --- judgment-debate-5: one paragraph of Step 1, put to the same judge twice ----------
+
+
+_JD5_FLAGS: dict = {}
+
+
+@pytest.fixture(scope="module")
+def jd5():
+    module = _load("judgment-debate-5.py")
+    _JD5_FLAGS.clear()
+    _JD5_FLAGS.update(module.ARM_FLAGS)
+    _JD5_FLAGS.update(module.LANGUAGE_FLAGS)
+    return module
+
+
+def _jd5_only(*args):
+    """Arguments that run ONLY the indexes named. Same reason as `_jd4_only`: this
+    script's defaults point at the COMMITTED records, so without this a synthetic
+    assertion about six fake cells quietly matches the published 896-cell arms."""
+    argv = []
+    named = set(args[::2])
+    for _, (flag, _default) in _JD5_FLAGS.items():
+        if flag not in named:
+            argv += [flag, "/nonexistent/index.jsonl"]
+    return list(args) + argv
+
+
+def test_jd5_imports_its_statistics_from_jd4_rather_than_copying_them(jd, jd3, jd4, jd5):
+    """jd4 and jd5 print rates about the SAME 896 cells side by side in one write-up, so
+    a definition that drifted between them would be invisible. jd5 does not define its
+    own — it re-exports the objects of the jd4 module it loaded, and this asserts
+    IDENTITY against that module and not merely equality of results. (The `jd4` fixture
+    is a second, independent load of the same file, so it is compared by behaviour.)"""
+    assert jd5.mcnemar_exact is jd5.jd4.mcnemar_exact
+    assert jd5.wilson is jd5.jd4.wilson
+    assert jd5.load is jd5.jd4.load
+    assert jd5.restrict is jd5.jd4.restrict
+    assert jd5.overturned is jd5.jd4.overturned
+    assert jd5.pairs_before_after is jd5.jd4.pairs_before_after
+    assert jd5.paired_block is jd5.jd4.paired_block
+    assert jd5.conditional_rates is jd5.jd4.conditional_rates
+    assert jd5.jd4.__file__ == jd4.__file__
+    assert jd5.ALPHA == jd4.ALPHA == 0.05
+    for b, c in ((65, 23), (49, 122), (29, 20), (144, 167)):
+        assert jd5.mcnemar_exact(b, c) == jd3.mcnemar_exact(b, c) == jd.mcnemar_exact(b, c)
+
+
+def test_jd5_pairs_only_the_cells_both_arms_actually_ruled(tmp_path, jd5):
+    """jd4 lost two rulings to truncation and M1 lost one; jd5 ruled 896/896 in both
+    arms. A cell that was never put to one of the two judges cannot be counted as an
+    uphold on that side, so it leaves the paired table rather than entering it as a
+    concordant pair — which would dilute every rate in section (0)."""
+    old = {f"c{i}": {"ruling_form": "stated_conclusion", "changed_the_decision": i < 2}
+           for i in range(4)}
+    old["c3"]["ruling_form"] = None                      # truncated in the old arm
+    new = {f"c{i}": {"ruling_form": "stated_conclusion", "changed_the_decision": False}
+           for i in range(4)}
+    pairs = jd5.ruling_pairs(old, new, set(old))
+    assert [c for c, _, _ in pairs] == ["c0", "c1", "c2"]
+    assert [(a, b) for _, a, b in pairs] == [(True, False), (True, False), (False, False)]
+
+
+def test_jd5_ruling_language_reads_the_prose_and_says_which_reading_it_used(jd5):
+    """Section (d) is a KEYWORD INSTRUMENT and the only thing in this file that is not an
+    index column. The verdict vocabulary collides with the absence vocabulary — "the text
+    does not contain a flaw" is this judge's CONCLUSION, not a lookup — and a broad reading
+    that counted it would have put arm B's absence rate near 60%."""
+    found = jd5.ruling_language(
+        'Upon reviewing the judgment, the sentence "X" is not found.')
+    assert found["names_missing_strict"] and found["names_missing_broad"]
+    assert not found["confirms_present"] and not found["essence"]
+    verdict = jd5.ruling_language(
+        "Conclusion: the original text in <solution> does not contain a flaw")
+    assert not verdict["names_missing_strict"] and not verdict["names_missing_broad"]
+    present = jd5.ruling_language('This sentence is present in the judgment.')
+    assert present["confirms_present"] and not present["names_missing_broad"]
+    repaired = jd5.ruling_language(
+        'The quoted sentence is not found. However, the essence of the objection is real.')
+    assert repaired["names_missing_strict"] and repaired["essence"]
+
+
+def test_jd5_reproduces_the_published_paired_tables(capsys, jd5):
+    """THE REGRESSION THAT MATTERS. Run over the COMMITTED indexes with no arguments —
+    which is the command README.md gives — this script must reproduce what `LLM_NOTES.md`
+    §3aa and `CHECKLIST.md` quote about the same 896 cells. If it drifts, the write-up and
+    the evidence disagree."""
+    jd5.main([])
+    out = capsys.readouterr().out
+    assert "population size: 896" in out
+    # arm A — the fabricated objections, ruled twice
+    assert "91/894 10.2%" in out and "49/894 5.5%" in out
+    assert "49/896 5.5%" in out                       # its own ruled denominator
+    assert "p = 8.50111e-06" in out
+    # arm B — the real audit's objections, ruled twice
+    assert "238/895 26.6%" in out and "311/895 34.7%" in out
+    assert "311/896 34.7%" in out
+    assert "p = 2.26826e-08" in out
+    # the two nets, both ABLATIONS
+    assert "NET                                    +9 cells" in out
+    assert "NET                                    -23 cells" in out
+    assert "ABLATION" in out and "never an endpoint" in out.lower()
+    # the instrument, in both readings
+    assert "834/896 93.1%" in out and "27/896 3.0%" in out
+    assert "11/49 22.4%" in out
+    # the pre-registered floor, met and uninformative
+    assert "THE FLOOR WAS WRITTEN AGAINST THE WRONG RISK" in out
+    assert "cannot be told apart" in out
+
+
+def test_jd5_carries_both_explanations_and_picks_neither(jd5):
+    """The user's call, and the reason this phase is reported rather than concluded: the
+    two arms cannot separate 'verification licenses conviction' from 'the added paragraph
+    changed the ruling's shape', and a script that named only one would be choosing."""
+    source = (DERIVATIONS / "judgment-debate-5.py").read_text(encoding="utf-8")
+    assert "VERIFICATION LICENSES CONVICTION" in source
+    assert "THE PARAGRAPH CHANGED THE RULING'S SHAPE" in source
+    assert "MECHANICALLY" in source
+
+
+def test_jd5_is_stdlib_only_like_every_other_derivation(jd5):
+    source = (DERIVATIONS / "judgment-debate-5.py").read_text(encoding="utf-8")
+    for banned in ("import numpy", "import scipy", "import pandas",
+                   "from scipy", "import statsmodels", "from exp2"):
+        assert banned not in source, banned
