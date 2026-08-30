@@ -5196,6 +5196,400 @@ one `PREREG.md` pins.
 
 ---
 
+## 3ac. Framing the accuracy cost of recourse: the arithmetic, the legal analogy checked against the literature, and deference for AI-made decisions (2026-08-30)
+
+**Written after §3ab, from a discussion with the user on how to explain that recourse lowers
+accuracy. Nothing here is a new measurement. The numbers are §3s, §3y, §3aa and §3ab's; the
+citations were gathered by two research passes on 2026-08-30 and every one marked verified
+below was checked against a journal page, a court opinion or the publisher's record. Items
+the passes could NOT verify are marked UNVERIFIED and should not be cited without a second
+look.**
+
+### (a) What "recourse lowers accuracy" is, and the identity that explains it
+
+Across the campaign the net of the recourse process on accuracy has one sign:
+
+| arm | net cells vs. before | status |
+|---|---|---|
+| sweep, `debate`, neutral challenger (§3s) | −27 (58.2% → 56.5%) | descriptive |
+| jd3, judgment audit, Maverick judge (§3y) | −18 | null, p = 0.27 |
+| jd5, with the existence check (§3aa) | −23 / +9 | nulls |
+| jd6 R, the argued contest round (§3ab) | **−77** | p = 8.2e-05 |
+| jd6 B, the plain fourth round (§3ab) | −33 | p = 0.025 |
+
+The honest sentence is: recourse never demonstrably raised accuracy, and the argued form
+significantly lowered it. But in every arm the recourse judge **discriminates** — it fixes
+40–54% of the wrong decisions it sees and breaks 20–36% of the right ones — and it nets
+negative anyway. The reason is the base rate, and it is an identity.
+
+**Setup.** `N` decisions, `N_R` right and `N_W` wrong, first-instance accuracy
+`a = N_R / N`, so `N_R / N_W = a / (1 − a)` is the prior odds that a decision is right.
+Over the whole corpus define `f = P(overturned | wrong)` (the fix rate) and
+`b = P(overturned | right)` (the break rate); the decision is binary, so every overturn of
+a wrong decision is a fix and every overturn of a right one a break.
+
+**After recourse:** `N_R' = N_R (1 − b) + N_W f`, so `a' = a (1 − b) + (1 − a) f` and the
+net change in correct cells is `Δ = N_W f − N_R b`.
+
+**Condition for recourse not to lower accuracy:**
+
+```
+Δ ≥ 0   ⇔   N_W f ≥ N_R b   ⇔   f / b  ≥  N_R / N_W  =  a / (1 − a)
+```
+
+The fix-to-break ratio must exceed the odds that the decision was right to begin with.
+Equivalently `Δ/N = (1 − a) f − a b`, so a given mechanism has a **break-even accuracy**
+`a* = f / (f + b)` above which it hurts:
+
+| judge | f = fix \| wrong | b = break \| right | f / b | a* = f/(f+b) |
+|---|---|---|---|---|
+| jd5-B, judge-only (§3aa) | 52.6% | 26.8% | 1.96 | 66% |
+| jd6 R, argued round (§3ab) | 54.4% | 36.3% | 1.50 | 60% |
+| jd6 B, plain round (§3ab) | 31.9% | 19.3% | 1.65 | 62% |
+
+M0 on the jd6 cells is 583 / 846 = 69% (odds 2.2), above all three break-evens; on the
+corpus it is 73.7% (odds 2.8). Check: jd6 R, `Δ = 148 − 225 = −77`, §3ab's number.
+
+**Decomposition into selection and adjudication.** Recourse is a challenge stage and a
+ruling stage. With `r_W = P(challenged | wrong)`, `r_R = P(challenged | right)`,
+`o_W = P(overturned | challenged, wrong)`, `o_R = P(overturned | challenged, right)`,
+`f = r_W o_W` and `b = r_R o_R`, so
+
+```
+(r_W / r_R) · (o_W / o_R)  ≥  a / (1 − a)
+```
+
+The challenger's likelihood ratio and the judge's likelihood ratio **multiply** and their
+product must beat the prior odds of correctness. For the judge alone,
+`o_W / o_R ≥ a_c / (1 − a_c)` where `a_c = P(right | challenged)
+= a r_R / (a r_R + (1 − a) r_W)` is the base rate among the cells the judge actually sees.
+Selection lowers `a_c` and lowers the judge's bar; with no selection (`r_W = r_R`) the judge
+must beat the full prior odds alone. jd3's audit raised on 896 of 1,644 cells, and `a_c`
+(69%) sits barely below `a` (74%): selection bought the judge almost nothing — the bar went
+from 2.8 to 2.2 and the judge managed 1.5.
+
+**The Bayesian form, which is where "deference" comes from.** On one challenged decision
+the judge should overturn (symmetric loss) iff `P(wrong | evidence) > ½`, i.e. iff
+`[(1 − a_c) / a_c] · LR > 1`, i.e. iff **`LR > a_c / (1 − a_c)`**. The strength of evidence
+an objection must carry before it should move the decision is exactly the prior odds that
+the decision was right. A standard of review — "stands unless clearly shown mistaken" — is
+the institutional form of demanding a high `LR`, and the bar rises with the first
+instance's accuracy. A judge that overturns on "if Bob is right" (§3ab's hand check, 4 of
+10 overturns read) is applying `LR ≈ 1`, which is only correct at `a_c ≈ ½`. This is why the
+same recourse prompt is not wrong for a weak decision-maker and wrong for a strong one, and
+it is the exact form of "the better debate works, the better recourse has to work".
+
+Three caveats. (i) `f`, `b` are population rates; this bounds net accuracy, not any single
+ruling. (ii) It assumes binary flips; with more than two outcomes an overturn of a wrong
+decision can land on another wrong one, which only raises the bar. (iii) It values a fix and
+a break equally; an asymmetric loss scales the threshold by the loss ratio — the
+Blackstone-ratio point, and the place where a *legitimacy* objective (weighting
+`P(revised | wrong)` above accuracy) would enter.
+
+**Priority.** The 2026-08-30 research pass found **no source that states this population-
+level ratio condition or an algebraic equivalent.** The nearest are pointwise deferral rules
+in the learning-to-defer literature (Madras, Pitassi & Zemel 2018; Mozannar & Sontag 2020;
+Okati, De & Gomez-Rodriguez 2021 — "the optimal triage policy is a deterministic threshold
+rule … thresholding the difference between the model and human errors on a per-instance
+level"), Langer, Baum & Schlicker (2025), which frames oversight in signal-detection terms
+(the overseer's sensitivity and response bias — the ratio is a criterion-vs-base-rate
+statement in that vocabulary), and Kornhauser's verbal form: an extra tier of review is
+desirable "if the appeals process is sufficiently selective or sufficiently error
+correcting". Cite those as the adjacent framings and claim the condition.
+
+### (b) The legal analogy, checked: "the legal system accepts mistakes to allow recourse" is NOT supported; "it restricts review along several dimensions" is
+
+`research.md` already says reversal ≠ error and that appellate review has an
+error-correction and a law-declaration function (the precedent point — a common-law appeal
+is not "re-score this case against ground truth"). What it does not support, and the
+research pass confirms the literature does not support, is the claim that the legal system
+*accepts an accuracy loss* in exchange for recourse. Shavell's thesis is the opposite —
+appeals *reduce* error at low cost — and nobody has measured how often appeals introduce
+error, because there is no ground truth and no exoneration analogue for a wrongful reversal.
+What the legal system demonstrably accepts accuracy losses for is other procedural values:
+the exclusionary rule, the jury (Kalven–Zeisel: juries acquit in ~19% of cases where the
+judge would convict), double jeopardy and finality, and the standard of proof (which trades
+error *types*, not total error). Those, with Tyler's procedural-justice finding that
+legitimacy tracks process fairness rather than outcome, are the right support for
+"legitimacy and alignment are distinct objectives".
+
+**The claim that is defensible.** Law makes review of a fallible first instance
+accuracy-preserving by restricting it. The framing "selection, deference, materiality" is
+**defensible but not citable as a set** — each factor is real and citable, the three come
+from three disconnected literatures, and no single source enumerates them. Citing one paper
+for all three would be a misattribution.
+
+1. **Selection** — only a subset of decisions is reviewed, filtered by litigants' private
+   information about error and by the cost of appealing. This is the one factor the
+   economic models actually treat. Shavell (1995): appeals "harness the information that
+   litigants possess about decisions"; Shavell (2010) fn. 2 is the cleanest one-line
+   statement — giving disappointed litigants the right to appeal "focuses higher court
+   reconsideration on cases in which legal error was most likely to have occurred".
+   Cameron & Kornhauser (2006) for selection under strategic litigants. **Caveat that
+   matters here:** Shavell's 2006 and 2010 papers contain no occurrence of "standard of
+   review", "deference" or "harmless", and 2010 assumes the appeals court is "an expert
+   body" — a *superior* reviewer. Shavell does not support the reviewer-no-better-than-
+   first-instance setting; this experiment is a test of what happens when his assumption
+   fails. Cite him for selection only.
+2. **Deference** — standards of review allocate re-decision authority by where the
+   informational advantage lies: facts for clear error, law de novo. *Anderson v. Bessemer
+   City* (1985) gives the justifications — the fact-finder's epistemic advantage on
+   demeanor, and "duplication of the trial judge's efforts in the court of appeals would
+   very likely contribute only negligibly to the accuracy of fact determination at a huge
+   cost in diversion of judicial resources" (the closest judicial language to the
+   arithmetic above); also "if the district court's account of the evidence is plausible
+   in light of the record viewed in its entirety, the court of appeals may not reverse it
+   even though convinced that had it been sitting as the trier of fact, it would have
+   weighed the evidence differently". *Salve Regina* (1991) gives the flip side for law.
+   Fed. R. Civ. P. 52(a)(6) is the rule. The formal treatment, Baker & Kornhauser (2015,
+   UNVERIFIED as published), justifies deference by the first instance's private "local
+   facts" — an information-asymmetry story, not a noise story; almost nobody frames
+   deference as a response to a *noisy reviewer*. Steinman (2020) is the one source with an
+   explicitly comparative-accuracy criterion for choosing the standard of review — the best
+   cite for deference-as-accuracy. Critics: Wellborn (1991) — demeanor evidence is
+   empirically worthless; Peters (2009) — standards are routinely misapplied.
+3. **Materiality** — under harmless-error doctrine a real defect that would not have changed
+   the outcome does not reverse. *Kotteakos* (1946), *Chapman* (1967), 28 U.S.C. § 2111,
+   Fed. R. Crim. P. 52(a), Fed. R. Civ. P. 61; Traynor (1970), Edwards (1995). **Weaker than
+   it looks:** no economic model of harmless error exists, so there is no accuracy-theoretic
+   source for it; the doctrine's own justification tilts to *finality* — *Brecht v.
+   Abrahamson* (1993) adopts a laxer standard on habeas expressly for finality and comity;
+   *structural error* (*Arizona v. Fulminante*, 1991) is the law explicitly refusing a
+   materiality filter; Kamin (2002) argues harmless error is an accuracy *loss*. This
+   experiment's recourse prompt (Step 1: is the defect real; Step 2: would addressing it
+   change the conclusion) is harmless-error review, and §3ab's hand check is a description
+   of the standard eroding.
+
+**The one taxonomy that exists has four items.** Oldfather, *Error Correction*, 85 Ind.
+L.J. 49, 55 (2010): "allegations of error that were not properly preserved cannot, in
+general, form the basis of an appeal. Moreover, the deferential standards of review … and
+indeed the practical exclusion of many trial court decisions from any sort of appellate
+review — mean that reversal often does not follow … And then there is the harmless-error
+doctrine". The three above map onto his second, third and fourth; the missing one is
+**preservation / waiver**, which together with the **record-on-appeal restriction** (no
+fresh evidence) is an information-admissibility constraint — the reviewer is confined to
+the record and to objections raised at the time — and it is what makes deference coherent.
+It is exactly the recourse judge's situation here, so a write-up should not omit it. Two
+further factors that touch accuracy: the reviewer's **inference from the fact of appeal**
+(Daughety & Reinganum 2000), relevant if the appellant is strategic; and **incentive
+effects on the first instance** (Shavell 2006; Chopard, Fain & Roussey 2018, where appeals
+can *reduce* accuracy via effort crowd-out). Finality, certiorari, panel size and
+remand-vs-substitution are real design features but cost/legitimacy factors, safe to omit.
+
+**Wording that the sources carry:**
+
+> The legal system does not make appellate review accuracy-improving by accepting error; it
+> restricts review along several dimensions at once (Oldfather 2010). Three matter here.
+> *Selection*: only a subset of decisions is reviewed, filtered by litigants' private
+> information about error and the cost of appealing (Shavell 1995; Cameron & Kornhauser
+> 2006). *Deference*: standards of review allocate re-decision authority by where the
+> informational advantage lies — facts for clear error, law de novo — so the reviewer does
+> not re-decide questions on which it holds no advantage (*Anderson*; Steinman 2020).
+> *Materiality*: under harmless-error doctrine a real defect that would not have changed the
+> outcome does not reverse (*Kotteakos*; *Chapman*). These sit alongside a fourth filter,
+> preservation, which confines the reviewer to the record and to objections raised at the
+> time; and they are not uniformly accuracy-motivated — harmless error is defended as much
+> on finality as on accuracy (*Brecht*), and some errors are exempted from it entirely
+> (*Fulminante*).
+
+**Selection is switched off in this experiment.** Shavell's mechanism relies on litigants
+appealing only decisions they have reason to think wrong. The audit challenger raised on
+55% of cells; the neutral one on ~8% with a 26–50% phantom share. That alone predicts a
+worse net than the legal system gets, independent of reviewer quality — condition (b) of
+`research.md` §4's three conditions is off along with condition (c).
+
+### (c) Deference for AI-made decisions: what is demanded, what humans do with it, and what it buys
+
+Law justifies deference on facts by the fact-finder's *epistemic* advantage, *institutional
+economy*, and the *legitimacy* of the fact-finder (the jury). For an AI first instance the
+epistemic argument transfers and may strengthen (an accurate model has a better claim to
+deference than a trial judge does, by the arithmetic); the economy argument transfers
+trivially; the legitimacy argument **inverts** — deference to a jury is acceptable because
+the jury is the community, and deference to a model is precisely what people are being
+asked to swallow.
+
+**What regulation actually demands is override *authority*, not de novo re-decision.** GDPR
+Art. 22(1) is "the right not to be subject to a decision based solely on automated
+processing"; Art. 22(3) requires "at least the right to obtain human intervention on the
+part of the controller, to express his or her point of view and to contest the decision".
+The Art. 29 Working Party guidance (WP251rev.01, p. 21): oversight must be "meaningful,
+rather than just a token gesture … carried out by someone who has the authority and
+competence to change the decision". AI Act Art. 14(4)(d): the overseer must be able "to
+decide, in any particular situation, not to use the high-risk AI system or to otherwise
+disregard, override or reverse the output"; Art. 14(4)(b) already names the failure mode
+("automation bias"). So the instruments grant the reviewer the *power* of de novo review
+with no doctrine allocating *when* to use it. Kaminski & Urban (2021) propose contestation
+archetypes that do not require de novo human re-decision and warn a purely procedural right
+"risks defanging the right and allowing companies to comply through rubber-stamped
+processes". Huq (2020) rejects every justification for a right to a human decision and
+substitutes "a right to a well-calibrated machine decision" — the best cite for this
+experiment's own position. Green (2022), over 41 oversight policies: "people are unable to
+perform the desired oversight functions", and such policies "legitimize government uses of
+faulty and controversial algorithms". Crootof, Kaminski & Price (2023): "Empirically,
+humans in the loop are often ineffective". Lyons, Velloso & Miller (2021) document the
+*demand* — public submissions to Australia's AI Ethics Framework say "all individuals have
+the right to a final determination made by a person" — and call it possible
+"humanity-fetishism".
+
+**What humans do with the power, direction checked.** An override is an overturn, and it
+helps only if `P(override | AI wrong) / P(override | AI right)` beats `a / (1 − a)`.
+- Vaccaro, Almaatouq & Malone (2024), meta-analysis, the strongest cite: human–AI
+  combinations "performed significantly worse than the best of humans or AI alone (Hedges'
+  g = −0.23)"; "when humans outperformed AI alone, we found performance gains in the
+  combination, but when AI outperformed humans alone, we found losses" — the inequality's
+  prediction in aggregate data. Decision tasks g = −0.27 (p = 0.002); creation tasks
+  g = +0.19 **not significant** — say "synergy did not appear for decision tasks", not
+  "appeared for creation tasks".
+- Angelova, Dobbie & Yang (2023/RES): "90% of the judges in our setting underperform the
+  algorithm when they make a discretionary override, with most making override decisions
+  that are no better than random. Yet the remaining 10% of judges outperform the algorithm
+  in terms of both accuracy and fairness" — the selection term of the inequality, in
+  humans. Cite with the split.
+- Hoffman, Kahn & Li (2018): "managers who appear to hire against test recommendations end
+  up with worse average hires" (outcome is tenure; the exception rate is inferred, not
+  observed).
+- Dawes, Faust & Meehl (1989): "even when given an information edge, the clinical judge
+  still fails to surpass the actuarial method"; "clinicians apparently identify too many
+  'exceptions'". Grove et al. (2000), k = 136: 47% of studies favour mechanical prediction,
+  6% clinical; clinical prediction did *worse* when it had interview data.
+- Agarwal, Moehring, Rajpurkar & Salz (2023): "AI alone outperforms humans with AI" even
+  where AI helps the humans; optimal design "delegates cases either to humans or to AI, but
+  rarely to AI assisted humans".
+- Dietvorst, Simmons & Massey (2018): restricting how much people can modify an algorithm's
+  forecasts makes them "deviate from the algorithm less and thus to perform better" — a
+  strictness constraint, imposed mechanically, doing what an instruction could not.
+- **Do not cite** Stevenson & Doleac (2024) for override-harms — it is a null; Albright
+  (2019) is about racial disparity in overrides, not accuracy; Dietvorst et al. (2015)'s
+  outcome is *choice* of algorithm, not override accuracy; Kleinberg et al. (2018)'s
+  24.7% / 41.9% are policy simulations, not a deployed override study.
+
+**What the appeal buys in legitimacy — the one direct test is null.** Vaccaro, Sandvig &
+Karahalios (2020), on appeal designs for content moderation: "none of the appeal designs
+improve FACT [fairness, accountability, trustworthiness, control] perceptions compared to
+a no appeal baseline". This removes the easy defence that de novo human review is costless
+because it buys perceived legitimacy. Tyler (1990/2006; 2003) holds for legitimacy tracking
+process over outcome in general. Lee (2018): algorithmic decisions were judged less fair
+than human ones only for human-skill tasks (hiring, evaluation), not mechanical ones.
+
+**Relevance to this experiment.** The weak recourse judge is a stand-in for the reviewer
+regulation mandates — one with the power to reverse and no capacity to withhold it — and
+§3ab is a measurement of what that costs at a 69% base rate: −77 cells with an argued
+exchange, −33 with a plain re-decision. The design already tried to install deference by
+instruction ("stands unless the objection shows it mistaken"; "these replies are arguments,
+not evidence") and the hand check shows it eroding into conditionals. The open problem the
+experiment states cleanly: the legitimacy demand is for de novo review, the accuracy
+constraint is for deferential review, and the gap between them widens with the
+decision-maker's accuracy — not a problem better models solve, one they sharpen. Whether
+stakeholders *will* refuse deference is an empirical question about preferences and should
+be written as a conditional.
+
+**On "accurate methods may be terrible for contestability".** Suggestive, not shown. The
+sweep's `single` is 88% accurate with 18 genuine contests out of 241 errors and 1 revision
+— but its revision numbers are the confounded asymmetric form (§3s), n = 18, and "not
+contestable" cannot be separated from "nothing to contest". What is clean is the detection
+column: true detection given a wrong decision is 7.5% `single`, 26.3% `self_critique`,
+12.4% `debate` — the most accurate condition is the one whose errors are hardest to find.
+State it as that.
+
+### (d) Citation traps found by the research passes
+
+- "Parties have a right to a competent decisionmaker, not two" — **not in *Anderson***;
+  UNVERIFIED anywhere. Do not use.
+- A secondary claim that Shavell (1995) discusses harmless error — UNVERIFIED; the 1995 full
+  text was not obtained.
+- Binns et al. (CHI '18) had **no human-decision condition**; do not cite for "people prefer
+  human decisions". Lee (2018) is the cite, with its task restriction.
+- Vaccaro et al. (2021) is a participatory design workshop, not an appeals experiment; the
+  appeals experiment is Vaccaro et al. (2020) and it found no perception gain.
+- Angelova, Dobbie & Yang without the 90/10 split overstates "some judges add value".
+- Madras, Pitassi & Zemel's title is *Predict Responsibly: Improving Fairness and Accuracy by
+  Learning to Defer*.
+- Tyler's book is sometimes given a subtitle ("Procedural Justice, Legitimacy, and
+  Compliance") that neither publisher's record carries; Tyler (2003) is pp. 283–357, not
+  431–505.
+- Kleinberg et al.: cite the QJE numbers (24.7% / 41.9%), not the NBER WP's (24.8 / 42.0).
+
+### (e) Citations (verified unless marked)
+
+*Appellate design and selection*
+- Steven Shavell, *The Appeals Process as a Means of Error Correction*, 24 J. Legal Stud. 379 (1995).
+- Steven Shavell, *The Appeals Process and Adjudicator Incentives*, 35 J. Legal Stud. 1 (2006).
+- Steven Shavell, *On the Design of the Appeals Process: The Optimal Use of Discretionary Review versus Direct Appeal*, 39 J. Legal Stud. 63 (2010).
+- Matt Spitzer & Eric Talley, *Judicial Auditing*, 29 J. Legal Stud. 649 (2000).
+- Charles M. Cameron & Lewis A. Kornhauser, *Decision Rules in a Judicial Hierarchy*, 161 J. Institutional & Theoretical Econ. 264 (2005).
+- Charles M. Cameron & Lewis A. Kornhauser, *Appeals Mechanisms, Litigant Selection, and the Structure of Judicial Hierarchies*, in *Institutional Games and the U.S. Supreme Court* 173 (Rogers, Flemming & Bond eds., 2006).
+- Andrew F. Daughety & Jennifer F. Reinganum, *Appealing Judgments*, 31 RAND J. Econ. 502 (2000).
+- Lewis A. Kornhauser, *Adjudication by a Resource-Constrained Team: Hierarchy and Precedent in a Judicial System*, 68 S. Cal. L. Rev. 1605 (1995).
+- Lewis A. Kornhauser, *Appeal and Supreme Courts*, in *Encyclopedia of Law and Economics* (Bouckaert & De Geest eds.).
+- George L. Priest & Benjamin Klein, *The Selection of Disputes for Litigation*, 13 J. Legal Stud. 1 (1984).
+- Keith N. Hylton & Haizhen Kim, *The Economics of Appeals*, 69 J.L. & Econ. 53 (2026).
+- Bertrand Chopard, Edwin Fain & Ludivine Roussey, 14 Rev. L. & Econ. (2018) (appeals and effort crowd-out).
+- Chad M. Oldfather, *Error Correction*, 85 Ind. L.J. 49 (2010) — the four-filter enumeration at 55.
+
+*Deference*
+- *Anderson v. City of Bessemer City*, 470 U.S. 564 (1985).
+- *Salve Regina College v. Russell*, 499 U.S. 225 (1991).
+- *Pierce v. Underwood*, 487 U.S. 552 (1988).
+- Fed. R. Civ. P. 52(a)(6).
+- Adam N. Steinman, *Rethinking Standards of Appellate Review*, 96 Ind. L.J. 1 (2020).
+- Amanda Peters, *The Meaning, Measure, and Misuse of Standards of Review*, 13 Lewis & Clark L. Rev. 233 (2009).
+- Olin Guy Wellborn III, *Demeanor*, 76 Cornell L. Rev. 1075 (1991).
+- Scott Baker & Lewis A. Kornhauser, *A Theory of Judicial Deference* (NYU working paper, 2 Nov. 2015) — UNVERIFIED as published.
+
+*Materiality*
+- *Kotteakos v. United States*, 328 U.S. 750 (1946).
+- *Chapman v. California*, 386 U.S. 18 (1967).
+- *Brecht v. Abrahamson*, 507 U.S. 619 (1993).
+- *Arizona v. Fulminante*, 499 U.S. 279 (1991).
+- 28 U.S.C. § 2111; Fed. R. Crim. P. 52(a); Fed. R. Civ. P. 61.
+- Roger J. Traynor, *The Riddle of Harmless Error* (Ohio State Univ. Press 1970).
+- Harry T. Edwards, *To Err Is Human, but Not Always Harmless*, 70 N.Y.U. L. Rev. 1167 (1995).
+- Sam Kamin, *Harmless Error and the Rights/Remedies Split*, 88 Va. L. Rev. 1 (2002).
+
+*The right to a human decision, and human oversight*
+- Regulation (EU) 2016/679 (GDPR), Arts. 22(1), 22(3); Recital 71.
+- Article 29 Data Protection Working Party, *Guidelines on Automated individual decision-making and Profiling*, WP251rev.01 (adopted 3 Oct. 2017, rev. 6 Feb. 2018), at 21, 27.
+- Regulation (EU) 2024/1689 (AI Act), Arts. 14(1), 14(4)(b), 14(4)(d), 86.
+- Aziz Z. Huq, *A Right to a Human Decision*, 106 Va. L. Rev. 611 (2020).
+- Meg Leta Jones, *The right to a human in the loop*, 47 Soc. Stud. Sci. 216 (2017) (abstract text UNVERIFIED verbatim).
+- Margot E. Kaminski & Jennifer M. Urban, *The Right to Contest AI*, 121 Colum. L. Rev. 1957 (2021).
+- Ben Green, *The flaws of policies requiring human oversight of government algorithms*, 45 Computer L. & Sec. Rev. 105681 (2022).
+- Rebecca Crootof, Margot E. Kaminski & W. Nicholson Price II, *Humans in the Loop*, 76 Vand. L. Rev. 429 (2023).
+- Henrietta Lyons, Eduardo Velloso & Tim Miller, *Conceptualising Contestability*, 5 PACM HCI (CSCW1) art. 106 (2021).
+
+*Human override of algorithms*
+- Mitchell Hoffman, Lisa B. Kahn & Danielle Li, *Discretion in Hiring*, 133 Q.J. Econ. 765 (2018).
+- Jon Kleinberg, Himabindu Lakkaraju, Jure Leskovec, Jens Ludwig & Sendhil Mullainathan, *Human Decisions and Machine Predictions*, 133 Q.J. Econ. 237 (2018).
+- Victoria Angelova, Will Dobbie & Crystal Yang, *Algorithmic Recommendations and Human Discretion*, NBER WP 31747 (2023); Rev. Econ. Stud., DOI 10.1093/restud/rdaf084 (volume/pages UNVERIFIED — cite by DOI).
+- Megan T. Stevenson & Jennifer L. Doleac, *Algorithmic Risk Assessment in the Hands of Humans*, 16 Am. Econ. J.: Econ. Pol'y 382 (2024) — a null.
+- Alex Albright, *If You Give a Judge a Risk Score* (2019) — disparity, not accuracy; series number UNVERIFIED.
+- William M. Grove, David H. Zald, Boyd S. Lebow, Beth E. Snitz & Chad Nelson, *Clinical versus mechanical prediction: A meta-analysis*, 12 Psych. Assessment 19 (2000).
+- Robyn M. Dawes, David Faust & Paul E. Meehl, *Clinical versus Actuarial Judgment*, 243 Science 1668 (1989).
+- Berkeley J. Dietvorst, Joseph P. Simmons & Cade Massey, *Algorithm Aversion*, 144 J. Exp. Psych.: General 114 (2015); *Overcoming Algorithm Aversion*, 64 Mgmt. Sci. 1155 (2018).
+- Nikhil Agarwal, Alex Moehring, Pranav Rajpurkar & Tobias Salz, *Combining Human Expertise with Artificial Intelligence*, NBER WP 31422 (2023, rev. Aug. 2026).
+- Michelle Vaccaro, Abdullah Almaatouq & Thomas Malone, *When combinations of humans and AI are useful*, 8 Nature Hum. Behav. 2293 (2024).
+- Ben Green & Yiling Chen, *The Principles and Limits of Algorithm-in-the-Loop Decision Making*, 3 PACM HCI (CSCW) art. 50 (2019).
+- Maria De-Arteaga, Riccardo Fogliato & Alexandra Chouldechova, *A Case for Humans-in-the-Loop*, CHI 2020.
+
+*Learning to defer, triage, oversight as signal detection*
+- Nastaran Okati, Abir De & Manuel Gomez-Rodriguez, *Differentiable Learning Under Triage*, NeurIPS 34 (2021), arXiv:2103.08902.
+- Maithra Raghu, Katy Blumer, Greg Corrado, Jon Kleinberg, Ziad Obermeyer & Sendhil Mullainathan, *The Algorithmic Automation Problem*, arXiv:1903.12220 (2019).
+- David Madras, Toniann Pitassi & Richard Zemel, *Predict Responsibly: Improving Fairness and Accuracy by Learning to Defer*, NeurIPS 31 (2018).
+- Hussein Mozannar & David Sontag, *Consistent Estimators for Learning to Defer to an Expert*, PMLR 119:7076 (2020).
+- Gagan Bansal, Besmira Nushi, Ece Kamar, Eric Horvitz & Daniel S. Weld, *Is the Most Accurate AI the Best Teammate?*, 35 AAAI 11405 (2021).
+- Markus Langer, Kevin Baum & Nadine Schlicker, *Effective Human Oversight of AI-Based Systems: A Signal Detection Perspective*, 35 Minds & Machines 1 (2025), DOI 10.1007/s11023-024-09701-0.
+- Ajay Agrawal, Joshua Gans & Avi Goldfarb, *Prediction, Judgment and Complexity*, NBER WP 24243 (2018) — optional.
+
+*Procedural justice and perceptions of algorithmic decisions*
+- Tom R. Tyler, *Why People Obey the Law* (Yale Univ. Press 1990; Princeton Univ. Press 2006).
+- Tom R. Tyler, *Procedural Justice, Legitimacy, and the Effective Rule of Law*, 30 Crime & Just. 283 (2003).
+- Min Kyung Lee, *Understanding perception of algorithmic decisions*, 5 Big Data & Soc'y 1 (2018).
+- Reuben Binns et al., *"It's Reducing a Human Being to a Percentage"*, CHI '18, Paper 377 — no human-decision condition.
+- Kristen Vaccaro, Christian Sandvig & Karrie Karahalios, *"At the End of the Day Facebook Does What It Wants"*, 4 PACM HCI (CSCW2) art. 167 (2020) — the appeals experiment, null on perceptions.
+- Kristen Vaccaro, Ziang Xiao, Kevin Hamilton & Karrie Karahalios, *Contestability For Content Moderation*, 5 PACM HCI (CSCW2) art. 318 (2021) — design workshop, no appeals experiment.
+
+---
+
 ## 5. Predictions recorded before the runs
 
 Stated in advance so they cannot be retrofitted.
