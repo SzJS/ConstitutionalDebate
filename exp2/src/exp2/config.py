@@ -301,15 +301,31 @@ class DebateConfig:
     # run, `records/derivations/sweep-1-provider-check.py`, not the classifier.
     provider_allow_fallbacks: bool = False
 
+    # REJUDGE ONLY: continue the source tree's stored transcript up to ``n_rounds``
+    # before judging it, instead of judging the transcript as it stands. False is what
+    # every rejudge before 2026-08-30 did, so a spec written before this field existed
+    # still describes what it ran. True is arm B of `judgment-debate-6` — the PLAIN extra
+    # round the contestability debate round is measured against: the same two debaters
+    # play one more ordinary round, with no objection anywhere, and the same judge
+    # decides the longer transcript afresh. The stage refuses a solo source and a source
+    # that already has ``n_rounds`` rounds; the config can only check that ``n_rounds``
+    # leaves room for one, because the source is not readable from here.
+    extend_rounds: bool = False
+
     # Second debater model, for the different-families ablation. None means self-play.
     debater_model_b: str | None = None
     # None means the debater model.
     critic_model: str | None = None
 
     # --- contest settings -------------------------------------------------------
-    # 0, and validated as such: the settled protocol is judge-only recourse. Adding
-    # rounds here would assign advocates to a solo decision that never had any, and
-    # the contest step has to be the constant across conditions.
+    # 0 or 1, and validated as such. 0 is judge-only recourse and is what every paid run
+    # before 2026-08-30 did, so a spec written before this field moved still describes
+    # what it ran. 1 is the CONTESTABILITY DEBATE ROUND of `judgment-debate-6`: after the
+    # objection is raised the two original debaters each reply once, simultaneously, and
+    # the recourse judge rules on the argued exchange. It applies to a DEBATE record
+    # only — a solo decision never had advocates, so there is nobody to argue the
+    # objection — and the rerule/contest path refuses one loudly rather than inventing
+    # them. More than one round is DESIGN.md's later ablation and is not implemented.
     recourse_rounds: int = 0
     # None means the judge model. Used by whichever conditions `recourse_form` routes
     # to the judge — every condition under "third_party", debate alone under the
@@ -394,13 +410,23 @@ class DebateConfig:
                 "the token-count confound the design warns about. Change both, or "
                 "state the imbalance deliberately in the experiment spec."
             )
-        if self.recourse_rounds != 0:
+        if self.recourse_rounds not in (0, 1):
             raise ConfigError(
-                f"recourse_rounds must be 0, got {self.recourse_rounds}. The settled "
-                "protocol is judge-only recourse; rounds here would give the debate "
-                "condition an exchange the baselines have no counterpart for. "
-                "Re-enabling them is the 'contestability debate round' ablation and "
-                "needs the recourse debater path, which is not implemented."
+                f"recourse_rounds must be 0 or 1, got {self.recourse_rounds}. 0 is "
+                "judge-only recourse, the protocol every run before 2026-08-30 used; 1 "
+                "is the contestability debate round, in which the two original debaters "
+                "each reply once to the objection before the recourse judge rules — a "
+                "rerule or contest of DEBATE records only, since a solo decision had no "
+                "advocates to argue it. More than one round is DESIGN.md's later "
+                "ablation and is not implemented."
+            )
+        if self.extend_rounds and self.n_rounds < 2:
+            raise ConfigError(
+                f"extend_rounds needs n_rounds >= 2, got {self.n_rounds}. The flag "
+                "continues a STORED debate up to n_rounds before judging it, so n_rounds "
+                "has to leave room for at least one round beyond the source's; a source "
+                "with n_rounds or more rounds is refused by the rejudge stage itself, "
+                "where the source can actually be read."
             )
         if not self.challenger_may_decline:
             raise ConfigError(
@@ -530,7 +556,8 @@ WHY: dict[str, str] = {
     "provider_allow_fallbacks": "False, so the pin is a pin: a silent fallback would average the measurement back over whichever providers were free, invisibly. A momentarily missing endpoint returns 404 'No endpoints found for <model>.', which client.py retries so a 13-hour run rides out a blip; exhausting the retries fails the cell, which is the thing being measured. A WRONG slug returns that same 404 and so now dies slowly — verify the slugs with one real pinned call before the run.",
     "debater_model_b": "unset means self-play; setting it is the different-model-families ablation.",
     "critic_model": "unset means the debater model; a different critic would confound capability with procedure.",
-    "recourse_rounds": "0 — judge-only recourse, so the contest step is identical across all three conditions.",
+    "recourse_rounds": "0 — judge-only recourse, so the contest step is identical across all three conditions. 1 is the CONTESTABILITY DEBATE ROUND (judgment-debate-6, 2026-08-30): after the objection is raised the two ORIGINAL debaters each reply once, simultaneously, seeing rounds 1-3, the judgment and the objection but not each other's reply, and the recourse judge rules on the argued exchange instead of on the objection alone. The debater whose assigned side the decision went AGAINST argues that the alleged defects are real and material; the other argues they are not; each still argues its assigned side, and who argues which is DERIVED from the parent verdict rather than stored. It applies to a debate record only, because a solo decision never had advocates. >1 is not implemented.",
+    "extend_rounds": "False — a rejudge judges the stored transcript as it stands, which is what every rejudge before 2026-08-30 did. True continues that transcript by ordinary rounds up to n_rounds with the SAME debaters and no objection anywhere, then judges the longer record: it is the PLAIN-ROUND baseline the contestability debate round is measured against, so the two arms differ in what the extra round is about and not in how many tokens were spent. Refused on a solo source and on a source that already has n_rounds rounds.",
     "recourse_judge_model": "unset means the judge model. Under recourse_form=third_party every condition's objection is ruled by it, so it is the one weak party the design trusts to hear an appeal; the residual asymmetry — it also decided the debate condition — is stated in the analysis caveat.",
     "recourse_form": "per_condition by default, which is what every paid run before 2026-08-26 did (debate ruled by a third-party judge, single/self_critique re-decided by the model that decided). The sweep measured the cost: the weak judge overturned 24% of phantom objections and the strong re-decider 0-4%, so most of self_critique's edge was the routing, not the record. third_party makes the recourse judge a weak third party in every condition — nobody adjudicates their own appeal — and is what the re-contest specs set; in_conversation is the opposite-corner ablation and refuses debate, which has no conversation to replay.",
     "challenger_model": "the weak model — a stakeholder standing in for a human reader, not a second expert.",
@@ -542,6 +569,60 @@ WHY: dict[str, str] = {
     "challenger_may_decline": "True, and validated: without it the false-alarm rate on sound decisions cannot be estimated.",
     "challenger_variant": "neutral by default, which is what every paid run before 2026-08-27 did: a stakeholder reading the record, not required to find fault. The partisan variants are the planned ablation, run to raise n — the neutral challenger objects on ~8% of cells, so the judge's discrimination rests on tens of cells per condition, while under advocacy every cell yields an objection unless the advocate finds none. Their detection and false-alarm rates are advocacy rates and are not comparable with the neutral run's; the recourse-stage quantities are the same ones at higher n, plus how often an advocate declines when the record supports the decision. \"judgment\" is a different task rather than a different standpoint: the challenger audits the decision's own reasoning against the record for a contradiction, a misstatement or an omission, and is forbidden the object level — so its objections are graded for PROCESS validity against the record, on every contested cell including the ones whose decision was right, and its rates are not comparable with any of the four above. Since 2026-08-28 it also selects the RULING prompt, through the objection's arm rather than through this field: a judgment objection alleges defects in the judgment, and the object-level ruling prompt tells the judge to disregard the decision's reasoning, so that arm is ruled on MATERIALITY instead — is each alleged defect real against the record, and does addressing a real one change what is true of the text. Every other arm's ruling prompt is byte-identical to what it always was, and `ruling_prompt_form` in the index says which ruled. \"judgment_specious\" and \"placeholder\" are the two CONTROLS of 2026-08-28 and neither is a finding on its own. The specious arm is DESIGN.md's sycophancy check: the judgment task and its whole prompt, plus an instruction to allege plausible-but-invalid defects with accurate quotations and to object every time, so its raise rate is 100% BY CONSTRUCTION and its graded validity rate is the MANIPULATION CHECK on the instruction (it should be low; if it is not, the objections were not specious and the sycophancy comparison is void) rather than a measurement of anything. The placeholder arm is the second-look control and makes NO model call: the contest stage writes one fixed, content-free objection wherever the source run raised one, so the difference between the real audit's after-state and this one's is the audit net of 'the same weak judge looked again'. Both are ruled under the MATERIALITY prompt, because a control ruled in a different form measures the form; both therefore record `arm = \"judgment\"` and are told apart by `challenge_arm` in the index. \"judgment_fabricated\" is the THIRD control, added 2026-08-28 because the specious one was not specious enough: 29.2% of `judgment_specious`'s objections were graded VALID, since with omission struck the only allegation left to it — the judgment softened a party's position — is usually TRUE of a judgment that compresses a three-round debate. This arm makes the objection false BY CONSTRUCTION rather than by instruction: every `Judgment says:` quotation must be INVENTED, a sentence in the judgment's register that the judgment does not contain, while the `Record says:` quotation stays verbatim. The manipulation check is therefore CODE and not a grader — `prompts.defect_quote_in_judgment` string-matches every judgment quotation at parse time, the index carries `challenge_fabrication_ok` and `challenge_defects_fabricated_n`, and a reader can redo the whole check with a string comparison. Its raise rate is 1.0 BY CONSTRUCTION and its graded validity rate is the FAILURE MODE, not a finding: a fabricated objection the grader validates is one whose quotation turned out to be real. It is ruled under the MATERIALITY prompt like the other two, for the same reason.",
 }
+
+
+# The lines of WHY that are only true AT THE DEFAULT, made true of the config in hand.
+#
+# The dry-run table is the document a run is approved from (HANDOFF.md §2.4), so a reason
+# printed beside a value it does not describe is worse than no reason at all: `n_rounds`
+# reads "3 — opening, attack, counter" and `judgment-debate-6`'s plain-round arm runs at
+# 4. One override table keyed on the field, rather than a WHY entry that tries to cover
+# both cases and ends up vague about each — every other spec keeps the three-round text
+# byte for byte.
+def why_for(config: "DebateConfig") -> dict[str, str]:
+    """``WHY`` with the entries that depend on this config's own settings rewritten."""
+    why = dict(WHY)
+    if config.recourse_rounds:
+        why["recourse_rounds"] = (
+            f"{config.recourse_rounds} — THE CONTESTABILITY DEBATE ROUND (DESIGN.md; "
+            "judgment-debate-6, 2026-08-30), and this spec is running it. After the "
+            "objection is raised the two ORIGINAL debaters each reply once, "
+            "simultaneously, seeing rounds 1-3, the judgment and the objection but not "
+            "each other's reply, and the recourse judge rules on the argued exchange "
+            "instead of on the objection alone. The debater whose assigned side the "
+            "decision went AGAINST argues the alleged defects are real and material; the "
+            "other argues they are not; each still argues its assigned side, and who "
+            "argues which is DERIVED from the parent verdict rather than stored. It costs "
+            "TWO strong-model calls per contested cell and applies to debate records "
+            "only. 0 — judge-only recourse — is what every run before this one did."
+        )
+    if config.extend_rounds:
+        why["extend_rounds"] = (
+            "True, and this spec is running it: the stored transcript is CONTINUED by "
+            f"ordinary rounds up to n_rounds ({config.n_rounds}) with the SAME debaters "
+            "and no objection anywhere, and then the judge decides the longer record. It "
+            "is the PLAIN-ROUND baseline the contestability debate round is measured "
+            "against, so the two arms differ in what the extra round is about and not in "
+            "how many tokens were spent. It costs TWO strong-model calls per stored "
+            "decision. A solo source, and a source that already has n_rounds rounds, fail "
+            "their cell loudly. False — judge the transcript as it stands — is what every "
+            "rejudge before 2026-08-30 did."
+        )
+        why["n_rounds"] = (
+            f"{config.n_rounds} — the stored debate's {config.n_rounds - 1} rounds plus "
+            "ONE plain round with no objection, played here by the same debaters before "
+            "the judge reads it. This is the PLAIN-ROUND BASELINE of judgment-debate-6, "
+            "the control the contestability debate round is measured against; it is not "
+            "a claim that a debate needs four rounds. `extend_rounds` below is what makes "
+            "it a continuation rather than a fresh four-round debate."
+        )
+        why["n_critique_rounds"] = (
+            f"{config.n_critique_rounds} — equal to n_rounds because the validator "
+            "requires it, and for no other reason: this grid runs the debate condition "
+            "alone, so no self_critique cell reads this field at all. It is carried along "
+            "so that n_rounds can be raised."
+        )
+    return why
 
 
 # The same rule for the operational table. None of it can change a decision, but the

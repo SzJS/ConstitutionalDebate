@@ -27,6 +27,7 @@ from exp2.prompts import (
     build_grader_messages,
     build_judge_messages,
     build_judgment_grader_messages,
+    build_recourse_debater_messages,
     build_recourse_judge_messages,
     build_repair_messages,
     build_solo_opening,
@@ -43,7 +44,26 @@ from exp2.prompts import (
     repair_instruction_for,
     side_phrase,
 )
-from exp2.types import FLAWED, SOUND, DecisionRecord, Speaker, Transcript
+from exp2.types import (
+    FLAWED,
+    SOUND,
+    DecisionRecord,
+    Speaker,
+    Transcript,
+    compose_transcript,
+)
+
+
+# The round-4 exchange the contestability debate round puts in front of the judge. Built
+# from the same `make_turn` as the debate's rounds, so its turns carry `SECRET_THINKING`
+# and the leak assertions bite on them too.
+def exchange_transcript(sides):
+    from helpers import make_turn
+
+    exchange = Transcript()
+    for speaker in (Speaker.ALICE, Speaker.BOB):
+        exchange.add(make_turn(4, speaker, sides.side_for(speaker)))
+    return exchange
 
 
 def every_message_list(item, sides, config):
@@ -94,6 +114,23 @@ def every_message_list(item, sides, config):
             decision_verdict=FLAWED, objection="An objection.", n_defects=1)),
         ("recourse-judge", build_recourse_judge_messages(
             item, sides, record, decision_verdict=FLAWED, objection="An objection.")),
+        # The contestability debate round of 2026-08-30. Both stances are here, because
+        # they are two different prompts and each has to carry the same guarantees every
+        # other role does — no ground-truth label, the flaw definition present, and no
+        # earlier turn's Thinking. On a FLAWED decision with Alice on FLAWED, Alice is
+        # the winner and argues ANTI while Bob argues PRO.
+        ("recourse-debater-anti", build_recourse_debater_messages(
+            item, sides, config, transcript, speaker=Speaker.ALICE, round_number=4,
+            decision_verdict=FLAWED, judgment="The judge's grounds.",
+            objection="An objection.")),
+        ("recourse-debater-pro", build_recourse_debater_messages(
+            item, sides, config, transcript, speaker=Speaker.BOB, round_number=4,
+            decision_verdict=FLAWED, judgment="The judge's grounds.",
+            objection="An objection.")),
+        ("recourse-judge-exchange", build_recourse_judge_messages(
+            item, sides, record, decision_verdict=FLAWED, objection="An objection.",
+            judgment="The judge's grounds.", arm="judgment",
+            exchange=exchange_transcript(sides))),
     ]
 
 
@@ -131,7 +168,8 @@ def test_all_five_roles_are_told_what_a_flaw_is_and_told_the_same_thing():
     # specious copy. The placeholder arm is deliberately not here: it has no prompt at
     # all, so there is no system message for the definition to be missing from.
     assert len(challengers) == 7
-    for name in ("debater-a-r1", "judge", "solo-answer", "grader", *challengers):
+    for name in ("debater-a-r1", "judge", "solo-answer", "grader",
+                 "recourse-debater-pro", "recourse-debater-anti", *challengers):
         system = built[name][0]
         assert system["role"] == "system", name
         assert FLAW_DEFINITION in system["content"], (
@@ -2572,3 +2610,250 @@ def test_the_placeholder_variant_has_no_challenger_prompt_at_all():
         build_challenger_messages(
             item, make_config(challenger_variant="placeholder"), record,
             sides=sides, decision_verdict="FLAWED", decision_grounds="grounds")
+
+
+# --- the contestability debate round, 2026-08-30 --------------------------------------
+#
+# `judgment-debate-6`. Every recourse ruling before it was made with nobody answering the
+# objection; here the two ORIGINAL debaters each reply once and the same weak judge rules
+# on the argued exchange. The tests below are the two halves of "opt-in": the new text
+# says what it should, and nothing that does not ask for it sends a byte more than it did.
+
+
+def test_the_exchange_template_is_the_frozen_judgment_template_plus_one_block():
+    """The materiality prompt does not move; it gains one block, in one place.
+
+    `RECOURSE_JUDGE_USER_JUDGMENT` is frozen by sha256 above and every jd5 number is
+    under that digest. The exchange template has to be that text plus the block and
+    nothing else — same Step 1, same Step 2, same `{stands_line}` paragraph, same two
+    `Conclusion:` lines — or a jd6 ruling and a jd5 ruling would be two instruments, not
+    one instrument asked two questions. Asserted by REMOVING the block and hashing what
+    is left, rather than by reading the diff.
+    """
+    import hashlib
+
+    from exp2.prompts import (
+        RECOURSE_EXCHANGE_BLOCK,
+        RECOURSE_JUDGE_USER_JUDGMENT,
+        RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE,
+    )
+
+    template = RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE
+    assert template.count(RECOURSE_EXCHANGE_BLOCK) == 1
+    # the block sits between the objection and the ruling instruction, and nowhere else
+    before = template.index("</objection>")
+    at = template.index(RECOURSE_EXCHANGE_BLOCK)
+    after = template.index("Rule in two steps.")
+    assert before < at < after
+
+    stripped = template.replace("\n" + RECOURSE_EXCHANGE_BLOCK + "\n", "", 1)
+    assert stripped == RECOURSE_JUDGE_USER_JUDGMENT
+    assert (hashlib.sha256(stripped.encode("utf-8")).hexdigest()
+            == FROZEN_PROMPTS["RECOURSE_JUDGE_USER_JUDGMENT"])
+
+
+def test_the_recourse_judge_messages_are_byte_identical_without_an_exchange():
+    """`recourse_rounds = 0` must send what it has always sent.
+
+    Every ruling this experiment has made — 1,586 of them and counting — was made with no
+    exchange, and jd6's paired comparisons are against those numbers. So the default
+    argument is not merely "supported": it must produce the same bytes, in both arms and
+    on both record shapes, and an empty transcript must count as no exchange rather than
+    as an exchange of nothing.
+    """
+    config, sides, item = make_config(), make_sides(), make_item()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+    solo = DecisionRecord.for_solo_body("Reasoning: it looks fine.")
+    for shape in (record, solo):
+        for arm, judgment in (("neutral", None), ("judgment", "The judge's grounds.")):
+            base = build_recourse_judge_messages(
+                item, sides, shape, decision_verdict=FLAWED, objection="An objection.",
+                judgment=judgment, arm=arm)
+            for empty in (None, Transcript()):
+                assert build_recourse_judge_messages(
+                    item, sides, shape, decision_verdict=FLAWED,
+                    objection="An objection.", judgment=judgment, arm=arm,
+                    exchange=empty) == base
+
+
+def test_the_exchange_is_refused_for_non_judgment_arms():
+    """The object-level prompt shows no judgment, so the block has nowhere to go.
+
+    Refused loudly rather than dropped: an arm that silently ruled without the exchange
+    it had already paid two debater calls for would look exactly like an arm that had
+    none, and the two would be pooled.
+    """
+    config, sides, item = make_config(), make_sides(), make_item()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+    for arm in ("neutral", "partisan_auditor"):
+        with pytest.raises(ValueError, match="judgment"):
+            build_recourse_judge_messages(
+                item, sides, record, decision_verdict=FLAWED,
+                objection="An objection.", judgment="The judge's grounds.", arm=arm,
+                exchange=exchange_transcript(sides))
+
+
+def test_the_loser_argues_pro_and_the_winner_anti():
+    """Who argues which way is derived from the parent verdict, in the prompt too.
+
+    `types.recourse_stance` is tested on its own; this is the assertion that the
+    derivation reaches the text — that the debater the decision went against is told to
+    argue the objection is well founded, and that BOTH are told they still hold their own
+    assigned side. A builder that swapped them would produce two prompts that still read
+    fluently and an arm whose whole finding was inverted.
+    """
+    config, item = make_config(), make_item()
+    sides = make_sides(alice_side=FLAWED, bob_side=SOUND)
+    transcript = full_transcript(sides)
+
+    def user(speaker, decision):
+        return build_recourse_debater_messages(
+            item, sides, config, transcript, speaker=speaker, round_number=4,
+            decision_verdict=decision, judgment="The judge's grounds.",
+            objection="An objection.")[1]["content"]
+
+    # the decision went FLAWED, which is Alice's side: Alice defends, Bob attacks
+    assert "the decision went in favour of your position" in user(Speaker.ALICE, FLAWED)
+    assert "are not real, or that they are not material" in user(Speaker.ALICE, FLAWED)
+    assert f"You still argue that {FLAW_PHRASE}" in user(Speaker.ALICE, FLAWED)
+    assert "the decision went against your position" in user(Speaker.BOB, FLAWED)
+    assert "are real and material" in user(Speaker.BOB, FLAWED)
+    assert f"You still argue that {SOUND_PHRASE}" in user(Speaker.BOB, FLAWED)
+    # and the other way round on a SOUND decision
+    assert "the decision went against your position" in user(Speaker.ALICE, SOUND)
+    assert "the decision went in favour of your position" in user(Speaker.BOB, SOUND)
+
+
+def test_recourse_debaters_see_rounds_1_to_3_and_not_each_other():
+    """The round is simultaneous, like rounds 1-3, so neither reply conditions on the
+    other. `Transcript.visible_to` is what enforces it and this is what says so."""
+    config, sides, item = make_config(), make_sides(), make_item()
+    exchange = exchange_transcript(sides)
+    composed = compose_transcript(full_transcript(sides), exchange)
+    for speaker in (Speaker.ALICE, Speaker.BOB):
+        user = build_recourse_debater_messages(
+            item, sides, config, composed, speaker=speaker, round_number=4,
+            decision_verdict=FLAWED, judgment="The judge's grounds.",
+            objection="An objection.")[1]["content"]
+        assert "Round 3:" in user
+        assert "Round 4:" not in user
+        assert "round 4 argument" not in user
+        assert SECRET_THINKING not in user
+
+
+def test_the_recourse_judge_never_sees_the_debaters_round_4_thinking():
+    """Ground rule 7, on the newest turns in the experiment.
+
+    The exchange is rendered by `render_transcript`, which publishes `argument` and never
+    `thinking` — but the judge's block is new text and a renderer swapped for a
+    `to_dict()` dump would leak two private sections into a published ruling prompt.
+    """
+    config, sides, item = make_config(), make_sides(), make_item()
+    record = DecisionRecord.for_debate(full_transcript(sides))
+    messages = build_recourse_judge_messages(
+        item, sides, record, decision_verdict=FLAWED, objection="An objection.",
+        judgment="The judge's grounds.", arm="judgment",
+        exchange=exchange_transcript(sides))
+    blob = "".join(m["content"] for m in messages)
+    assert SECRET_THINKING not in blob
+    # what it DOES see: the two public arguments, and who argued which way
+    assert "Alice round 4 argument." in blob and "Bob round 4 argument." in blob
+    assert "Bob, whose position the decision went against" in blob
+    assert "Alice argues that it is not" in blob
+    assert "arguments, not evidence" in blob
+
+
+def test_a_fourth_round_reads_round_4_of_4_with_no_closing_clause():
+    """Arm B needs NO new prompt, and this is the assertion behind that claim.
+
+    The plain-round baseline extends a stored 3-round debate by one ordinary round under
+    a spec with `n_rounds = 4`. `_round_instructions` already yields `ROUND_3_PLUS` for
+    round 4, and at round == n_rounds `_rounds_clause` yields "" — so what the debaters
+    read is byte-identical to the last round of a genuine four-round debate, and nothing
+    in it says the round is an extension.
+    """
+    import dataclasses
+
+    config = dataclasses.replace(make_config(), n_rounds=4, n_critique_rounds=4)
+    text = _round_instructions(config, speaker=Speaker.ALICE, round_number=4)
+    assert "This is round 4 of 4." in text
+    assert "do not write a closing summary" not in text
+    assert text == _round_instructions(config, speaker=Speaker.ALICE, round_number=4)
+    # and the third round of the same spec still warns of a round to come
+    assert "do not write a closing summary" in _round_instructions(
+        config, speaker=Speaker.ALICE, round_number=3)
+
+
+# sha256 of every prompt `judgment-debate-6` introduces, pinned the way FROZEN_PROMPTS
+# pins the four campaigns before it and for the same reason: the contest round's arm is
+# only readable against its plain-round baseline and against jd5-B, and a whitespace fix
+# to any of these — the kind of edit that passes review — would make the comparison a
+# comparison of two instruments with nothing else in the repo noticing.
+#
+# A SEPARATE TABLE FROM `FROZEN_PROMPTS`, deliberately. That one means "byte-identical to
+# what the judgment-debate run of 2026-08-28 actually sent", and these constants did not
+# exist then; folding them in would make its failure message false. What the two tables
+# share is the rule: the digest is recorded before the first paid call, in `PREREG.md` as
+# well as here, and it does not move afterwards.
+#
+# `RECOURSE_DEBATER_SYSTEM` and `RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE` are SPLICED copies
+# and are pinned anyway: a splice is only as frozen as both of its halves, and pinning the
+# result is what catches a change to `DEBATER_SYSTEM` — which no table pins — reaching this
+# round.
+#
+# THREE OF THESE DIGESTS MOVED ONCE, between smoke 1 and smoke 2 on 2026-08-30, and the
+# reason is recorded in `records/experiments/judgment-debate-6/PREREG.md` under *Why two
+# sentences changed after smoke 1*. Two sentences were rewritten after the first read:
+#
+#   `RECOURSE_EXCHANGE_BLOCK`  6c6c6bb8… -> 38dcb55e…  the "arguments, not evidence"
+#       discount was ONE-DIRECTIONAL — it discounted the PRO reply and said nothing about
+#       the ANTI one, which leans the judge toward UPHOLD, the direction P1 predicts. Now
+#       symmetric.
+#   `RECOURSE_ROUND_ANTI`      644e3cef… -> fd7e2597…  its Thinking step said "say which of
+#       those two tests each one fails", which PRESUPPOSES a failure. Now "say for each
+#       whether it fails either test", which admits "it passes both".
+#   `RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE`  455cd4a3… -> 1da2333a…  follows the block it
+#       splices, mechanically.
+#
+# NO PAID ARM RAN UNDER THE OLD DIGESTS. Only the nine-cell smoke of `jd6-smoke-round` /
+# `jd6-smoke-plain` did, and its trees and its read are kept as the record of what the two
+# sentences were changed FOR.
+FROZEN_JD6_PROMPTS = {
+    "RECOURSE_DEBATER_CLAUSE":
+        "3256910ddec59d9e3a59cf1a0b5acaaec11769275616c51449f260068b2ee779",
+    "RECOURSE_DEBATER_SYSTEM":
+        "b76944fe6d4a4b1c6561e4b6be0d0547b96ab098333eee76d0b04b594d6bfecc",
+    "RECOURSE_DECISION_BLOCK":
+        "dd9a1274f4094e8cb33e7596c8aaed1eef68e6818ee1722f967b5ebe89f59293",
+    "RECOURSE_OBJECTION_BLOCK":
+        "1ffd7d27f9407c83c5e42c4f08bb3be58a672d8e35a8562a3a4816cbc5472bbb",
+    "RECOURSE_DEBATER_USER":
+        "2bc6cf9e0ddc06a61e038817eccf296620483f1b10f5df36fa39bb0faebdf988",
+    "RECOURSE_ROUND_PRO":
+        "0dd0c0cd42cc17faeb22708cb6e687856e6fb473ec463d7ea5f2dfe5bbeac758",
+    "RECOURSE_ROUND_ANTI":
+        "fd7e2597dbceab14d4604893c5e62986c84e449f44906ccba1eb9564ad2b3f7e",
+    "RECOURSE_EXCHANGE_BLOCK":
+        "38dcb55ed2a1a1874f6f3873c027ae3c34d8b7aec70f642d6ca38640fe022990",
+    "RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE":
+        "1da2333ad07595665ef73c3336cb609638099b1dcf9d114c1e8970796c54c7fe",
+}
+
+
+def test_the_contest_rounds_prompts_are_the_ones_the_smoke_ran():
+    """The digests `records/experiments/judgment-debate-6/PREREG.md` records.
+
+    The house rule is that a changed prompt is re-smoked and the pre-registration
+    rewritten before any paid call. This is the assertion that makes "the prompt is fixed
+    at the version the smoke ran" checkable rather than remembered.
+    """
+    import hashlib
+
+    from exp2 import prompts
+
+    for name, digest in FROZEN_JD6_PROMPTS.items():
+        actual = hashlib.sha256(getattr(prompts, name).encode("utf-8")).hexdigest()
+        assert actual == digest, (
+            f"{name} has changed since the judgment-debate-6 smoke. If that is "
+            "deliberate, re-smoke on six fresh cells and rewrite PREREG.md before any "
+            "paid call.")

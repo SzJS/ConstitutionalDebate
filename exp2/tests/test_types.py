@@ -30,6 +30,8 @@ from exp2.types import (
     complement,
     load_cases,
     make_sides,
+    recourse_pro_speaker,
+    recourse_stance,
     resolve_ruling,
     verdict_for,
 )
@@ -516,3 +518,63 @@ def test_a_stance_that_disagrees_with_the_objection_word_is_refused():
         Challenge(text="t", origin="generated", raised=False, stance="contests")
     with pytest.raises(ValueError, match="must be one of"):
         Challenge(text="t", origin="generated", raised=True, stance="objects")
+
+
+# --- who argues what when a decision is contested ------------------------------------
+
+
+def test_the_loser_argues_pro_and_the_winner_anti():
+    """exp1's rule, ported: the debater the decision went AGAINST argues the objection.
+
+    Overturning is the only way the decision comes back to that side, so this is the one
+    assignment under which neither debater argues against the case it spent three rounds
+    making. It is derived from `sides` and the parent verdict and nothing else, which is
+    what stops a stored copy drifting from the seating.
+    """
+    sides = Sides(alice_side=FLAWED, bob_side=SOUND, verdict_order=(FLAWED, SOUND),
+                  seed_material="0:x")
+    # the decision went FLAWED — Alice's side — so Alice defends it and Bob attacks it
+    assert recourse_stance(sides, Speaker.ALICE, FLAWED) == "anti"
+    assert recourse_stance(sides, Speaker.BOB, FLAWED) == "pro"
+    assert recourse_pro_speaker(sides, FLAWED) is Speaker.BOB
+    # and the other way round on a SOUND decision
+    assert recourse_stance(sides, Speaker.ALICE, SOUND) == "pro"
+    assert recourse_stance(sides, Speaker.BOB, SOUND) == "anti"
+    assert recourse_pro_speaker(sides, SOUND) is Speaker.ALICE
+    # exactly one of the two argues pro, whichever way the seating fell
+    for alice_side in VERDICTS:
+        seating = Sides(alice_side=alice_side, bob_side=complement(alice_side),
+                        verdict_order=(FLAWED, SOUND), seed_material="0:x")
+        for decision in VERDICTS:
+            stances = {recourse_stance(seating, s, decision)
+                       for s in (Speaker.ALICE, Speaker.BOB)}
+            assert stances == {"pro", "anti"}
+
+
+def test_a_stance_for_a_verdict_that_is_not_one_is_refused():
+    sides = Sides(alice_side=FLAWED, bob_side=SOUND, verdict_order=(FLAWED, SOUND),
+                  seed_material="0:x")
+    with pytest.raises(ValueError, match="must be one of"):
+        recourse_stance(sides, Speaker.ALICE, "MAYBE")
+    with pytest.raises(ValueError, match="must be one of"):
+        recourse_pro_speaker(sides, "MAYBE")
+
+
+def test_a_ruling_written_before_the_contest_round_existed_still_loads():
+    """1,586 `ruling.json` files predate the three fields. They must read as what they
+    are — judge-only rulings with no exchange — rather than failing to load."""
+    old = {"form": "stated_conclusion", "ruling": "UPHOLD", "protocol": "judge_only",
+           "parent_verdict": FLAWED, "verdict": FLAWED, "parse_mode": "strict",
+           "raw": "r", "call_id": "c", "finish_reason": "stop", "correct": True}
+    loaded = Ruling.from_dict(old)
+    assert loaded.recourse_rounds == 0
+    assert loaded.recourse_pro_speaker is None
+    assert loaded.recourse_exchange_sha256 is None
+    # and a contest-round ruling round-trips all three
+    ruled = Ruling(**{**old, "protocol": "debate", "recourse_rounds": 1,
+                      "recourse_pro_speaker": "Bob",
+                      "recourse_exchange_sha256": "abc"})
+    data = json.loads(json.dumps(ruled.to_dict()))
+    back = Ruling.from_dict(data)
+    assert (back.recourse_rounds, back.recourse_pro_speaker,
+            back.recourse_exchange_sha256) == (1, "Bob", "abc")

@@ -28,12 +28,15 @@ the record's readability, not about the objection.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .arms import _split_solo
 from .client import ChatClient
+from .debate import _turn_from_completion
 from .config import (
     FABRICATED_VARIANT,
     JUDGMENT_FAMILY,
@@ -44,12 +47,13 @@ from .config import (
     GradingConfig,
     arm_for_variant,
 )
-from .engine import _complete_with_repair
+from .engine import DebateFailure, _complete_with_repair
 from .prompts import (
     build_agreement_messages,
     build_challenger_messages,
     build_comprehension_messages,
     build_gatekeeper_messages,
+    build_recourse_debater_messages,
     build_recourse_judge_messages,
     PLACEHOLDER_DECISION_WORD,
     PLACEHOLDER_OBJECTION_RAW,
@@ -59,6 +63,7 @@ from .prompts import (
     build_ruling_agreement_messages,
     build_solo_recourse_message,
     conversation_spent_a_repair,
+    parse_debater_output,
     marks_private_text,
     parse_admissibility_output,
     parse_agreement_output,
@@ -76,6 +81,7 @@ from .prompts import (
 )
 from .types import (
     COMPREHENSION_SCALE_ID,
+    ORDER,
     REVERSE,
     STANDS,
     Admission,
@@ -86,9 +92,16 @@ from .types import (
     Ruling,
     RulingAgreement,
     Sides,
+    Speaker,
+    Transcript,
+    Turn,
     challenge_stance,
     claimed_verdict_for,
+    compose_transcript,
     count_words,
+    recourse_pro_speaker,
+    recourse_stance,
+    render_transcript,
     resolve_ruling,
 )
 
@@ -156,6 +169,11 @@ class RecourseOutcome:
     challenge: Challenge
     ruling: Ruling | None
     comprehension: Comprehension | None
+    # The contestability debate round's own turns. Empty under judge-only recourse, which
+    # is what every run before 2026-08-30 did — an empty transcript rather than None
+    # because `RecourseResult.transcript` has always been "the recourse turns only; empty
+    # under judge-only recourse" and the two must go on meaning the same thing.
+    transcript: Transcript = field(default_factory=Transcript)
 
 
 async def generate_challenge(
@@ -392,8 +410,210 @@ async def judge_prose_stance(
     )
 
 
+# --------------------------------------------------------------------------- #
+# the contestability debate round
+# --------------------------------------------------------------------------- #
+#
+# DESIGN.md's contestability-debate-round ablation, implemented 2026-08-30 for
+# `judgment-debate-6`. Every recourse ruling before it was weak-against-weak with nobody
+# answering the objection; here the two ORIGINAL debaters each reply once, simultaneously,
+# and the weak recourse judge rules on the argued exchange.
+
+# The parent's settings this round has to match, and the reason the list is a constant:
+# the round continues a debate that another run paid for, so a spec whose debaters,
+# temperature, word limit or token budget differ from that run's would splice a turn by a
+# different party into a record that says all four turns are the same debate. `n_rounds`
+# is here because the round number is derived from it, and `turn_style` because the whole
+# no-speaking-order claim rests on it.
+_SAME_DEBATE_KEYS: tuple[str, ...] = (
+    "debater_model", "debater_model_b", "debater_temperature", "word_limit",
+    "n_rounds", "turn_style", "reasoning_effort", "generation_max_tokens",
+)
+
+
+def _assert_same_debate(parent: DebateConfig, config: DebateConfig,
+                        *, keys: tuple[str, ...] = _SAME_DEBATE_KEYS) -> None:
+    """Refuse to continue a debate under settings that are not the ones it was argued
+    under. Loudly, and naming every field that differs, because the failure this prevents
+    produces a record that looks entirely ordinary."""
+    differ = [(key, getattr(parent, key), getattr(config, key)) for key in keys
+              if getattr(parent, key) != getattr(config, key)]
+    if differ:
+        detail = "; ".join(f"{k}: the debate was argued at {a!r}, this spec says {b!r}"
+                           for k, a, b in differ)
+        raise DebateFailure(
+            "a contest round continues a debate another run argued, so it must be "
+            f"argued under that run's settings — {detail}"
+        )
+
+
+async def _recourse_turn(
+    record: Any,
+    challenge: Challenge,
+    config: DebateConfig,
+    client: ChatClient,
+    transcript: Transcript,
+    *,
+    speaker: Speaker,
+    round_number: int,
+) -> Turn:
+    """One debater's reply to the objection. `debate._debater_turn`, one prompt over.
+
+    ``role="debater"`` because `engine.REPAIR_INSTRUCTIONS` is keyed on the role and has
+    no `recourse_debater` entry — a repair asked for under a role the table does not know
+    raises, and the one format repair would be spent on a call that could not succeed.
+    The WIRE meta says `recourse_debater`, so accounting, `artifacts_full` and the index
+    can still tell the round-4 turns from the debate's own; the two are deliberately
+    different names for deliberately different questions.
+    """
+    sides = record.sides
+    messages = build_recourse_debater_messages(
+        record.item, sides, config, transcript,
+        speaker=speaker, round_number=round_number,
+        decision_verdict=record.verdict.verdict,
+        judgment=record.decision_grounds,
+        objection=challenge.text,
+    )
+    model = sides.model_for(speaker, config.debater_model, config.debater_model_b)
+    (thinking, argument, parse_mode), completion, repairs, _, repair_kind = (
+        await _complete_with_repair(
+            client,
+            model=model,
+            messages=messages,
+            temperature=config.debater_temperature,
+            config=config,
+            meta={
+                "role": "recourse_debater", "speaker": speaker.value,
+                "round": round_number, "purpose": "recourse_turn",
+                "stance": recourse_stance(sides, speaker, record.verdict.verdict),
+                "model_side": "b" if model == config.debater_model_b else "a",
+            },
+            parse=parse_debater_output,
+            role="debater",
+            word_limit=config.word_limit,
+            # The record-text cap, not the judge's. Without it a round-4 turn would run
+            # at `max_tokens` — 16,384 in every spec of this phase — and a truncation
+            # would cost the cell rather than being caught by the budget repair.
+            max_tokens=config.generation_max_tokens,
+            public_label="Argument",
+        )
+    )
+    return _turn_from_completion(
+        thinking, argument, parse_mode, completion,
+        repairs=repairs, repair_kind=repair_kind,
+        round_number=round_number, speaker=speaker, side=sides.side_for(speaker),
+        word_limit=config.word_limit,
+    )
+
+
+async def hear_exchange(
+    record: Any,
+    challenge: Challenge,
+    config: DebateConfig,
+    client: ChatClient,
+    *,
+    writer: Any | None = None,
+) -> Transcript:
+    """Both original debaters reply to the objection, once, simultaneously.
+
+    Returns the round's OWN turns — the recourse side of `Transcript.split_at` — not the
+    composed four-round transcript. The caller passes it to `_rule_by_judge`, which puts
+    it in front of the judge as an `<exchange>`, and to the writer, which stores it as
+    `recourse_transcript.json`.
+
+    FOUR REFUSALS, all loud:
+
+    * a SOLO record. There were no advocates to argue the objection, and inventing two
+      would put a debate in front of a judge told it is ruling on a solo decision.
+    * an objection that is not a JUDGMENT-arm one. The exchange argues about the
+      judgment, and the object-level ruling prompt does not show one.
+    * `turn_style = "sequential"`. The round is one simultaneous turn each, which is
+      what makes "neither reply conditions on the other" true; a sequential spec would
+      quietly reintroduce a speaking-order effect into a paired comparison.
+    * a parent whose debate settings differ from this spec's (`_assert_same_debate`).
+
+    THE ROUND NUMBER CONTINUES THE PARENT'S, so `compose_transcript`, `all_turns` and
+    `visible_to` all do the right thing with no round-aware special case: the parent
+    debated rounds 1..n, this is round n+1, and `visible_to` therefore hands each debater
+    the parent debate and nothing from its own round.
+
+    A FAILED ROUND COMMITS WHAT COMPLETED BEFORE RAISING, exactly as `debate._run_round`
+    does and for the same reason: losing a paid generation because the other debater
+    failed is an own goal, and the partial exchange is still a true record of what was
+    said. The cell then fails and is re-attempted from scratch in a NEW directory — there
+    is no half-round resume, and the spec comment says so, because a resume that ruled on
+    one reply would be a different protocol wearing this one's name.
+    """
+    if record.transcript is None:
+        raise DebateFailure(
+            "a contest round needs the two debaters who argued the decision, and this "
+            "decision was reached by a single agent working alone; there is nobody to "
+            "argue the objection. Use recourse_rounds = 0 for the solo conditions."
+        )
+    if challenge.arm != JUDGMENT_VARIANT:
+        raise DebateFailure(
+            f"a contest round is implemented for the judgment arm only, got "
+            f"{challenge.arm!r}. The round argues about the JUDGMENT and the ruling "
+            "prompt for every other arm tells the judge to disregard it."
+        )
+    if config.turn_style != "simultaneous":
+        raise DebateFailure(
+            f"a contest round is one simultaneous turn each, got turn_style="
+            f"{config.turn_style!r}. Under sequential the second debater would answer "
+            "the first, which is a different protocol and not the one being measured."
+        )
+    _assert_same_debate(record.config, config)
+
+    boundary = record.config.n_rounds
+    last = max(turn.round for turn in record.transcript.all_turns())
+    if last != boundary:
+        raise DebateFailure(
+            f"the stored debate ends at round {last} but its config says "
+            f"{boundary} rounds; the contest round's number would be wrong"
+        )
+    round_number = boundary + 1
+    # Composed rather than mutated in place: the parent transcript belongs to a record
+    # this run must not write to, and `compose_transcript` is also the one place that
+    # checks the new turns really do follow the parent's rounds.
+    composed = compose_transcript(record.transcript, Transcript())
+
+    async def turn_for(speaker: Speaker) -> Turn:
+        return await _recourse_turn(
+            record, challenge, config, client, composed,
+            speaker=speaker, round_number=round_number,
+        )
+
+    results = await asyncio.gather(
+        *(turn_for(speaker) for speaker in ORDER), return_exceptions=True
+    )
+    for result in results:
+        if isinstance(result, Turn):
+            composed.add(result)
+            if result.parse_mode != "strict":
+                log.warning("recourse round %d %s parsed as %s",
+                            result.round, result.speaker.value, result.parse_mode)
+            if writer is not None:
+                # NOT `writer.record_turn`, which writes `transcript.json` — a contest
+                # directory holding one would load as a DECISION whose debate is two
+                # turns long.
+                _, own = composed.split_at(boundary)
+                writer.record_recourse_turn(own)
+    for result in results:
+        if isinstance(result, BaseException):
+            # Unwrapped, so an enclosing asyncio.timeout still recognises its own
+            # cancellation rather than seeing a DebateFailure it cannot attribute.
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            raise DebateFailure(
+                f"contest round {round_number} failed: {result}") from result
+
+    _, own = composed.split_at(boundary)
+    return own
+
+
 async def _rule_by_judge(
-    record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient
+    record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient,
+    *, exchange: Transcript | None = None,
 ) -> Ruling:
     """A third party states its conclusion; UPHOLD/OVERTURN is derived from it.
 
@@ -426,6 +646,15 @@ async def _rule_by_judge(
     `Ruling` invariant is checked rather than asserted: `ruling` is chosen so that
     `resolve_ruling(ruling, parent) == verdict`, and `Ruling.__post_init__` re-derives it
     and refuses the record if the two ever disagree.
+
+    ``exchange`` is the contestability debate round's two replies. ``None`` — the
+    default, and what every ruling before 2026-08-30 was made under — sends byte-identical
+    messages to what this function has always sent, and records `recourse_rounds = 0`
+    with no pro speaker and no exchange hash. Given one, the judge is shown the two
+    arguments in the one block `RECOURSE_JUDGE_USER_JUDGMENT_EXCHANGE` adds and the
+    ruling records which exchange it ruled on: the sha256 is of the rendered arguments,
+    so a `recourse_transcript.json` that were ever edited afterwards would no longer
+    match the ruling that was made from it.
     """
     # `arm` is the OBJECTION's arm and not the config's variant. A re-rule pass reads
     # finished objections out of another tree, so the config in front of it need not be
@@ -434,8 +663,11 @@ async def _rule_by_judge(
     messages = build_recourse_judge_messages(
         record.item, record.sides, record.challenger_view(),
         decision_verdict=record.verdict.verdict, objection=challenge.text,
-        judgment=record.decision_grounds, arm=challenge.arm,
+        judgment=record.decision_grounds, arm=challenge.arm, exchange=exchange,
     )
+    turns = exchange.all_turns() if exchange is not None else []
+    pro = (recourse_pro_speaker(record.sides, record.verdict.verdict).value
+           if turns else None)
     (conclusion, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=config.recourse_judge_model_for(), messages=messages,
@@ -452,6 +684,13 @@ async def _rule_by_judge(
     return Ruling(
         form="stated_conclusion", ruling=word, protocol=config.recourse_protocol,
         prompt_form=ruling_prompt_form(challenge.arm),
+        # DERIVED from the exchange in hand, never from the config: a cell whose round
+        # failed and was ruled anyway would otherwise record a round it never heard.
+        recourse_rounds=1 if turns else 0,
+        recourse_pro_speaker=pro,
+        recourse_exchange_sha256=(
+            hashlib.sha256(render_transcript(turns).encode("utf-8")).hexdigest()
+            if turns else None),
         parent_verdict=parent, verdict=verdict, parse_mode=parse_mode,
         conclusion_line=ruling_conclusion_line(completion.content),
         raw=completion.content, call_id=completion.call_id,
@@ -750,6 +989,47 @@ def recoursers_for(recourse_form: str) -> dict[str, Any]:
         ) from None
 
 
+async def _hear_if_asked(
+    record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient,
+    *, writer: Any | None = None,
+) -> Transcript:
+    """The contest round, when the spec asks for one; an empty transcript otherwise.
+
+    Kept out of `run_recourse`'s two branches so that "does this run hear a round" is one
+    decision in one place. It refuses a solo condition here rather than in
+    `hear_exchange`'s own check, because at this level the CONDITION is what is wrong —
+    `recourse_rounds = 1` on a spec that runs `single` is a spec that asked for advocates
+    for a decision that never had any, and the error should say that rather than "this
+    record has no transcript".
+    """
+    if not config.recourse_rounds:
+        return Transcript()
+    if record.condition != "debate":
+        raise DebateFailure(
+            f"recourse_rounds = {config.recourse_rounds} on condition "
+            f"{record.condition!r}: only a debate has two advocates who can argue the "
+            "objection. The contest step has to be identical across conditions, so a "
+            "spec that hears a round must run the debate condition alone."
+        )
+    return await hear_exchange(record, challenge, config, client, writer=writer)
+
+
+async def _ruled_by(recoursers, record: Any, challenge: Challenge,
+                    config: DebateConfig, client: ChatClient,
+                    exchange: Transcript) -> Ruling:
+    """Route to the condition's ruler, handing the exchange to the one that takes one.
+
+    Only `_rule_by_judge` hears an exchange. The solo re-decider is the model that made
+    the decision reconsidering in its own conversation, and there is no exchange to hand
+    it — `_hear_if_asked` has already refused that combination, so this is the belt to
+    its braces rather than a second policy.
+    """
+    ruler = recoursers[record.condition]
+    if exchange.all_turns() and ruler is _rule_by_judge:
+        return await ruler(record, challenge, config, client, exchange=exchange)
+    return await ruler(record, challenge, config, client)
+
+
 async def run_recourse(
     record: Any,
     config: DebateConfig,
@@ -771,10 +1051,14 @@ async def run_recourse(
         challenge = placeholder_challenge(record, config, writer=writer)
         if not rule:
             return RecourseOutcome(challenge=challenge, ruling=None, comprehension=None)
-        ruling = await recoursers[record.condition](record, challenge, config, client)
+        exchange = await _hear_if_asked(record, challenge, config, client,
+                                        writer=writer)
+        ruling = await _ruled_by(recoursers, record, challenge, config, client,
+                                 exchange)
         if writer is not None:
             writer.record_ruling(ruling)
-        return RecourseOutcome(challenge=challenge, ruling=ruling, comprehension=None)
+        return RecourseOutcome(challenge=challenge, ruling=ruling, comprehension=None,
+                               transcript=exchange)
 
     challenge, conversation = await generate_challenge(
         record, config, client, writer=writer
@@ -794,8 +1078,9 @@ async def run_recourse(
         return RecourseOutcome(challenge=challenge, ruling=None,
                                comprehension=comprehension)
 
-    ruling = await recoursers[record.condition](record, challenge, config, client)
+    exchange = await _hear_if_asked(record, challenge, config, client, writer=writer)
+    ruling = await _ruled_by(recoursers, record, challenge, config, client, exchange)
     if writer is not None:
         writer.record_ruling(ruling)
     return RecourseOutcome(challenge=challenge, ruling=ruling,
-                           comprehension=comprehension)
+                           comprehension=comprehension, transcript=exchange)

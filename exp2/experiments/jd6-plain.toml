@@ -1,0 +1,145 @@
+# jd6, ARM B of 2 — ONE MORE ORDINARY ROUND, no objection, re-judged.
+#
+# READ FIRST: `records/experiments/judgment-debate-6/PREREG.md`, to be committed before
+# this arm's first paid call. This spec is only readable beside `jd6-round.toml`; on its
+# own it measures nothing.
+#
+# WHAT THIS ARM IS FOR. `jd6-round.toml` gives the recourse judge a REPLY to the
+# objection — two strong debaters arguing whether the alleged defects are real and
+# material — and the obvious rival explanation for anything it finds is that an extra
+# round of strong argument helps whatever it is about. So the baseline is exactly that
+# and nothing else: the SAME two debaters play ONE MORE ORDINARY ROUND of the same
+# debate, with no objection anywhere, and the SAME Maverick judges the four-round
+# transcript afresh. Same cells, same debaters, same extra tokens, same judge model.
+#
+# WHAT DIFFERS BETWEEN THE ARMS IS TWO THINGS AND THE WRITE-UP SAYS SO: whether the
+# stakeholder's objection shapes the round, and whether the judge decides under "the
+# decision stands unless" or decides afresh. That double difference is what DESIGN.md
+# §"Contestability debate round vs regular debate round" asks for, and neither arm can
+# separate its halves.
+#
+# NO NEW PROMPT TEXT IS SENT. `extend_rounds` continues the stored transcript under the
+# EXISTING round instruction: `_round_instructions` already yields `ROUND_3_PLUS` for
+# round 4, and at `round == n_rounds` it carries no closing clause — so what the debaters
+# read is byte-identical to the last round of a genuine four-round debate and nothing in
+# it says the round is an extension. `n_rounds = 4` and `n_critique_rounds = 4` (the
+# equality validator) are what make it four.
+#
+# THE DEBATES ARE NOT RE-RUN FROM SCRATCH. `transcripts_from` reads `jd3-main`'s stored
+# M0 decisions — the sweep's debates as Maverick judged them — and this stage copies each
+# one, plays round 4 into it, and judges the longer record. Nothing under
+# `outputs/experiments/jd3-main` is written; it is fingerprinted before and after by
+# `outputs/jd6-run-all.sh` and must be byte-identical (`dfa9bdca…`).
+#
+# "OVERTURN" HERE MEANS the new verdict differs from M0's, which each run's manifest
+# carries as `source_verdict`. THE STATED CAVEAT, and it is in the pre-registration: that
+# rate includes Maverick's own disagreement with itself on a re-draw as well as the
+# round's effect. No floor arm is run to price it (struck by the user, 2026-08-30). The
+# PAIRED R-vs-B test is free of it; the absolute rates are not.
+#
+# THE POPULATION IS THE 896 CELLS M1 CONTESTED, taken from the cases file rather than
+# from the tree: a rejudge has no objection to gate on, so a spec pointed at the whole
+# corpus would extend and re-judge all 1,644 of M0's decisions and the arms would not be
+# paired. `records/derivations/jd6-pick.py` writes that file and ASSERTS the count.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rejudge analyse" nohup \
+#         scripts/run_sweep.sh experiments/jd6-plain.toml \
+#         > outputs/jd6-plain-driver.log 2>&1 &
+#
+# WHAT THIS SPEC ACTUALLY SPENDS, and it is not the `--dry-run` total. That figure is a
+# per-stage BOUND for every stage that could be run against this tree; the driver runs
+# TWO — `rejudge analyse` — and the calls they make are:
+#
+#     1,792  round-4 debater turns   (2 per stored decision, deepseek)
+#       896  judge calls             (1 per cell, Maverick, over the FOUR-round record)
+#     ----
+#     ~2,688 calls.  `analyse` makes none.
+#
+# There is no contest, no grade, no agreement and no `ruling_agreement` on this arm:
+# nothing here is objected to. Their terms in the estimate are bounds on stages nobody
+# will run, and `planned_stages` below is echoed by `--dry-run` so the reader agreeing to
+# the spend sees which is which.
+#
+# MEASURED FROM THE SMOKE (`outputs/jd6-smoke-cost.txt`, 3 cells): $0.006325/cell for the
+# two debater turns and $0.000875 for the judgment — $0.007199 per cell, so **about $6.5**
+# over 896 cells, and about **$8.5** with 1.3x headroom.
+#
+# RESUME AND RETRY. `rejudge` follows `decide`'s rule: a cell already decided here is
+# skipped, and so is one whose latest run FAILED — unless `--retry-failed`, which
+# `outputs/jd6-run-all.sh` passes for exactly this reason. So a cell whose round-4 turn or
+# whose judgment failed IS re-attempted once on the driver's resume, both turns are bought
+# again, and a cell that fails twice is counted and reported, never silently skipped. The
+# smoke lost 1 of 3 cells this way (a round-4 restart loop truncating at
+# `generation_max_tokens`), which is the sweep's own failure mode and is expected here.
+
+name = "jd6-plain"
+
+# THE 896 CELLS M1 CONTESTED, and no others — see above. Written and count-asserted by
+# `records/derivations/jd6-pick.py`.
+cases = "data/cases/jd6-contested.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions: Maverick's
+# judgments of the same debates, one round longer.
+transcripts_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. The estimate
+# above it prints a per-stage BOUND for every stage that could ever be run against this
+# tree, which is right for a spec and wrong for a bill: the total counts contest, grade
+# and agreement terms this driver never invokes.
+planned_stages = ["rejudge", "analyse"]
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block except for the three lines that
+# make the round happen. It has to be: `extend_rounds` continues a debate another run
+# argued, and `_assert_same_debate` refuses the cell if the debaters, their temperature,
+# the word limit, the turn style, the reasoning setting or the generation cap differ from
+# what that run recorded. `n_rounds` is the one field exempted, because it is the one that
+# must differ.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# Named so the two arms' `config.json` files stay comparable and the index says the same
+# thing about both. NO CHALLENGER IS CALLED BY THIS SPEC — there is no contest stage in
+# it, and the whole point of the arm is that no objection exists.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# THE THREE LINES THAT MAKE THIS THE PLAIN-ROUND ARM. `extend_rounds` continues the
+# stored transcript to `n_rounds` before judging; `n_critique_rounds` is validated equal
+# to `n_rounds` and is carried along for that reason alone (no self_critique cell exists
+# on this grid). A source that already has four rounds, or a solo source, FAILS its cell
+# loudly rather than being judged as though a round had been added.
+extend_rounds = true
+n_rounds = 4
+n_critique_rounds = 4
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+# The debaters', unchanged. It binds round 4, which is the only strong-model call here.
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE, PINNED — the same slug as arm R's and for the same reason: with the judge
+# unpinned "only the round moved" would be an intent rather than a fact (§3aa: 34% of
+# M1's rulings on DeepInfra against 4.8% of jd5-B's). Verified by one real pinned call,
+# `records/derivations/jd6-provider-check.py`.
+"meta-llama/llama-4-maverick" = ["digitalocean"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# Named because the spec loader wants a table; NO grading stage runs on this arm. There is
+# no objection to grade and no ruling prose to read.
+grader_model = "anthropic/claude-haiku-4.5"

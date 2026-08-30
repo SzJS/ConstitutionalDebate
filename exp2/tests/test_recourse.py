@@ -5,9 +5,10 @@ from __future__ import annotations
 import pytest
 from conftest import SOLO_THINKING, FakeClient
 from helpers import make_config
-from recording import contest, decided
+from recording import client_config, contest, decided
 
 from exp2.arms import DECIDERS
+from exp2.persistence import RunWriter
 from exp2.recourse import RECOURSERS, recoursers_for, run_recourse
 from exp2.types import FLAWED, SOUND
 
@@ -639,3 +640,163 @@ async def test_placeholder_challenge_refuses_to_be_written_under_another_arm(tmp
     record = await decided(tmp_path, "debate")
     with pytest.raises(ValueError, match="must not be written under"):
         placeholder_challenge(record, make_config(challenger_variant="judgment"))
+
+
+# --- the contestability debate round, 2026-08-30 --------------------------------------
+#
+# `judgment-debate-6`. Until now every ruling was made with nobody answering the
+# objection. `recourse_rounds = 1` puts the two ORIGINAL debaters in front of the same
+# weak judge, one simultaneous turn each, and the judge rules on the argued exchange.
+
+import dataclasses  # noqa: E402
+
+from exp2.engine import DebateFailure  # noqa: E402
+from exp2.persistence import load_recourse_transcript  # noqa: E402
+from exp2.recourse import hear_exchange  # noqa: E402
+
+
+def round_config(**kw):
+    """A spec that hears the round: the judgment arm, one round, everything else as the
+    parent debate was argued (`_assert_same_debate` refuses anything else)."""
+    return make_config(recourse_rounds=1, challenger_variant="judgment",
+                       recourse_form="third_party", **kw)
+
+
+async def test_a_recourse_round_runs_both_debaters_once_then_the_judge(tmp_path):
+    """The whole protocol in one assertion: two replies, then one ruling on them.
+
+    The order matters as much as the count — a judge called before the round would be
+    ruling on the objection alone while the run still paid for two debater calls — and so
+    does the judge actually being SHOWN what was said, which is the one thing this arm
+    exists to change.
+    """
+    outcome, client, writer, record = await contest(
+        tmp_path, "debate", config=round_config())
+    roles = [r for r in client.roles() if r in ("recourse_debater", "recourse_judge")]
+    assert roles == ["recourse_debater", "recourse_debater", "recourse_judge"]
+
+    turns = outcome.transcript.all_turns()
+    assert [t.round for t in turns] == [4, 4]
+    assert {t.speaker.value for t in turns} == {"Alice", "Bob"}
+
+    sent = "".join(m["content"] for m in client.sent_to("recourse_judge"))
+    for turn in turns:
+        assert turn.argument in sent
+        assert turn.thinking not in sent          # ground rule 7, on the newest turns
+    assert "<exchange>" in sent and "arguments, not evidence" in sent
+
+    # both debaters were called simultaneously and neither saw the other's reply
+    for call in client.calls:
+        if call["meta"].get("role") != "recourse_debater":
+            continue
+        assert call["meta"]["round"] == 4
+        assert call["meta"]["purpose"] == "recourse_turn"
+        assert call["meta"]["stance"] in ("pro", "anti")
+        assert "Round 4:" not in "".join(m["content"] for m in call["messages"])
+    stances = {c["meta"]["speaker"]: c["meta"]["stance"] for c in client.calls
+               if c["meta"].get("role") == "recourse_debater"}
+    assert sorted(stances.values()) == ["anti", "pro"]
+
+    # the turns are on disk under their own name, and NOT as a decision's transcript
+    assert (writer.dir / "recourse_transcript.json").is_file()
+    assert not (writer.dir / "transcript.json").is_file()
+    stored = load_recourse_transcript(writer.dir)
+    assert [t.round for t in stored.all_turns()] == [4, 4]
+    assert load_recourse_transcript(tmp_path) is None
+
+
+async def test_the_ruling_records_the_exchange(tmp_path):
+    """`prompt_form` stays "materiality" — every reader keyed on it must be unaffected —
+    and the three new fields say what was heard and who argued which way."""
+    outcome, client, _, record = await contest(
+        tmp_path, "debate", config=round_config())
+    ruling = outcome.ruling
+    assert ruling.prompt_form == "materiality"
+    assert ruling.form == "stated_conclusion"
+    assert ruling.protocol == "debate"
+    assert ruling.recourse_rounds == 1
+    # the decision went FLAWED (the default judge's verdict), so the SOUND debater argues
+    # the objection is well founded
+    assert ruling.recourse_pro_speaker == record.sides.speaker_for_side(SOUND).value
+    assert ruling.recourse_exchange_sha256 is not None
+
+    # a judge-only ruling on the same fixture records none of it
+    plain, _, _, _ = await contest(tmp_path / "plain", "debate",
+                                   config=make_config(challenger_variant="judgment"))
+    assert plain.ruling.recourse_rounds == 0
+    assert plain.ruling.recourse_pro_speaker is None
+    assert plain.ruling.recourse_exchange_sha256 is None
+    assert plain.transcript.all_turns() == []
+
+
+async def test_a_contest_round_refuses_a_solo_record(tmp_path):
+    """There were no advocates. Inventing two would put a debate in front of a judge that
+    is being told it rules on a decision one agent made alone.
+
+    Refused twice over, deliberately: `run_recourse` refuses the CONDITION, because a
+    spec that asks for a round on `single` is a spec that misunderstands the arm, and
+    `hear_exchange` refuses the RECORD, because a direct caller can reach it with a
+    decision that has no transcript whatever the manifest calls it.
+    """
+    with pytest.raises(DebateFailure, match="only a debate has two advocates"):
+        await contest(tmp_path, "single", config=round_config())
+    solo = await decided(tmp_path / "s", "single")
+    with pytest.raises(DebateFailure, match="single agent working alone"):
+        await hear_exchange(solo, _judgment_challenge(), round_config(), FakeClient())
+
+
+async def test_a_contest_round_refuses_a_parent_argued_under_other_settings(tmp_path):
+    """The round continues a debate another run paid for, so it has to be argued under
+    that run's settings — otherwise a turn by a different party, at a different
+    temperature, is spliced into a record that says all four turns are one debate."""
+    record = await decided(tmp_path, "debate")
+    config = round_config(debater_model="other/model")
+    with pytest.raises(DebateFailure, match="debater_model"):
+        await hear_exchange(record, _judgment_challenge(), config, FakeClient())
+    config = round_config(debater_temperature=0.1)
+    with pytest.raises(DebateFailure, match="debater_temperature"):
+        await hear_exchange(record, _judgment_challenge(), config, FakeClient())
+
+
+async def test_a_contest_round_refuses_a_sequential_spec(tmp_path):
+    """One simultaneous turn each is what makes "neither reply conditions on the other"
+    true, and that is the claim the paired comparison rests on."""
+    record = await decided(tmp_path, "debate")
+    config = round_config(turn_style="sequential")
+    with pytest.raises(DebateFailure, match="simultaneous"):
+        await hear_exchange(record, _judgment_challenge(), config, FakeClient())
+
+
+async def test_a_contest_round_refuses_an_objection_from_another_arm(tmp_path):
+    record = await decided(tmp_path, "debate")
+    with pytest.raises(DebateFailure, match="judgment arm"):
+        await hear_exchange(record, _judgment_challenge(arm="neutral"),
+                            round_config(), FakeClient())
+
+
+async def test_a_failed_round_commits_the_completed_turn_before_raising(tmp_path):
+    """`debate._run_round`'s rule, on the contest round.
+
+    Losing a paid generation because the other debater failed is an own goal, and the
+    partial exchange is a true record of what was said. The cell still fails — there is
+    no half-round resume — but the turn that completed is on disk.
+    """
+    record = await decided(tmp_path, "debate")
+    writer = RunWriter.create_recourse(
+        root=tmp_path / "c", parent_dir=record.directory, item=record.item,
+        sides=record.sides, config=record.config, client_config=client_config(),
+        condition="debate")
+    client = FakeClient(fail_on={(4, "Bob"): "fatal"}, sink=writer.record_call)
+    with pytest.raises(DebateFailure, match="contest round 4 failed"):
+        await hear_exchange(record, _judgment_challenge(), round_config(), client,
+                            writer=writer)
+    stored = load_recourse_transcript(writer.dir)
+    assert [t.speaker.value for t in stored.all_turns()] == ["Alice"]
+
+
+def _judgment_challenge(arm: str = "judgment"):
+    from exp2.types import Challenge
+
+    return Challenge(text="Defect 1. Judgment says: x. Record says: y.",
+                     origin="generated", raised=True, stance="contests",
+                     claimed_verdict=SOUND, arm=arm)

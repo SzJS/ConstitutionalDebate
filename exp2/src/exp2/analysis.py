@@ -876,6 +876,77 @@ def _rejudged_caveat(rows: Sequence[dict]) -> str | None:
     )
 
 
+def _recourse_round_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where an objection in this index was ARGUED before it was ruled on.
+
+    The contestability debate round of 2026-08-30 (`judgment-debate-6`). Every other
+    recourse number in this experiment comes from a weak challenger writing an objection
+    and a weak judge ruling on it with nobody answering; here the two ORIGINAL strong
+    debaters each replied once first, and the judge ruled on the argued exchange. So the
+    ruling columns in this file are not the same quantity as any earlier run's, and the
+    thing a reader most needs told is which of them changed: the prompt did (one inserted
+    block), the judge did not, and the objections did not.
+    """
+    heard = [row for row in rows if row.get("recourse_rounds")]
+    if not heard:
+        return None
+    speakers = sorted({row.get("recourse_pro_speaker") or "?" for row in heard})
+    mixed = "" if len(heard) == len(rows) else (
+        f" Only {len(heard)} of the {len(rows)} rows here were argued; the rest were "
+        "ruled judge-only, and THE TWO ARE NOT ONE POPULATION — do not read a rate over "
+        "this file as a rate for either protocol."
+    )
+    return (
+        "THE OBJECTION WAS ARGUED BEFORE IT WAS RULED ON (recourse_rounds = 1): on these "
+        f"{len(heard)} cells the two ORIGINAL debaters each replied once, "
+        "simultaneously, seeing rounds 1-3, the judgment and the objection but not each "
+        "other's reply, and the recourse judge ruled on that exchange. The debater whose "
+        "assigned side the decision went against argued the alleged defects are real and "
+        f"material ({', '.join(speakers)} here); the other argued they are not; each "
+        "still argued its own assigned side, and who argued which is DERIVED from the "
+        "parent verdict rather than recorded by the debaters. `changed_the_decision` and "
+        "`final_correct` here are therefore NOT comparable with a judge-only run's: the "
+        "ruling prompt carries one extra block and the judge has two advocates in front "
+        "of it. What is comparable is a PAIRED test against the same cells ruled the "
+        "other way, and that is made in the derivation." + mixed
+    )
+
+
+def _extended_rounds_caveat(rows: Sequence[dict]) -> str | None:
+    """Emitted only where a decision in this index was judged after an EXTRA round.
+
+    Arm B of `judgment-debate-6` — the plain-round baseline. It is a `rejudge`, so
+    `_rejudged_caveat` above already says the debates were argued elsewhere; what this
+    adds is that they were then CONTINUED here, so `verdict` is a judgment of a longer
+    debate than the source judge read and `decision_cost_usd` is two debater calls plus
+    the judge rather than the judge alone.
+    """
+    extended = [row for row in rows if row.get("extended_from_rounds") is not None]
+    if not extended:
+        return None
+    lengths = sorted({(row.get("extended_from_rounds"), row.get("rounds_n"))
+                      for row in extended})
+    shape = ", ".join(f"{a} -> {b} rounds" for a, b in lengths)
+    mixed = "" if len(extended) == len(rows) else (
+        f" Only {len(extended)} of the {len(rows)} rows here were extended; the rest "
+        "were judged as they stood, and THE TWO ARE NOT ONE POPULATION."
+    )
+    return (
+        f"THE DEBATE WAS CONTINUED BEFORE IT WAS JUDGED (extend_rounds, {shape}): on "
+        f"these {len(extended)} cells the same two debaters played one more ORDINARY "
+        "round — no objection anywhere, the existing round instruction, and at "
+        "`round == n_rounds` no closing clause, so what they read is byte-identical to "
+        "the last round of a debate of that length — and then the judge decided the "
+        "longer transcript afresh. So `verdict` and `initially_correct` are a judgment "
+        "of a record the source judge never saw, `source_verdict` beside them is what "
+        "the source judge made of the SHORTER one, and the difference between the two "
+        "carries the extra round AND this judge's own disagreement with itself on a "
+        "re-draw, which no arm here prices. It is the baseline the contestability debate "
+        "round is measured against, and the comparison is paired and made in the "
+        "derivation." + mixed
+    )
+
+
 def _gatekeeper_caveat(rows: Sequence[dict]) -> str | None:
     """Emitted only where an admissibility GATE was applied to this index's rulings.
 
@@ -949,6 +1020,8 @@ def caveats(rows: Sequence[dict], conditions: Sequence[str]) -> list[str]:
         _fabricated_arm_caveat(rows),
         _placeholder_arm_caveat(rows),
         _gatekeeper_caveat(rows),
+        _recourse_round_caveat(rows),
+        _extended_rounds_caveat(rows),
     ]
     return [caveat for caveat in stated if caveat]
 

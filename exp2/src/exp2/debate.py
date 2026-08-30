@@ -133,16 +133,45 @@ async def _debater_turn(
         max_tokens=config.generation_max_tokens,
         public_label="Argument",
     )
+    return _turn_from_completion(
+        thinking, argument, parse_mode, completion,
+        repairs=repairs, repair_kind=repair_kind,
+        round_number=round_number, speaker=speaker, side=sides.side_for(speaker),
+        word_limit=config.word_limit,
+    )
+
+
+def _turn_from_completion(
+    thinking: str,
+    argument: str,
+    parse_mode: str,
+    completion: Any,
+    *,
+    repairs: int,
+    repair_kind: str | None,
+    round_number: int,
+    speaker: Speaker,
+    side: str,
+    word_limit: int,
+) -> Turn:
+    """One parsed debater reply as a ``Turn``.
+
+    Extracted so the contestability debate round (`recourse.hear_exchange`) builds its
+    round-4 turns through the same code an ordinary round does. Two hand-rolled copies
+    would be two chances to forget the budget-repair marking below, and a round-4 turn
+    whose `parse_mode` under-reported a repair would put a repaired generation into a
+    comparison of parse modes across the two arms.
+    """
     words = count_words(argument)
-    if config.word_limit and words > config.word_limit:
+    if word_limit and words > word_limit:
         # Recorded, never truncated: cutting the text would inject an edit the model
         # did not author into a document whose whole claim is that it is what was said.
         log.warning(
             "round %d %s wrote %d words over a %d-word limit",
-            round_number, speaker.value, words, config.word_limit,
+            round_number, speaker.value, words, word_limit,
         )
     return Turn(
-        round=round_number, speaker=speaker, side=sides.side_for(speaker),
+        round=round_number, speaker=speaker, side=side,
         thinking=thinking, argument=argument, word_count=words,
         # The budget repair is marked in ``parse_mode`` because it is not a format
         # failure and must not be counted as one: the model wrote nothing wrong, it ran

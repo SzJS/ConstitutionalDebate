@@ -103,7 +103,11 @@ def _claim_run_dir(root: Path, item_id: str, suffix: str = "") -> Path:
 # and only at the top level — the copied ``parent/`` decision has documents and a wire log
 # of its own and they are exactly what makes the record self-contained.
 _RERULE_EXCLUDED: frozenset[str] = frozenset(
-    {"ruling.json", "calls.jsonl", "ruling_agreement.json"}
+    {"ruling.json", "calls.jsonl", "ruling_agreement.json",
+     # The contestability debate round's own two turns. A re-rule that copied them
+     # forward would put ANOTHER run's exchange in front of this run's judge — and
+     # `render_recourse_record` would print it as though these debaters had argued here.
+     "recourse_transcript.json"}
 )
 
 # What a RE-JUDGE does not copy from the decision it re-judges. See ``create_rejudge``.
@@ -445,6 +449,21 @@ class RunWriter:
         _write_json(self.dir / "transcript.json", transcript.to_dict())
         self._render()
 
+    def record_recourse_turn(self, own: Transcript) -> None:
+        """The contestability debate round's OWN turns, and never `transcript.json`.
+
+        ``own`` is the recourse side of ``Transcript.split_at`` — the round-4 turns
+        alone, not the parent debate they continue. It is written under its own name for
+        a structural reason: a contest directory that held a `transcript.json` would be
+        loaded by ``load_run_record`` as a DECISION whose debate is two turns long, and
+        the copied `parent/` decision beside it is the record that actually holds the
+        debate. Full ``Turn``s, thinking included, exactly as `record_turn` writes a
+        decision's — `transcript_full.md` is where the private half is published and
+        `transcript.md` prints the arguments only.
+        """
+        _write_json(self.dir / "recourse_transcript.json", own.to_dict())
+        self._render()
+
     def record_step(self, trace: Trace) -> None:
         _write_json(self.dir / "trace.json", trace.to_dict())
         self._render()
@@ -596,6 +615,20 @@ def load_run_record(directory: Path) -> RunRecord:
         condition=manifest.get("condition", "unknown"),
         transcript=transcript, trace=trace, messages=messages,
     )
+
+
+def load_recourse_transcript(directory: Path) -> Transcript | None:
+    """A contest's own round-4 turns, or ``None`` where no round was heard.
+
+    ``None`` rather than an empty transcript, on the rule every conditional artifact in
+    this harness follows: "judge-only recourse" and "a contest round that produced no
+    turns" are different facts and the renderers, the index and the analysis all have to
+    be able to tell them apart.
+    """
+    path = directory / "recourse_transcript.json"
+    if not path.is_file():
+        return None
+    return Transcript([Turn(**_turn_kwargs(t)) for t in _read_json(path)["turns"]])
 
 
 def _turn_kwargs(data: dict[str, Any]) -> dict[str, Any]:

@@ -1344,3 +1344,285 @@ def test_jd5_is_stdlib_only_like_every_other_derivation(jd5):
     for banned in ("import numpy", "import scipy", "import pandas",
                    "from scipy", "import statsmodels", "from exp2"):
         assert banned not in source, banned
+
+
+# --- judgment-debate-6: an argued objection against an un-argued extra round -----------
+
+
+@pytest.fixture(scope="module")
+def jd6():
+    return _load("judgment-debate-6.py")
+
+
+def _jd6_only(*args):
+    """Arguments that run ONLY the indexes named. Same reason as `_jd5_only`: this
+    script's defaults point at the COMMITTED records, so without this a synthetic
+    assertion about six fake cells quietly matches a published arm."""
+    named = set(args[::2])
+    argv = []
+    for _key, (flag, _default) in _JD6_FLAGS.items():
+        if flag not in named:
+            argv += [flag, "/nonexistent/index.jsonl"]
+    return list(args) + argv
+
+
+_JD6_FLAGS: dict = {}
+
+
+def test_jd6_imports_its_statistics_rather_than_copying_them(jd4, jd5, jd6):
+    """jd5 and jd6 print rates about the SAME 896 cells in one write-up, so a definition
+    that drifted between them would be invisible. jd6 re-exports jd5's objects — which
+    are themselves jd4's — and this asserts IDENTITY, not equality of results."""
+    _JD6_FLAGS.clear()
+    _JD6_FLAGS.update(jd6.ARM_FLAGS)
+    assert jd6.mcnemar_exact is jd6.jd5.mcnemar_exact
+    assert jd6.paired_block is jd6.jd5.paired_block
+    assert jd6.ruling_pairs is jd6.jd5.ruling_pairs
+    assert jd6.paired_ruling_block is jd6.jd5.paired_ruling_block
+    assert jd6.load is jd6.jd5.load
+    assert jd6.restrict is jd6.jd5.restrict
+    assert jd6.ALPHA == jd5.ALPHA == jd4.ALPHA == 0.05
+
+
+def test_jd6_reads_each_arms_before_and_after_out_of_its_own_columns(jd6):
+    """THE ONE THING IN THIS FILE THAT COULD SILENTLY INVERT THE RESULT.
+
+    Arm R is a RERULE — it decides nothing, so its row's `initially_correct` is M0's
+    decision and `final_correct` is the ruling's. Arm B is a REJUDGE — it MAKES a
+    decision, so its `initially_correct` is the AFTER-state and M0's is `source_correct`.
+    Reading either with the other's accessor swaps before for after and reports the exact
+    opposite of what happened, with every table still well formed.
+    """
+    rerule = {"initially_correct": True, "final_correct": False,
+              "ruling_form": "stated_conclusion", "changed_the_decision": True}
+    assert jd6.before_of(rerule, "R") is True
+    assert jd6.after_of(rerule, "R") is False
+    assert jd6.overturned_of(rerule, "R") is True
+
+    rejudge = {"initially_correct": False, "source_correct": True,
+               "verdict": "SOUND", "source_verdict": "FLAWED"}
+    assert jd6.before_of(rejudge, "B") is True
+    assert jd6.after_of(rejudge, "B") is False
+    assert jd6.overturned_of(rejudge, "B") is True
+
+    # a cell whose ruling or judgment never happened is not counted as an uphold
+    assert jd6.overturned_of({"ruling_form": None}, "R") is None
+    assert jd6.overturned_of({"verdict": None, "source_verdict": "SOUND"}, "B") is None
+    # and a rerule with no ruling keeps the decision's own state
+    assert jd6.after_of({"initially_correct": True, "final_correct": None}, "R") is True
+
+
+def test_jd6_pairs_only_the_cells_both_arms_decided_and_splits_on_the_before_state(jd6):
+    """P1 and P2 are two tests over one pairing, and what makes them two is the
+    restriction to the cells M0 got right and the cells it got wrong. A cell one arm
+    never decided leaves the table rather than entering it as a concordant pair."""
+    a = {f"c{i}": {"initially_correct": i < 2, "final_correct": i % 2 == 0,
+                   "ruling_form": "stated_conclusion"} for i in range(4)}
+    b = {f"c{i}": {"initially_correct": True, "source_correct": i < 2,
+                   "verdict": "SOUND", "source_verdict": "SOUND"} for i in range(4)}
+    a["c3"]["ruling_form"] = None                     # never ruled in R
+    a["c3"]["final_correct"] = None
+    cells = set(a)
+
+    every, disagreed = jd6.paired_states(a, b, cells)
+    assert disagreed == 0
+    assert [c for c, _, _ in every] == ["c0", "c1", "c2"]
+    right, _ = jd6.paired_states(a, b, cells, only="right")
+    wrong, _ = jd6.paired_states(a, b, cells, only="wrong")
+    assert [c for c, _, _ in right] == ["c0", "c1"]
+    assert [c for c, _, _ in wrong] == ["c2"]
+    assert right + wrong == [p for p in every]
+
+    # and a cell the two arms disagree about M0 on is DROPPED and counted, not paired:
+    # it would mean they are not standing on the same decision
+    b["c0"] = {**b["c0"], "source_correct": False}
+    _, disagreed = jd6.paired_states(a, b, cells)
+    assert disagreed == 1
+
+
+def test_jd6_runs_on_missing_indexes_and_says_not_run(capsys, jd6):
+    """It is written before either arm exists and has to be runnable then — that is how a
+    derivation gets reviewed before it can be tuned to the numbers it will produce."""
+    _JD6_FLAGS.clear()
+    _JD6_FLAGS.update(jd6.ARM_FLAGS)
+    assert jd6.main(_jd6_only()) == 0
+    out = capsys.readouterr().out
+    assert "NOT RUN" in out
+    assert "NOTHING TO DERIVE" in out
+    assert "is not an error" in out
+
+
+def test_jd6_names_its_endpoint_and_labels_everything_else(jd6):
+    """jd5's lesson, written into the file: the four outcomes are named BEFORE the table
+    so no rule is invented after it, the net is demoted to an ablation, and the
+    jd5-B comparison carries the provider caveat that makes it descriptive."""
+    source = (DERIVATIONS / "judgment-debate-6.py").read_text(encoding="utf-8")
+    assert "[PRIMARY]" in source
+    assert "[ABLATION — NOT AN ENDPOINT]" in source
+    assert "[KEYWORD INSTRUMENT — NOT A MEASUREMENT]" in source
+    assert "THE PROVIDER CAVEAT" in source
+    for outcome in ("(A) P1 and P2 hold", "(B) R breaks fewer", "(C) B beats R on both",
+                    "(D) no separation"):
+        assert outcome in source, outcome
+    # the caveat the pre-registration requires to travel with every absolute rate
+    assert "RE-DRAW DISAGREEMENT WITH" in source
+
+
+def test_jd6_is_stdlib_only_like_every_other_derivation(jd6):
+    source = (DERIVATIONS / "judgment-debate-6.py").read_text(encoding="utf-8")
+    for banned in ("import numpy", "import scipy", "import pandas",
+                   "from scipy", "import statsmodels", "from exp2"):
+        assert banned not in source, banned
+
+
+def test_jd6_counts_the_glued_argument_label_and_the_truncations(tmp_path, jd6):
+    """Section (6)'s two FORMAT instruments, and the reason each is a count over turns.
+
+    THE GLUED LABEL: `parse_debater_output` takes the last `Argument:` at a LINE START, so
+    a model that writes the label mid-sentence after some planning text publishes the
+    planning text as part of its public argument. The parser cannot catch it and a reader
+    of the record can see it, so what the write-up needs is not the rate but whether the
+    contest round RAISED it — hence the same count over the PARENT rounds of the same
+    cells, read out of each arm's own copy of them so nothing opens `jd3-main`.
+
+    THE TRUNCATIONS: `finish_reason == "length"` is the cell-loss mechanism, and it is the
+    sweep's own (a restart loop in the private Thinking block), not a new one.
+    """
+    assert jd6.glued_argument_label("plan first.  Argument: the real one") is True
+    assert jd6.glued_argument_label("no label at all here") is False
+    assert jd6.glued_argument_label("") is False
+    assert jd6.glued_argument_label(None) is False
+
+    flags = jd6.turn_flags({"argument": "x Argument: y", "finish_reason": "length",
+                            "word_count": 12, "parse_mode": "strict",
+                            "repair_attempts": 1})
+    assert flags == {"glued_label": True, "finish_reason": "length", "truncated": True,
+                     "words": 12, "parse_mode": "strict", "repairs": 1}
+
+    # the parent count is over the rounds the stored debate already had, and `boundary`
+    # is what keeps the added round out of it
+    path = tmp_path / "transcript.json"
+    path.write_text(json.dumps({"turns": [
+        {"round": 1, "argument": "clean"},
+        {"round": 2, "argument": "plan.  Argument: real"},
+        {"round": 3, "argument": "clean"},
+        {"round": 4, "argument": "also Argument: glued"},
+    ]}), encoding="utf-8")
+    assert jd6.parent_glued(path, 3) == (3, 1)
+    assert jd6.parent_glued(path) == (4, 2)
+    assert jd6.parent_glued(tmp_path / "missing.json") == (0, 0)
+
+
+def test_jd6_scans_arm_b_off_one_transcript_and_skips_the_cells_it_lost(tmp_path, jd6):
+    """Arm B keeps the parent rounds and the added round in ONE `transcript.json`, told
+    apart by `extended_from_rounds`; and a cell whose round-4 turn truncated has no
+    `verdict.json`, so it never reaches the scan — which is why the truncation count in
+    section (6) is over SURVIVING turns and the section says so."""
+    def cell(name, *, rounds, boundary, verdict=True, glue=()):
+        directory = tmp_path / "cells" / name / "runs" / "r0"
+        directory.mkdir(parents=True)
+        (directory / "transcript.json").write_text(json.dumps({"turns": [
+            {"round": r, "argument": ("a Argument: b" if r in glue else "clean"),
+             "finish_reason": "stop", "word_count": 3, "parse_mode": "strict",
+             "repair_attempts": 0}
+            for r in rounds]}), encoding="utf-8")
+        (directory / "run.json").write_text(
+            json.dumps({"extended_from_rounds": boundary, "rounds_n": 4}),
+            encoding="utf-8")
+        if verdict:
+            (directory / "verdict.json").write_text("{}", encoding="utf-8")
+
+    cell("ok", rounds=[1, 2, 3, 4], boundary=3, glue={2, 4})
+    # a cell whose round-4 turn truncated: the completed turn was committed, so its
+    # transcript reaches round 4, and the run holds no verdict
+    cell("lost", rounds=[1, 2, 3, 4], boundary=3, verdict=False)
+    rows = {r["cell_id"]: r for r in jd6.scan_plain_tree(tmp_path)}
+    assert set(rows) == {"ok"}
+    assert rows["ok"] == {"cell_id": "ok", "extended_from_rounds": 3, "turns_n": 1,
+                          "parent_turns_n": 3, "parent_glued_n": 1, "glued_n": 1,
+                          "truncated_n": 0}
+
+
+def test_jd6_splits_the_round_4_instruments_by_stance(tmp_path, jd6):
+    """PRO and ANTI are different tasks with different amounts to say, and a systematic
+    difference between them is a difference in what the judge reads on each side of the
+    objection. Smoke 1's two heavy word overruns were BOTH PRO turns and smoke 2's longest
+    turn (726 words, a whole argument written twice around a glued label) was PRO too, so
+    the split is pre-registered rather than looked at afterwards.
+
+    The scan is walked by `run.json` and not by `ruling.json` on purpose: a cell whose
+    round-4 turn truncated has no ruling but DOES have the turn that completed, and a
+    truncation instrument that could not see a truncated cell would read 0 on every one.
+    """
+    def contest(name, *, ruled=True, turns=(("Alice", "pro"), ("Bob", "anti"))):
+        directory = (tmp_path / "cells" / name / "contests" / "c" / "runs" / "r0")
+        (directory / "parent").mkdir(parents=True)
+        (directory / "run.json").write_text(json.dumps({"cell_id": name}),
+                                            encoding="utf-8")
+        (directory / "sides.json").write_text(
+            json.dumps({"alice_side": "FLAWED", "bob_side": "SOUND"}), encoding="utf-8")
+        (directory / "parent" / "verdict.json").write_text(
+            json.dumps({"verdict": "SOUND"}), encoding="utf-8")   # -> Alice is PRO
+        (directory / "recourse_transcript.json").write_text(json.dumps({"turns": [
+            {"round": 4, "speaker": speaker,
+             "argument": ("long " * 500 if stance == "pro" else "short one"),
+             "finish_reason": "stop", "word_count": 500 if stance == "pro" else 2,
+             "parse_mode": "strict", "repair_attempts": 0}
+            for speaker, stance in turns]}), encoding="utf-8")
+        if ruled:
+            (directory / "ruling.json").write_text(json.dumps({
+                "recourse_rounds": 1, "recourse_pro_speaker": "Alice",
+                "raw": "the ruling"}), encoding="utf-8")
+
+    contest("ok")
+    # a cell whose second turn was lost: no ruling, one committed turn
+    contest("lost", ruled=False, turns=(("Bob", "anti"),))
+    rows = {r["cell_id"]: r for r in jd6.scan_round_tree(tmp_path)}
+
+    assert set(rows) == {"ok", "lost"}, "a failed cell must still be scanned"
+    assert rows["ok"]["pro_words"] == 500 and rows["ok"]["anti_words"] == 2
+    assert rows["ok"]["pro_over_limit"] is True
+    assert rows["ok"]["anti_over_limit"] is False
+    assert rows["ok"]["ruled"] is True
+    # the lost cell has no ruling, so its PRO speaker is DERIVED from the seating and the
+    # parent verdict — the decision went SOUND, which is Bob's side, so Alice argues PRO
+    assert rows["lost"]["ruled"] is False
+    assert rows["lost"]["pro_speaker"] == "Alice"
+    assert rows["lost"]["turns_n"] == 1
+    assert "anti_words" in rows["lost"] and "pro_words" not in rows["lost"]
+
+
+def test_jd6_flags_a_ruling_that_adopts_one_reply_without_answering_the_other(jd6):
+    """The failure mode both smokes produced and neither keyword caught.
+
+    On `lojban-stim169` (smoke 1) and `python800-p03214` (smoke 2) the ruling reproduced
+    the PRO reply's structure and phrases and never engaged ANTI's counter — and in the
+    second it named no debater at all, so `CITES_EXCHANGE` scored it as not citing the
+    exchange while it was reciting one half of it. A judge that adopts one advocate is the
+    weak-vs-strong failure this arm exists to detect.
+
+    It is lexical and it CANNOT tell adoption from agreement, which is why it is labelled
+    as directing a hand read; what is asserted here is only that it separates a ruling
+    that tracks one reply from one that tracks both.
+    """
+    pro = ("the judgment mischaracterises the record and the defect is real and material "
+           "because the text makes a positive unconditional claim")
+    anti = ("the label is a loose summary and the holding does not depend on it so the "
+            "defect is immaterial and the decision stands")
+
+    assert jd6.overlap(pro, pro) == 1.0
+    assert jd6.overlap("", pro) == 0.0
+    assert jd6.overlap(pro, "") == 0.0
+
+    # a ruling that recites PRO and never answers ANTI
+    one = "PREAMBLE. " + pro + " CONCLUSION."
+    assert jd6.overlap(one, pro) > jd6.overlap(one, anti)
+    assert jd6.one_sided(jd6.overlap(one, pro), jd6.overlap(one, anti)) is True
+
+    # a ruling that engages both is not flagged
+    both = "PREAMBLE. " + pro + " However, " + anti + " CONCLUSION."
+    assert jd6.one_sided(jd6.overlap(both, pro), jd6.overlap(both, anti)) is False
+
+    # and the floor keeps two near-zero overlaps from being called one-sided
+    assert jd6.one_sided(0.001, 0.0) is False
+    assert jd6.one_sided(0.0, 0.0) is False

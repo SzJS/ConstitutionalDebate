@@ -65,7 +65,7 @@ import sys
 import tomllib
 from dataclasses import fields
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from dotenv import load_dotenv
 
@@ -86,6 +86,7 @@ from .config import (
     GradingConfig,
     load_config,
     load_grading_config,
+    why_for,
 )
 from .experiment import (
     STAGES,
@@ -148,7 +149,9 @@ def print_hyperparameters(config: DebateConfig, client_config: ClientConfig,
     """
     print("\nHyperparameters — every value, and why it is what it is")
     print("=" * 100)
-    _print_table("debate", config, WHY)
+    # `why_for`, not the bare table: two of its lines are only true at the default
+    # and this is the document the run is approved from.
+    _print_table("debate", config, why_for(config))
     _print_table("client", client_config, CLIENT_WHY)
     _print_table("grading", grading, GRADING_WHY)
     print("=" * 100)
@@ -159,7 +162,8 @@ def print_estimate(grid, config: DebateConfig,
                    contests_from: Path | None = None,
                    n_source_contests: int | None = None,
                    transcripts_from: Path | None = None,
-                   n_source_decisions: int | None = None) -> None:
+                   n_source_decisions: int | None = None,
+                   planned_stages: Sequence[str] | None = None) -> None:
     """The call estimate, which is the line a run is approved from.
 
     ``decisions_from`` makes the decision term ZERO rather than the cost of deciding the
@@ -182,6 +186,15 @@ def print_estimate(grid, config: DebateConfig,
     exactly where the placeholder is placed. Its whole spend is rulings plus the reading
     of them.
 
+    ``planned_stages`` is the spec's own statement of which stages its driver runs, and
+    it is echoed VERBATIM rather than used to compute anything. The terms above are
+    per-stage bounds and every one of them is printed whether or not that stage is in the
+    run — which is right, because a spec is a description of a tree and a stage can be run
+    against it later — but it means the total over-counts a driver that runs two stages of
+    seven. Rather than teach the estimator which stages a shell script will invoke, the
+    spec says so and the line below repeats it, so the reader agreeing to the spend can
+    see the difference. Absent means the spec does not say, and the line says that too.
+
     ``transcripts_from`` replaces the decision term with a COUNTED one: a re-judge makes
     exactly ONE call per stored decision — the judge's, over a transcript it does not
     re-run — so the figure is the source tree's decided cells and not the 7 calls a
@@ -199,6 +212,17 @@ def print_estimate(grid, config: DebateConfig,
     # grading only on flawed items whose subset records what the flaw was.
     contest = 0 if contests_from is not None else 2 * len(grid)
     ruling = (n_source_contests if contests_from is not None else len(grid)) or 0
+    # THE CONTESTABILITY DEBATE ROUND. Two debater calls per cell that actually puts
+    # something to a judge — the round is heard only where there is an objection to argue
+    # about — so it is counted off the same number the ruling term is, and it is the
+    # single largest term in that arm's bill: the round-4 turns are strong-model
+    # generations with a four-round context, where the ruling is one short weak-model
+    # call.
+    contest_round = config.recourse_rounds * 2 * ruling
+    # And the plain-round baseline: two debater calls per SOURCE DECISION, on every cell
+    # that has one, because nothing gates an ordinary round on an objection.
+    extra_rounds = (2 * (config.n_rounds - 3) * decision
+                    if config.extend_rounds and transcripts_from is not None else 0)
     # One short grader call per contest whose decision line parsed — the line-vs-prose
     # instrument. Bounded by the grid because every cell can produce at most one.
     agreement = 0 if contests_from is not None else len(grid)
@@ -248,10 +272,38 @@ def print_estimate(grid, config: DebateConfig,
     # thing to see — the source tree holds no contested objection to gate.
     gate_term = (f", gatekeeper <= {gatekeeper}" if config.gatekeeper_model
                  else "")
-    print(f"estimated calls: {decision_term}, {contest_term}, "
+    round_term = (f", contest round {contest_round}" if contest_round else "")
+    extend_term = (f", extra debate rounds {extra_rounds}" if extra_rounds else "")
+    print(f"estimated calls: {decision_term}{extend_term}, {contest_term}{round_term}, "
           f"ruling <= {ruling}, agreement <= {agreement}, "
           f"ruling_agreement <= {ruling_agreement}, grading <= {gradable}{gate_term}  "
-          f"=> up to {decision + contest + ruling + agreement + ruling_agreement + gradable + gatekeeper}")
+          f"=> up to {decision + extra_rounds + contest + contest_round + ruling + agreement + ruling_agreement + gradable + gatekeeper}")
+    if contest_round:
+        print(f"the contest round adds 2 DEBATER calls per contested cell "
+              f"({contest_round} in all), at `{config.debater_model}` and "
+              f"{config.debater_temperature}: the two ORIGINAL debaters each reply once "
+              "to the objection, simultaneously, and the recourse judge rules on the "
+              "exchange instead of on the objection alone. They are the expensive calls "
+              "in this arm — a strong model writing 400 words over a four-round context "
+              "— and a cell whose round completes but whose ruling fails is re-attempted "
+              "from scratch, buying both turns again.")
+    if extra_rounds:
+        print(f"extend_rounds adds 2 DEBATER calls per stored decision "
+              f"({extra_rounds} in all), at `{config.debater_model}` and "
+              f"{config.debater_temperature}: the same two debaters continue the stored "
+              f"debate to {config.n_rounds} rounds under the ORDINARY round instruction "
+              "— no objection anywhere — and then the judge decides the longer "
+              "transcript. This is the plain-round baseline; nothing gates it on an "
+              "objection, so it lands on every cell with a source decision.")
+    if planned_stages:
+        print(f"stages this spec's driver runs: {' '.join(planned_stages)}  "
+              "(`planned_stages` in the spec, echoed verbatim). Every term above is a "
+              "per-stage bound and is printed whether or not that stage is in the run, "
+              "so the total is a bound over ALL stages and not this driver's bill.")
+    else:
+        print("stages this spec's driver runs: unknown — the spec sets no "
+              "`planned_stages`, so the total above is a bound over every stage that "
+              "could be run against this tree, not over the ones that will be.")
     if judgment:
         print("the grading term is the whole grid: `challenger_variant = "
               f"\"{config.challenger_variant}\"` grades every cell whose objection "
@@ -514,7 +566,8 @@ def main(argv: list[str] | None = None) -> int:
                    contests_from=contest_root,
                    n_source_contests=n_source_contests,
                    transcripts_from=transcript_root,
-                   n_source_decisions=n_source_decisions)
+                   n_source_decisions=n_source_decisions,
+                   planned_stages=spec.get("planned_stages"))
     print_hyperparameters(config, client_config, grading)
 
     if args.dry_run:

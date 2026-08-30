@@ -6,11 +6,12 @@ is removed from the environment, so a test cannot spend money even by mistake.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 
 import pytest
 from conftest import FakeClient
-from helpers import make_config, make_item, make_sides
+from helpers import SECRET_THINKING, make_config, make_item, make_sides
 
 from exp2 import experiment as experiment_module
 from exp2.config import ClientConfig, GradingConfig
@@ -2335,3 +2336,257 @@ async def test_the_estimate_counts_the_source_decisions_rather_than_the_grid(
     printed = capsys.readouterr().out
     assert "decision 2 (one judge call per stored transcript" in printed
     assert "the decision term is COUNTED, not bounded: 2 of the 3 cells" in printed
+
+
+# --- the contestability debate round and the plain extra round, 2026-08-30 ------------
+#
+# `judgment-debate-6`, and its two arms are opposite ends of the same tree of stages. Arm
+# R hears a round INSIDE a rerule; arm B plays one INSIDE a rejudge. What every test here
+# is really guarding is that the arm is opt-in: at the defaults both stages send byte for
+# byte what they sent before, and the arms are readable apart from each other afterwards.
+
+
+async def _judgment_trees(tmp_path, no_network, n=2):
+    """A → decisions, B → JUDGMENT-arm contests of them. The round runs on that arm."""
+    make_decisions_wrong(no_network)
+    grid = build_grid(cases(n), ["debate"])
+    decisions, contests = tmp_path / "A", tmp_path / "B"
+    config = make_config(challenger_variant="judgment", recourse_form="third_party")
+    await run_stage_decide(grid, root=decisions, config=config,
+                           client_config=client_config(), api_key="k")
+    await run_stage_contest(grid, root=contests, config=config,
+                            client_config=client_config(), api_key="k",
+                            decision_root=decisions)
+    return grid, decisions, contests, config
+
+
+def _messages_by_role(root, role):
+    """Every message list a tree's wire log holds for one role, oldest first."""
+    out = []
+    for path in sorted(root.rglob("calls.jsonl")):
+        if "parent" in path.parts:
+            continue
+        for line in path.read_text().splitlines():
+            record = json.loads(line)
+            if record.get("role") == role:
+                out.append(record["request_body"]["messages"])
+    return out
+
+
+async def test_a_rerule_with_rounds_zero_sends_exactly_what_it_sent_before(
+    tmp_path, no_network
+):
+    """The byte-identity half of "opt-in".
+
+    1,586 rulings and four paired campaigns stand on the judge-only messages. A default
+    that had drifted by a newline would make every jd6 comparison a comparison of two
+    instruments, and nothing else in the repo would notice.
+    """
+    grid, decisions, contests, config = await _judgment_trees(tmp_path, no_network)
+    plain, rounds = tmp_path / "P", tmp_path / "R"
+    await run_stage_rerule(grid, root=plain, config=config,
+                           client_config=client_config(), api_key="k",
+                           decision_root=decisions, contest_root=contests)
+    sent = _messages_by_role(plain, "recourse_judge")
+    assert sent and "recourse_debater" not in {
+        json.loads(line)["role"]
+        for path in plain.rglob("calls.jsonl") if "parent" not in path.parts
+        for line in path.read_text().splitlines()}
+    assert not list(plain.rglob("recourse_transcript.json"))
+    for messages in sent:
+        blob = "".join(m["content"] for m in messages)
+        assert "<exchange>" not in blob
+        assert "Rule in two steps." in blob
+
+    # the SAME cells with the round asked for send the same prompt plus one block
+    await run_stage_rerule(grid, root=rounds,
+                           config=dataclasses.replace(config, recourse_rounds=1),
+                           client_config=client_config(), api_key="k",
+                           decision_root=decisions, contest_root=contests)
+    argued = _messages_by_role(rounds, "recourse_judge")
+    assert len(argued) == len(sent)
+    for messages in argued:
+        blob = "".join(m["content"] for m in messages)
+        assert "<exchange>" in blob and "Rule in two steps." in blob
+
+
+async def test_a_rerule_with_one_round_writes_the_exchange_and_rules_on_it(
+    tmp_path, no_network
+):
+    """Arm R end to end, on the two things a reader afterwards depends on: what the tree
+    holds, and what the index says about it. The source trees must not move — the whole
+    campaign is a re-ruling of stored objections against stored decisions."""
+    grid, decisions, contests, config = await _judgment_trees(tmp_path, no_network)
+    rounds = tmp_path / "R"
+    before_a, before_b = _tree_fingerprint(decisions), _tree_fingerprint(contests)
+    config = dataclasses.replace(config, recourse_rounds=1)
+
+    results = await run_stage_rerule(
+        grid, root=rounds, config=config, client_config=client_config(),
+        api_key="k", decision_root=decisions, contest_root=contests)
+    assert [r["status"] for r in results] == ["completed"] * 2
+    assert all(r["recourse_rounds"] == 1 for r in results)
+
+    dirs = sorted(p.parent for p in rounds.rglob("cells/*/contests/*/runs/*/ruling.json"))
+    assert len(dirs) == 2
+    for directory in dirs:
+        stored = json.loads((directory / "recourse_transcript.json").read_text())
+        assert [t["round"] for t in stored["turns"]] == [4, 4]
+        # a contest directory must never hold a decision's transcript
+        assert not (directory / "transcript.json").is_file()
+        ruling = json.loads((directory / "ruling.json").read_text())
+        assert ruling["recourse_rounds"] == 1
+        assert ruling["prompt_form"] == "materiality"
+        assert ruling["recourse_pro_speaker"] in ("Alice", "Bob")
+        assert ruling["recourse_exchange_sha256"]
+        manifest = json.loads((directory / "run.json").read_text())
+        assert manifest["recourse_rounds"] == 1
+        assert manifest["recourse_pro_speaker"] == ruling["recourse_pro_speaker"]
+        # the published documents carry the round, and the private half is not in the
+        # readable one
+        document = (directory / "transcript.md").read_text()
+        assert "## The exchange on the objection" in document
+        assert "after hearing both debaters on the objection" in document
+        assert SECRET_THINKING not in document
+
+    logged = [json.loads(line)
+              for path in rounds.glob("cells/*/contests/*/runs/*/calls.jsonl")
+              for line in path.read_text().splitlines()]
+    assert sorted(r["role"] for r in logged) == (
+        ["recourse_debater"] * 4 + ["recourse_judge"] * 2)
+    assert {r["purpose"] for r in logged if r["role"] == "recourse_debater"} == {
+        "recourse_turn"}
+
+    # the reading stage still runs over these rulings, unchanged
+    await run_stage_ruling_agreement(
+        grid, root=rounds, config=config, grading=GradingConfig(),
+        client_config=client_config(), api_key="k")
+    rows = build_index(grid, root=rounds, challenger_model="strong/model",
+                       decision_root=decisions)
+    assert len(rows) == 2
+    for row in rows:
+        assert row["recourse_rounds"] == 1
+        assert row["recourse_turns_n"] == 2
+        assert len(row["recourse_turn_parse_modes"]) == 2
+        assert len(row["recourse_turn_words"]) == 2
+        assert row["ruling_prompt_form"] == "materiality"
+        assert row["ruling_line_mismatch"] is not None
+    # The round's own spend, off this contest's wire log by role. Asserted over the tree
+    # rather than per row: the offline fixture shares ONE fake client across concurrent
+    # cells and so one sink at a time, so a cell's calls can land in a sibling's log.
+    assert any(row["recourse_cost_usd"] is not None for row in rows)
+    from exp2.analysis import caveats as caveats_for
+    caveats = caveats_for(rows, ["debate"])
+    assert any("ARGUED BEFORE IT WAS RULED ON" in c for c in caveats)
+
+    assert _tree_fingerprint(decisions) == before_a
+    assert _tree_fingerprint(contests) == before_b
+
+
+async def test_a_rejudge_without_extend_rounds_sends_exactly_what_jd3_sent(
+    tmp_path, no_network
+):
+    """The other byte-identity half. jd3's M0 re-judged 1,644 stored transcripts with no
+    debater call at all, and every number in that campaign is under those messages."""
+    grid, source = await _decided_debates(tmp_path, no_network)
+    plain = tmp_path / "M0"
+    results = await run_stage_rejudge(
+        grid, root=plain, config=make_config(), client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["completed"] * 2
+    assert all(r["rounds_n"] == 3 for r in results)
+    logged = [json.loads(line) for path in plain.glob("cells/*/runs/*/calls.jsonl")
+              for line in path.read_text().splitlines()]
+    assert {r["role"] for r in logged} == {"judge"}
+    for messages in _messages_by_role(plain, "judge"):
+        blob = "".join(m["content"] for m in messages)
+        assert "Round 3:" in blob and "Round 4:" not in blob
+    for directory in sorted(plain.glob("cells/*/runs/*")):
+        manifest = json.loads((directory / "run.json").read_text())
+        assert "extended_from_rounds" not in manifest
+
+
+async def test_a_rejudge_with_extend_rounds_plays_round_4_then_judges(
+    tmp_path, no_network
+):
+    """Arm B end to end. The extended transcript IS this tree's decision, so it goes to
+    `transcript.json` and overwrites the copy — the opposite of the contest round's rule,
+    and for the opposite reason: here the four-round debate is what was judged."""
+    grid, source = await _decided_debates(tmp_path, no_network)
+    before = _tree_fingerprint(source)
+    extended = tmp_path / "B"
+    config = make_config(n_rounds=4, n_critique_rounds=4, extend_rounds=True)
+
+    results = await run_stage_rejudge(
+        grid, root=extended, config=config, client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["completed"] * 2
+    assert all(r["rounds_n"] == 4 for r in results)
+
+    for directory in sorted(extended.glob("cells/*/runs/*")):
+        stored = json.loads((directory / "transcript.json").read_text())
+        assert sorted(t["round"] for t in stored["turns"]) == [1, 1, 2, 2, 3, 3, 4, 4]
+        manifest = json.loads((directory / "run.json").read_text())
+        assert manifest["extended_from_rounds"] == 3
+        assert manifest["rounds_n"] == 4
+    # Roles over the TREE, not per directory: the offline fixture shares one fake client
+    # across concurrent cells and so one sink at a time, so a cell's calls can land in a
+    # sibling's log. What is asserted is that the tree holds two debater calls and one
+    # judgment per cell and nothing else.
+    logged = [json.loads(line) for path in extended.glob("cells/*/runs/*/calls.jsonl")
+              for line in path.read_text().splitlines()]
+    assert sorted(r["role"] for r in logged) == ["debater"] * 4 + ["judge"] * 2
+    for directory in sorted(extended.glob("cells/*/runs/*")):
+        # no objection anywhere in the round-4 prompts, and the ordinary instruction
+        for record in logged:
+            if record["role"] != "debater":
+                continue
+            blob = "".join(m["content"] for m in record["request_body"]["messages"])
+            assert "This is round 4 of 4." in blob
+            assert "objection" not in blob.lower()
+            assert "do not write a closing summary" not in blob
+        # and every judgment was made from the LONGER transcript
+        for record in logged:
+            if record["role"] != "judge":
+                continue
+            assert "Round 4:" in "".join(
+                m["content"] for m in record["request_body"]["messages"])
+        assert "continued here" in (directory / "transcript.md").read_text()
+
+    rows = build_index(grid, root=extended, challenger_model="strong/model")
+    for row in rows:
+        assert row["extended_from_rounds"] == 3 and row["rounds_n"] == 4
+        assert len(row["round4_parse_modes"]) == 2
+        assert len(row["round4_words"]) == 2
+    from exp2.analysis import caveats as caveats_for
+    caveats = caveats_for(rows, ["debate"])
+    assert any("CONTINUED BEFORE IT WAS JUDGED" in c for c in caveats)
+
+    assert _tree_fingerprint(source) == before
+
+
+async def test_extend_rounds_refuses_a_solo_or_already_long_source(
+    tmp_path, no_network
+):
+    """Both refusals fail the CELL rather than the stage, and both are counted.
+
+    A source already `n_rounds` long would be judged with no round added — an ordinary
+    re-judge wearing arm B's name — and a source argued under other settings would splice
+    a turn by a different party into a transcript that says all four turns are one debate.
+    """
+    grid, source = await _decided_debates(tmp_path, no_network, n=1)
+    same_length = make_config(n_rounds=3, n_critique_rounds=3, extend_rounds=True)
+    results = await run_stage_rejudge(
+        grid, root=tmp_path / "X", config=same_length, client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["failed"]
+    assert "nothing to add" in results[0]["error"]
+    assert not list((tmp_path / "X").rglob("verdict.json"))
+
+    other = make_config(n_rounds=4, n_critique_rounds=4, extend_rounds=True,
+                        debater_model="other/model")
+    results = await run_stage_rejudge(
+        grid, root=tmp_path / "Y", config=other, client_config=client_config(),
+        api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["failed"]
+    assert "debater_model" in results[0]["error"]

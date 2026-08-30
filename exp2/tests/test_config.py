@@ -270,10 +270,45 @@ def test_critique_rounds_must_match_debate_rounds():
     assert "confound" in message
 
 
-def test_recourse_rounds_must_be_zero():
+def test_recourse_rounds_is_zero_or_one():
+    """0 is judge-only recourse; 1 is the contestability debate round of 2026-08-30.
+
+    The field was validated `== 0` from the port until `judgment-debate-6`, on the
+    grounds that the recourse debater path did not exist. It does now, for ONE round and
+    for debate records only, so the validator admits exactly that and no more — a spec
+    asking for two rounds must fail here rather than half-run a protocol nothing
+    implements.
+    """
+    assert DebateConfig(**debate_kwargs(recourse_rounds=0)).recourse_rounds == 0
+    assert DebateConfig(**debate_kwargs(recourse_rounds=1)).recourse_rounds == 1
     with pytest.raises(ConfigError) as excinfo:
-        DebateConfig(**debate_kwargs(recourse_rounds=1))
-    assert "judge-only" in str(excinfo.value)
+        DebateConfig(**debate_kwargs(recourse_rounds=2))
+    message = str(excinfo.value)
+    assert "0 or 1" in message
+    # the message has to say WHY, not just that it refused
+    assert "not implemented" in message
+
+
+def test_extend_rounds_needs_more_rounds_than_the_source():
+    """The half of the rule the config can see.
+
+    `extend_rounds` continues a STORED transcript up to `n_rounds`, so how many rounds
+    it adds depends on a source directory the config cannot read. What is decidable here
+    is that `n_rounds` leaves room for one at all: at `n_rounds = 1` there is no source
+    a rejudge could extend, because every stored debate has at least one round. The
+    source comparison itself is made by `run_stage_rejudge`, and
+    `test_extend_rounds_refuses_a_solo_or_already_long_source` is where it is asserted.
+    """
+    assert DebateConfig(**debate_kwargs()).extend_rounds is False
+    ok = DebateConfig(**debate_kwargs(n_rounds=4, n_critique_rounds=4,
+                                      extend_rounds=True))
+    assert ok.extend_rounds is True
+    with pytest.raises(ConfigError) as excinfo:
+        DebateConfig(**debate_kwargs(n_rounds=1, n_critique_rounds=1,
+                                     extend_rounds=True))
+    message = str(excinfo.value)
+    assert "extend_rounds" in message and "n_rounds >= 2" in message
+    assert "rejudge stage" in message
 
 
 def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
@@ -704,3 +739,89 @@ def test_the_gatekeeper_model_is_unset_by_default_and_inherits_from_nothing():
     # that it never inherits
     assert "no admissibility gate" in WHY["gatekeeper_model"].lower()
     assert "inherit" in WHY["gatekeeper_model"]
+
+
+# --- the dry-run table has to be true of the values beside it -------------------------
+
+
+def test_why_rewrites_the_lines_that_are_only_true_at_the_default(capsys):
+    """`--dry-run` is the document a run is approved from (HANDOFF.md 2.4), so a reason
+    printed beside a value it does not describe is worse than no reason.
+
+    `judgment-debate-6`'s plain-round arm runs at `n_rounds = 4` and the standing WHY line
+    reads "3 — opening, attack, counter". Three fields move with the arm — `n_rounds`,
+    `n_critique_rounds` and the flag itself — and every other spec must keep the standing
+    text byte for byte.
+    """
+    from exp2.config import why_for
+    from exp2.experiment_cli import print_hyperparameters
+
+    default = DebateConfig(**debate_kwargs())
+    assert why_for(default) == WHY
+
+    plain = DebateConfig(**debate_kwargs(n_rounds=4, n_critique_rounds=4,
+                                         extend_rounds=True))
+    why = why_for(plain)
+    assert why["n_rounds"].startswith("4 — the stored debate's 3 rounds plus ONE plain")
+    assert "PLAIN-ROUND BASELINE of judgment-debate-6" in why["n_rounds"]
+    assert why["n_critique_rounds"].startswith("4 — equal to n_rounds because the "
+                                               "validator requires it")
+    assert why["extend_rounds"].startswith("True, and this spec is running it")
+    # ... and nothing else moved
+    assert {k for k in why if why[k] != WHY[k]} == {
+        "n_rounds", "n_critique_rounds", "extend_rounds"}
+
+    contest = DebateConfig(**debate_kwargs(recourse_rounds=1))
+    assert why_for(contest)["recourse_rounds"].startswith(
+        "1 — THE CONTESTABILITY DEBATE ROUND")
+    assert {k for k in why_for(contest)
+            if why_for(contest)[k] != WHY[k]} == {"recourse_rounds"}
+
+    # and the table a user reads really carries the rewritten line
+    _, client = load_config()
+    print_hyperparameters(plain, client, load_grading_config())
+    printed = capsys.readouterr().out
+    assert "4 — the stored debate's 3 rounds plus ONE plain round" in printed
+    assert "3 — opening, attack, counter" not in printed
+
+
+def test_the_estimate_says_which_stages_the_driver_will_actually_run(capsys):
+    """Every term in the estimate is a PER-STAGE bound and is printed whether or not that
+    stage is in the run — which is right for a spec, since a stage can be run against a
+    tree later, and wrong for a bill: `jd6-plain`'s driver runs two stages of seven and
+    the total counts contest, grade and agreement terms nobody will invoke.
+
+    Rather than teach the estimator which stages a shell script invokes, the spec says so
+    in `planned_stages` and the line is echoed VERBATIM. Absent means the spec does not
+    say, and the line says that too rather than staying silent.
+    """
+    from exp2.experiment_cli import print_estimate
+
+    debate = DebateConfig(**debate_kwargs())
+    print_estimate([], debate, planned_stages=["rejudge", "analyse"])
+    printed = capsys.readouterr().out
+    assert "stages this spec's driver runs: rejudge analyse" in printed
+    assert "echoed verbatim" in printed
+
+    print_estimate([], debate)
+    printed = capsys.readouterr().out
+    assert "stages this spec's driver runs: unknown" in printed
+    assert "`planned_stages`" in printed
+
+
+def test_every_jd6_spec_states_the_stages_its_driver_runs():
+    """The four specs of `judgment-debate-6` are the reason the key exists, and a spec
+    that lost it would print `unknown` at the moment the spend is agreed to."""
+    import tomllib
+    from pathlib import Path
+
+    expected = {
+        "jd6-round": ["rerule", "ruling_agreement", "analyse"],
+        "jd6-smoke-round": ["rerule", "ruling_agreement", "analyse"],
+        "jd6-plain": ["rejudge", "analyse"],
+        "jd6-smoke-plain": ["rejudge", "analyse"],
+    }
+    for name, stages in expected.items():
+        path = Path("experiments") / f"{name}.toml"
+        spec = tomllib.loads(path.read_text(encoding="utf-8"))
+        assert spec.get("planned_stages") == stages, name

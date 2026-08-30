@@ -1,0 +1,104 @@
+# jd6 SMOKE 2, half 1 of 2 — THE REVISED PROMPTS, on six cells the first read did not use.
+#
+# WHY THERE IS A SECOND SMOKE. Two sentences were rewritten after `outputs/jd6-smoke-read.txt`
+# was read (`records/experiments/judgment-debate-6/PREREG.md`, *Why two sentences changed
+# after smoke 1*):
+#
+#   * `RECOURSE_EXCHANGE_BLOCK` — its "arguments, not evidence" discount was
+#     ONE-DIRECTIONAL. It told the judge that one debater arguing a defect is real is no
+#     evidence that it is, and said nothing about the other arguing that it is not — which
+#     discounts the PRO reply alone and leans the judge toward UPHOLD, the direction P1
+#     predicts. It is now symmetric.
+#   * `RECOURSE_ROUND_ANTI` — its Thinking step said "say which of those two tests each one
+#     fails", which PRESUPPOSES a failure. It now says "say for each whether it fails either
+#     test", which admits "it passes both".
+#
+# The house rule (`HANDOFF.md` §2.8) is that a changed prompt is read on cells it has not
+# already been read on, so smoke 1's six are excluded along with the jd4-handcheck cells
+# and jd5's own smokes.
+#
+# AND THE COMPOSITION IS DIFFERENT, deliberately. Smoke 1 drew two cells of each of three
+# outcome types and so put only TWO initially-correct cells in front of the reader. P1 —
+# the PRIMARY endpoint — is tested on the 622 cells M0 got RIGHT, and the failure the
+# contest round exists to reduce is breaking one of them. So this smoke is FOUR
+# initially-correct cells (two jd5-B overturned, two upheld) and TWO initially-wrong (one
+# each). The `HELD` type is new here and it is the one where a round can only do harm: the
+# decision was right and the judge already left it alone, so any movement is a break.
+#
+#     RUN_SWEEP_STAGES="rerule ruling_agreement analyse" scripts/run_sweep.sh \
+#         experiments/jd6-smoke-2-round.toml \
+#         2>&1 | tee outputs/jd6-smoke-2-round.log
+#
+# Cost: 12 round-4 turns and 6 rulings, about $0.06. Nothing under
+# `outputs/experiments/jd3-main` is written, and smoke 1's trees are not touched.
+
+name = "jd6-smoke-2-round"
+
+# SMOKE 2's SIX CELLS, drawn by `records/derivations/jd6-smoke-pick.py` under seed 62
+# and excluding smoke 1's six. Four of them are cells M0 got RIGHT.
+cases = "data/cases/jd6-smoke-2.jsonl"
+
+# M0's decisions and M1's objections are the same tree. Read-only, both.
+decisions_from = "outputs/experiments/jd3-main"
+contests_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. The estimate
+# above it prints a per-stage BOUND for every stage that could ever be run against this
+# tree, which is right for a spec and wrong for a bill: the total counts contest, grade
+# and agreement terms this driver never invokes.
+planned_stages = ["rerule", "ruling_agreement", "analyse"]
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block. The debaters ARE called by this
+# spec — that is the arm — and they are called at exactly the settings the debate they are
+# continuing was argued under; `recourse.hear_exchange` refuses the cell if any of them
+# differs, rather than splicing a turn by a different party into the record.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# The real audit's variant, stated because this spec re-rules its objections and the index
+# has to say `challenge_arm = "judgment"` rather than inherit the neutral default. No
+# challenger call is made: the objections are M1's, copied.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+
+# THE ONE LINE THAT MAKES THIS ARM WHAT IT IS. 1 = the contestability debate round; 0 is
+# what jd3, jd4 and jd5 all ran and is what `jd5-recheck-real.toml` still says. Validated
+# to (0, 1) and refused on any condition but `debate`, which has advocates to argue with.
+recourse_rounds = 1
+
+# The same judge that judged these debates and ruled these objections the first time.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+# The debaters', unchanged from `sweep.toml` and `jd3-main.toml`. It binds the round-4
+# turns, which are the only strong-model calls this arm makes.
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE, PINNED — new in this campaign and it is not cosmetic. §3aa found 34% of M1's
+# rulings served by DeepInfra against 4.8% of jd5-B's, so an unpinned judge makes "only
+# the round moved" an intent rather than a fact. `digitalocean` is the slug OpenRouter's
+# endpoint list gives for the provider that served 680-758 of the ~900 Maverick calls in
+# every jd5 arm, verified by one real pinned call
+# (`records/derivations/jd6-provider-check.py`, `outputs/jd6-provider-check.log`).
+# `provider_allow_fallbacks` stays False: a pin that silently falls back is not a pin.
+"meta-llama/llama-4-maverick" = ["digitalocean"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# For `ruling_agreement` only. The `grade` stage REFUSES on this spec: M1's grades came
+# across with the copy and are the same grades `judgment-debate-3` reported.
+grader_model = "anthropic/claude-haiku-4.5"

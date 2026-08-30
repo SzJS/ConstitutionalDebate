@@ -217,6 +217,12 @@ _ROLE_NAMES = {
     "comprehension": "Comprehension probe",
     "recourse_judge": "Recourse judge",
     "recourse_solo": "Reviewer, reconsidering",
+    # The contestability debate round's two turns. A role of its own rather than a
+    # purpose of `debater`, because it answers a different question and the accounting,
+    # the index and this table all have to be able to tell the round-4 turns from the
+    # debate's own — even though the WIRE call is made under `role="debater"`'s repair
+    # instruction, which is the one thing they do share.
+    "recourse_debater": "Debater, on the objection",
 }
 
 
@@ -229,6 +235,8 @@ def _expected_params(config: DebateConfig, role: str,
     """
     model = {
         "debater": config.debater_model_b if model_side == "b" else config.debater_model,
+        "recourse_debater": (config.debater_model_b if model_side == "b"
+                             else config.debater_model),
         "judge": config.judge_model,
         "critic": config.critic_model_for(),
         "solo": config.debater_model,
@@ -239,6 +247,9 @@ def _expected_params(config: DebateConfig, role: str,
     }.get(role, config.debater_model)
     temperature = {
         "judge": config.judge_temperature,
+        # The debaters' own temperature: the round is a generation by the same two
+        # parties, argued under the settings the debate was argued under.
+        "recourse_debater": config.debater_temperature,
         "recourse_judge": config.judge_temperature,
         # The probe is a measurement, not a generation, so it does not sample.
         "comprehension": 0.0,
@@ -637,6 +648,29 @@ def _contest_calls(directory: Path) -> list[_Accepted]:
             raw=comprehension.get("raw", ""),
             native_reasoning=comprehension.get("native_reasoning", ""),
         ))
+    exchange = _read(directory, "recourse_transcript.json")
+    for turn in sorted((exchange or {}).get("turns", []),
+                       key=lambda t: (t.get("round", 0), str(t.get("speaker")))):
+        # THE CONTESTABILITY DEBATE ROUND, between the comprehension probe and the
+        # ruling because that is the order the calls were made in. Each turn's `derived`
+        # carries the judgment and the objection it was answering, so the prompt in this
+        # document can be checked against the two documents it quotes without opening
+        # another file.
+        derived = shown
+        if grounds:
+            derived = (*derived, ("X", "the judgment the round argues about",
+                                  neutralise_tags(grounds)))
+        if challenge is not None and challenge.get("text"):
+            derived = (*derived, ("X", "the objection put to both debaters",
+                                  neutralise_tags(challenge["text"])))
+        accepted.append(_Accepted(
+            heading=f"round {turn.get('round')} on the objection — "
+                    f"{turn.get('speaker')}",
+            call_id=turn.get("call_id", ""), role="recourse_debater",
+            model_side=turn.get("model_side"),
+            derived=derived, raw=turn.get("raw", ""),
+            native_reasoning=turn.get("native_reasoning", ""),
+        ))
     if ruling is not None:
         # Two of the three forms are the third-party judge's — the old relative line and
         # the absolute conclusion that replaced it — and both are handed the same two
@@ -650,6 +684,13 @@ def _contest_calls(directory: Path) -> list[_Accepted]:
             if challenge is not None and challenge.get("text"):
                 derived = (*derived, ("X", "the objection, as it was put to the judge",
                                       neutralise_tags(challenge["text"])))
+            if exchange and exchange.get("turns"):
+                # What the round added to the judge's prompt, rendered exactly as the
+                # judge was shown it — arguments only, and `render_transcript` is the
+                # same function that built the block.
+                derived = (*derived, (
+                    "X", "the exchange on the objection, as it was put to the judge",
+                    render_transcript(_transcript_of(exchange).all_turns())))
         heading = "ruling (in conversation)"
         if form == "stated_conclusion":
             heading = "ruling (recourse judge, stated conclusion)"

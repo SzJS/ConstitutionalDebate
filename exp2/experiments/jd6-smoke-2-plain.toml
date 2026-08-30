@@ -1,0 +1,85 @@
+# jd6 SMOKE 2, half 2 of 2 — THE PLAIN EXTRA ROUND on THREE of the same six cells.
+#
+# The baseline half of the second smoke. It sends NO new prompt text at all — nothing in
+# this arm changed between the two smokes — so what is being re-read here is not a prompt
+# but the MECHANISM on cells that matter more: TWO of these three are cells M0 got RIGHT,
+# which is the population P1 is tested on, and the question is what an un-steered extra
+# round does to a decision that was already correct.
+#
+#     RUN_SWEEP_STAGES="rejudge analyse" scripts/run_sweep.sh \
+#         experiments/jd6-smoke-2-plain.toml \
+#         2>&1 | tee outputs/jd6-smoke-2-plain.log
+#
+# Cost: 6 round-4 turns and 3 judgments, about $0.02. Nothing under
+# `outputs/experiments/jd3-main` is written, and smoke 1's trees are not touched.
+
+name = "jd6-smoke-2-plain"
+
+# THREE OF SMOKE 2's SIX, written by `records/derivations/jd6-smoke-pick.py` alongside
+# the round half's six. TWO of them are cells M0 got RIGHT — P1's population.
+cases = "data/cases/jd6-smoke-2-plain.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions: Maverick's
+# judgments of the same debates, one round longer.
+transcripts_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. The estimate
+# above it prints a per-stage BOUND for every stage that could ever be run against this
+# tree, which is right for a spec and wrong for a bill: the total counts contest, grade
+# and agreement terms this driver never invokes.
+planned_stages = ["rejudge", "analyse"]
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block except for the three lines that
+# make the round happen. It has to be: `extend_rounds` continues a debate another run
+# argued, and `_assert_same_debate` refuses the cell if the debaters, their temperature,
+# the word limit, the turn style, the reasoning setting or the generation cap differ from
+# what that run recorded. `n_rounds` is the one field exempted, because it is the one that
+# must differ.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+judge_model      = "meta-llama/llama-4-maverick"
+challenger_model = "google/gemini-2.5-flash"
+
+# Named so the two arms' `config.json` files stay comparable and the index says the same
+# thing about both. NO CHALLENGER IS CALLED BY THIS SPEC — there is no contest stage in
+# it, and the whole point of the arm is that no objection exists.
+challenger_variant = "judgment"
+
+recourse_form = "third_party"
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# THE THREE LINES THAT MAKE THIS THE PLAIN-ROUND ARM. `extend_rounds` continues the
+# stored transcript to `n_rounds` before judging; `n_critique_rounds` is validated equal
+# to `n_rounds` and is carried along for that reason alone (no self_critique cell exists
+# on this grid). A source that already has four rounds, or a solo source, FAILS its cell
+# loudly rather than being judged as though a round had been added.
+extend_rounds = true
+n_rounds = 4
+n_critique_rounds = 4
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+# The debaters', unchanged. It binds round 4, which is the only strong-model call here.
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE, PINNED — the same slug as arm R's and for the same reason: with the judge
+# unpinned "only the round moved" would be an intent rather than a fact (§3aa: 34% of
+# M1's rulings on DeepInfra against 4.8% of jd5-B's). Verified by one real pinned call,
+# `records/derivations/jd6-provider-check.py`.
+"meta-llama/llama-4-maverick" = ["digitalocean"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# Named because the spec loader wants a table; NO grading stage runs on this arm. There is
+# no objection to grade and no ruling prose to read.
+grader_model = "anthropic/claude-haiku-4.5"

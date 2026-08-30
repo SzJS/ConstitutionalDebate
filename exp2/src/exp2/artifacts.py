@@ -56,7 +56,8 @@ _VERDICT_PHRASE = {
 }
 
 
-def _decision_section(verdict: dict[str, Any], heading: str = "## The decision") -> str:
+def _decision_section(verdict: dict[str, Any], heading: str = "## The decision",
+                      extended_from: int | None = None) -> str:
     """Grounds first, then the verdict they led to.
 
     The order was the other way round until 2026-08-25, and the reason for turning it is
@@ -82,6 +83,14 @@ def _decision_section(verdict: dict[str, Any], heading: str = "## The decision")
             "`verdict.json`.*", "",
         ]
     lines += [f"**Verdict:** {phrase}.", ""]
+    if extended_from is not None:
+        # Arm B of `judgment-debate-6`. Said in the document because the transcript
+        # above is longer than the one the source judge read, and a reader comparing
+        # this verdict with that one has to know which record each was made from.
+        lines += [
+            f"*The debate above was argued elsewhere to round {extended_from} and "
+            f"continued here; this verdict was made from the longer transcript.*", "",
+        ]
     if verdict.get("repair_attempts"):
         lines += [
             f"*This verdict came from a format-repair reply "
@@ -212,7 +221,8 @@ def render_run_record(directory: Path) -> str:
         parts.append(_steps_section(trace.get("steps", []), condition))
 
     if verdict is not None:
-        parts.append(_decision_section(verdict))
+        parts.append(_decision_section(
+            verdict, extended_from=manifest.get("extended_from_rounds")))
     else:
         parts.append("## The decision\n\n*No verdict was reached.*\n")
 
@@ -261,6 +271,49 @@ def _objection_section(challenge: dict) -> list[str]:
     return ["## The objection", "", *lines, ""]
 
 
+# What each debater was arguing, in words, so a reader does not have to hold the
+# derivation in their head. Which of the two is which is derived from the parent verdict
+# and is NOT recorded on the turn — see `types.recourse_stance` — so the ruling's
+# `recourse_pro_speaker` is what names it here, and a contest whose ruling is missing
+# falls back to saying so rather than guessing.
+_STANCE_GLOSS = {
+    "pro": "argues the objection is well founded",
+    "anti": "argues the objection is not well founded",
+}
+
+
+def _exchange_section(exchange: dict[str, Any], ruling: dict[str, Any] | None) -> str:
+    """The contestability debate round, as the judge was shown it.
+
+    PUBLIC ARGUMENTS ONLY. `recourse_transcript.json` holds full turns, `Thinking:`
+    included, exactly as a decision's `transcript.json` does; this document publishes
+    what the judge saw and `_PRIVATE_POINTER` at the foot says where the rest is. A
+    renderer that reached for `thinking` here would put two private sections into the
+    document a stakeholder is handed.
+    """
+    turns = sorted(exchange["turns"],
+                   key=lambda t: (t.get("round", 0), str(t.get("speaker"))))
+    pro = (ruling or {}).get("recourse_pro_speaker")
+    lines = ["## The exchange on the objection", ""]
+    if pro:
+        lines += [f"*Both debaters were shown the judgment and the objection and "
+                  f"replied once, simultaneously, without seeing each other's reply. "
+                  f"{pro}, whose position the decision went against, argues that the "
+                  f"objection is well founded; the other argues that it is not. Each "
+                  f"still argues its own assigned side.*", ""]
+    else:
+        lines += ["*Both debaters replied once to the objection, simultaneously, "
+                  "without seeing each other's reply. Which of them argued for the "
+                  "objection is derived from the decision and no ruling was recorded "
+                  "here to name it.*", ""]
+    for turn in turns:
+        speaker = str(turn.get("speaker"))
+        gloss = _STANCE_GLOSS.get("pro" if speaker == pro else "anti") if pro else None
+        heading = f"**{speaker}" + (f" ({gloss})" if gloss else "") + ":**"
+        lines += [heading, "", _quote(turn.get("argument", "")), ""]
+    return "\n".join(lines)
+
+
 def render_recourse_record(directory: Path) -> str:
     """The published document for a contest: the decision, the objection, the outcome."""
     manifest = _read(directory, "run.json") or {}
@@ -286,10 +339,16 @@ def render_recourse_record(directory: Path) -> str:
     else:
         parts += _objection_section(challenge)
 
+    exchange = _read(directory, "recourse_transcript.json")
+    if exchange is not None and exchange.get("turns"):
+        parts.append(_exchange_section(exchange, ruling))
+
     if ruling is not None:
         outcome = ("**upheld**" if ruling.get("upheld") else "**overturned**")
+        heard = (" after hearing both debaters on the objection"
+                 if ruling.get("recourse_rounds") else "")
         lines = ["## The outcome", "",
-                 f"The decision was {outcome}.", ""]
+                 f"The decision was {outcome}{heard}.", ""]
         if ruling.get("form") == "uphold_overturn":
             lines.append("*Ruled on by a judge who did not make the original decision. "
                          "The decision stood unless the objection showed it mistaken.*")

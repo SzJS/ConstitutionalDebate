@@ -45,18 +45,27 @@ from .config import (
     DebateConfig,
     GradingConfig,
 )
-from .debate import _judge
+from .debate import _judge, _run_round
+from .engine import DebateFailure
 from .grading import NotGradable, grade_objection
-from .persistence import RunWriter, load_flaw, load_run_record
+from .persistence import (
+    RunWriter,
+    load_flaw,
+    load_recourse_transcript,
+    load_run_record,
+)
 from .prompts import objection_defects_fabricated_n, objection_fabrication_ok
 from .recourse import (
+    _SAME_DEBATE_KEYS,
+    _assert_same_debate,
     _rule_by_judge,
+    hear_exchange,
     judge_admissibility,
     judge_prose_stance,
     judge_ruling_prose,
     run_recourse,
 )
-from .types import Case, Challenge, Item, Ruling, make_sides
+from .types import Case, Challenge, Item, Ruling, Transcript, make_sides
 
 log = logging.getLogger(__name__)
 
@@ -296,6 +305,34 @@ def source_decisions(cells: Sequence[Cell], *,
     return found
 
 
+def _assert_extendable(source, config: DebateConfig, boundary: int) -> None:
+    """Refuse a source this spec cannot honestly continue.
+
+    Loud rather than silent in all three cases, because each one produces a record that
+    reads as an ordinary result: a solo source has no debaters, a source that is already
+    ``n_rounds`` long would be judged with no round added at all — an ordinary re-judge
+    wearing arm B's name — and a source argued under other settings would have a turn by
+    a different party spliced into a transcript that says all four turns are one debate.
+    ``n_rounds`` is exempted from the settings check for the obvious reason: it is the one
+    field that has to differ.
+    """
+    if source.transcript is None:
+        raise DebateFailure(
+            "extend_rounds continues a DEBATE and this decision was reached by a single "
+            "agent working alone; there are no debaters to play another round."
+        )
+    if boundary >= config.n_rounds:
+        raise DebateFailure(
+            f"extend_rounds has nothing to add: the stored debate already has "
+            f"{boundary} rounds and this spec's n_rounds is {config.n_rounds}. A "
+            "judgment made with no round added is an ordinary re-judge, and counting it "
+            "as the plain-round arm would put a cell with no extra round into the "
+            "comparison the arm exists to make."
+        )
+    _assert_same_debate(source.config, config,
+                        keys=tuple(k for k in _SAME_DEBATE_KEYS if k != "n_rounds"))
+
+
 async def run_stage_rejudge(
     cells: Sequence[Cell], *, root: Path, config: DebateConfig,
     client_config: ClientConfig, api_key: str, transcript_root: Path,
@@ -336,6 +373,29 @@ async def run_stage_rejudge(
 
     Resume follows ``decide``'s rule and for ``decide``'s reasons: a cell already decided
     here is skipped, and so is one whose latest run FAILED, unless ``retry_failed``.
+
+    UNDER ``extend_rounds`` THE DEBATE IS CONTINUED BEFORE IT IS JUDGED — arm B of
+    `judgment-debate-6`, the PLAIN extra round the contestability debate round is
+    measured against. The same two debaters play ordinary rounds from the source's last
+    round + 1 up to this spec's ``n_rounds``, with no objection anywhere and no new prompt
+    text: `_round_instructions` already yields `ROUND_3_PLUS` for round 4, and at
+    ``round == n_rounds`` it carries no closing clause, so what they read is byte-identical
+    to the last round of a genuine four-round debate. Then the SAME `_judge` call is made
+    over the longer transcript.
+
+    THIS IS A DECISION DIRECTORY, so the extended transcript goes to ``transcript.json``
+    through the ordinary `writer.record_turn` and OVERWRITES the copy `create_rejudge`
+    made — which is correct and is the whole difference from the contest round: what this
+    tree holds is a four-round debate that was judged here, and a reader who opened its published
+    document and found three rounds under a judgment made from four would be reading a
+    record that is wrong about itself. The manifest records
+    ``extended_from_rounds`` beside ``rounds_n`` so the extension is legible without
+    counting turns.
+
+    It refuses a solo source (there are no debaters to continue), a source that already
+    has ``n_rounds`` rounds or more (there would be nothing to add and the judgment would
+    silently be an ordinary re-judge), and a source argued under settings other than this
+    spec's (`recourse._assert_same_debate`, minus ``n_rounds``, which differs BY DESIGN).
     """
     unexpected = sorted({cell.condition for cell in cells} - {"debate"})
     if unexpected:
@@ -380,13 +440,35 @@ async def run_stage_rejudge(
         # is what a resume and a spend report read and the whole point of the run is
         # which judge made the verdict beside it.
         writer.manifest_update(cell_id=cell.cell_id, judge_model=config.judge_model)
+        transcript = source.transcript
+        boundary = max(turn.round for turn in transcript.all_turns())
+        if config.extend_rounds:
+            try:
+                _assert_extendable(source, config, boundary)
+            except DebateFailure as error:
+                writer.finish("failed", error=f"{type(error).__name__}: {error}")
+                log.warning("%s rejudge refused: %s", cell.cell_id, error)
+                return {"cell_id": cell.cell_id, "status": "failed",
+                        "error": f"{type(error).__name__}: {error}"}
+            # A transcript of its own, so the source record's is not mutated: nothing
+            # under `transcript_root` is written and nothing in memory that came from it
+            # is edited either.
+            transcript = Transcript(list(transcript.all_turns()))
+            writer.manifest_update(extended_from_rounds=boundary,
+                                   rounds_n=config.n_rounds)
         try:
             async with OpenRouterClient(api_key, client_config,
                                         sink=writer.record_call,
                                         semaphore=semaphore) as client:
                 async with asyncio.timeout(client_config.run_timeout_s):
+                    if config.extend_rounds:
+                        for round_number in range(boundary + 1, config.n_rounds + 1):
+                            await _run_round(
+                                source.item, config, source.sides, client, transcript,
+                                round_number=round_number, writer=writer,
+                            )
                     verdict = await _judge(source.item, config, source.sides, client,
-                                           source.transcript, writer=writer)
+                                           transcript, writer=writer)
         except Exception as error:
             writer.finish("failed", error=f"{type(error).__name__}: {error}")
             log.warning("%s rejudge failed: %s", cell.cell_id, error)
@@ -395,6 +477,7 @@ async def run_stage_rejudge(
         writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
         return {"cell_id": cell.cell_id, "status": "completed",
                 "verdict": verdict.verdict, "correct": verdict.correct,
+                "rounds_n": max(turn.round for turn in transcript.all_turns()),
                 "was": source.verdict.verdict}
 
     return await _bounded([lambda c=c: rejudge(c) for c in cells],
@@ -562,6 +645,20 @@ async def run_stage_rerule(
     Only cells whose source objection has stance ``contests`` are re-ruled. A decline put
     nothing to a judge, so there is no ruling to re-make and the cell is skipped with
     ``no objection to re-rule`` rather than silently.
+
+    UNDER ``recourse_rounds = 1`` THIS STAGE ALSO BUYS TWO DEBATER CALLS PER CELL. The
+    two ORIGINAL debaters each reply once to the objection before the judge rules, and
+    the judge is shown what they said (`recourse.hear_exchange`, DESIGN.md's
+    contestability-debate-round ablation). The round's turns are written as
+    ``recourse_transcript.json`` — never ``transcript.json``, which would make this
+    contest directory load as a decision — and the ruling records the exchange it was
+    made on.
+
+    RESUME IS UNCHANGED AND THAT IS A CHOICE. The resume key is still "does this cell
+    already hold a ruling", so a cell whose round completed but whose judge call FAILED is
+    re-attempted from scratch in a new directory and both turns are bought again. There is
+    no half-round resume: ruling on one stored reply and one fresh one would be a
+    different protocol wearing this one's name, and the wasted turns are cents.
     """
     challenger = config.challenger_model_for()
     semaphore = asyncio.Semaphore(client_config.max_concurrency)
@@ -595,24 +692,33 @@ async def run_stage_rerule(
                 client_config=client_config, condition=cell.condition,
             )
         writer.manifest_update(cell_id=cell.cell_id, challenger_model=challenger,
-                               recourse_form=config.recourse_form)
+                               recourse_form=config.recourse_form,
+                               recourse_rounds=config.recourse_rounds)
         try:
             async with OpenRouterClient(api_key, client_config,
                                         sink=writer.record_call,
                                         semaphore=semaphore) as client:
                 async with asyncio.timeout(client_config.run_timeout_s):
-                    ruling = await _rule_by_judge(record, challenge, config, client)
+                    exchange = None
+                    if config.recourse_rounds:
+                        exchange = await hear_exchange(record, challenge, config,
+                                                       client, writer=writer)
+                    ruling = await _rule_by_judge(record, challenge, config, client,
+                                                  exchange=exchange)
         except Exception as error:
             writer.finish("failed", error=f"{type(error).__name__}: {error}")
             log.warning("%s rerule failed: %s", cell.cell_id, error)
             return {"cell_id": cell.cell_id, "status": "failed",
                     "error": f"{type(error).__name__}: {error}"}
+        if ruling.recourse_pro_speaker is not None:
+            writer.manifest_update(recourse_pro_speaker=ruling.recourse_pro_speaker)
         # Writes ruling.json and re-renders both documents, so the copied record and the
         # new ruling are one document rather than a directory a reader has to assemble.
         writer.record_ruling(ruling)
         writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
         return {"cell_id": cell.cell_id, "status": "completed",
                 "was": writer.rerule_of_form, "now": ruling.form,
+                "recourse_rounds": ruling.recourse_rounds,
                 "changed": ruling.changed_the_decision}
 
     return await _bounded([lambda c=c: rerule(c) for c in cells],
@@ -1069,6 +1175,23 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             row["source_verdict"] = manifest.get("source_verdict")
             row["source_correct"] = manifest.get("source_correct")
             row["source_judge_model"] = manifest.get("source_judge_model")
+            # ARM B of `judgment-debate-6`, and written only where the round was
+            # actually played: `extended_from_rounds` is the source's length and
+            # `rounds_n` this tree's, so "the debate this judge read is one round longer
+            # than the one the source judge read" is a column and not an inference from
+            # a spec file. `round4_*` are the added turns' own parse modes and word
+            # counts — the paired arm's are `recourse_turn_*` below and the two are
+            # deliberately named apart, because they are answers to different questions.
+            if manifest.get("extended_from_rounds") is not None:
+                added = manifest["extended_from_rounds"]
+                row["extended_from_rounds"] = added
+                row["rounds_n"] = manifest.get("rounds_n")
+                turns = ([] if record.transcript is None
+                         else [t for t in record.transcript.all_turns()
+                               if t.round > added])
+                row["round4_parse_modes"] = [t.parse_mode for t in turns]
+                row["round4_words"] = [t.word_count for t in turns]
+                row["round4_repairs"] = sum(t.repair_attempts for t in turns)
 
         contest = existing_contest(root, cell, challenger_model)
         if contest is not None:
@@ -1148,10 +1271,33 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 row["prose_stance"] = agreement["prose_stance"]
                 row["line_prose_agree"] = agreement["agrees"]
                 row["phantom_contest"] = agreement["phantom_contest"]
+            # THE CONTESTABILITY DEBATE ROUND, `judgment-debate-6`. Written only where a
+            # round was heard, on the rule every conditional column here follows: absent
+            # where it does not apply, so "judge-only recourse" and "a round that
+            # produced nothing" stay different facts. `recourse_cost_usd` is the two
+            # debater calls alone, read out of THIS contest's wire log by role, so the
+            # arm's extra spend is legible per cell rather than only in a total.
+            exchange = load_recourse_transcript(contest)
+            if exchange is not None:
+                turns = exchange.all_turns()
+                row["recourse_turns_n"] = len(turns)
+                row["recourse_turn_parse_modes"] = [t.parse_mode for t in turns]
+                row["recourse_turn_words"] = [t.word_count for t in turns]
+                row["recourse_turn_repairs"] = sum(t.repair_attempts for t in turns)
+                row["recourse_cost_usd"] = (
+                    aggregate_calls(contest / "calls.jsonl")["by_role"]
+                    .get("recourse_debater", {}).get("cost_usd"))
             ruling_path = contest / "ruling.json"
             if ruling_path.is_file():
                 ruling = json.loads(ruling_path.read_text())
                 row["ruling_form"] = ruling.get("form")
+                # HOW MANY ROUNDS the judge heard before ruling, and who argued the
+                # objection. Read off the RULING rather than the spec, because the ruling
+                # is what records the exchange it was actually made on: a cell whose
+                # round failed and was ruled anyway would carry 0 here beside a spec that
+                # asked for 1, and that is the fact worth having.
+                row["recourse_rounds"] = ruling.get("recourse_rounds", 0)
+                row["recourse_pro_speaker"] = ruling.get("recourse_pro_speaker")
                 # WHICH PROMPT ruled, not which form the answer took. Both prompts
                 # produce `stated_conclusion`, so without this column a materiality
                 # ruling and an object-level one are the same row. Defaulted here as

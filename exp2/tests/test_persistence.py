@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from conftest import SOLO_THINKING, FakeClient
-from helpers import SECRET_THINKING, make_config, make_item, make_sides
+from helpers import SECRET_THINKING, make_config, make_item, make_sides, make_turn
 from recording import client_config, recorded
 
 from exp2.persistence import RunWriter, load_flaw, load_run_record, tree_sha256
@@ -329,3 +329,61 @@ async def test_a_re_ruled_record_renders_as_a_contest_and_not_as_a_decision(tmp_
     assert "The decision was **upheld**." in document
     assert "The judge stated its own conclusion about the text under review" in document
     assert "The objection does not land." in document
+
+
+# --- the contestability debate round's own turns --------------------------------------
+
+
+async def test_record_recourse_turn_writes_beside_the_copy_and_never_a_transcript(
+        tmp_path):
+    """A contest directory must never hold `transcript.json`.
+
+    `load_run_record` reads that name and would load this contest as a DECISION whose
+    debate is two turns long — while the copied `parent/` beside it is the record that
+    actually holds the debate. So the round's own turns get their own name, and the
+    reader that goes with it returns None where no round was heard.
+    """
+    import json
+
+    from recording import contest
+
+    from exp2.persistence import load_recourse_transcript
+    from exp2.types import Speaker, Transcript
+
+    _, _, writer, record = await contest(tmp_path, "debate")
+    own = Transcript()
+    for speaker in (Speaker.ALICE, Speaker.BOB):
+        own.add(make_turn(4, speaker, record.sides.side_for(speaker)))
+    writer.record_recourse_turn(own)
+
+    assert (writer.dir / "recourse_transcript.json").is_file()
+    assert not (writer.dir / "transcript.json").is_file()
+    stored = json.loads((writer.dir / "recourse_transcript.json").read_text())
+    assert [t["round"] for t in stored["turns"]] == [4, 4]
+    # full Turns, thinking included: `transcript_full.md` is where the private half is
+    # published and `transcript.md` prints the arguments only
+    assert all(t["thinking"] for t in stored["turns"])
+    back = load_recourse_transcript(writer.dir)
+    assert [t.speaker.value for t in back.all_turns()] == ["Alice", "Bob"]
+    assert load_recourse_transcript(writer.dir / "parent") is None
+
+
+async def test_create_rerule_leaves_another_runs_exchange_behind(tmp_path):
+    """A re-rule that copied the round forward would put ANOTHER run's exchange in front
+    of this run's judge, and `render_recourse_record` would print it as though these
+    debaters had argued here."""
+    from recording import contest
+
+    from exp2.types import Speaker, Transcript
+
+    _, _, source_writer, record = await contest(tmp_path, "debate")
+    own = Transcript()
+    for speaker in (Speaker.ALICE, Speaker.BOB):
+        own.add(make_turn(4, speaker, record.sides.side_for(speaker)))
+    source_writer.record_recourse_turn(own)
+
+    writer = RunWriter.create_rerule(
+        root=tmp_path / "rerule", source_dir=source_writer.dir,
+        item=make_item(), sides=make_sides(), client_config=client_config(),
+        condition="debate")
+    assert not (writer.dir / "recourse_transcript.json").exists()

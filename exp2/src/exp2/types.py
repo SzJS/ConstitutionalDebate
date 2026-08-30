@@ -359,6 +359,36 @@ def make_sides(item: Item, seed: int) -> Sides:
     )
 
 
+# --------------------------------------------------------------------------- #
+# who argues what when a decision is contested
+# --------------------------------------------------------------------------- #
+#
+# DERIVED, NEVER STORED — exp1's `RecourseFrame.stance` rule, ported. The debater whose
+# assigned side the decision went AGAINST argues that the objection is well founded:
+# overturning is the only way the decision comes back to that side, so this is the one
+# assignment under which neither debater has to argue against the case it spent three
+# rounds making. Both functions are pure and take the parent verdict, so a record's
+# `sides.json` and its `verdict.json` are the only inputs and there is no second copy to
+# fall out of step with them. It also means the assignment is not checkable from a stored
+# field: what `Ruling.recourse_pro_speaker` holds is this derivation's own answer.
+
+
+def recourse_stance(sides: Sides, speaker: Speaker, decision_verdict: str) -> str:
+    """``"pro"`` if this speaker argues the objection is well founded, else ``"anti"``."""
+    if decision_verdict not in VERDICTS:
+        raise ValueError(f"decision_verdict must be one of {VERDICTS}, "
+                         f"got {decision_verdict!r}")
+    return "anti" if sides.side_for(speaker) == decision_verdict else "pro"
+
+
+def recourse_pro_speaker(sides: Sides, decision_verdict: str) -> Speaker:
+    """The speaker who argues FOR the objection — the one the decision went against."""
+    if decision_verdict not in VERDICTS:
+        raise ValueError(f"decision_verdict must be one of {VERDICTS}, "
+                         f"got {decision_verdict!r}")
+    return sides.speaker_for_side(complement(decision_verdict))
+
+
 @dataclass
 class Turn:
     """One debater's contribution to one round."""
@@ -1171,6 +1201,21 @@ class Ruling:
     # indistinguishable in the file. Defaulted for the rulings already on disk, every one
     # of which was made under the object-level prompt.
     prompt_form: str = "object_level"
+    # HOW MANY ROUNDS OF ARGUMENT the judge heard on the objection before ruling, and who
+    # argued which way. 0 and None are judge-only recourse — the protocol every ruling
+    # before 2026-08-30 was made under — so every `ruling.json` already on disk still
+    # loads. Under `recourse_rounds = 1` the two original debaters each replied once and
+    # `recourse_pro_speaker` names the one that argued the objection is well founded; it
+    # is DERIVED from the parent verdict by `recourse_pro_speaker()` and written here so
+    # a reader of one file does not have to re-derive it, while
+    # `recourse_exchange_sha256` pins the exact exchange that was put to the judge.
+    # `prompt_form` deliberately stays "materiality": the exchange is ONE inserted block
+    # in the same template, the two `Conclusion:` lines do not move, and every reader
+    # keyed on the form — `ruling_agreement`, `RULING_READER_ROLES`, every derivation —
+    # must go on reading it as the materiality ruling it is.
+    recourse_rounds: int = 0
+    recourse_pro_speaker: str | None = None
+    recourse_exchange_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if self.form not in RULING_FORMS:

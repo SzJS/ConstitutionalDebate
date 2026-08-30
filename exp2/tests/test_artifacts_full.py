@@ -285,3 +285,47 @@ async def test_the_full_document_ends_with_the_ground_truth(tmp_path):
     assert result.item.gold_verdict in tail
     for leak in ("gold", "ground truth", "label_basis"):
         assert leak not in head.lower()
+
+
+# --- the contestability debate round, 2026-08-30 --------------------------------------
+
+
+async def test_a_rounds_one_contest_prints_both_round_4_calls_and_round_trips(tmp_path):
+    """The two new calls have to be in the verbatim document like any other.
+
+    They are the only calls in this experiment whose WIRE role (`recourse_debater`) is
+    not the role their repair is keyed on (`debater`), so the parameters table and the
+    per-call deviation check are the two places this could go wrong silently: a round-4
+    turn charged to the judge's temperature would print a deviation line on every cell,
+    and one missing from the table would print none where there should be.
+    """
+    from helpers import make_config
+
+    config = make_config(recourse_rounds=1, challenger_variant="judgment",
+                         recourse_form="third_party")
+    _, _, writer, _ = await contest(tmp_path, "debate", config=config)
+    document = (writer.dir / "transcript_full.md").read_text()
+
+    headings = [section[0] for section in call_sections(document)]
+    assert headings == [
+        "### Call 1 — challenger",
+        "### Call 2 — comprehension probe",
+        "### Call 3 — round 4 on the objection — Alice",
+        "### Call 4 — round 4 on the objection — Bob",
+        "### Call 5 — ruling (recourse judge, stated conclusion)",
+    ]
+    # the parameters table names the role at the debaters' own settings, so no round-4
+    # call reports a deviation
+    assert "| Debater, on the objection | `strong/model` | 0.7 " in document
+    assert "*Deviates from header:" not in document
+    # and the judge's own entry says what the exchange added to its prompt
+    assert "= the exchange on the objection, as it was put to the judge" in document
+
+    # the whole document still re-expands to what went over the wire
+    found = blocks_of(document)
+    calls = logged_calls(writer.dir)
+    for section in call_sections(document):
+        record = calls[call_id_of(section)]
+        sent = [{"role": m.group(1), "content": expand(found, found[m.group(2)])}
+                for m in (MESSAGE_RE.match(line) for line in section) if m]
+        assert sent == record["request_body"]["messages"], call_id_of(section)
