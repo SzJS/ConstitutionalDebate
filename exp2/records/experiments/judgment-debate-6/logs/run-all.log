@@ -1,0 +1,82 @@
+=== jd6: two arms, sequentially — started 2026-08-30T02:28:05Z ===
+PREREG: records/experiments/judgment-debate-6/PREREG.md
+arms:   R (jd6-round), B (jd6-plain)
+runner: scripts/run_sweep.sh   outputs: outputs/experiments   logs: outputs
+
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+########## ARM R  (jd6-round)  2026-08-30T02:28:23Z
+########## stages: rerule ruling_agreement analyse   -> outputs/jd6-jd6-round-driver.log
+########## ARM R exited 0  2026-08-30T04:05:14Z
+  ! There is no specious-objection control, so a high revision rate cannot be distinguished from a judge that overturns under any pushback. Every ruling here was made by the third-party recourse judge, so no condition adjudicates its own appeal — but one asymmetry survives it: that judge is the same weak model that DECIDED the debate condition, and debate is the run's ONLY condition, so it is ruling on its own decision on every cell here — the asymmetry is not one condition of several, it is the whole run.
+
+  ! Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived from them is bounded by the rate at which a ruling's recorded outcome disagrees with the judge's own reasoning: where the two disagree, the revision is an artifact of the ruling line and not a re-decision. Measured here at 28/854 (3.3%) of the rulings the `ruling_agreement` stage could read (forms present: stated_conclusion); `ruling_line_mismatch_on_flawed_parent` is the number to read, since that is where the collision lives. NEITHER counts as a mismatch, so this is an upper bound — `ruling_prose_conclusion` in the index separates the outright contradictions from the reasonings that settled on nothing.
+
+  ! Rates are not pooled across label_basis: injected_pair, sentence_labels and final_answer are three different claims about what 'flawed' means. medqa's final_answer basis in particular labels a badly-reasoned solution 'sound' whenever it reached the right answer.
+
+  ! `agreed_with_decision` is structurally 0 and says nothing: the challenger now writes one line stated relative to the decision (`Decision: STANDS|REVERSE`), and a reply cannot both ask for a reversal and name the verdict it is reversing to. The stance it used to count is measured instead by the `agreement` stage, whose cross-tab is `line_vs_prose` — read `phantom_contest` there before reading any `contests` number.
+
+  ! Natural errors only: a weak judge errs where the correct side argued badly, so debate's incorrect cell selects the debates in which debate worked worst. This understates debate; single has no equivalent filter, so it applies asymmetrically.
+
+  ! DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS (outputs/experiments/sweep): the debates behind these 1644 cells were argued in another run and this one only judged them again, so `verdict` and `initially_correct` are this spec's judge reading a record it did not commission, `source_verdict` beside them is what the source tree's judge made of the same transcript, and `decision_cost_usd` is the one judge call rather than the debate that preceded it.
+
+  ! THE GRADE HERE IS A JUDGMENT AUDIT (challenger_variant = "judgment"), so `valid_objection_judgment` is PROCESS validity and not the flaw grader's number: it is the share of objections alleging at least one defect — a contradiction, a misstatement of the record, or an omission — that the grader could verify **in the record**, with `flaw.json` never opened. Three things follow. Every contested cell is graded (896 here), including sound items and cells whose decision was CORRECT, because a judgment that misquotes the record is defective whichever verdict it reached — a valid defect on a correct decision is a real finding and is NOT a false alarm, which is why the rate is split by `initially_correct` rather than conditioned on it. The objection rate is not a detection rate: this challenger was not asked whether the verdict is right and was forbidden the object level, so it is not comparable with any neutral or partisan raise rate. And `identified_flaw` / `characterises_the_flaw` are absent from these rows by construction, so `valid_objection` above is computed over the flaw-graded rows only.
+
+  ! THE OBJECTION WAS ARGUED BEFORE IT WAS RULED ON (recourse_rounds = 1): on these 855 cells the two ORIGINAL debaters each replied once, simultaneously, seeing rounds 1-3, the judgment and the objection but not each other's reply, and the recourse judge ruled on that exchange. The debater whose assigned side the decision went against argued the alleged defects are real and material (Alice, Bob here); the other argued they are not; each still argued its own assigned side, and who argued which is DERIVED from the parent verdict rather than recorded by the debaters. `changed_the_decision` and `final_correct` here are therefore NOT comparable with a judge-only run's: the ruling prompt carries one extra block and the judge has two advocates in front of it. What is comparable is a PAIRED test against the same cells ruled the other way, and that is made in the derivation. Only 855 of the 1644 rows here were argued; the rest were ruled judge-only, and THE TWO ARE NOT ONE POPULATION — do not read a rate over this file as a rate for either protocol.
+
+wrote outputs/experiments/jd6-round/metrics.json
+=== run_sweep: analyse exited 0  2026-08-30T04:05:14Z ===
+
+run_sweep: ALL STAGES COMPLETED (rerule ruling_agreement analyse) -> outputs/experiments/jd6-round/DONE.md
+########## ARM R wrote 855 rulings and 896 exchanges (856 of them two-turn)
+########## ARM R cells: 896 attempted, 855 completed, 41 failed
+########## NOTE: 40 `recourse_transcript.json` files do NOT hold exactly two turns. A half-round is what a failed cell leaves behind (the completed turn is committed before the raise); check that none of them sits beside a `ruling.json` — the derivation's section (6) counts them and PREREG.md's loss rule drops those cells.
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+########## ARM B  (jd6-plain)  2026-08-30T04:05:39Z
+########## stages: rejudge analyse   -> outputs/jd6-jd6-plain-driver.log
+########## ARM B exited 0  2026-08-30T05:30:07Z
+  ! The debate condition is adjudicated by the WEAK judge while single and self_critique are decided by the STRONG model, so the wrong-sets differ in size and character by construction. There is no weak_alone condition, so a debate-vs-single difference cannot separate the mechanism from model strength.
+
+  ! There is no specious-objection control, so a high revision rate cannot be distinguished from a re-decider that folds under any pushback. This bites hardest on single and self_critique, whose contest asks a model to contradict itself in its own conversation.
+
+  ! Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived from them is bounded by the rate at which a ruling's recorded outcome disagrees with the judge's own reasoning: where the two disagree, the revision is an artifact of the ruling line and not a re-decision. No rulings are in this index, so nothing here is affected.
+
+  ! Rates are not pooled across label_basis: injected_pair, sentence_labels and final_answer are three different claims about what 'flawed' means. medqa's final_answer basis in particular labels a badly-reasoned solution 'sound' whenever it reached the right answer.
+
+  ! `agreed_with_decision` is structurally 0 and says nothing: the challenger now writes one line stated relative to the decision (`Decision: STANDS|REVERSE`), and a reply cannot both ask for a reversal and name the verdict it is reversing to. The stance it used to count is measured instead by the `agreement` stage, whose cross-tab is `line_vs_prose` — read `phantom_contest` there before reading any `contests` number.
+
+  ! Natural errors only: a weak judge errs where the correct side argued badly, so debate's incorrect cell selects the debates in which debate worked worst. This understates debate; single has no equivalent filter, so it applies asymmetrically.
+
+  ! DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS (outputs/experiments/jd3-main): the debates behind these 886 cells were argued in another run and this one only judged them again, so `verdict` and `initially_correct` are this spec's judge reading a record it did not commission, `source_verdict` beside them is what the source tree's judge made of the same transcript, and `decision_cost_usd` is the one judge call rather than the debate that preceded it.
+
+  ! THE DEBATE WAS CONTINUED BEFORE IT WAS JUDGED (extend_rounds, 3 -> 4 rounds): on these 886 cells the same two debaters played one more ORDINARY round — no objection anywhere, the existing round instruction, and at `round == n_rounds` no closing clause, so what they read is byte-identical to the last round of a debate of that length — and then the judge decided the longer transcript afresh. So `verdict` and `initially_correct` are a judgment of a record the source judge never saw, `source_verdict` beside them is what the source judge made of the SHORTER one, and the difference between the two carries the extra round AND this judge's own disagreement with itself on a re-draw, which no arm here prices. It is the baseline the contestability debate round is measured against, and the comparison is paired and made in the derivation.
+
+wrote outputs/experiments/jd6-plain/metrics.json
+=== run_sweep: analyse exited 0  2026-08-30T05:30:07Z ===
+
+run_sweep: ALL STAGES COMPLETED (rejudge analyse) -> outputs/experiments/jd6-plain/DONE.md
+########## ARM B wrote 886 decisions, 886 of them from a four-round transcript
+########## ARM B cells: 896 attempted, 886 completed, 10 failed
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+=== jd6: both arms done 2026-08-30T05:31:03Z ===
+# jd6 — both arms done, 2026-08-30T05:30:49Z
+
+| arm | spec | attempted | completed | failed | rulings | two-turn rounds | decisions | four-round |
+|---|---|---|---|---|---|---|---|---|
+| R | `jd6-round` | 896 | 855 | 41 | 855 | 856 | 0 | 0 |
+| B | `jd6-plain` | 896 | 886 | 10 | 0 | 0 | 886 | 886 |
+
+**Failed cells are COUNTED, never absorbed.** Under `PREREG.md`'s loss rule a
+cell missing in either arm leaves every paired table; the derivation's section (0)
+lists each one with the error that lost it. `--retry-failed` was on, so a cell
+here failed TWICE, and because the debaters run at temperature 0.7 a retried cell
+was a different draw rather than a repeat.
+
+`jd3-main` byte-identical before and after: `dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c`.
+
+Hashes in `outputs/jd6-fingerprints.md`.
+
+Next: `uv run python records/derivations/judgment-debate-6.py`.

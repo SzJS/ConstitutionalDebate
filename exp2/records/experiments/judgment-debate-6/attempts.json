@@ -1,0 +1,271 @@
+{
+  "R": {
+    "attempted": 896,
+    "completed": 855,
+    "failed": 41,
+    "failures": [
+      {
+        "cell_id": "gpqa-102-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/gpqa-102-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T023903Z-gpqa-102-flawed-rerule"
+      },
+      {
+        "cell_id": "gpqa-129-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/gpqa-129-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T023308Z-gpqa-129-flawed-rerule"
+      },
+      {
+        "cell_id": "gpqa-69-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/gpqa-69-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T024127Z-gpqa-69-flawed-rerule"
+      },
+      {
+        "cell_id": "gpqa-8-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/gpqa-8-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T023708Z-gpqa-8-sound-rerule"
+      },
+      {
+        "cell_id": "lojban-stim159_gpt3-5_A-s1__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/lojban-stim159_gpt3-5_A-s1__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T025610Z-lojban-stim159_gpt3-5_A-s1-rerule"
+      },
+      {
+        "cell_id": "lojban-stim181_gpt4_B-s5__debate__r1",
+        "error": "TruncatedOutputError: recourse_judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/lojban-stim181_gpt4_B-s5__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T025722Z-lojban-stim181_gpt4_B-s5-rerule"
+      },
+      {
+        "cell_id": "medqa-dev_1232__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-dev_1232__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T025950Z-medqa-dev_1232-rerule"
+      },
+      {
+        "cell_id": "medqa-train_0477__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-train_0477__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T030012Z-medqa-train_0477-rerule"
+      },
+      {
+        "cell_id": "medqa-train_1102__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: debater output still malformed after one format repair attempt: no 'Argument:' label found; refusing to treat the whole response as the public argument",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-train_1102__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T030156Z-medqa-train_1102-rerule"
+      },
+      {
+        "cell_id": "medqa-train_1267__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-train_1267__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T030214Z-medqa-train_1267-rerule"
+      },
+      {
+        "cell_id": "medqa-train_1511__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-train_1511__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T030243Z-medqa-train_1511-rerule"
+      },
+      {
+        "cell_id": "medqa-train_3395__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/medqa-train_3395__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T030708Z-medqa-train_3395-rerule"
+      },
+      {
+        "cell_id": "python800-p02716-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02716-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031041Z-python800-p02716-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02743-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02743-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031109Z-python800-p02743-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02754-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02754-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031137Z-python800-p02754-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02760-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02760-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031141Z-python800-p02760-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02791-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02791-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031227Z-python800-p02791-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02829-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02829-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031348Z-python800-p02829-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02838-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02838-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031406Z-python800-p02838-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p02921-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02921-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031609Z-python800-p02921-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02948-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02948-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031659Z-python800-p02948-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p02972-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p02972-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031739Z-python800-p02972-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p03035-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03035-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T031914Z-python800-p03035-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p03075-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03075-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T032030Z-python800-p03075-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03160-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03160-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T032200Z-python800-p03160-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03214-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03214-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T032301Z-python800-p03214-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03253-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03253-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T032347Z-python800-p03253-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03569-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03569-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033104Z-python800-p03569-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p03659-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03659-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033332Z-python800-p03659-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03759-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03759-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033540Z-python800-p03759-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03803-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03803-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033649Z-python800-p03803-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p03813-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03813-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033708Z-python800-p03813-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03814-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03814-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033711Z-python800-p03814-sound-rerule"
+      },
+      {
+        "cell_id": "python800-p03838-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03838-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033750Z-python800-p03838-flawed-rerule"
+      },
+      {
+        "cell_id": "python800-p03945-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/python800-p03945-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T033836Z-python800-p03945-flawed-rerule"
+      },
+      {
+        "cell_id": "surgery-sur21_gpt3-5_A-s2__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/surgery-sur21_gpt3-5_A-s2__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T034544Z-surgery-sur21_gpt3-5_A-s2-rerule"
+      },
+      {
+        "cell_id": "surgery-sur2_gpt3-5_A-s1__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/surgery-sur2_gpt3-5_A-s1__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T034017Z-surgery-sur2_gpt3-5_A-s1-rerule"
+      },
+      {
+        "cell_id": "surgery-sur32_gpt3-5_B-s1__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/surgery-sur32_gpt3-5_B-s1__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T034846Z-surgery-sur32_gpt3-5_B-s1-rerule"
+      },
+      {
+        "cell_id": "surgery-sur40_gpt4_B-s11__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/surgery-sur40_gpt4_B-s11__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T035025Z-surgery-sur40_gpt4_B-s11-rerule"
+      },
+      {
+        "cell_id": "theoremqa-solutions-binomial_model_1-png-sound__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/theoremqa-solutions-binomial_model_1-png-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T035849Z-theoremqa-solutions-binomial_model_1-png-sound-rerule"
+      },
+      {
+        "cell_id": "theoremqa-solutions-math_algebra_3-png-flawed__debate__r1",
+        "error": "DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-round/cells/theoremqa-solutions-math_algebra_3-png-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260830T035740Z-theoremqa-solutions-math_algebra_3-png-flawed-rerule"
+      }
+    ]
+  },
+  "B": {
+    "attempted": 896,
+    "completed": 886,
+    "failed": 10,
+    "failures": [
+      {
+        "cell_id": "gpqa-10-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater output still malformed after one budget repair attempt: no 'Argument:' label found; refusing to treat the whole response as the public argument",
+        "run_dir": "outputs/experiments/jd6-plain/cells/gpqa-10-flawed__debate__r1/runs/20260830T040539Z-gpqa-10-flawed-rejudge"
+      },
+      {
+        "cell_id": "gpqa-186-sound__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/gpqa-186-sound__debate__r1/runs/20260830T041625Z-gpqa-186-sound-rejudge"
+      },
+      {
+        "cell_id": "gpqa-48-sound__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/gpqa-48-sound__debate__r1/runs/20260830T042139Z-gpqa-48-sound-rejudge"
+      },
+      {
+        "cell_id": "python800-p02883-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p02883-flawed__debate__r1/runs/20260830T045236Z-python800-p02883-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03426-sound__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p03426-sound__debate__r1/runs/20260830T050449Z-python800-p03426-sound-rejudge"
+      },
+      {
+        "cell_id": "python800-p03546-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p03546-flawed__debate__r1/runs/20260830T050640Z-python800-p03546-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03724-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p03724-flawed__debate__r1/runs/20260830T051030Z-python800-p03724-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03816-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p03816-flawed__debate__r1/runs/20260830T051204Z-python800-p03816-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03838-flawed__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/python800-p03838-flawed__debate__r1/runs/20260830T051223Z-python800-p03838-flawed-rejudge"
+      },
+      {
+        "cell_id": "surgery-sur3_gpt4_B-s8__debate__r1",
+        "error": "DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/jd6-plain/cells/surgery-sur3_gpt4_B-s8__debate__r1/runs/20260830T052021Z-surgery-sur3_gpt4_B-s8-rejudge"
+      }
+    ]
+  }
+}

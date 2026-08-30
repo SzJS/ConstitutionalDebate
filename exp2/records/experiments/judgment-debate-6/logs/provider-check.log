@@ -1,0 +1,51 @@
+=== 2026-08-30T01:19:31.338951+00:00 ===
+spec:    experiments/jd6-round.toml
+model:   meta-llama/llama-4-maverick   [debate.recourse_judge_model]
+pin:     ['digitalocean']   [debate.provider_order]
+primary: digitalocean   — a call served by anything else is not a pass
+
+GET https://openrouter.ai/api/v1/models/meta-llama/llama-4-maverick/endpoints -> 200
+5 endpoints
+
+tag/slug                                 ctx  max_out  status   name
+--------------------------------------------------------------------------------------------------------------
+digitalocean                          128000   115200       0   DigitalOcean | meta-llama/llama-4-maverick-17b-128e-instruct
+
+pinned slugs present in the endpoint list: ['digitalocean']
+display names the response's `provider` field should carry: ['DigitalOcean']
+
+=== one real pinned call ===
+request body (minus messages): {"model": "meta-llama/llama-4-maverick", "temperature": 0.0, "max_tokens": 16, "usage": {"include": true}, "reasoning": {"enabled": false}, "provider": {"order": ["digitalocean"], "allow_fallbacks": false}}
+HTTP 200
+{
+  "id": "gen-1788052771-qRFIMQBWPVeYtHbXKUv4",
+  "provider": "DigitalOcean",
+  "model": "meta-llama/llama-4-maverick",
+  "usage": {
+    "prompt_tokens": 15,
+    "completion_tokens": 2,
+    "total_tokens": 17,
+    "cost": 4.392e-06,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 4.392e-06,
+      "upstream_inference_prompt_cost": 3e-06,
+      "upstream_inference_completions_cost": 1.392e-06
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}
+content: 'OK'
+
+SERVED BY: DigitalOcean
+VERDICT: PASS — non-empty content, served by DigitalOcean, the primary pinned provider (digitalocean)

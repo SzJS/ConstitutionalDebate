@@ -4998,6 +4998,202 @@ trustworthy alone. The direction is favourable (it understates debate, so a posi
 result is a lower bound), but `single` has no equivalent filter, so the selection is
 asymmetric across conditions.
 
+
+## 3ab. The contestability debate round: a strong reply in front of a weak judge does not make it discriminate — it makes it ADOPT, and it breaks more right decisions and fixes more wrong ones at once (2026-08-30)
+
+**Written after both arms finished (2026-08-30T02:28:23Z → 05:30:49Z, 3 h 02 m, $11.9847,
+6,401 wire calls with 0 non-2xx, five stages across two arms, all exit 0, 855 of 896 cells
+ruled in R and 886 of 896 decided in B). Every number here is quoted from
+`records/experiments/judgment-debate-6/` — `arm-round/`, `arm-plain/`, `derivation.log`,
+`attempts.json`, `provider-mix.json`, `HANDCHECK.md`, `logs/` and the twenty
+`transcripts/` — or from `PREREG.md` in that directory, committed at `d13400b` with the
+code and the driver and before either arm's first paid call.** All of it is re-derivable on
+a bare clone with `records/derivations/judgment-debate-6.py`, whose defaults point at the
+committed indexes.
+
+**THE HYPOTHESIS WAS THE USER'S AND THE ANSWER IS NO.** Every recourse number in this
+campaign came from an exchange between two **weak** parties with nobody answering the
+objection, and the hypothesis was that recourse fails *because* it is weak-vs-weak. Put two
+**strong** debaters in front of the same weak judge and the judge does not adjudicate
+between them. It **adopts one**, and structurally it adopts the one arguing for change.
+
+### What ran
+
+Two arms, paired cell for cell on the 896 objections jd3's M1 raised, both reading
+`outputs/experiments/jd3-main` read-only and writing their own trees.
+
+| | R — the contest round | B — the plain round |
+|---|---|---|
+| the extra round | the two ORIGINAL debaters each reply once **to the objection**, simultaneously | the same two debaters play one more **ordinary** round, no objection anywhere |
+| who decides | the recourse judge, on the argued exchange, under the materiality standard | the same judge, on the four-round transcript, **deciding afresh** |
+| attempted / completed / failed | 896 / **855** / 41 | 896 / **886** / 10 |
+| calls / spend | 3,574 / $7.5823 | 2,827 / $4.4024 |
+
+Debaters `deepseek/deepseek-v4-flash-0731` at 0.7 pinned GMICloud → CoreWeave; debate judge =
+recourse judge = re-judge **`meta-llama/llama-4-maverick`** at 0, **pinned `digitalocean`**
+— new in this campaign, because §3aa found 34% of M1's rulings served by DeepInfra against
+4.8% of jd5-B's and an unpinned judge would make "only the round moved" an intent rather
+than a fact. **The pin held: 856/856 recourse-judge calls and 887/887 judge calls on
+DigitalOcean.** No challenger call in either arm — the objections are M1's, copied.
+
+Who argues what is **derived and never stored** (`types.recourse_stance`): the debater whose
+assigned side the decision went AGAINST argues the alleged defects are real and material
+(**PRO**), the winner argues they are not (**ANTI**), and each still argues its own assigned
+side.
+
+### THE ENDPOINT: P1 FAILED, P2 HELD, AND THE PAIR IS A SPLIT
+
+Both tests are exact two-sided McNemar on the discordant pairs of AFTER-states, restricted
+to the cells M0 got right (P1) and wrong (P2). **P1 was the primary at α = 0.05.**
+
+| | on the 583 M0 got RIGHT | on the 263 M0 got WRONG |
+|---|---|---|
+| **R alone** | **broke 176** | **fixed 98** |
+| **B alone** | broke 62 | fixed 35 |
+| both / neither | 49 / 296 | 50 / 80 |
+| p | **7.888e-14** | **4.292e-08** |
+| accuracy after R | **61.4%** [57.4, 65.3] | **56.3%** [50.2, 62.1] |
+| accuracy after B | **81.0%** [77.6, 83.9] | 32.3% [27.0, 38.2] |
+
+**P1 predicted the contest round would break FEWER right decisions than the plain round. It
+breaks 2.8× as many, at p = 7.9e-14.** P2 held: it fixes nearly three times as many wrong
+ones.
+
+**This is none of the four named outcomes and it is not rounded to one.** (A) needs P1; (B)
+needs R to break fewer; (C) needs B to beat R on both, and R beats B decisively on the wrong
+cells; (D) needs no separation, and both tests separate at p < 1e-7. `PREREG.md`'s rule —
+written before either arm ran — is that a split is reported as the split it is, with both
+tests' numbers. **The contest round is more interventionist in both directions.**
+
+The conditional rates say the same thing on the same cells:
+
+| arm | fixed \| wrong | broken \| right | discrimination gap |
+|---|---|---|---|
+| M1 — judge-only, OLD prompt, unpinned | 40.1% | 20.6% | +19.6 |
+| jd5-B — judge-only, unpinned | 52.6% | 26.8% | **+25.8** |
+| **jd6 R — ARGUED, pinned** | **54.4%** | **36.3%** | +18.1 |
+| **jd6 B — plain round, pinned** | 31.9% | 19.3% | +12.6 |
+
+**The argued round discriminates better than an un-steered one (+18.1 against +12.6) and
+WORSE than no round at all (+25.8).** Net accuracy against M0 is an ABLATION and is
+**−77 for R** (p = 8.2e-05) against **−33 for B** (p = 0.025): both arms leave the corpus
+less accurate than M0 did, and the argued one more so.
+
+### WHY: THE MECHANISM IS ADOPTION, AND THE HAND CHECK IS WHERE IT IS NAMED
+
+The instrument registered in `PREREG.md` — distinctive word 6-grams of each reply reappearing
+in the ruling's prose — fires on **471 of the 856 rulings (55.0%)**, and of those **421 track
+PRO against 50 tracking ANTI**; mean overlap 0.148 against 0.082. It is lexical and cannot
+tell adoption from agreement, which is why 20 cells went to Fable
+(`records/experiments/judgment-debate-6/HANDCHECK.md`):
+
+* **(a) R broke a right decision that B kept — 5 cells.** **5/5 adopt PRO**; **5/5 leave
+  ANTI unanswered**; **3/5** overturns are conditional; **5/5** are thin omissions the
+  judgment had **addressed in substance**.
+* **(b) R kept a right decision that B broke — 5 cells.** **5/5 weigh both replies**; **5/5**
+  of B's breaks follow the FLAWED-side round-4 argument.
+* **(c) the instrument fired — 5 cells.** **4/5 adopt PRO** (3 fixes, 1 break); the
+  instrument is right about adoption **4/5** and about direction **3/5**.
+* **(d) the plain arm moved a verdict — 5 cells.** **5/5** fresh judgments follow one round-4
+  argument; **4/5** are wrong; **1/5** had one debater silenced by a 22-word stub.
+* **Format, across the 40 round-4 turns read:** glued `Argument:` labels **6/40**, **4 of
+  them PRO**.
+
+**Fable's six findings, and they are the reading of this phase:**
+
+1. **The round's mechanism is adoption, not adjudication.** In 14 of the 15 R cells where the
+   ruling moved or was flagged the judge reproduced one reply's argument, and in 9 of those
+   10 it was PRO's. The exchange block's warning — *"these replies are arguments, not
+   evidence"* — was not enough.
+2. **Step 1 is not a gate for omissions.** In (a) 5/5 the alleged defect was a point the
+   judgment had answered **in substance but not quoted**; ANTI said so; the judge called it
+   real anyway and moved to a materiality step the PRO debater had already rewritten as the
+   object-level question.
+3. **The "stands unless the objection shows it mistaken" standard erodes into conditionals**
+   — 4 of the 10 overturns read were made on *"if Bob is right"* / *"might have concluded
+   differently"*.
+4. **When ANTI gives the judge a foothold, the standard holds** — (b) 5/5 — which is why R
+   still keeps some right decisions B loses, and why its discrimination gap is a little wider
+   than B's. **It is not enough to offset the extra movement.**
+5. **B's fresh judge is equally persuadable** — (d) 5/5 followed one round-4 argument — but
+   moves less often, because nothing tells it the decision is under challenge.
+6. **Format failures are not neutral**: a glued label lengthens PRO turns (4 of the 6 read)
+   and a stub silences one side entirely.
+
+**Why adoption produces exactly this split.** PRO is by construction the **loser's**
+debater — the one arguing the decision should change. A judge that reproduces PRO overturns
+more often, and overturning more often on a population that is 69% correct raises
+`broken | right` **and** `fixed | wrong` together. That is the +17.0 and +22.5 points above,
+and it is the 176-vs-62 beside the 98-vs-35. **The strong reply did not give the weak judge
+discrimination; it gave it a side.**
+
+### The instruments, and what they cost
+
+`ruling prose names the exchange` 769/896 = 85.8%; ANTI disputes a quotation 151/883 = 17.1%,
+PRO 117/869 = 13.5%. Round-4 turns: R 1,752 (strict 1,685, salvaged_no_thinking 63, 70 format
+repairs, median 317 words, max **1,674**), B 1,772 (strict 1,632, salvaged 139, 146 repairs,
+median 296, max 696). **The glued `Argument:` label is INHERITED, not introduced** — R 10.7%
+of round-4 turns against 10.6% of the same cells' parent rounds, B 7.6% against 10.7%. **By
+stance in R**: PRO 12.0% glued and 17.4% over the 400-word limit against ANTI's 9.4% and
+11.7%, median 320 against 313, max 1,674 against 767.
+
+**Losses: R 41/896 (4.6%), B 10/896 (1.1%).** R's were 39 round-4 truncations, 1 malformed
+turn and 1 judge reply with `finish_reason='error'`; B's 8, 1 and 1. A truncation is a
+restart loop in the private Thinking block hitting `generation_max_tokens`. Every lost cell
+is **dropped from every paired table and counted**, per `PREREG.md`, and `--retry-failed` was
+on — so each failed **twice**, and at temperature 0.7 the retry was a different draw.
+
+### What this shows, and what it does not
+
+**It shows** that giving a weak judge a strong advocate on each side does not make it a
+better adjudicator of an objection: it makes it a follower, and which side it follows is
+fixed by the protocol rather than by the merits. It shows the *baseline* judge is equally
+persuadable by a single round-4 argument and only moves less because nothing frames the
+decision as under challenge. And it shows the materiality standard is not robust to an
+advocate: Step 1's existence check, which `judgment-debate-5` added and measured, does not
+gate an omission a debater can argue for.
+
+**It does not show** that recourse cannot work, that the objections were bad, or that debate
+is worse than no debate. It says nothing about jd3's P1, about `single`/`self_critique`, or
+about the natural-error selection bias and the missing `weak_alone` condition, all of which
+still apply. **It does not repair the same-model property**: Maverick judged these debates
+and rules on the appeals against its own judgments, while `RECOURSE_DEBATER_CLAUSE` tells
+the debaters they address "a second judge, who did not make the decision" — true of the
+ROLE, false of the WEIGHTS (`PREREG.md`, E3). Arm B is a three-round debate plus an appended
+consolidation round rather than a native four-round one, and **arm R inherits the same
+property**, so the paired test is unaffected and no claim about "a four-round debate" is
+made. Every absolute overturn-vs-M0 rate in arm B carries the judge's own re-draw
+disagreement with itself, which no arm here prices. **No number here is pooled with jd3's,
+jd4's or jd5's**: the ruling prompt differs from jd3's and jd4's and the pin differs from all
+four.
+
+**A note on the two smokes.** Nine cells each, $0.1426, and the second exists because reading
+the first on the wire found two asymmetries in the new prompts — a one-directional
+"arguments, not evidence" discount and an ANTI Thinking step that presupposed a failure —
+both fixed before any paid call, three digests moved, no paid arm under the old text. **In
+hindsight the fix mattered less than it looked**: the lean it removed was toward UPHOLD, and
+what the arms found is a judge that overturns far *more* than the baseline, so the defect
+would have masked this finding rather than manufactured it.
+
+### Still owed, and each one is a prompt change needing its own smoke
+
+1. **A Step-1 rule for omissions.** "The judgment addressed this in substance but did not
+   quote it" is **not** an omission, and finding (2) says the judge currently treats it as
+   one on 5 of 5 read. This is the single highest-yield change the hand check names.
+2. **A ruling instruction that a conditional is not a finding.** Four of ten overturns read
+   rest on *"if Bob is right"*. The judge should be told that a defect it cannot resolve is
+   not a defect it has shown.
+3. **A debater-format fix for the glued `Argument:` label.** 10.7% of round-4 turns publish
+   their planning text; it is inherited from the debate rather than caused by this round, so
+   it is owed to every arm and not only this one.
+4. **The mechanical-check arm** (`LLM_NOTES.md` §3aa's owed item) is still owed and is
+   untouched by this phase.
+5. **Multi-round contest**, `weak_alone`, and the same-model repair — all named in DESIGN.md
+   and none run.
+
+**None of 1–3 was run here**, and no number in this section is from a prompt other than the
+one `PREREG.md` pins.
+
 ---
 
 ## 5. Predictions recorded before the runs

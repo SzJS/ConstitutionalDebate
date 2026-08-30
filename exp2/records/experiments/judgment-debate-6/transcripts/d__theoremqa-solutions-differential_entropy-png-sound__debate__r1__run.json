@@ -1,0 +1,113 @@
+{
+  "run_id": "20260830T052547Z-theoremqa-solutions-differential_entropy-png-sound-rejudge",
+  "kind": "rejudge",
+  "condition": "debate",
+  "item_id": "theoremqa-solutions-differential_entropy-png-sound",
+  "row_id": "theoremqa:solutions-differential_entropy-png",
+  "subset": "theoremqa",
+  "rejudged_from": "outputs/experiments/jd3-main",
+  "source_run_dir": "outputs/experiments/jd3-main/cells/theoremqa-solutions-differential_entropy-png-sound__debate__r1/runs/20260828T123540Z-theoremqa-solutions-differential_entropy-png-sound-rejudge",
+  "source_run_id": "20260828T123540Z-theoremqa-solutions-differential_entropy-png-sound-rejudge",
+  "source_sha256": "661f5fe79ec168510aeb905e1b063198304d4003b7e02aa9a09abb329a46a6ac",
+  "source_verdict": "SOUND",
+  "source_correct": true,
+  "source_judge_model": "meta-llama/llama-4-maverick",
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 16,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 8,
+    "copy_parent": true
+  },
+  "cell_id": "theoremqa-solutions-differential_entropy-png-sound__debate__r1",
+  "judge_model": "meta-llama/llama-4-maverick",
+  "extended_from_rounds": 3,
+  "rounds_n": 4,
+  "error": null,
+  "decision_path": {
+    "calls": 3,
+    "attempts": 4,
+    "prompt_tokens": 13489,
+    "completion_tokens": 2235,
+    "reasoning_tokens": 2,
+    "cached_tokens": 2520,
+    "total_tokens": 15724,
+    "cost_usd": 0.005494
+  },
+  "off_path": {
+    "calls": 0,
+    "attempts": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "by_role": {
+    "debater": {
+      "calls": 2,
+      "attempts": 3,
+      "prompt_tokens": 9834,
+      "completion_tokens": 1679,
+      "reasoning_tokens": 2,
+      "cached_tokens": 2520,
+      "total_tokens": 11513,
+      "cost_usd": 0.004376
+    },
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3655,
+      "completion_tokens": 556,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4211,
+      "cost_usd": 0.001118
+    }
+  },
+  "by_purpose": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3655,
+      "completion_tokens": 556,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4211,
+      "cost_usd": 0.001118
+    },
+    "repair": {
+      "calls": 0,
+      "attempts": 1,
+      "prompt_tokens": 3760,
+      "completion_tokens": 379,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4139,
+      "cost_usd": 0.001724
+    },
+    "turn": {
+      "calls": 2,
+      "attempts": 2,
+      "prompt_tokens": 6074,
+      "completion_tokens": 1300,
+      "reasoning_tokens": 2,
+      "cached_tokens": 2520,
+      "total_tokens": 7374,
+      "cost_usd": 0.002652
+    }
+  },
+  "providers": {
+    "DigitalOcean": 1,
+    "GMICloud": 3
+  },
+  "repairs": 1,
+  "failed_attempts": 0
+}

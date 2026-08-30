@@ -1,0 +1,33 @@
+jd6 SMOKE — MEASURED COST PER CELL PER ROLE, off calls.jsonl
+====================================================================================================
+Every wire call the two smokes made, summed by role. `parent/` logs are skipped:
+they belong to the run that paid for them. These are the numbers PREREG.md's
+estimate is built from — nothing here is a forecast.
+
+ARM R — the contest round   tree=jd6-smoke-round   cells=6
+  role                    calls      cost $      $/cell   prompt tok  completion
+  ------------------------------------------------------------------------------------------------
+  recourse_debater           12    0.032893    0.005482        58944       11501
+  recourse_judge              6    0.009776    0.001629        35954        3714
+  ruling_reader               6    0.012089    0.002015         6404        1137
+  ------------------------------------------------------------------------------------------------
+  TOTAL                      24    0.054758    0.009126
+
+ARM B — the plain round   tree=jd6-smoke-plain   cells=3
+  role                    calls      cost $      $/cell   prompt tok  completion
+  ------------------------------------------------------------------------------------------------
+  debater                     6    0.018974    0.006325        22270       11686
+  judge                       2    0.002624    0.000875         9778         960
+  ------------------------------------------------------------------------------------------------
+  TOTAL                       8    0.021598    0.007199
+
+====================================================================================================
+BOTH SMOKES: $0.076356
+
+SCALING TO THE ARMS — 896 cells each, and read as an ESTIMATE and not a quote:
+  arm R — the contest round      $    8.18   ($0.009126/cell x 896)
+  arm B — the plain round        $    6.45   ($0.007199/cell x 896)
+
+The smoke's cells are not a random sample of the 896 — they are two of each of
+three outcome types — and a longer transcript costs more, so treat these as the
+order of magnitude with headroom, which is what PREREG.md quotes.

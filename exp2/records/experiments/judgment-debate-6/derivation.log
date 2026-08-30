@@ -1,0 +1,496 @@
+====================================================================================================
+judgment-debate-6 — an argued objection against an un-argued extra round
+====================================================================================================
+Pre-registration: records/experiments/judgment-debate-6/PREREG.md
+Section (1) is the endpoint (P1 and P2 together). (3) is an ABLATION and never
+an endpoint; (4) is DESCRIPTIVE and carries a provider caveat; (5) is a KEYWORD
+INSTRUMENT. Everything else is descriptive.
+
+arm         index                                                                           rows
+----------------------------------------------------------------------------------------------------
+m1          records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl                     1644
+jd5_real    records/experiments/judgment-debate-5/arm-real/index.jsonl                      1644
+round       records/experiments/judgment-debate-6/arm-round/index.jsonl                     1644
+plain       records/experiments/judgment-debate-6/arm-plain/index.jsonl                      886
+R language  records/experiments/judgment-debate-6/arm-round/round-language.jsonl             896
+B language  records/experiments/judgment-debate-6/arm-plain/round-language.jsonl             886
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(0) POPULATION — THE 896 CELLS jd3's M1 CONTESTED
+====================================================================================================
+Read off `challenge_raised` in M1's index, exactly as judgment-debate-{4,5}.py
+read it. `data/cases/jd6-contested.jsonl` is the same set and asserts the count.
+
+index                                             rows    on the 896   decided
+----------------------------------------------------------------------------------------------------
+M1 — the real audit (jd3), judge-only             1644           896       895
+jd5-B — the same objections, re-ruled             1644           896       896
+jd6 arm R — ARGUED, then ruled                    1644           896       855
+jd6 arm B — one plain round, re-judged             886           886       886
+----------------------------------------------------------------------------------------------------
+population size: 896
+M0's before-state on these cells: 622/896 69.4% correct — 274 wrong. P1 is tested on the 622, P2 on the 274.
+
+THE TWO ARMS PUT THEIR STATES IN DIFFERENT COLUMNS. Arm R is a rerule: its
+`initially_correct` is M0's decision and `final_correct` is the ruling's. Arm B
+is a rejudge: it made its own decision, so its `initially_correct` is the AFTER
+state and M0's is `source_correct`. `before_of` / `after_of` in this file are
+the only two places that difference is handled.
+
+====================================================================================================
+  ATTEMPTED / COMPLETED / FAILED, PER ARM  [the loss, and what caused it]
+====================================================================================================
+`PREREG.md`'s loss rule: a cell missing in either arm — a failed round, a failed
+ruling or a failed judgment, each after the one retry the resume rule allows —
+is DROPPED from every paired table and counted here. A cell that was never put to
+a judge cannot be counted as an uphold or as an unchanged verdict, so it leaves
+the pairing rather than entering it as a concordant pair and diluting exactly the
+discordant counts P1 and P2 are computed from.
+
+arm                                attempted   completed    failed
+----------------------------------------------------------------------------------------------------
+arm R                                    896         855        41
+arm B                                    896         886        10
+----------------------------------------------------------------------------------------------------
+  arm R LOST gpqa-102-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST gpqa-129-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST gpqa-69-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST gpqa-8-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST lojban-stim159_gpt3-5_A-s1__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST lojban-stim181_gpt4_B-s5__debate__r1
+    TruncatedOutputError: recourse_judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST medqa-dev_1232__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST medqa-train_0477__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST medqa-train_1102__debate__r1
+    DebateFailure: contest round 4 failed: debater output still malformed after one format repair attempt: no 'Argument:' label found; refusing to treat the whole response as the public argument
+  arm R LOST medqa-train_1267__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST medqa-train_1511__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST medqa-train_3395__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02716-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02743-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02754-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02760-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02791-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02829-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02838-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02921-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02948-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p02972-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03035-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03075-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03160-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03214-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03253-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03569-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03659-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03759-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03803-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03813-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03814-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03838-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST python800-p03945-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST surgery-sur21_gpt3-5_A-s2__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST surgery-sur2_gpt3-5_A-s1__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST surgery-sur32_gpt3-5_B-s1__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST surgery-sur40_gpt4_B-s11__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST theoremqa-solutions-binomial_model_1-png-sound__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm R LOST theoremqa-solutions-math_algebra_3-png-flawed__debate__r1
+    DebateFailure: contest round 4 failed: recourse_debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST gpqa-10-flawed__debate__r1
+    DebateFailure: round 4 failed: debater output still malformed after one budget repair attempt: no 'Argument:' label found; refusing to treat the whole response as the public argument
+  arm B LOST gpqa-186-sound__debate__r1
+    TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST gpqa-48-sound__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p02883-flawed__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p03426-sound__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p03546-flawed__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p03724-flawed__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p03816-flawed__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST python800-p03838-flawed__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+  arm B LOST surgery-sur3_gpt4_B-s8__debate__r1
+    DebateFailure: round 4 failed: debater response stopped on finish_reason='length' at max_tokens=8192. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.
+
+`--retry-failed` MEANS A RETRIED CELL IS A DIFFERENT DRAW. The debaters run at
+temperature 0.7, so a cell re-attempted after a degenerate generation is
+re-rolled rather than repeated, and the retried cells are not a random sample
+of the population — they are the cells whose first draw went wrong. Retried
+and lost counts are reported per arm and never folded into a denominator.
+
+====================================================================================================
+  PROVIDER MIX PER ARM  [the pin, checked after the fact]
+====================================================================================================
+Both arms pin `meta-llama/llama-4-maverick` to `digitalocean`. §3aa found 34% of
+M1's rulings served by DeepInfra against 4.8% of jd5-B's, which is why the pin
+exists; this is where it is confirmed to have held. Display names, from the wire
+log — `provider_order` takes slugs, so the two can only be compared here.
+
+  arm B
+    debater                1940 calls   GMICloud 1918 (98.9%)  CoreWeave 22 (1.1%)
+    judge                   887 calls   DigitalOcean 887 (100.0%)
+
+  arm R
+    recourse_debater       1863 calls   GMICloud 1840 (98.8%)  CoreWeave 23 (1.2%)
+    recourse_judge          856 calls   DigitalOcean 856 (100.0%)
+    ruling_reader           855 calls   Amazon Bedrock 855 (100.0%)
+
+====================================================================================================
+(1) THE PRE-REGISTERED ENDPOINT — R vs B, PAIRED, ON THE SAME CELLS  [PRIMARY]
+====================================================================================================
+Every cell here carries ONE decision by M0 and TWO after-states: the ruling that
+followed an ARGUED objection (R) and the judgment that followed one more ORDINARY
+round (B). Same 896 cells, same two debaters, same judge model, same pin. What
+differs is whether the stakeholder's objection shaped the round, and whether the
+judge decided under `the decision stands unless` or decided afresh — a DOUBLE
+difference, and neither arm can separate its halves.
+
+====================================================================================================
+  P1 (PRIMARY, alpha = 0.05) — on the cells M0 got RIGHT: does R BREAK FEWER?
+====================================================================================================
+  A cell is BROKEN when the arm's after-state is wrong and M0 was right. `R correct / B wrong` is a cell the plain round broke and the contest round did not.
+
+                                     B right         B wrong     total
+----------------------------------------------------------------------------------------------------
+R right                                  296              62       358
+R wrong                                  176              49       225
+----------------------------------------------------------------------------------------------------
+total                                    472             111       583
+
+  M0 was RIGHT on all 583. A cell is BROKEN by an arm when that arm's
+  after-state is wrong.
+  broken by R ALONE   (R wrong, B right)   176
+  broken by B ALONE   (R right, B wrong)   62
+  broken by BOTH                           49
+  broken by NEITHER                        296
+  P1 asks whether the FIRST is smaller than the second. 176 vs 62.
+  discordant pairs                         238   (concordant 345, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                  p = 7.88783e-14   SIGNIFICANT at alpha=0.05
+
+  accuracy after R   358/583 61.4%  [57.4, 65.3]   (95% Wilson)
+  accuracy after B   472/583 81.0%  [77.6, 83.9]   (95% Wilson)
+  NOTE: there is no NET on this table. Both columns are AFTER-states; the gain
+  or loss against M0 is section (3), and it is an ABLATION.
+
+====================================================================================================
+  P2 (CO-PRIMARY) — on the cells M0 got WRONG: does R FIX AT LEAST AS MANY?
+====================================================================================================
+  A cell is FIXED when the arm's after-state is right and M0 was wrong. The endpoint is P1 AND P2: breaking fewer is only worth having if it does not cost the fixes.
+
+                                     B right         B wrong     total
+----------------------------------------------------------------------------------------------------
+R right                                   50              98       148
+R wrong                                   35              80       115
+----------------------------------------------------------------------------------------------------
+total                                     85             178       263
+
+  M0 was WRONG on all 263. A cell is FIXED by an arm when that arm's
+  after-state is right.
+  fixed by R ALONE    (R right, B wrong)   98
+  fixed by B ALONE    (R wrong, B right)   35
+  fixed by BOTH                            50
+  fixed by NEITHER                         80
+  P2 asks whether the FIRST is at least the second. 98 vs 35.
+  discordant pairs                         133   (concordant 130, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                  p = 4.29206e-08   SIGNIFICANT at alpha=0.05
+
+  accuracy after R   148/263 56.3%  [50.2, 62.1]   (95% Wilson)
+  accuracy after B   85/263 32.3%  [27.0, 38.2]   (95% Wilson)
+  NOTE: there is no NET on this table. Both columns are AFTER-states; the gain
+  or loss against M0 is section (3), and it is an ABLATION.
+
+====================================================================================================
+(2) THE CONDITIONAL RATES SIDE BY SIDE  [DESCRIPTIVE]
+====================================================================================================
+The margins of section (1), with Wilson intervals. `broken | right` is the rate
+P1 is about and `fixed | wrong` the rate P2 is about; the DIFFERENCE between them
+is what the net of section (3) collapses.
+
+arm                                         n             fixed | wrong            broken | right
+----------------------------------------------------------------------------------------------------
+M1 — judge-only, unpinned (jd3)           896110/274 40.1% [34.5, 46.0]128/622 20.6% [17.6, 23.9]
+jd5-B — judge-only, unpinned              896144/274 52.6% [46.6, 58.4]167/622 26.8% [23.5, 30.5]
+jd6 R — ARGUED, pinned                    896149/274 54.4% [48.5, 60.2]226/622 36.3% [32.6, 40.2]
+jd6 B — plain round, pinned               886 86/270 31.9% [26.6, 37.6]119/616 19.3% [16.4, 22.6]
+----------------------------------------------------------------------------------------------------
+  broken | right   R 36.3%  vs  B 19.3%   +17.0 pts   (P1's direction: NEGATIVE favours the contest round)
+  fixed  | wrong   R 54.4%  vs  B 31.9%   +22.5 pts   (P2's direction: NON-NEGATIVE favours the contest round)
+
+EVERY ABSOLUTE RATE IN ARM B CONTAINS MAVERICK'S OWN RE-DRAW DISAGREEMENT WITH
+ITSELF as well as the extra round's effect. No floor arm was run to price it
+(struck by the user, 2026-08-30). Section (1) is free of it; this table is not.
+
+====================================================================================================
+(3) NET ACCURACY AGAINST M0, PER ARM  [ABLATION — NOT AN ENDPOINT]
+====================================================================================================
+The quantity jd3-jd5 reported as P1, kept here so the campaigns are readable in
+one line — and demoted, because it is dominated by the 26% base rate of wrong
+decisions (§3y): an arm that breaks and fixes at equal RATES still nets negative.
+
+====================================================================================================
+  jd6 R — ARGUED, then ruled
+====================================================================================================
+                               round correct       round wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                               396               226       622
+M0 wrong                                 149               125       274
+----------------------------------------------------------------------------------------------------
+total                                    545               351       896
+
+  fixed   (M0 wrong -> round correct)   b = 149
+  broken  (M0 correct -> round wrong)   c = 226
+  NET                                    -77 cells
+  discordant pairs                       375   (concordant 521, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 8.23781e-05   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             622/896 69.4%  [66.3, 72.3]   (95% Wilson)
+  accuracy round          545/896 60.8%  [57.6, 64.0]   (95% Wilson)
+
+====================================================================================================
+  jd6 B — one plain round, re-judged
+====================================================================================================
+                               plain correct       plain wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                               497               119       616
+M0 wrong                                  86               184       270
+----------------------------------------------------------------------------------------------------
+total                                    583               303       886
+
+  fixed   (M0 wrong -> plain correct)   b = 86
+  broken  (M0 correct -> plain wrong)   c = 119
+  NET                                    -33 cells
+  discordant pairs                       205   (concordant 681, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.0251797   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             616/886 69.5%  [66.4, 72.5]   (95% Wilson)
+  accuracy plain          583/886 65.8%  [62.6, 68.9]   (95% Wilson)
+
+====================================================================================================
+(4) R AGAINST jd5-B — THE SAME OBJECTIONS WITH AND WITHOUT A ROUND  [DESCRIPTIVE]
+====================================================================================================
+The natural third column: jd5-B ruled these same 896 objections under the same
+prompt and the same judge model, with NOBODY answering them.
+
+THE PROVIDER CAVEAT, AND IT IS WHY THIS IS NOT AN ENDPOINT. jd5-B's judge was
+UNPINNED and jd6's is pinned to DigitalOcean; §3aa measured 34% of M1's rulings
+on DeepInfra against 4.8% of jd5-B's. So this table mixes the round with the
+routing and cannot separate them. Section (1) can, because both its arms are
+pinned to the same provider.
+                                  jd6-R OVERTURN        jd6-R UPHOLD     total
+----------------------------------------------------------------------------------------------------
+jd5-B OVERTURN                               196                 100       296
+jd5-B UPHOLD                                 179                 380       559
+----------------------------------------------------------------------------------------------------
+total                                        375                 480       855
+
+  jd5-B overturn rate                296/855 34.6%  [31.5, 37.9]
+  jd6-R overturn rate                375/855 43.9%  [40.6, 47.2]
+  moved OVERTURN -> UPHOLD            100
+  moved UPHOLD -> OVERTURN            179
+  discordant rulings                  279   (concordant 576, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR             p = 2.60656e-06   SIGNIFICANT at alpha=0.05
+
+====================================================================================================
+(5) WHAT THE ROUND ACTUALLY SAID  [KEYWORD INSTRUMENT — NOT A MEASUREMENT]
+====================================================================================================
+Two regexes over text, defined in `RULING_LANGUAGE`-style constants at the head
+of this file and re-derivable with `--scan-round-tree`. They are noisy in both
+directions and what they support is the CONTRAST — between the PRO and the ANTI
+reply, and between a ruling that names the exchange and one that does not — never
+the absolute rate. A hand read of a sample belongs in the CHECKLIST beside them.
+
+  cells scanned                         896
+  cells where a round was heard         896
+  ANTI  disputes a quotation           151/883 17.1%   (argues the defects are NOT real or not material)
+  PRO   disputes a quotation           117/869 13.5%   (argues they ARE real and material)
+  ruling prose names the exchange       769/896 85.8%
+
+A ruling that never names either debater may still have been moved by them, and
+one that names them may be summarising. This is an instrument, not a finding.
+
+  DOES THE RULING ANSWER BOTH REPLIES, OR ADOPT ONE?  [DIRECTS A HAND READ]
+  Distinctive word 6-grams of each reply that reappear in the ruling's prose,
+  as a share of that reply's own. It CANNOT tell adoption from agreement — a
+  judge that reached PRO's conclusion independently shares its vocabulary,
+  since both quote the same judgment and the same record — so what it does is
+  point the hand read at the cells worth reading, and the CHECKLIST's hand
+  count is what the write-up quotes.
+
+  cells scored                          856
+  one-sided (>= 2x the other, floor 0.02)   471/856 55.0%
+    of those, tracking PRO              421
+    of those, tracking ANTI             50
+  mean overlap with PRO / ANTI          0.148 / 0.082
+
+  A ruling that tracks PRO and never answers ANTI, on a decision that was
+  RIGHT, is the weak-judge-adopts-the-strong-advocate failure this arm exists
+  to detect. Both smokes produced one (`lojban-stim169`, `python800-p03214`),
+  and in the second the ruling named no debater at all — which is why the
+  `names the exchange` line above is not enough on its own.
+
+====================================================================================================
+(6) THE ROUND-4 TURNS THEMSELVES, IN BOTH ARMS  [DESCRIPTIVE]
+====================================================================================================
+Parse modes, repairs and word counts. Both arms buy exactly two strong-model
+turns per cell, and if one arm's turns were systematically shorter or more often
+repaired than the other's then 'same debaters, same extra tokens' would be an
+intent rather than a fact.
+
+
+====================================================================================================
+  jd6 R — the contest round
+====================================================================================================
+  cells with turns recorded             896 of 896
+  turns                                 1752
+  parse modes                           {'strict': 1685, 'salvaged_no_thinking': 63, 'strict_after_budget_repair': 4}
+  format repairs                        70
+  words per argument   min 15  median 317  max 1674  mean 346
+
+====================================================================================================
+  jd6 B — the plain round
+====================================================================================================
+  cells with turns recorded             886 of 886
+  turns                                 1772
+  parse modes                           {'strict': 1632, 'salvaged_no_thinking': 139, 'salvaged_no_thinking_after_budget_repair': 1}
+  format repairs                        146
+  words per argument   min 22  median 296  max 696  mean 304
+
+  ! 40 arm-R cells hold a round that is not two turns; a half-round is a failed cell re-attempted from scratch, so this should be 0.
+
+====================================================================================================
+  THE GLUED `Argument:` LABEL, AND WHETHER THE ROUND RAISED IT  [FORMAT INSTRUMENT]
+====================================================================================================
+A turn whose PUBLISHED argument still contains an `Argument:` label of its own:
+the model wrote the label mid-sentence after some planning text, and
+`parse_debater_output` — which takes the last label at a LINE START — published
+the planning text as part of the public argument. The parser cannot catch it and
+a reader of the record can see it, so the question is not whether it happens but
+whether THIS round does it more than the debate it continues. The same count is
+therefore taken over the PARENT rounds 1-3 of the very same cells, out of each
+arm's own copy of them — nothing here opens `jd3-main`.
+
+arm                           round-4 turns   glued           rate   parent turns   glued           rate
+----------------------------------------------------------------------------------------------------
+jd6 R — the contest round              1752     187 187/1752 10.7%           5376     571 571/5376 10.6%
+jd6 B — the plain round                1772     134  134/1772 7.6%           5316     568 568/5316 10.7%
+----------------------------------------------------------------------------------------------------
+A round-4 rate at or below its own parent rate is the habit INHERITED; a higher
+one is the round RAISING it, and that would be a fact about the new prompts.
+
+====================================================================================================
+  THE SAME FOUR INSTRUMENTS, SPLIT BY STANCE  [arm R only]
+====================================================================================================
+PRO argues the alleged defects are real and material; ANTI argues they are not.
+They are different tasks with different amounts to say, and a systematic
+difference between them is a difference in what the judge reads on each side of
+the objection — which is exactly the asymmetry the exchange block's symmetric
+discount was rewritten to avoid leaning on. Smoke 1's two heavy word overruns
+(441 and 687 against a 400-word limit) were BOTH PRO turns, which is why this
+split is pre-registered rather than looked at afterwards.
+
+stance       turns         glued     truncated     over 400w  median words    max
+----------------------------------------------------------------------------------------------------
+PRO            869 104/869 12.0%    0/869 0.0% 151/869 17.4%           320   1674
+ANTI           883   83/883 9.4%    0/883 0.0% 103/883 11.7%           313    767
+----------------------------------------------------------------------------------------------------
+Arm B has no stances — nobody is arguing about an objection there — so this
+table is arm R's alone, and the un-split counts above are the comparison.
+
+====================================================================================================
+  TRUNCATED ROUND-4 TURNS  [the cell-loss mechanism]
+====================================================================================================
+`finish_reason == "length"` at `generation_max_tokens`: the turn ran out of
+budget mid-argument, which is FATAL and unretryable — a truncated argument would
+enter the public transcript as if authored — so the cell fails and is counted.
+It is the sweep's own failure mode (a restart loop in the private Thinking
+block), not a new one, and the arms report the loss rather than hiding it.
+
+  jd6 R — the contest round   0 of 1752 completed round-4 turns (0/1752 0.0%)
+  jd6 B — the plain round     0 of 1772 completed round-4 turns (0/1772 0.0%)
+
+READ THIS COUNT WITH THE ATTEMPTS TABLE OF SECTION (0), NOT INSTEAD OF IT.
+A TRUNCATED TURN IS NEVER COMMITTED — `_complete_with_repair` raises rather than
+letting a cut-off argument enter the public transcript as if authored — so it
+leaves NO row on disk to carry `finish_reason = "length"`. What it leaves is a
+HALF-ROUND: the other debater's turn, committed before the raise, beside a run
+whose manifest says failed. So this count reads 0 on the very cells it is about,
+and the truncations are visible in three other places instead: the failed-cell
+list in section (0) with the error verbatim, the `turns_n != 2` line above, and
+the difference between 896 and each arm's `decided` column. The count below
+catches the OTHER shape — a turn the provider marked `length` and still
+returned parseably — which has not been seen in either smoke.
+
+====================================================================================================
+THE PRE-REGISTERED READING
+====================================================================================================
+P1  on the 583 initially-CORRECT cells decided by both arms: R broke 176 that B did not, B broke 62 that R did not, p = 7.888e-14.
+    R BREAKS MORE — SIGNIFICANT at alpha=0.05
+P2  on the 263 initially-WRONG cells decided by both arms: R fixed 98 that B did not, B fixed 35 that R did not, p = 4.292e-08.
+    R FIXES AT LEAST AS MANY
+
+THE RESULT IS A SPLIT AND IS REPORTED AS ONE. P1 FAILS and P2 HOLDS: the
+contest round is MORE INTERVENTIONIST IN BOTH DIRECTIONS — it breaks more of
+the decisions M0 got right AND fixes more of the ones it got wrong. That is
+none of the four named outcomes: (A) needs P1, (B) needs R to break fewer,
+(C) needs B to beat R on both, (D) needs no separation. PREREG.md's rule is
+that a split is reported as the split it is, with both tests' numbers, and
+NOT rounded to whichever named outcome it is nearest. It is not rounded here.
+
+THE FOUR NAMED OUTCOMES, written into PREREG.md before either arm ran, so that
+no rule is invented after the table:
+  (A) P1 and P2 hold          the objection makes the extra round more
+                              discriminating than an un-steered one
+  (B) R breaks fewer AND      the contest round is CONSERVATIVE, not
+      fixes fewer             discriminating
+  (C) B beats R on both       the objection is worse than no objection
+  (D) no separation           the round's content does not matter, only that
+                              there was one
+
+WHAT THIS FILE DOES NOT CLAIM: nothing about jd3's P1, `single`/`self_critique`,
+natural-error selection, `weak_alone`, or the same-model property (Maverick
+judged these debates and rules on the appeals — the jd3 design, unrepaired here).
+No number here is pooled with jd3-jd5's: the ruling prompt and the pin differ.

@@ -1,0 +1,103 @@
+{
+  "run_id": "20260830T041243Z-gpqa-159-flawed-rejudge",
+  "kind": "rejudge",
+  "condition": "debate",
+  "item_id": "gpqa-159-flawed",
+  "row_id": "gpqa:159",
+  "subset": "gpqa",
+  "rejudged_from": "outputs/experiments/jd3-main",
+  "source_run_dir": "outputs/experiments/jd3-main/cells/gpqa-159-flawed__debate__r1/runs/20260828T114631Z-gpqa-159-flawed-rejudge",
+  "source_run_id": "20260828T114631Z-gpqa-159-flawed-rejudge",
+  "source_sha256": "eba33cb5523fc72d0dead3ad76ce067731b48b74b62c431481c32763b41d7fc7",
+  "source_verdict": "SOUND",
+  "source_correct": false,
+  "source_judge_model": "meta-llama/llama-4-maverick",
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 16,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 8,
+    "copy_parent": true
+  },
+  "cell_id": "gpqa-159-flawed__debate__r1",
+  "judge_model": "meta-llama/llama-4-maverick",
+  "extended_from_rounds": 3,
+  "rounds_n": 4,
+  "error": null,
+  "decision_path": {
+    "calls": 3,
+    "attempts": 3,
+    "prompt_tokens": 9574,
+    "completion_tokens": 1964,
+    "reasoning_tokens": 0,
+    "cached_tokens": 2599,
+    "total_tokens": 11538,
+    "cost_usd": 0.003823
+  },
+  "off_path": {
+    "calls": 0,
+    "attempts": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "by_role": {
+    "debater": {
+      "calls": 2,
+      "attempts": 2,
+      "prompt_tokens": 5842,
+      "completion_tokens": 1496,
+      "reasoning_tokens": 0,
+      "cached_tokens": 2599,
+      "total_tokens": 7338,
+      "cost_usd": 0.00275
+    },
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3732,
+      "completion_tokens": 468,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4200,
+      "cost_usd": 0.001072
+    }
+  },
+  "by_purpose": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3732,
+      "completion_tokens": 468,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4200,
+      "cost_usd": 0.001072
+    },
+    "turn": {
+      "calls": 2,
+      "attempts": 2,
+      "prompt_tokens": 5842,
+      "completion_tokens": 1496,
+      "reasoning_tokens": 0,
+      "cached_tokens": 2599,
+      "total_tokens": 7338,
+      "cost_usd": 0.00275
+    }
+  },
+  "providers": {
+    "DigitalOcean": 1,
+    "GMICloud": 2
+  },
+  "repairs": 0,
+  "failed_attempts": 0
+}

@@ -1,0 +1,12 @@
+ARM R — contest round   calls=3574  non-2xx=0  cost=$7.5823
+  recourse_debater       1863 calls  $   4.4109   prompt   9048080  completion  1953172
+  recourse_judge          856 calls  $   1.3685   prompt   5015967  completion   527147
+  ruling_reader           855 calls  $   1.8029   prompt    909983  completion   178791
+ARM B — plain round   calls=2827  non-2xx=0  cost=$4.4024
+  debater                1940 calls  $   3.2898   prompt   7152126  completion  1369166
+  judge                   887 calls  $   1.1126   prompt   3842167  completion   495985
+
+BOTH ARMS: 6401 calls, 0 non-2xx, $11.9847
+Smokes (already spent, outside the arms): $0.1426
+Provider check: $0.0000044
+CAMPAIGN TOTAL: $12.1273

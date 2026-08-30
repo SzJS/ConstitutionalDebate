@@ -1626,3 +1626,41 @@ def test_jd6_flags_a_ruling_that_adopts_one_reply_without_answering_the_other(jd
     # and the floor keeps two near-zero overlaps from being called one-sided
     assert jd6.one_sided(0.001, 0.0) is False
     assert jd6.one_sided(0.0, 0.0) is False
+
+
+def test_jd6_reports_the_primary_table_in_the_words_of_two_after_states(capsys, jd6):
+    """Section (1) pairs two AFTER-states, so jd4's before/after vocabulary is wrong in it.
+
+    `jd4.paired_block` calls its discordant cells "fixed" and "broken" and prints their
+    difference as a NET, which is right for a BEFORE against an AFTER and wrong for R's
+    ruling against B's judgment: "fixed" would name a cell one arm got right and the other
+    did not, which is nobody's fix, and the NET would be the margin between two arms rather
+    than a gain over M0. On the real run that mislabelled net read +114 on the very table
+    whose finding is that R breaks 176 where B breaks 62 — the opposite sign to the result.
+    Same counts, same exact test, correct words.
+    """
+    # 3 cells R broke alone, 1 B broke alone, 1 both, 2 neither
+    pairs = ([(f"a{i}", False, True) for i in range(3)]
+             + [("b0", True, False)]
+             + [("c0", False, False)]
+             + [(f"d{i}", True, True) for i in range(2)])
+    out = jd6.paired_after_block(pairs, "right")
+    printed = capsys.readouterr().out
+    assert out["r_only"] == 3 and out["b_only"] == 1
+    assert out["n"] == 7 and out["r_right"] == 3 and out["b_right"] == 5
+    assert "broken by R ALONE   (R wrong, B right)   3" in printed
+    assert "broken by B ALONE   (R right, B wrong)   1" in printed
+    assert "P1 asks whether the FIRST is smaller than the second. 3 vs 1." in printed
+    # the two words that must NOT appear on a table of two after-states
+    assert "NET" not in printed.replace("there is no NET", "")
+    assert "fixed" not in printed
+
+    # and on the wrong cells the same 2x2 is read the other way round
+    out2 = jd6.paired_after_block(pairs, "wrong")
+    printed2 = capsys.readouterr().out
+    assert out2["r_only"] == 1 and out2["b_only"] == 3
+    assert "fixed by R ALONE    (R right, B wrong)   1" in printed2
+    assert "P2 asks whether the FIRST is at least the second. 1 vs 3." in printed2
+    assert "broken" not in printed2
+    # the exact test does not depend on which way the table is read
+    assert out["p"] == out2["p"] == jd6.mcnemar_exact(1, 3)

@@ -1,0 +1,29 @@
+jd6 SMOKE 2 — MEASURED COST PER CELL PER ROLE, off calls.jsonl
+====================================================================================================
+`parent/` logs are skipped: they belong to the run that paid for them. The ATTEMPTED
+count is the divisor, not the completed one — a cell that failed still bought its
+turns, and `--retry-failed` will buy them again on the resume.
+
+ARM R — the contest round   tree=jd6-smoke-2-round   attempted=6 completed=5
+  role                    calls      cost $   $/attempted
+  ------------------------------------------------------------
+  recourse_debater           12    0.031911      0.005319
+  recourse_judge              5    0.007991      0.001332
+  ruling_reader               5    0.011692      0.001949
+  ------------------------------------------------------------
+  TOTAL                      22    0.051594      0.008599
+  -> 896 cells: $7.70   with 1.3x headroom $10.02
+
+ARM B — the plain round   tree=jd6-smoke-2-plain   attempted=3 completed=3
+  role                    calls      cost $   $/attempted
+  ------------------------------------------------------------
+  debater                     6    0.011069      0.003690
+  judge                       3    0.003573      0.001191
+  ------------------------------------------------------------
+  TOTAL                       9    0.014642      0.004881
+  -> 896 cells: $4.37   with 1.3x headroom $5.68
+
+====================================================================================================
+SMOKE 2, BOTH HALVES: $0.066236
+
+Smoke 1 cost $0.076356; the two together are $0.1426, all of it before any paid arm.

@@ -564,6 +564,64 @@ def section_population(arms, cells, providers, attempts) -> None:
             print(f"    {role:<20}{total:>7} calls   {spread}")
 
 
+def paired_after_block(pairs, only: str) -> dict:
+    """The R-vs-B 2x2, in the words of TWO AFTER-STATES.
+
+    NOT `jd4.paired_block`, and this is a correctness fix rather than a preference.
+    That function is written for a BEFORE against an AFTER, so it calls its two discordant
+    cells "fixed" and "broken" and prints their difference as a NET. Section (1) pairs two
+    AFTER-states with each other — R's ruling against B's judgment, on a decision M0 already
+    made — so in it "fixed" would name a cell one arm got right and the other did not, which
+    is not a fix by anybody, and the "NET" would be the margin between two arms rather than
+    a gain over M0. A reader who copied that net into a write-up would report the opposite
+    of the finding. Same counts, same exact test, correct words.
+    """
+    counts = Counter((a, b) for _, a, b in pairs)
+    rr, rw = counts[(True, True)], counts[(True, False)]
+    wr, ww = counts[(False, True)], counts[(False, False)]
+    n = rr + rw + wr + ww
+    r_right, b_right = rr + rw, rr + wr
+    p = mcnemar_exact(rw, wr)
+    verb = "left wrong" if only == "right" else "left right"
+    print(f"{'':<28}{'B right':>16}{'B wrong':>16}{'total':>10}")
+    rule()
+    print(f"{'R right':<28}{rr:>16}{rw:>16}{r_right:>10}")
+    print(f"{'R wrong':<28}{wr:>16}{ww:>16}{n - r_right:>10}")
+    rule()
+    print(f"{'total':<28}{b_right:>16}{n - b_right:>16}{n:>10}")
+    print()
+    if only == "right":
+        print(f"  M0 was RIGHT on all {n}. A cell is BROKEN by an arm when that arm's")
+        print("  after-state is wrong.")
+        print(f"  broken by R ALONE   (R wrong, B right)   {wr}")
+        print(f"  broken by B ALONE   (R right, B wrong)   {rw}")
+        print(f"  broken by BOTH                           {ww}")
+        print(f"  broken by NEITHER                        {rr}")
+        print(f"  P1 asks whether the FIRST is smaller than the second. "
+              f"{wr} vs {rw}.")
+    else:
+        print(f"  M0 was WRONG on all {n}. A cell is FIXED by an arm when that arm's")
+        print("  after-state is right.")
+        print(f"  fixed by R ALONE    (R right, B wrong)   {rw}")
+        print(f"  fixed by B ALONE    (R wrong, B right)   {wr}")
+        print(f"  fixed by BOTH                            {rr}")
+        print(f"  fixed by NEITHER                         {ww}")
+        print(f"  P2 asks whether the FIRST is at least the second. "
+              f"{rw} vs {wr}.")
+    print(f"  discordant pairs                         {rw + wr}"
+          f"   (concordant {rr + ww}, and they carry no direction)")
+    print(f"  EXACT TWO-SIDED McNEMAR                  p = {p:.6g}   {verdict_at(p)}")
+    print()
+    print(f"  accuracy after R   {acc(r_right, n)}   (95% Wilson)")
+    print(f"  accuracy after B   {acc(b_right, n)}   (95% Wilson)")
+    print(f"  NOTE: there is no NET on this table. Both columns are AFTER-states; the gain")
+    print(f"  or loss against M0 is section (3), and it is an ABLATION.")
+    return {"n": n, "rr": rr, "rw": rw, "wr": wr, "ww": ww,
+            "r_only": wr if only == "right" else rw,
+            "b_only": rw if only == "right" else wr,
+            "r_right": r_right, "b_right": b_right, "p": p}
+
+
 def section_primary(arms, cells) -> dict:
     head("(1) THE PRE-REGISTERED ENDPOINT — R vs B, PAIRED, ON THE SAME CELLS  [PRIMARY]")
     print("Every cell here carries ONE decision by M0 and TWO after-states: the ruling that")
@@ -599,7 +657,7 @@ def section_primary(arms, cells) -> dict:
         if not pairs:
             print("  NOT RUN — no cell of this kind was decided by both arms.")
             continue
-        out[key] = paired_block(pairs, "R", "B")
+        out[key] = paired_after_block(pairs, only)
     return out
 
 
@@ -1050,17 +1108,25 @@ def main(argv=None) -> int:
         return 0
     p1, p2 = primary.get("P1"), primary.get("P2")
     if p1:
-        # `paired_block(pairs, "R", "B")` reads R as the BEFORE column, so its `broken`
-        # counts cells R got right and B got wrong — which is B breaking one R did not —
-        # and `fixed` the converse. Spelled out, because the sign of this is the endpoint.
         print(f"P1  on the {p1['n']} initially-CORRECT cells decided by both arms: "
-              f"{p1['broken']} were left wrong by B alone, {p1['fixed']} by R alone, "
-              f"p = {p1['p']:.4g}.")
-        print(f"    {'R BREAKS FEWER' if p1['broken'] > p1['fixed'] else 'R DOES NOT BREAK FEWER'}"
+              f"R broke {p1['r_only']} that B did not, B broke {p1['b_only']} that R did "
+              f"not, p = {p1['p']:.4g}.")
+        print(f"    {'R BREAKS FEWER' if p1['r_only'] < p1['b_only'] else 'R BREAKS MORE'}"
               f" — {verdict_at(p1['p'])}")
     if p2:
         print(f"P2  on the {p2['n']} initially-WRONG cells decided by both arms: "
-              f"{p2['fixed']} were fixed by B alone, {p2['broken']} by R alone.")
+              f"R fixed {p2['r_only']} that B did not, B fixed {p2['b_only']} that R did "
+              f"not, p = {p2['p']:.4g}.")
+        print(f"    {'R FIXES AT LEAST AS MANY' if p2['r_only'] >= p2['b_only'] else 'R FIXES FEWER'}")
+    if p1 and p2:
+        print()
+        print("THE RESULT IS A SPLIT AND IS REPORTED AS ONE. P1 FAILS and P2 HOLDS: the")
+        print("contest round is MORE INTERVENTIONIST IN BOTH DIRECTIONS — it breaks more of")
+        print("the decisions M0 got right AND fixes more of the ones it got wrong. That is")
+        print("none of the four named outcomes: (A) needs P1, (B) needs R to break fewer,")
+        print("(C) needs B to beat R on both, (D) needs no separation. PREREG.md's rule is")
+        print("that a split is reported as the split it is, with both tests' numbers, and")
+        print("NOT rounded to whichever named outcome it is nearest. It is not rounded here.")
     print()
     print("THE FOUR NAMED OUTCOMES, written into PREREG.md before either arm ran, so that")
     print("no rule is invented after the table:")

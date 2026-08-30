@@ -126,6 +126,55 @@ checkable.
 > read [`CHECKLIST.md`](records/experiments/judgment-debate-5/CHECKLIST.md) **§0 first**;
 > write-up `LLM_NOTES.md` **§3aa**.
 
+> **THE CONTESTABILITY DEBATE ROUND IS DONE — `judgment-debate-6`, 2026-08-30. DO NOT
+> RE-RUN IT.** DESIGN.md's ablation, and the answer to the user's weak-vs-weak hypothesis is
+> **no**. Two arms on jd3 M1's 896 objections, paired cell for cell, both reading `jd3-main`
+> read-only: **R** put the objection to the two ORIGINAL strong debaters — one simultaneous
+> reply each, the loser arguing the defects are real and material, the winner that they are
+> not, each still on its assigned side — and had the weak judge rule on the argued exchange;
+> **B** had the same debaters play one more ORDINARY round with no objection and the same
+> judge decide the four-round transcript afresh. 02:28:23Z → 05:30:49Z, **3 h 02 m**,
+> **$11.9847**, **6,401 wire calls with 0 non-2xx**, five stages, all exit 0. **855/896 ruled
+> in R and 886/896 decided in B**; `jd3-main` byte-identical throughout (`dfa9bdca…`).
+> Maverick **provider-pinned** in both arms for the first time and the pin held 100%.
+>
+> **P1 FAILED AND P2 HELD, AND THE PAIR IS A SPLIT THAT IS NOT ANY OF THE FOUR NAMED
+> OUTCOMES.** On the 583 cells M0 got RIGHT that both arms decided, the argued round broke
+> **176** the plain round kept against **62** the other way (exact McNemar **p = 7.9e-14**) —
+> P1 predicted it would break FEWER and it breaks **2.8× as many**. On the 263 M0 got WRONG it
+> fixed **98** against **35** (**p = 4.3e-08**). **The contest round is more interventionist
+> in both directions**, and `PREREG.md`'s rule that a split is reported as the split it is —
+> written before either arm ran — is applied rather than rounded.
+>
+> **THE MECHANISM IS ADOPTION, AND THE HAND CHECK IS WHERE IT IS NAMED.** The pre-registered
+> lexical instrument fires on **471 of 856 rulings (55%)** and **421 of those track PRO
+> against 50 tracking ANTI**; Fable's read of 20 cells found **5/5** of R's breaks adopting
+> PRO with **ANTI unanswered**, **3/5** overturns made on *"if Bob is right"* conditionals,
+> and **5/5** of them thin omissions the judgment had **addressed in substance**. PRO is by
+> construction the loser's debater, so adopting it raises `fixed | wrong` and
+> `broken | right` **together** — which is exactly the split. **A strong reply did not give
+> the weak judge discrimination; it gave it a side.** Its discrimination gap (+18.1) beats
+> the un-steered round's (+12.6) and **loses to no round at all** (jd5-B's +25.8).
+>
+> Evidence:
+> [`records/experiments/judgment-debate-6/`](records/experiments/judgment-debate-6/README.md),
+> read [`CHECKLIST.md`](records/experiments/judgment-debate-6/CHECKLIST.md) **§0 first**, then
+> [`HANDCHECK.md`](records/experiments/judgment-debate-6/HANDCHECK.md); write-up
+> `LLM_NOTES.md` **§3ab**; pre-registration
+> [`PREREG.md`](records/experiments/judgment-debate-6/PREREG.md), committed at `d13400b` with
+> the code and the driver and **before either arm's first paid call**, after two nine-cell
+> smokes ($0.1426) the first of which changed two sentences of the new prompts.
+>
+> **STILL OWED, and each of the first three is a prompt change needing its own smoke:** a
+> **Step-1 rule for omissions** ("the judgment addressed this in substance but did not quote
+> it" is not an omission — the highest-yield change the hand check names); a **ruling
+> instruction that a conditional is not a finding**; a **debater-format fix for the glued
+> `Argument:` label** (10.7% of round-4 turns publish their planning text, and it is inherited
+> from the debate rather than caused by this round). Beyond them, unchanged and still owed:
+> the **mechanical-check arm** of §3aa, **multi-round contest**, the **python800 phrasing**
+> question, **`weak_alone`**, and the **same-model property** — Maverick judged these debates
+> and rules on the appeals against its own judgments, which every phase since jd3 has carried.
+
 > **The partisan-challenger ablation was tried on three clauses on the 207-cell slice on
 > 2026-08-27 and is a NO-GO** — none reached the pre-written gate of 2× the neutral genuine
 > objection rate, so the ~$22 full run was never started; evidence in
@@ -313,7 +362,7 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$224.23**. It breaks into five blocks, each itemised where it is
+Total spent so far: **$236.35**. It breaks into six blocks, each itemised where it is
 reported:
 
 * **$99.68 through the debate-only judgment-challenge run** — $63.00 through the auditor
@@ -347,6 +396,15 @@ reported:
   arms** ($1.64 against $1.29, $1.93 against $1.41) — `anthropic/claude-haiku-4.5` reading 896
   rulings is the more expensive half of a re-rule, which is worth knowing before the next one
   is budgeted.
+* **$12.1273 for `judgment-debate-6`** (2026-08-30), the contestability debate round: arm R
+  `jd6-round` **$7.5823**, arm B `jd6-plain` **$4.4024**, two nine-cell smokes **$0.0764** +
+  **$0.0662**, and one provider-check call at **$0.0000044**. It came in **18% under** its
+  $14.6 estimate — which was itself measured from the smokes rather than scaled — and it is
+  the first phase in this campaign whose bill is dominated by **generation**: the 3,803
+  round-4 debater turns cost **$7.70** against **$2.48** for all 1,743 judge and recourse-judge
+  calls together. **A round is roughly three times the price of a ruling**, which is worth
+  knowing before a multi-round contest is budgeted. Note also that arm R's ruling reader
+  ($1.80) again cost more than its judge ($1.37), as it did in both jd5 arms.
 
 The earlier breakdown, unchanged, of the first block's $36.6753: the first instrument check
 `judgment-debate-pilot` **$1.3285**, three six-cell prompt smokes **$0.1848**

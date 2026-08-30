@@ -1,0 +1,23 @@
+{
+  "R": {
+    "recourse_debater": {
+      "GMICloud": 1840,
+      "CoreWeave": 23
+    },
+    "recourse_judge": {
+      "DigitalOcean": 856
+    },
+    "ruling_reader": {
+      "Amazon Bedrock": 855
+    }
+  },
+  "B": {
+    "debater": {
+      "GMICloud": 1918,
+      "CoreWeave": 22
+    },
+    "judge": {
+      "DigitalOcean": 887
+    }
+  }
+}
