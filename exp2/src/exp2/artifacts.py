@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .prompts import contest_void_reason
 from .types import verdict_for
 
 _MARKDOWN_STRUCTURE_RE = re.compile(r"(?m)^(#{1,6}[ \t]|-{3,}[ \t]*$|={3,}[ \t]*$)")
@@ -266,19 +267,35 @@ def _objection_section(challenge: dict,
                  "it wanted.** No ruling was sought, and the contest is excluded from "
                  "the rates rather than counted either way. What they wrote:", "",
                  text, ""]
-    elif (challenge.get("arm") == "findings"
-          and parent_verdict is not None
-          and claimed == parent_verdict.get("verdict")):
-        # THE FINDINGS ARM'S LOCAL CONTEST. Here `claimed_verdict` is DERIVED from the
-        # contests rather than read off the decision line, so it can equal the decision's
-        # own verdict — an objection that contests one finding among several, correctly,
-        # and still leaves the verdict where it was. Printing "they say the verdict
-        # should be FLAWED" over a FLAWED decision would tell a stakeholder their
-        # objection asked for nothing, which is the opposite of what it did.
-        lines = [f"*Raised by a stakeholder who read only the record above. They "
-                 f"contest the findings below; granting every one of them would still "
-                 f"leave the verdict **{claimed}**, so the objection is about the "
-                 f"reasoning rather than about the answer.*", "", text]
+    elif challenge.get("arm") == "findings":
+        # THE FINDINGS ARM. Here `claimed_verdict` is DERIVED from every contest the
+        # objection raised — void ones included, because a stakeholder whose quotation
+        # could not be found still asked for something — rather than read off the
+        # decision line. Three things it can therefore say, and they are three different
+        # facts about the objection:
+        contests = challenge.get("defects") or []
+        if contests and all(contest.get("void") for contest in contests):
+            # EVERY CONTEST VOID. Said outright, because the alternative sentences would
+            # both be false: the objection did not merely concern the reasoning, and its
+            # contests were not weighed and rejected — they never reached the judge's
+            # standard at all. The outcome section names the failed check per contest.
+            lines = [f"*Raised by a stakeholder who read only the record above. They "
+                     f"say the verdict should be **{claimed}**. Every contest quoted "
+                     f"words that could not be found in the documents they were "
+                     f"attributed to, so none of them could be applied.*", "", text]
+        elif (parent_verdict is not None
+              and claimed == parent_verdict.get("verdict")):
+            # A LOCAL CONTEST: one finding among several, contested and possibly right,
+            # leaving the verdict where it was. Printing "they say the verdict should be
+            # FLAWED" over a FLAWED decision would tell a stakeholder their objection
+            # asked for nothing, which is the opposite of what it did.
+            lines = [f"*Raised by a stakeholder who read only the record above. They "
+                     f"contest the findings below; granting every one of them would "
+                     f"still leave the verdict **{claimed}**, so the objection is about "
+                     f"the reasoning rather than about the answer.*", "", text]
+        else:
+            lines = [f"*Raised by a stakeholder who read only the record above. They say "
+                     f"the verdict should be **{claimed}**.*", "", text]
     else:
         lines = [f"*Raised by a stakeholder who read only the record above. They say "
                  f"the verdict should be **{claimed}**.*", "", text]
@@ -328,19 +345,58 @@ def _exchange_section(exchange: dict[str, Any], ruling: dict[str, Any] | None) -
     return "\n".join(lines)
 
 
+_CONTEST_NUMBER_RE = re.compile(r"^\s*Contest\s+(\d+)\b")
+
+
+def _annotated_contest_lines(stated: str,
+                             contests: list[dict[str, Any]]) -> tuple[str, bool]:
+    """The judge's lines, each void contest's marked ``not applied`` and why.
+
+    Added 2026-09-02, after a smoke record printed `Contest 1: FLAW` directly above "0
+    are ruled FLAW" with nothing in between to explain it. The judge really did write
+    that line; the contest was void at parse time, so `apply_contest_lines` ignored it
+    and the verdict did not move. A stakeholder reading their own record has to be told
+    that, and told which check failed — otherwise the document contradicts itself in
+    front of the person it is written for.
+    """
+    by_index = {int(contest["index"]): contest for contest in contests
+                if contest.get("index") is not None}
+    out: list[str] = []
+    any_void = False
+    for line in stated.splitlines():
+        match = _CONTEST_NUMBER_RE.match(line)
+        contest = by_index.get(int(match.group(1))) if match else None
+        if contest is not None and contest.get("void"):
+            any_void = True
+            reason = contest_void_reason(contest) or "a mechanical check failed"
+            out.append(f"{line.rstrip()} — not applied: {reason}")
+        else:
+            out.append(line)
+    return "\n".join(out), any_void
+
+
 def _findings_outcome_lines(ruling: dict[str, Any],
-                            after: dict[str, Any] | None) -> list[str]:
+                            after: dict[str, Any] | None,
+                            challenge: dict[str, Any] | None = None) -> list[str]:
     """The judge's contest rulings, and what they did to the list.
 
     Printed from the RULING's own `conclusion_line` and from `findings.after.json`, not
     re-derived here: the document's whole claim is that a reader can check the verdict
     against the sentences it came from, and a renderer that recomputed the derivation
-    would be showing them its own arithmetic instead of the judge's.
+    would be showing them its own arithmetic instead of the judge's. The one thing added
+    to the judge's own words is the note on a line that was NOT applied, which is a fact
+    about the harness and is marked as one.
     """
     lines: list[str] = []
     stated = (ruling.get("conclusion_line") or "").strip()
     if stated:
-        lines += ["", "**The judge ruled on each contest:**", "", _quote(stated)]
+        annotated, any_void = _annotated_contest_lines(
+            stated, (challenge or {}).get("defects") or [])
+        lines += ["", "**The judge ruled on each contest:**"]
+        if any_void:
+            lines += ["", "Contests whose quotations could not be found were not "
+                          "applied."]
+        lines += ["", _quote(annotated)]
     if not after:
         return lines
     added = [f for f in (after.get("findings") or []) if f.get("added_at_recourse")]
@@ -425,8 +481,8 @@ def render_recourse_record(directory: Path) -> str:
         if grounds:
             lines += ["", "**Grounds given:**", "", _quote(grounds)]
         if ruling.get("form") == "derived_findings":
-            lines += _findings_outcome_lines(ruling, _read(directory,
-                                                           "findings.after.json"))
+            lines += _findings_outcome_lines(
+                ruling, _read(directory, "findings.after.json"), challenge)
         lines += ["", f"**Verdict now:** "
                       f"{_VERDICT_PHRASE.get(ruling['verdict'], ruling['verdict'])}.", ""]
         parts.append("\n".join(lines))

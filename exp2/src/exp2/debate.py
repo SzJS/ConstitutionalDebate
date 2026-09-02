@@ -18,6 +18,8 @@ from .prompts import (
     build_debater_messages,
     build_judge_messages,
     parse_debater_output,
+    findings_passage_counts,
+    findings_trim_counts,
     parse_findings_output,
     parse_verdict_output,
 )
@@ -258,7 +260,20 @@ async def _judge(
         # `load_run_record` refuses as incomplete) rather than a verdict whose derivation
         # is missing.
         if findings is not None:
+            # The two format measurements are taken HERE, where the item's own text and
+            # the judge's own reply are both in hand, rather than re-derived later from a
+            # tree: `findings_passage_counts` needs the solution the passages were
+            # supposed to be copied from, and `findings_trim_counts` needs the untrimmed
+            # reply. Report-only, both of them — see `record_findings`.
+            passage_exact_n, duplicate_passage_n = findings_passage_counts(
+                findings, item.solution)
+            preamble_chars, trailing_chars = findings_trim_counts(
+                completion.content, reasoning)
             writer.record_findings(findings, verdict=verdict_word,
-                                   parse_mode=verdict.parse_mode)
+                                   parse_mode=verdict.parse_mode,
+                                   passage_exact_n=passage_exact_n,
+                                   duplicate_passage_n=duplicate_passage_n,
+                                   preamble_chars=preamble_chars,
+                                   trailing_chars=trailing_chars)
         writer.record_verdict(verdict, transcript)
     return verdict

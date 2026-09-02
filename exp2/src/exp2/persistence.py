@@ -488,7 +488,9 @@ class RunWriter:
         self._render()
 
     def record_findings(self, findings: list[dict[str, Any]], *, verdict: str,
-                        parse_mode: str) -> None:
+                        parse_mode: str, passage_exact_n: int | None = None,
+                        duplicate_passage_n: int | None = None,
+                        preamble_chars: int = 0, trailing_chars: int = 0) -> None:
         """The decomposed judgment, written BEFORE ``verdict.json``.
 
         Before, and not after, because the verdict is DERIVED from this list: a crash
@@ -500,6 +502,16 @@ class RunWriter:
         ``from_dict`` and `load_run_record` filters exactly one key out of that file: a
         new key there would fail to load every existing tree, and the whole list would
         travel through a dataclass that has no field for it.
+
+        THE FOUR COUNTS ADDED 2026-09-02 ARE REPORTED AND NEVER ENFORCED.
+        `passage_exact_n` and `duplicate_passage_n` say how well the judge held the
+        format — how many passages are really in the text under review, and how many
+        findings repeat an earlier finding's passage — after a smoke in which the weak
+        judge listed one claim four times and quoted a quarter of its passages
+        inexactly. `preamble_chars` and `trailing_chars` say how much of the reply the
+        publication trim dropped. All four are measurements of the judge; a list is never
+        refused for any of them, because refusing would turn a measurement into a lost
+        cell and make the two arms incomparable.
         """
         _write_json(self.dir / "findings.json", {
             "form": "findings",
@@ -509,6 +521,10 @@ class RunWriter:
             "n_flaw": sum(1 for f in findings if f.get("ruling") == "FLAW"),
             "ruling_normalised_n": sum(
                 1 for f in findings if f.get("ruling_normalised")),
+            "passage_exact_n": passage_exact_n,
+            "duplicate_passage_n": duplicate_passage_n,
+            "preamble_chars": preamble_chars,
+            "trailing_chars": trailing_chars,
             "parse_mode": parse_mode,
         })
 
@@ -627,8 +643,17 @@ class RunRecord:
         challenger what the record does not publish. For a debate the judge's ``raw`` is
         what ``transcript.md`` prints, and ``reasoning`` is empty whenever the judge
         answered before explaining.
+
+        UNDER ``judge_form = "findings"`` it is ``reasoning`` again, and there that is the
+        reply TRIMMED to the list itself (`parse_findings_output`). The judgment IS the
+        numbered list; a preamble and the three paragraphs of self-commentary the smoke's
+        weak judge wrote after its last ruling are not findings, and publishing them
+        inside `<findings>` invites a contest against a sentence that is not one. The
+        whole reply survives in ``raw`` and in the full published document.
         """
         if self.trace is not None:
+            return self.verdict.reasoning
+        if self.config.judge_form == "findings":
             return self.verdict.reasoning
         return self.verdict.raw
 

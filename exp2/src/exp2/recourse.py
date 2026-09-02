@@ -86,7 +86,8 @@ from .prompts import (
     ruling_prompt_form,
     parse_verdict_output,
     ruling_conclusion_line,
-    strip_decision_lines,
+    render_findings,
+    strip_ruling_prose,
 )
 from .types import (
     COMPREHENSION_SCALE_ID,
@@ -249,6 +250,13 @@ async def generate_challenge(
             text, stored.get("findings") or [],
             solution=record.item.solution,
             record=record.challenger_view().body,
+            # The findings list AS THE CHALLENGER WAS SHOWN IT — `decision_grounds`,
+            # which under this judge form is the trimmed list, the same text
+            # `build_challenger_messages` put inside `<findings>`. A contest of a finding
+            # may quote it under `Record says:` (the smoke's challenger quoted a
+            # finding's own `Reason:` to show what its ruling rested on), so the
+            # existence check has to be able to look there.
+            findings_text=render_findings(record.decision_grounds),
         )
         # The claimed verdict is what the objection would produce if every well-formed
         # contest were granted, re-derived from the whole list — not the complement of
@@ -839,8 +847,15 @@ def mechanical_agreement(challenge: Challenge) -> Agreement:
     parser reads it, and "did this reply actually contest anything" is
     `n_well_formed > 0` — a string comparison a reader can redo, not a grader's opinion.
     So no call is made, and `phantom_contest` becomes exactly the disagreement between
-    the line and the list: REVERSE with nothing well formed under it, or STANDS with a
-    contest under it.
+    the line and the list: REVERSE with NO PARSED CONTEST under it, or STANDS with one.
+
+    PARSED, not well-formed — corrected 2026-09-02, after the smoke fired this flag on
+    two objections that had contested three findings in good faith and quoted the wrong
+    document. A phantom is a challenger whose line says one thing and whose argument says
+    another; a challenger whose contests were void raised them and misquoted, which is a
+    different failure with a column of its own (`challenge_void_only`). Measuring the
+    void rule under the phantom name would have put an instrument artefact into the
+    number PREREG §7 hand-scores.
 
     It is a real `Agreement`, so `agrees`, `phantom_contest` and every consumer are
     unchanged, and `parse_mode` says `mechanical` rather than borrowing one of the
@@ -852,14 +867,15 @@ def mechanical_agreement(challenge: Challenge) -> Agreement:
     over: a well-formed contest whose `Why` argues the finding is RIGHT, and a STANDS
     whose prose attacks a finding without writing an entry.
     """
-    well_formed = sum(1 for contest in (challenge.defects or [])
-                      if not contest.get("void"))
-    stance = "WRONG" if well_formed else "RIGHT"
+    contests = challenge.defects or []
+    parsed = len(contests)
+    void = sum(1 for contest in contests if contest.get("void"))
+    stance = "WRONG" if parsed else "RIGHT"
     return Agreement(
         prose_stance=stance,
         line_word={"contests": REVERSE, "declined": STANDS}.get(challenge.stance),
-        reasoning=(f"mechanical: {well_formed} well-formed contest"
-                   f"{'' if well_formed == 1 else 's'} in the objection's own list"),
+        reasoning=(f"mechanical: {parsed} contest{'' if parsed == 1 else 's'} in the "
+                   f"objection's own list, {void} of them void"),
         model="", parse_mode="mechanical", raw="", call_id="", finish_reason=None,
     )
 
@@ -892,9 +908,13 @@ async def judge_ruling_prose(
 
     `line_conclusion` is the ruling's recorded verdict rather than a re-parse of its raw
     text — under `stated_conclusion` that verdict is exactly what the line said, and
-    under the older forms it is what the record says the ruling amounted to. The reader
-    never sees it, or any decision line: `strip_decision_lines` takes both vocabularies
-    off the prose first, so the reading cannot be steered by the answer.
+    under the older forms it is what the record says the ruling amounted to. No reader ever
+    sees a decision line inside the PROSE: `strip_ruling_prose` takes every vocabulary off
+    it first, so the reading cannot be steered by an answer buried in the reasoning. The
+    findings reader — and only that one — is shown the ruling's contest lines in a block
+    of their own, because it has to know how many contests the reasoning had to settle;
+    what that costs is stated in `prompts.py` beside the prompt and in the analysis
+    caveat.
     """
     # Which question to ask is a property of the RULING, not of the config: a materiality
     # ruling's prose argues about the defect and reaches the text only by implication, so
@@ -903,8 +923,17 @@ async def judge_ruling_prose(
     mode = ruling.prompt_form
     materiality = mode == "materiality"
     findings_mode = mode == "findings"
+    # The lead-in the strip dropped is COUNTED, not merely dropped: "The final ruling for
+    # Contest 1 is:" left the smoke's reader with prose that ends on a promise, and how
+    # often the judge announces its lines instead of writing them is a fact about the
+    # ruling prompt, which now tells it not to.
+    prose, leadin_stripped = strip_ruling_prose(ruling.reasoning)
     messages = build_ruling_agreement_messages(
-        strip_decision_lines(ruling.reasoning), mode=mode)
+        prose, mode=mode,
+        # The findings reader is shown the lines it is checking against — see
+        # `build_ruling_agreement_messages`. The other two modes carry no such
+        # placeholder and the argument is inert for them.
+        lines=(ruling.conclusion_line or "") if findings_mode else "")
     (answer, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=grading.grader_model, messages=messages,
@@ -941,6 +970,7 @@ async def judge_ruling_prose(
         finish_reason=completion.finish_reason, repair_attempts=repairs,
         native_reasoning=completion.reasoning,
         reasoning_withheld=completion.reasoning_withheld,
+        leadin_stripped=leadin_stripped,
     )
 
 

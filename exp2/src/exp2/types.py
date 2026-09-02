@@ -1458,6 +1458,13 @@ class RulingAgreement:
     repair_attempts: int = 0
     native_reasoning: str = ""
     reasoning_withheld: bool = False
+    # Whether the prose handed to the reader ended on a dangling lead-in — "The final
+    # ruling for Contest 1 is:" — that `strip_ruling_prose` then dropped. Recorded
+    # because it is a fact about the RULING PROMPT and not about the reader: the smoke of
+    # 2026-09-02 found two of three findings-reader mismatches caused by one, and the
+    # prompt now says "do not announce the lines — write them". A column that stays at 0
+    # is that instruction working.
+    leadin_stripped: bool = False
 
     def __post_init__(self) -> None:
         if self.prose_conclusion not in PROSE_CONCLUSIONS:

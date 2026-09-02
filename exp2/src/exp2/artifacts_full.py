@@ -609,7 +609,15 @@ def _parent_record(directory: Path) -> tuple[DecisionRecord | None, str]:
     verdict = _read(directory, "parent/verdict.json") or {}
     if transcript_data is not None:
         record = DecisionRecord.for_debate(_transcript_of(transcript_data))
-        grounds = verdict.get("raw", "")
+        # `RunRecord.decision_grounds`, in the one place that has to reproduce it from
+        # files: a debate's grounds are the judge's whole reply, EXCEPT under
+        # `judge_form = "findings"`, where they are the reply trimmed to the list. The
+        # marker is `parent/findings.json`, which exists exactly under that form — the
+        # same fact the manifest records, read from the artifact rather than from a
+        # string in a config. Getting it wrong would label a block this document then
+        # failed to find in the request it was quoting.
+        grounds = verdict.get("reasoning" if _read(directory, "parent/findings.json")
+                              else "raw", "")
     elif trace_data is not None:
         record = DecisionRecord.for_solo(_trace_of(trace_data))
         grounds = verdict.get("reasoning", "")

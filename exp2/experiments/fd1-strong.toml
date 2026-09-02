@@ -78,9 +78,11 @@
 #
 # `agreement` MAKES NO CALL UNDER THIS ARM. The line-vs-prose instrument is MECHANICAL
 # here: the objection's argument is a numbered list this harness has already parsed, so
-# `phantom_contest` is `(stance == contests) != (well-formed contests > 0)` — a string
+# `phantom_contest` is `(stance == contests) != (parsed contests > 0)` — a string
 # comparison (`recourse.mechanical_agreement`), `parse_mode = "mechanical"`, no Haiku, no
-# spend. The stage still runs and still writes a real `Agreement` for every contested and
+# spend. A VOID contest is still a contest for that count (the correction of 2026-09-02:
+# counting it as a phantom measured the void rule rather than the phantom rate); an
+# objection every one of whose contests is void is reported under `challenge_void_only`. The stage still runs and still writes a real `Agreement` for every contested and
 # every declined cell, so `agrees` and `phantom_contest` work unchanged downstream; the
 # rate is NEVER pooled with the Haiku-read column of jd3-jd6. `--dry-run` prints that term
 # as 0 and says why.

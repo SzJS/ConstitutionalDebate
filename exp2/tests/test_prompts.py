@@ -2961,9 +2961,11 @@ def test_a_findings_judgment_parses_into_numbered_entries_and_derives_its_verdic
     assert findings[1]["defence"] == "none given"
     # The verdict is DERIVED, never read off a line: the judge is told not to write one.
     assert verdict == FLAWED == derive_verdict(findings)
-    # `reasoning` is the WHOLE reply, so `decision_grounds` hands the challenger the list
-    # exactly as the judge wrote it and the document quotes it once.
-    assert reasoning == FINDINGS_REPLY.strip()
+    # `reasoning` is the reply TRIMMED to the list: it starts at `Finding 1` and ends on
+    # the last `Ruling:` line, so the preamble above it is not published as part of the
+    # judgment (R4, after the smoke of 2026-09-02).
+    assert reasoning == FINDINGS_REPLY[FINDINGS_REPLY.index("Finding 1"):].strip()
+    assert not reasoning.startswith("The flawed side")
 
 
 def test_an_empty_findings_list_is_an_answer_and_derives_sound():
@@ -2973,10 +2975,12 @@ def test_an_empty_findings_list_is_an_answer_and_derives_sound():
     design expects on it."""
     from exp2.prompts import derive_verdict, parse_findings_output
 
-    verdict, findings, _, mode = parse_findings_output(
+    verdict, findings, grounds, mode = parse_findings_output(
         "Neither purported flaw was identifiable.\n\nFindings: none")
     assert (verdict, findings, mode) == (SOUND, [], "strict")
     assert derive_verdict([]) == SOUND
+    # and the published grounds are the LINE, not the sentence before it
+    assert grounds == "Findings: none"
 
 
 def test_the_findings_ruling_tolerance_is_narrow_and_counted():
@@ -3133,6 +3137,161 @@ def test_a_contest_is_void_when_a_mechanical_check_fails():
     assert agreeing["pair_rulings_differ"] is False and agreeing["void"]
 
 
+def test_a_finding_contests_record_quote_is_optional_and_may_quote_the_findings():
+    """R1, the one parser rule the smoke of 2026-09-02 changed.
+
+    Three of the strong arm's four contests were voided because the challenger put the
+    finding's own `Reason:` under `Record says:`. The mechanical check looked in the
+    record body alone and voided them correctly by the rule as written — and the rule was
+    wrong: on one of them the challenger had shown the finding's reasoning rested on a
+    chemical impossibility, the ruling judge agreed and wrote `Contest 1: FLAW`, and the
+    harness discarded it. The findings text is a document the stakeholder was SHOWN, so a
+    quotation from it is evidence; and for a contest of a finding the required anchor is
+    `Text says:`, which is what makes the contest checkable at all.
+    """
+    from exp2.prompts import parse_finding_contests
+
+    findings = _parsed_findings()
+    findings_text = FINDINGS_REPLY
+
+    def one(text, **kw):
+        return parse_finding_contests(text, findings, CONTEST_SOLUTION, CONTEST_RECORD,
+                                      **kw)[0]
+
+    # 1. NO `Record says:` at all — the check did not apply, so None and not False
+    none_given = one('1. Contests: Finding 2\n   Should be: FLAW\n'
+                     '   Text says: "we then apply Bayes"\n   Why: it is wrong.\n',
+                     findings_text=findings_text)
+    assert none_given["quote_in_record"] is None
+    assert none_given["quote_in_text"] is True and none_given["void"] is False
+
+    # 2. QUOTED FROM THE FINDING ITSELF — the smoke's case, and now well formed
+    from_finding = one(
+        '1. Contests: Finding 2\n   Should be: FLAW\n'
+        '   Text says: "we then apply Bayes"\n'
+        '   Record says: "Bayes applies to any conditional probability"\n',
+        findings_text=findings_text)
+    assert from_finding["quote_in_record"] is True and from_finding["void"] is False
+    # and with no findings text supplied it is not found in the record body, so the
+    # caller that passes the documents is the caller that gets the right answer
+    assert one('1. Contests: Finding 2\n   Should be: FLAW\n'
+               '   Text says: "we then apply Bayes"\n'
+               '   Record says: "Bayes applies to any conditional probability"\n'
+               )["void"] is True
+
+    # 3. QUOTED FROM NEITHER — still void; the rule was widened, not dropped
+    invented = one('1. Contests: Finding 2\n   Should be: FLAW\n'
+                   '   Text says: "we then apply Bayes"\n'
+                   '   Record says: "Alice conceded the whole point in round 4"\n',
+                   findings_text=findings_text)
+    assert invented["quote_in_record"] is False and invented["void"] is True
+
+    # 4. `Text says:` IS STILL REQUIRED — the anchor of a finding contest
+    no_anchor = one('1. Contests: Finding 2\n   Should be: FLAW\n'
+                    '   Record says: "Bayes applies to any conditional probability"\n',
+                    findings_text=findings_text)
+    assert no_anchor["quote_in_text"] is False and no_anchor["void"] is True
+
+    # 5. AN OMISSION IS UNCHANGED: `Record says:` is required and is the RECORD BODY —
+    # the debate is where a purported flaw is either raised or not, and a finding's own
+    # words cannot show that it was
+    omission_from_findings = one(
+        '1. Contests: omission\n'
+        '   Record says: "Bayes applies to any conditional probability"\n'
+        '   Passage: "the sum is 42"\n', findings_text=findings_text)
+    assert omission_from_findings["quote_in_record"] is False
+    assert omission_from_findings["void"] is True
+    real_omission = one('1. Contests: omission\n'
+                        '   Record says: "Alice said step four divides by zero"\n'
+                        '   Passage: "the sum is 42"\n', findings_text=findings_text)
+    assert real_omission["void"] is False
+
+
+def test_a_void_contest_says_which_check_it_failed():
+    """R2b. The published record prints a void contest's ruling line annotated, so a
+    stakeholder is never shown `Contest 1: FLAW` above a count that contradicts it. The
+    wording is per kind where the documents differ: a finding contest's `Record says:`
+    may quote the findings as well as the record."""
+    from exp2.prompts import contest_void_reason, parse_finding_contests
+
+    findings = _parsed_findings()
+
+    def reason(text):
+        return contest_void_reason(parse_finding_contests(
+            text, findings, CONTEST_SOLUTION, CONTEST_RECORD)[0])
+
+    assert reason("1. Contests: Finding 9\n   Should be: FLAW\n") == (
+        "the finding it contests is not in the list")
+    assert reason('1. Contests: Finding 1\n   Should be: FLAW\n'
+                  '   Text says: "the sum is 42"\n') == (
+        "the ruling it asks for is the one that finding already carries")
+    assert reason('1. Contests: Finding 2\n   Should be: FLAW\n'
+                  '   Text says: "nothing like this is in the text"\n') == (
+        "the words quoted under Text says were not found in the text under review")
+    assert reason('1. Contests: Finding 2\n   Should be: FLAW\n'
+                  '   Text says: "we then apply Bayes"\n'
+                  '   Record says: "nothing like this was ever said"\n') == (
+        "the words quoted under Record says were not found in the record or the "
+        "findings")
+    # an omission is told the record alone, because that is where its quotation had to be
+    assert reason('1. Contests: omission\n'
+                  '   Record says: "nothing like this was ever said"\n'
+                  '   Passage: "the sum is 42"\n') == (
+        "the words quoted under Record says were not found in the record")
+    assert reason("1. Contests: contradiction\n   Findings: 1 and 1\n") == (
+        "the two findings it names are not a pair ruled two ways")
+    # and a well-formed contest has no reason to give
+    assert contest_void_reason(parse_finding_contests(
+        CONTEST_REPLY, findings, CONTEST_SOLUTION, CONTEST_RECORD)[0]) == ""
+
+
+def test_the_published_findings_are_the_list_and_the_trim_is_counted():
+    """R4. The smoke's weak judge wrote a preamble and then three paragraphs of
+    self-commentary after its last ruling, and every word of it was published inside
+    `<findings>` — where a stakeholder reads it as part of the decision and a contest can
+    be raised against a sentence that is not a finding. The grounds are now the LIST; the
+    whole reply survives in `raw`, and what the trim dropped is counted."""
+    from exp2.prompts import findings_trim_counts, parse_findings_output
+
+    preamble = "Let me work through the transcript.\n\n"
+    trailing = ("\n\nFindings are done. They are different ways of expressing the same "
+                "worry, so I have listed them separately.")
+    reply = preamble + FINDINGS_REPLY[FINDINGS_REPLY.index("Finding 1"):] + trailing
+    _, findings, grounds, _ = parse_findings_output(reply)
+    assert grounds.startswith("Finding 1")
+    assert grounds.endswith("Ruling: NOT A FLAW")
+    assert "Findings are done" not in grounds
+    assert "work through the transcript" not in grounds
+    # every finding still parsed: the trim is about what is PUBLISHED, not about what is
+    # read
+    assert [f["index"] for f in findings] == [1, 2]
+    assert findings_trim_counts(reply, grounds) == (len(preamble), len(trailing))
+    # a caller that hands over text from elsewhere gets zeros, not an exception: this is
+    # an instrument, not a check
+    assert findings_trim_counts(reply, "not from this reply at all") == (0, 0)
+
+
+def test_the_judges_passages_are_counted_for_exactness_and_repetition():
+    """R3, and REPORTED rather than enforced. The smoke's weak judge listed one claim as
+    four findings and quoted 5 of 20 passages inexactly. Refusing such a list would turn
+    a measurement into a lost cell and make the two arms incomparable; counting it makes
+    the format failure visible in a column."""
+    from exp2.prompts import findings_passage_counts
+
+    solution = "Step 1: apply the formula.\nStep 2: C_3 = 6."
+    findings = [
+        {"index": 1, "passage": '"Step 2: C_3 = 6."'},
+        {"index": 2, "passage": '"step 2: c_3 = 6."'},      # the same words, lowercased
+        {"index": 3, "passage": '"a sentence the text never contains anywhere"'},
+        {"index": 4, "passage": ""},
+    ]
+    exact, duplicates = findings_passage_counts(findings, solution)
+    assert exact == 2                      # the two spellings of the real passage
+    assert duplicates == 1                 # finding 2 repeats finding 1's passage
+    # no solution to check against is not evidence of exactness
+    assert findings_passage_counts(findings, "") == (0, 1)
+
+
 def test_the_claimed_verdict_is_derived_from_the_contests_not_from_the_line():
     """A contest can be entirely LOCAL and unable to move the verdict, and the index has
     to be able to say so: `Decision: REVERSE` under this arm says only that something was
@@ -3153,11 +3312,23 @@ def test_the_claimed_verdict_is_derived_from_the_contests_not_from_the_line():
     local = parse_finding_contests(CONTEST_REPLY, findings, CONTEST_SOLUTION,
                                    CONTEST_RECORD)
     assert claimed_verdict_for_contests(findings, local) == FLAWED
-    # a void contest is not granted
-    void_only = parse_finding_contests(
+    # R2a, corrected after the smoke of 2026-09-02: a VOID contest still counts here.
+    # This quantity is what the stakeholder ASKED FOR, and a stakeholder whose quotation
+    # could not be found still asked for something; reporting the decision's own verdict
+    # back as their claim would put a demand in their mouth they never made. What void
+    # changes is whether the contest is APPLIED and how it is GRADED.
+    void = parse_finding_contests(
+        '1. Contests: Finding 1\n   Should be: NOT A FLAW\n'
+        '   Text says: "words that are nowhere in the text under review"\n',
+        findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    assert void[0]["void"] is True
+    assert claimed_verdict_for_contests(findings, void) == SOUND
+    # a contest naming a finding that does not exist still changes nothing, because
+    # there is nothing for it to change
+    unknown = parse_finding_contests(
         "1. Contests: Finding 9\n   Should be: NOT A FLAW\n", findings,
         CONTEST_SOLUTION, CONTEST_RECORD)
-    assert claimed_verdict_for_contests(findings, void_only) == FLAWED
+    assert claimed_verdict_for_contests(findings, unknown) == FLAWED
 
 
 def test_the_findings_ruling_lines_parse_and_a_gap_is_fatal():
@@ -3273,9 +3444,11 @@ def test_the_findings_reader_and_grader_lines_parse_in_their_own_vocabularies():
 
 
 def test_the_contest_lines_never_reach_the_ruling_reader():
-    """The reader is shown the reasoning ONLY. A reading that could be steered by the
-    lines it is checked against is not independent of them — the same rule the other two
-    readers follow, which is why `strip_decision_lines` learned a third pattern."""
+    """No decision line reaches the reader INSIDE THE PROSE. A reading steered by a line
+    buried in the reasoning is not a reading of the reasoning — the same rule the other
+    two readers follow, which is why `strip_decision_lines` learned a third pattern. (The
+    findings reader is shown the lines separately, in a block of their own; that is R8 and
+    is tested below.)"""
     from exp2.prompts import strip_decision_lines
 
     stripped = strip_decision_lines(
@@ -3284,6 +3457,60 @@ def test_the_contest_lines_never_reach_the_ruling_reader():
         "Contest 2 (omission): NOT AN OMISSION")
     assert "Contest" not in stripped and "FLAW" not in stripped
     assert stripped.startswith("The claim holds")
+
+
+def test_a_dangling_lead_in_is_stripped_and_counted():
+    """R5. Once the lines are taken off, a judge that announced them leaves prose ending
+    on "The final ruling for Contest 1 is:" — a promise with nothing behind it, and two
+    of the three findings-reader mismatches in the smoke of 2026-09-02 were caused by
+    one. It is dropped, and the drop is recorded on the row rather than thrown away."""
+    from exp2.prompts import strip_ruling_prose
+
+    prose, stripped = strip_ruling_prose(
+        "The claim holds against the passage.\n\n"
+        "The final ruling for Contest 1 is:\n"
+        "Contest 1 (Finding 3): FLAW")
+    assert prose == "The claim holds against the passage."
+    assert stripped is True
+    # the same, in the older vocabularies, so a re-read of a finished tree behaves the
+    # same way
+    assert strip_ruling_prose(
+        "It does not show the finding mistaken.\nThe final lines are:\n"
+        "Conclusion: the original text in <solution> contains a flaw")[1] is True
+
+    # A REAL SENTENCE IS KEPT. The ceiling is twelve words, because a lead-in is a stub;
+    # a sentence of reasoning that happens to end in a colon is longer than that.
+    long_colon = ("The finding rests on the claim that the constant is wrong, and the "
+                  "passage bears that out for the following reason:")
+    kept, stripped = strip_ruling_prose(f"First point.\n{long_colon}")
+    assert kept.endswith(long_colon) and stripped is False
+    # and prose that ends on a sentence is untouched
+    assert strip_ruling_prose("The objection fails.") == ("The objection fails.", False)
+
+
+def test_the_findings_reader_is_shown_the_lines_and_told_they_are_not_the_question():
+    """R8. The smoke's reader answered NEITHER to rulings whose prose was in fact
+    decisive, because it could not tell how many contests the reasoning had to settle. It
+    is now shown the lines — and told outright that their correctness is not what it is
+    being asked, since a reader that thought it was grading them would be a second judge
+    rather than an instrument."""
+    from exp2.prompts import build_ruling_agreement_messages
+
+    messages = build_ruling_agreement_messages(
+        "The claim holds against the passage.", mode="findings",
+        lines="Contest 1: FLAW\nContest 2: NOT AN OMISSION")
+    user = messages[1]["content"]
+    assert "<lines>\nContest 1: FLAW\nContest 2: NOT AN OMISSION\n</lines>" in user
+    assert "NOT being asked whether" in user
+    # a ruling whose lines were not recorded says so, so "no lines" and "no contests"
+    # stay different facts
+    assert "were not recorded" in build_ruling_agreement_messages(
+        "prose", mode="findings")[1]["content"]
+    # the other two readers carry no such block and are not handed one
+    for mode in ("object_level", "materiality"):
+        other = build_ruling_agreement_messages(
+            "prose", mode=mode, lines="Contest 1: FLAW")[1]["content"]
+        assert "<lines>" not in other and "Contest 1: FLAW" not in other
 
 
 def test_every_new_findings_repair_asks_for_a_format_its_own_parser_accepts():
@@ -3342,8 +3569,19 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
     assert "Add nothing the debaters did not raise" in JUDGE_SYSTEM_FINDINGS
     assert "Stop after the last `Ruling:` line; add nothing after it." in (
         JUDGE_CLOSING_FINDINGS)
-    assert "the same claim is never listed twice" in JUDGE_CLOSING_FINDINGS
-    assert "two findings if they are different claims" in JUDGE_CLOSING_FINDINGS
+    # R3, after the smoke of 2026-09-02: the weak judge listed one claim as four
+    # findings, so "one per DISTINCT claim" is said in both the system prompt and the
+    # closing, with the operational test beside it — and the passage rule says
+    # contiguous, exact, never ellipsis-joined.
+    assert "One finding per DISTINCT claim." in JUDGE_CLOSING_FINDINGS
+    assert "repeat and reword the same purported flaw across the rounds" in (
+        JUDGE_CLOSING_FINDINGS)
+    assert "not be answerable by one sentence" in JUDGE_CLOSING_FINDINGS
+    assert "One finding per DISTINCT claim" in JUDGE_SYSTEM_FINDINGS
+    assert "two findings only if they are genuinely different claims" in (
+        JUDGE_CLOSING_FINDINGS)
+    assert "contiguous words copied exactly" in JUDGE_CLOSING_FINDINGS
+    assert "never join two separate passages with an ellipsis" in JUDGE_CLOSING_FINDINGS
     assert "Findings: none" in JUDGE_CLOSING_FINDINGS
     assert (JUDGE_CLOSING_FINDINGS.index("Reason:")
             < JUDGE_CLOSING_FINDINGS.index("Ruling:"))
@@ -3380,6 +3618,13 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
     assert nesting in RECOURSE_JUDGE_USER_FINDINGS and nesting in RECOURSE_JUDGE_USER
     assert "even though a bug exists" in RECOURSE_JUDGE_USER_FINDINGS
     assert "Contest 1 (Finding 3): FLAW" in RECOURSE_JUDGE_USER_FINDINGS
+    # R5: the smoke's judge announced its lines ("The final ruling for Contest 1 is:")
+    # and the reader was left with prose that ends on a promise.
+    assert "Do not announce the lines — write them." in RECOURSE_JUDGE_USER_FINDINGS
+    # R6: the omission is a two-step, and a covered point is not ruled on at all
+    assert "Say first, in one sentence, whether it is an omission" in (
+        RECOURSE_JUDGE_USER_FINDINGS)
+    assert "you do not rule on the point at all" in RECOURSE_JUDGE_USER_FINDINGS
     # the relative word is absent from the prompt entirely, exactly as it is from the
     # object-level one
     assert "UPHOLD" not in RECOURSE_JUDGE_USER_FINDINGS
@@ -3390,8 +3635,32 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
     assert "raised by the debater arguing FOR a flaw" in GRADER_SYSTEM_FINDINGS
     assert "in substance" in GRADER_SYSTEM_FINDINGS
     assert "the same claim about the same passage" in GRADER_SYSTEM_FINDINGS
-    # THE READER: the question is about the lines, not about the text
+    # R7: rule (a) is a LOCATION test and nothing else — the smoke's grader marked a
+    # contest INVALID by weighing its rhetoric although the finding's passage IS the
+    # annotated flaw.
+    assert "Whether the contest argued well is irrelevant" in GRADER_SYSTEM_FINDINGS
+    assert "VALID exactly when that finding's passage is the recorded flaw" in (
+        GRADER_SYSTEM_FINDINGS)
+    # THE CHALLENGER, R1: `Text says:` is the anchor of a finding contest and
+    # `Record says:` is optional there and required for an omission
+    assert "`Text says:` is required, and `Record says:` is OPTIONAL" in (
+        CHALLENGE_DECISION_INSTRUCTION_FINDINGS)
+    assert "quote from the record or the finding, if any" in (
+        CHALLENGE_DECISION_INSTRUCTION_FINDINGS)
+    assert "Never invent a quotation." in CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+    from exp2.prompts import CHALLENGER_SYSTEM_FINDINGS, RULING_AGREEMENT_SYSTEM_FINDINGS
+
+    assert "required for an omission and optional for a contest of a finding" in (
+        CHALLENGER_SYSTEM_FINDINGS)
+    assert "Never invent a quotation." in CHALLENGER_SYSTEM_FINDINGS
+    # THE READER: the question is about the lines, not about the text — and R8, it is
+    # now shown the lines it is checking, told they are not what it is judging
     assert "Reading: CONSISTENT" in RULING_AGREEMENT_USER_FINDINGS
+    assert "<lines>\n{lines}\n</lines>" in RULING_AGREEMENT_USER_FINDINGS
+    assert "you are NOT being asked whether" in RULING_AGREEMENT_USER_FINDINGS
+    assert "are DEFINITE rulings" in RULING_AGREEMENT_SYSTEM_FINDINGS
+    assert "the objection does not show the finding mistaken" in (
+        RULING_AGREEMENT_SYSTEM_FINDINGS)
 
 
 def test_no_findings_prompt_names_an_overall_verdict():
@@ -3458,7 +3727,10 @@ def test_a_trailing_verdict_line_does_not_break_a_findings_judgment():
     assert [f["ruling"] for f in findings] == ["FLAW", "NOT A FLAW"]
     assert verdict == FLAWED == derive_verdict(findings)
     assert mode == "strict"
-    assert reasoning.endswith("Verdict: FLAWED")
+    # and it is not published either: the trim ends the grounds on the last `Ruling:`
+    # line, so a verdict line the judge wrote anyway is neither obeyed nor shown (R4).
+    assert reasoning.endswith("Ruling: NOT A FLAW")
+    assert "Verdict: FLAWED" not in reasoning
 
 
 def test_the_findings_grader_is_told_when_it_may_judge_by_location_alone():

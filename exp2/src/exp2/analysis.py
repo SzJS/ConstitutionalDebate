@@ -369,6 +369,17 @@ def _findings_lists(rows: Sequence[dict]) -> dict[str, Any]:
         "flaw_findings_total": sum(r.get("findings_flaw_n") or 0 for r in listed),
         "ruling_normalised_total": sum(
             r.get("findings_ruling_normalised_n") or 0 for r in listed),
+        # HOW WELL THE FORMAT WAS HELD, reported and never enforced. `passages_exact` is
+        # the passages actually found in the text under review, `duplicate_passages` the
+        # findings repeating an earlier finding's passage, and the two char totals what
+        # the publication trim dropped either side of the list.
+        "passages_exact": sum(r.get("findings_passage_exact_n") or 0 for r in listed),
+        "duplicate_passages": sum(
+            r.get("findings_duplicate_passage_n") or 0 for r in listed),
+        "preamble_chars_total": sum(
+            r.get("findings_preamble_chars") or 0 for r in listed),
+        "trailing_chars_total": sum(
+            r.get("findings_trailing_chars") or 0 for r in listed),
         "parse_modes": modes,
     }
 
@@ -399,6 +410,10 @@ def _findings_contests(rows: Sequence[dict],
             for kind in ("finding", "omission", "contradiction")
         },
         "void": sum(r.get("challenge_contests_void_n") or 0 for r in raised),
+        # Objections every one of whose contests was void. They cannot break a decision
+        # by construction, so PREREG §2's second denominator excludes them — and they are
+        # NOT phantoms, which is why the two are counted apart.
+        "void_only_objections": sum(1 for r in raised if r.get("challenge_void_only")),
         "graded": len(graded),
         "contests_graded": sum(r.get("grade_contests_n") or 0 for r in graded),
         "contests_valid": sum(r.get("grade_contests_valid_n") or 0 for r in graded),
@@ -436,10 +451,16 @@ def _findings_arm_caveat(rows: Sequence[dict]) -> str | None:
         "never pooled across `label_basis` or across the three kinds. Every contested "
         "cell is graded, sound items and correct decisions included, and on a sound "
         "item a finding contest is settled by the label with no grader call at all. "
-        "`phantom_contest` here is MECHANICAL — `(stance == contests) != (well-formed "
+        "`phantom_contest` here is MECHANICAL — `(stance == contests) != (parsed "
         "contests > 0)`, a string comparison — and is NOT the Haiku prose reading the "
         "other arms report under that name; the two are different instruments and a "
-        "table that put them in one column would be comparing a parser with a model. "
+        "table that put them in one column would be comparing a parser with a model. A "
+        "void contest is a contest for that count: an objection whose quotations could "
+        "not be found still contested something, and it is counted separately under "
+        "`challenge_void_only`. `ruling_line_mismatch` on this arm is a LOWER bound and "
+        "not comparable with the other arms' column: the findings reader is shown the "
+        "ruling's contest lines, because it cannot otherwise tell how many contests the "
+        "reasoning had to settle, and a reader shown the lines can defer to them. "
         "And `challenge_raised` is not `challenge_seeks_reversal`: a contest can be "
         "local and unable to move the verdict, and only verdict-moving outcomes enter "
         "the accuracy endpoint."

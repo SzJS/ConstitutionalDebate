@@ -1,0 +1,213 @@
+# THE RE-SMOKE (smoke 2), on six FRESH cells after the smoke-1 revision. Smoke 1
+# (2026-09-02, `outputs/fd1-smoke-1-read.md`) passed on the judge and FAILED on the
+# contest path, so the prompts and the harness were changed and the house rule applies: a
+# changed prompt is re-smoked on fresh cells under a new stated seed, never iterated on
+# the slice that found the fault. What changed, one line each:
+#
+#   R1 CONTEST QUOTES. For a contest of a FINDING, `Text says:` is the required anchor and
+#      `Record says:` is OPTIONAL — and when given it may quote the record OR the findings
+#      text, both of which the stakeholder was shown. (Smoke 1 voided 3 of the strong
+#      arm's 4 contests for quoting a finding's own `Reason:`.) An OMISSION still requires
+#      `Record says:` and still checks it against the record body alone.
+#   R2 VOID CONTESTS. `claimed_verdict` is derived from EVERY parsed contest, void ones
+#      included — it is what the stakeholder asked for. A void contest's ruling line is
+#      printed in the record annotated `not applied: <the check that failed>`; a void-only
+#      objection says so; `phantom_contest` counts PARSED contests, so a void-only
+#      objection is no longer reported as a phantom, and `challenge_void_only` counts it.
+#   R3 DUPLICATES AND PASSAGES. The judge is told one finding per DISTINCT claim ("two
+#      findings must not be answerable by one sentence") and to quote passages as
+#      contiguous, exact words, never ellipsis-joined. `findings_passage_exact_n` and
+#      `findings_duplicate_passage_n` report how well it held; nothing is refused for them.
+#   R4 TRAILING PROSE. The published `<findings>` is the reply TRIMMED to the list — first
+#      `Finding 1` header (or `Findings: none`) to the last `Ruling:` line — so a preamble
+#      and trailing self-commentary are no longer part of the judgment the challenger, the
+#      ruling judge and the grader read. The whole reply survives in `transcript_full.md`.
+#   R5 RULING LEAD-INS. A dangling "The final ruling for Contest 1 is:" is stripped before
+#      the reader sees the prose (and counted, `ruling_leadin_stripped`); the ruling prompt
+#      now says "Do not announce the lines — write them."
+#   R6 OMISSION TWO-STEP. The ruling prompt asks first whether it IS an omission; if a
+#      listed finding covers the point in substance the line is `NOT AN OMISSION` and the
+#      point is not ruled on at all.
+#   R7 GRADER RULE (a). Stated as the pure LOCATION test it is: on a flawed text a
+#      `Should be: FLAW` contest is VALID exactly when the finding's passage is the
+#      recorded flaw, whatever the contest's rhetoric.
+#   R8 READER. The findings reader is shown the ruling's own contest lines (it could not
+#      otherwise tell how many contests the prose had to settle) and is told that "the
+#      existing ruling stands" is a DEFINITE ruling. Its `ruling_line_mismatch` is
+#      therefore a LOWER bound on this arm and is not pooled with the other arms'.
+#
+# The six cells are `fd1-smoke-pick.py --seed 2 --exclude data/cases/fd1-smoke.jsonl`,
+# disjoint from smoke 1's by assertion (`outputs/fd1-smoke-2-pick.log`).
+#
+# fd1 PROMPT SMOKE, ARM F-STRONG — the strong findings judge on the same 6 chosen cells.
+# ~$0.15.
+#
+# READ FIRST: `experiments/fd1-strong.toml`, the arm this smoke gates;
+# `outputs/fd1-smoke-1-read.md`, the read this re-smoke answers;
+# `experiments/fd1-smoke-2-weak.toml`,
+# which runs the same six cells and is read beside it;
+# and `records/derivations/fd1-smoke-pick.py`, which wrote the cases file and argues for
+# each of the six. NOTHING HERE IS A MEASUREMENT. Six cells measure nothing at all; this
+# run exists so that four brand-new prompt families are READ before any slice or arm is
+# paid for (the house rule: `HANDOFF.md` §2.8, and MEMORY's "smoke first").
+#
+# WHAT IS NEW, and it is four prompt families at once:
+#
+#   1. THE FINDINGS JUDGMENT (`judge_form = "findings"`). One numbered FINDING per
+#      purported flaw the FLAWED-side debater raised — the quoted passage, the claim in
+#      one sentence, the strongest defence the SOUND side gave, a reason, and a ruling
+#      FLAW / NOT A FLAW — and NO verdict line. The verdict is DERIVED by code: FLAWED iff
+#      any finding is FLAW, SOUND on an empty list.
+#   2. THE FINDINGS CONTEST (`challenger_variant = "findings"`). The challenger contests a
+#      numbered finding, an OMISSION or a CONTRADICTION; every quote is existence-checked
+#      at parse time and a contest whose quote is not in the text or the record is VOID.
+#   3. THE FINDINGS RULING. The recourse judge rules each contest ABSOLUTELY — FLAW /
+#      NOT A FLAW / NOT AN OMISSION / NOT A CONTRADICTION, never "upheld/overturned" — and
+#      the verdict after recourse is re-derived from the amended list.
+#   4. THE FINDINGS GRADER. Mechanical where the label settles it, one Haiku call per
+#      objection otherwise.
+#
+# WHY BOTH ARMS ARE SMOKED ON THE SAME SIX CELLS. The prompts are identical between the
+# arms and only the judge moves, so reading both on one set of cells is what makes "the
+# weak judge cannot hold this format" separable from "this format does not work". Twelve
+# `transcript.md` in all.
+#
+# WHAT DIFFERS FROM `fd1-smoke-2-weak.toml` IS TWO LINES AND ONE PIN: `judge_model` and
+# `recourse_judge_model` are `openai/gpt-5.6-luna-20260709`, pinned to the BASE slug
+# `openai` — not `openai/fast`, not `openai/flex`, which are latency and price tiers
+# rather than the default route. The dated id is the served one (`LLM_NOTES.md` §1) and is
+# used because it cannot silently become a different model; the check of 2026-09-02
+# returned `SERVED BY: OpenAI`, `finish_reason stop` and 0 reasoning tokens on all three
+# forms it sent (`outputs/fd1-provider-check.log`). Reasoning stays OFF at the default.
+#
+# THE GATE IS A READING, NOT A NUMBER. Fable reads all 12 `transcript.md` and an
+# independent reviewer agent reads them too. It passes iff: the lists parse and are
+# FAITHFUL to the transcript — each finding is a flaw the FLAWED side actually raised, in
+# the judge's own words, not the judge's own new objections; the contests quote text that
+# is really there; the ruling lines follow the ruling's own prose; and nothing leaks the
+# gold label anywhere. A PROMPT CHANGE MEANS A RE-SMOKE ON SIX FRESH CELLS under a new
+# stated seed — never an iteration on this slice.
+#
+# THE SIX CELLS, and why (`fd1-smoke-pick.py`, seed 2, one per subset, excluding every
+# cell already hand-read or smoked, smoke 1's six included): an M0 false negative and
+# an M0 false positive, the
+# two states where a contest has something true to say; an M0-right FLAWED cell and an
+# M0-right SOUND cell, the two states P2 is exposed to and where the verdict-side
+# asymmetry lives; the LONGEST decision record in the eligible pool (python800, 3,380
+# words),
+# where the format is under most strain against the 16,384-token cap; and a flawed gpqa
+# cell, whose annotations are all `location_only`, so the grader must judge by location
+# alone.
+#
+# THE DEBATES ARE NOT RE-RUN. `transcripts_from` reads `jd3-main` and nothing under it is
+# written.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rejudge contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/fd1-smoke-2-strong.toml \
+#         > outputs/fd1-smoke-2-strong-driver.log 2>&1 &
+#
+# The full arms run under `outputs/fd1-run-all.sh`; a smoke does not, because a smoke is
+# read before anything downstream of it is allowed to start.
+#
+# WHAT THIS SPEC SPENDS, and it is not the `--dry-run` total — that is a per-stage bound
+# over every stage that could be run against this tree. The six stages above make 6
+# findings judgments, 6 objections, 6 comprehension probes and at most 6 rulings, 6 ruling
+# readings and 6 grades: at most 36 short calls, **about $0.15** — a little more than
+# F-weak's, since luna costs more per output token than Maverick. No debater call is made.
+# `analyse` makes none. THIS RUN IS ALSO THE COST MEASUREMENT: its per-cell figure goes to
+# `outputs/fd1-smoke-2-cost.txt` and is what `fd1-strong.toml`'s "measured at the smoke"
+# line and PREREG §8's estimate (that figure times 1.3) are filled in from.
+#
+# `agreement` MAKES NO CALL UNDER THIS ARM. The line-vs-prose instrument is MECHANICAL
+# here: the objection's argument is a numbered list this harness has already parsed, so
+# `phantom_contest` is `(stance == contests) != (parsed contests > 0)` — a string
+# comparison (`recourse.mechanical_agreement`), `parse_mode = "mechanical"`, no Haiku, no
+# spend. A VOID contest is still a contest for that count (the correction of 2026-09-02:
+# counting it as a phantom measured the void rule rather than the phantom rate); an
+# objection every one of whose contests is void is reported under `challenge_void_only`. The stage still runs and writes a real `Agreement` for every contested and every
+# declined cell, so `agrees` and `phantom_contest` work unchanged downstream.
+#
+# RESUME AND RETRY, per stage — and on a smoke the point of knowing them is that a
+# re-launch after a prompt edit must NOT quietly reuse the old reply:
+#
+#   * `rejudge` follows `decide`'s rule and READS `--retry-failed`, which the launch line
+#     above passes: a cell already re-judged here is SKIPPED, so an edited judge prompt
+#     needs a fresh tree (`rm -rf outputs/experiments/fd1-smoke-2-strong`) and not a resume.
+#     A cell whose latest run failed is re-attempted once under the flag; one that fails
+#     twice is counted and left undecided.
+#   * `contest` resumes on the ARTIFACT: its only skip is "some run under this cell's
+#     contest directory holds a `challenge.json`". A failed challenger call wrote none and
+#     is re-attempted on every resume; a cell that wrote a challenge and lost its RULING is
+#     skipped as already contested and stays ruling-less.
+#   * `agreement`, `ruling_agreement` and `grade` each resume on their own artifact
+#     (`already measured` / `already graded`).
+#   * `analyse` spends nothing and is idempotent.
+
+name = "fd1-smoke-2-strong"
+
+# The six cells `records/derivations/fd1-smoke-pick.py` drew under seed 2 — the same file
+# F-weak's smoke runs, which is what makes the two readable side by side. A re-smoke draws
+# six FRESH cells under a new stated seed and writes a new file.
+cases = "data/cases/fd1-smoke-2.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions — findings lists
+# over the same stored debates. Read-only.
+transcripts_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. Every term in the
+# estimate is a per-stage bound printed whether or not that stage is in the run.
+planned_stages = ["rejudge", "contest", "agreement", "ruling_agreement", "grade", "analyse"]
+
+[debate]
+# Byte-identical to `fd1-strong.toml`'s block. A smoke whose settings differed from the
+# arm it gates would read a different run's prompts.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+
+# THE STRONG FINDINGS JUDGE — the DATED id, pinned to `openai` below.
+judge_model      = "openai/gpt-5.6-luna-20260709"
+
+# Unchanged from F-weak's smoke and from jd3-jd6, and UNPINNED: Google is its only
+# provider. Holding the challenger fixed is what makes the judge the only thing that moved
+# between the arms.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE FIRST OF THE TWO LINES THAT MAKE THIS THE FINDINGS CAMPAIGN. The judge writes one
+# numbered finding per purported flaw and NO verdict line; the verdict is derived by code.
+# `Sides.verdict_order` is unused under this form.
+judge_form = "findings"
+
+# THE SECOND. The challenger contests a finding, an omission or a contradiction, with
+# quotes existence-checked at parse time. `DebateConfig` refuses this value with any
+# `judge_form` but "findings", and `experiment_cli` refuses an `fd1`-named spec that
+# states neither.
+challenger_variant = "findings"
+
+recourse_form = "third_party"
+
+# ONE JUDGE THROUGHOUT, and the same dated id. Stated rather than left to inherit
+# `judge_model`, because the design is that these two are deliberately the same.
+recourse_judge_model = "openai/gpt-5.6-luna-20260709"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE AND THE RECOURSE JUDGE, PINNED — one slug, one entry, the BASE `openai` slug.
+# `provider_allow_fallbacks` stays False: a pin that silently falls back is not a pin.
+"openai/gpt-5.6-luna-20260709" = ["openai"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# For `ruling_agreement` and the FINDINGS grader. NOT used by `agreement` on this arm.
+grader_model = "anthropic/claude-haiku-4.5"

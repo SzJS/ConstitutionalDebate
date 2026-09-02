@@ -2600,8 +2600,9 @@ async def test_extend_rounds_refuses_a_solo_or_already_long_source(
 # counting at BOTH ends, a contest numbering that survives to the ruling and to the
 # grade, and a grade stage with none of the flaw grader's gates.
 
-FINDINGS_JUDGMENT = (
-    "The flawed side raised two points.\n"
+# The LIST — what the trim publishes, and therefore what the challenger, the recourse
+# judge and the grader are all shown inside `<findings>`.
+FINDINGS_LIST = (
     "Finding 1\n"
     'Passage: "Step 2: C_3 = 6."\n'
     "Claim: the third Catalan number is 5, not 6\n"
@@ -2614,6 +2615,15 @@ FINDINGS_JUDGMENT = (
     "Defence: the sound side said rounding is conventional\n"
     "Reason: the convention is standard and the step is fine\n"
     "Ruling: NOT A FLAW"
+)
+
+# The whole reply, with the preamble and the trailing self-commentary the smoke of
+# 2026-09-02 found published inside `<findings>`. `Verdict.raw` keeps it; nothing
+# downstream is shown it.
+FINDINGS_JUDGMENT = (
+    "The flawed side raised two points.\n"
+    + FINDINGS_LIST
+    + "\n\nFindings are done. They are different ways of expressing the same worry."
 )
 
 FINDINGS_OBJECTION = (
@@ -2669,8 +2679,17 @@ async def test_a_findings_rejudge_writes_a_list_and_a_verdict_derived_from_it(
         verdict = json.loads((directory / "verdict.json").read_text())
         # THE INVARIANT: the verdict follows from the list by counting
         assert verdict["verdict"] == derive_verdict(stored["findings"]) == "FLAWED"
-        # and the grounds are the judge's whole reply, so the challenger sees the list
-        assert verdict["reasoning"] == FINDINGS_JUDGMENT
+        # and the grounds are the LIST — the reply trimmed to the findings blocks, so a
+        # preamble and three paragraphs of trailing self-commentary are not published as
+        # part of the judgment (R4, after the smoke of 2026-09-02)
+        assert verdict["reasoning"] == FINDINGS_LIST
+        # nothing is lost: `raw` keeps the whole reply, and what the trim dropped is
+        # counted rather than only dropped
+        assert verdict["raw"] == FINDINGS_JUDGMENT
+        assert stored["preamble_chars"] == len("The flawed side raised two points.\n")
+        assert stored["trailing_chars"] == len(
+            "\n\nFindings are done. They are different ways of expressing the same "
+            "worry.")
         manifest = json.loads((directory / "run.json").read_text())
         assert manifest["judge_form"] == "findings"
         assert (manifest["findings_n"], manifest["findings_flaw_n"]) == (2, 1)
@@ -2752,6 +2771,24 @@ async def test_the_findings_contest_rules_per_finding_and_re_derives_the_verdict
         assert "Rule only on the contests" in sent
         assert "<findings>" in sent
 
+    # R4: THE THREE READERS ARE SHOWN THE SAME TEXT, and it is the TRIMMED list. The
+    # `<findings>` block in the challenger's own request is the published grounds
+    # exactly — no preamble, no trailing self-commentary — and the ruling judge is shown
+    # the same block, so a contest that says "Finding 1" means the same finding 1 to
+    # both of them.
+    def findings_block(messages):
+        sent = "".join(m["content"] for m in messages)
+        return sent.split("<findings>")[1].split("</findings>")[0].strip()
+
+    challenger_call = next(c for c in no_network.calls
+                           if c["meta"].get("role") == "challenger")
+    assert findings_block(challenger_call["messages"]) == FINDINGS_LIST
+    ruling_call = next(c for c in no_network.calls
+                       if c["meta"].get("role") == "recourse_judge")
+    assert findings_block(ruling_call["messages"]) == FINDINGS_LIST
+    assert "Findings are done" not in "".join(
+        m["content"] for m in challenger_call["messages"])
+
 
 async def test_an_upheld_omission_appends_a_finding_and_can_move_the_verdict(
     tmp_path, no_network
@@ -2832,14 +2869,28 @@ async def test_the_findings_agreement_is_mechanical_and_costs_nothing(
         assert agreement["agrees"] is True
         assert agreement["phantom_contest"] is False
 
-    # a REVERSE with nothing well formed under it IS the mechanical phantom
+    # a REVERSE with NO PARSED CONTEST under it IS the mechanical phantom
     from exp2.recourse import mechanical_agreement
     from exp2.types import Challenge
 
     phantom = mechanical_agreement(Challenge(
         text="t", origin="generated", raised=True, arm="findings", stance="contests",
-        claimed_verdict="SOUND", defects=[{"index": 1, "void": True}]))
+        claimed_verdict="SOUND", defects=[]))
     assert phantom.prose_stance == "RIGHT" and phantom.phantom_contest is True
+
+    # R2d, and the correction the smoke of 2026-09-02 forced: a VOID contest is still a
+    # contest for this count. The challenger contested in earnest and quoted the wrong
+    # document; calling that a phantom measured the void rule rather than the phantom
+    # rate, and fired on two of the strong arm's four objections. It is counted apart,
+    # under `challenge_void_only`.
+    void_only = mechanical_agreement(Challenge(
+        text="t", origin="generated", raised=True, arm="findings", stance="contests",
+        claimed_verdict="SOUND",
+        defects=[{"index": 1, "void": True}, {"index": 2, "void": True}]))
+    assert void_only.prose_stance == "WRONG"
+    assert void_only.phantom_contest is False
+    assert "2 contests" in void_only.reasoning and "2 of them void" in (
+        void_only.reasoning)
 
 
 async def test_every_contested_findings_cell_is_graded_including_the_ungradable_ones(
@@ -2948,6 +2999,88 @@ async def test_a_findings_grade_on_a_flawed_item_calls_the_grader_and_joins_by_n
         next(contests.glob("cells/*/contests/*/runs/*/findings.after.json")).read_text())
     assert [f["ruling"] for f in after["findings"]] == ["FLAW", "NOT A FLAW"]
 
+    # R2b: AND THE DOCUMENT SAYS SO. The judge really did write `Contest 2 (Finding 9):
+    # NOT A FLAW`; the contest was void at parse time, so nothing was applied. A smoke
+    # record printed exactly such a line above a count that contradicted it, with nothing
+    # in between — so the line is printed annotated, with the check that failed.
+    document = next(
+        contests.glob("cells/*/contests/*/runs/*/transcript.md")).read_text()
+    assert "Contests whose quotations could not be found were not applied." in document
+    assert ("Contest 2: NOT A FLAW — not applied: the finding it contests is not in "
+            "the list") in document
+    # the well-formed contest's line is printed exactly as the judge wrote it
+    assert "Contest 1: FLAW\n" in document
+    # and the objection is not described as void-only: one of its two contests holds
+    assert "Every contest quoted words that could not be found" not in document
+
+
+async def test_a_void_only_objection_is_not_a_phantom_and_the_record_says_why(
+    tmp_path, no_network
+):
+    """The smoke of 2026-09-02 found three of the strong arm's four contests voided by a
+    rule that was wrong (R1) — and then found the harness reporting them as PHANTOMS and
+    the published record printing the judge's ruling on them with no explanation. Three
+    facts, three places, and none of them may borrow another's name: the objection
+    contested something (so it is not a phantom), nothing could be applied (so the
+    document says so), and the cell is excluded from the break-rate denominator by a
+    column of its own."""
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network, n=1)
+    # Both contests quote a passage that is nowhere in the solution, so both are void on
+    # `Text says:` — the anchor a finding contest cannot do without.
+    no_network.replies["challenger"] = (
+        "Argument:\n"
+        "1. Contests: Finding 1\n"
+        "   Should be: NOT A FLAW\n"
+        '   Text says: "the Riemann hypothesis is assumed throughout"\n'
+        "   Why: it is not a flaw.\n"
+        "2. Contests: Finding 2\n"
+        "   Should be: FLAW\n"
+        '   Text says: "a second sentence that is not in the text either"\n'
+        "   Why: it is a flaw.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "Neither quotation is in the text under review.\n"
+        "Contest 1 (Finding 1): FLAW\n"
+        "Contest 2 (Finding 2): FLAW")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    await run_stage_agreement(grid, root=contests, config=findings_config(),
+                              grading=GradingConfig(), client_config=client_config(),
+                              api_key="k", decision_root=rejudged)
+
+    challenge = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/challenge.json")).read_text())
+    assert [c["void"] for c in challenge["defects"]] == [True, True]
+    # R2a: the claimed verdict is what they ASKED FOR — both contests granted — and not
+    # the decision's own verdict. Finding 1 to NOT A FLAW and finding 2 to FLAW leaves a
+    # FLAW in the list, so the objection asked for FLAWED and got its own decision back;
+    # what matters is that the number is derived from every contest, void included.
+    assert challenge["claimed_verdict"] == "FLAWED"
+
+    agreement = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/agreement.json")).read_text())
+    assert agreement["prose_stance"] == "WRONG"
+    assert agreement["phantom_contest"] is False
+
+    document = next(
+        contests.glob("cells/*/contests/*/runs/*/transcript.md")).read_text()
+    assert "Every contest quoted words that could not be found" in document
+    assert ("Contest 1: FLAW — not applied: the words quoted under Text says were not "
+            "found in the text under review") in document
+    # nothing moved: the verdict is the one the findings list derives, unchanged
+    after = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/findings.after.json")).read_text())
+    assert [f["ruling"] for f in after["findings"]] == ["FLAW", "NOT A FLAW"]
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert rows[0]["challenge_contests_void_n"] == 2
+    assert rows[0]["challenge_void_only"] is True
+    assert rows[0]["phantom_contest"] is False
+
 
 async def test_the_index_carries_every_findings_column_and_the_analysis_reads_them(
     tmp_path, no_network
@@ -2988,11 +3121,22 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert (row["findings_n"], row["findings_flaw_n"]) == (2, 1)
     assert row["findings_parse_mode"] == "strict"
     assert row["findings_ruling_normalised_n"] == 0
+    # R3/R4, report-only: how many passages are really in the text under review, how many
+    # findings repeat an earlier passage, and how much of the reply the publication trim
+    # dropped either side of the list. Both of the fixture's passages are copied out of
+    # the item's own solution, so both are found.
+    assert row["findings_passage_exact_n"] == 2
+    assert row["findings_duplicate_passage_n"] == 0
+    assert row["findings_preamble_chars"] == len("The flawed side raised two points.\n")
+    assert row["findings_trailing_chars"] > 0
     assert row["challenge_contests_n"] == 1
     assert row["challenge_contests_finding_n"] == 1
     assert row["challenge_contests_omission_n"] == 0
     assert row["challenge_contests_contradiction_n"] == 0
     assert row["challenge_contests_void_n"] == 0
+    # R2d: an objection every one of whose contests was void cannot break anything, and
+    # is NOT a phantom. False here, because this objection's one contest is well formed.
+    assert row["challenge_void_only"] is False
     assert row["challenge_seeks_reversal"] is True
     assert row["ruling_form"] == "derived_findings"
     assert row["ruling_contest_lines"] == "Contest 1: NOT A FLAW"
@@ -3012,6 +3156,13 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     # parent's, so `prose_conclusion` is what the lines amount to and `mismatch` is False
     assert reading["line_conclusion"] == reading["prose_conclusion"] == "SOUND"
     assert reading["mismatch"] is False
+    # R5: whether the prose handed to the reader ended on a dangling lead-in that the
+    # strip dropped. A fact about the RULING PROMPT; 0 is that instruction working.
+    assert row["ruling_leadin_stripped"] is False
+    # R8: the reader was shown the ruling's own lines, in a block of their own, and told
+    # they are not what it is judging
+    asked = "".join(m["content"] for m in no_network.sent_to("ruling_reader"))
+    assert "<lines>" in asked and "Contest 1: NOT A FLAW" in asked
 
     metrics = funnel(rows)
     assert metrics["n_findings_graded"] == 2
@@ -3020,6 +3171,9 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert metrics["findings_contests"]["by_kind"] == {
         "finding": 2, "omission": 0, "contradiction": 0}
     assert metrics["findings_contests"]["contests_per_objection"] == 1.0
+    assert metrics["findings_contests"]["void_only_objections"] == 0
+    assert metrics["findings_lists"]["duplicate_passages"] == 0
+    assert metrics["findings_lists"]["trailing_chars_total"] > 0
     assert "valid_objection_findings" in metrics["rates"]
     assert "phantom_contest_mechanical" in metrics["rates"]
     assert metrics["rates"]["seeks_reversal_given_contested"]["k"] == 2

@@ -58,10 +58,22 @@ cells whose text has already been read twice would confuse "the findings form wo
 "the findings form works on the cells we know". Which exclusion files were found is
 printed, not assumed.
 
-A RE-SMOKE DRAWS FRESH CELLS UNDER A NEW STATED SEED (plan D3), as jd6's smoke 2 did.
+A RE-SMOKE DRAWS FRESH CELLS UNDER A NEW STATED SEED (plan D3), as jd6's smoke 2 did,
+and says so on the command line rather than in an edit to this file:
+
+    uv run python records/derivations/fd1-smoke-pick.py --seed 2 \
+        --out data/cases/fd1-smoke-2.jsonl --exclude data/cases/fd1-smoke.jsonl
+
+`--seed` re-seeds every per-type draw, `--out` names the file written, and every
+`--exclude` file's item ids are excluded on top of the standing exclusions (the jd6 hand
+check and the earlier smoke files). WITH NO ARGUMENTS THE SCRIPT IS UNCHANGED: seed 1,
+`data/cases/fd1-smoke.jsonl`, the six cells smoke 1 ran. The overlap with every
+`--exclude` file is asserted to be empty before anything is written, so a re-smoke that
+silently re-read the cells it was meant to avoid fails loudly instead.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import random
 import re
@@ -76,6 +88,9 @@ HANDCHECK = REPO / "records" / "experiments" / "judgment-debate-6" / "HANDCHECK.
 SMOKE_GLOBS = ("jd6-smoke*.jsonl", "jd5-smoke*.jsonl", "jd4-smoke*.jsonl",
                "judgment-debate-smoke*.jsonl")
 
+# The DEFAULTS, which are smoke 1's. `--seed` and `--out` override them; nothing else in
+# the draw moves, so a re-smoke differs from the first one in exactly the seed and the
+# cells it is told to avoid.
 SEED = 1
 N_WANTED = 6
 # Types 5 and 6 ARE their subsets, so types 1-4 leave those two alone where they can.
@@ -140,12 +155,12 @@ def smoked_items() -> tuple[set[str], list[str]]:
 
 
 def draw(pool: list[dict], label: str, taken: set[str],
-         used_subsets: set[str]) -> dict | None:
+         used_subsets: set[str], seed: int = SEED) -> dict | None:
     """One seeded pick, preferring a subset nothing has taken yet."""
     shuffled = [r for r in pool if r["item_id"] not in taken]
     if not shuffled:
         return None
-    random.Random(f"{SEED}:{label}").shuffle(shuffled)
+    random.Random(f"{seed}:{label}").shuffle(shuffled)
     for row in shuffled:
         if row["subset"] not in used_subsets:
             return row
@@ -154,7 +169,28 @@ def draw(pool: list[dict], label: str, taken: set[str],
     return shuffled[0]
 
 
-def main() -> int:
+def excluded_items(paths: list[Path]) -> tuple[set[str], list[str]]:
+    """The item ids in the files a re-smoke is told to avoid, and which were found.
+
+    Separate from `smoked_items()` because these are named on the command line and a
+    missing one is an ERROR rather than an absence: a re-smoke told to avoid smoke 1 and
+    handed a path that does not exist would draw smoke 1's cells and say nothing.
+    """
+    items: set[str] = set()
+    found: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            raise SystemExit(f"  ! --exclude {path} is not on disk")
+        found.append(path.name)
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                items.add(json.loads(line)["item"]["item_id"])
+    return items, found
+
+
+def main(seed: int = SEED, out: Path = OUT,
+         exclude: list[Path] | None = None) -> int:
+    exclude = exclude or []
     if not INDEX.is_file():
         print(f"  ! {INDEX} is not on disk; it is the population every fd1 spec "
               "re-judges (`transcripts_from`)")
@@ -166,17 +202,23 @@ def main() -> int:
 
     stems = handchecked_stems()
     smoked, smoke_files = smoked_items()
+    named, named_files = excluded_items(exclude)
+    print(f"\nseed {seed}  ->  {out}")
     print(f"\nexclusion sources")
     print(f"  {HANDCHECK}: "
           f"{'FOUND' if HANDCHECK.is_file() else 'NOT FOUND'} — {len(stems)} item stems")
     print(f"  data/cases/ smoke files found ({len(smoke_files)}): "
           f"{', '.join(smoke_files) if smoke_files else '(none)'} — "
           f"{len(smoked)} item ids")
+    print(f"  --exclude files ({len(named_files)}): "
+          f"{', '.join(named_files) if named_files else '(none)'} — "
+          f"{len(named)} item ids")
 
     eligible = [r for r in decided
                 if item_stem(r["item_id"]) not in stems
                 and r["item_id"] not in stems
-                and r["item_id"] not in smoked]
+                and r["item_id"] not in smoked
+                and r["item_id"] not in named]
     print(f"  eligible (decided, never hand-read, never smoked): {len(eligible)} of "
           f"{len(decided)}")
 
@@ -190,7 +232,7 @@ def main() -> int:
         pool = [r for r in eligible if predicate(r)]
         print(f"\n{label}: {len(pool)} eligible, subsets "
               f"{dict(Counter(r['subset'] for r in pool))}")
-        row = draw(pool, label, taken, used_subsets)
+        row = draw(pool, label, taken, used_subsets, seed)
         if row is None:
             print(f"  ! no eligible cell of this type; NOT WRITING")
             return 1
@@ -221,7 +263,7 @@ def main() -> int:
     pool = [r for r in eligible
             if r["subset"] == "gpqa" and r["gold_flawed"] and r["item_id"] not in taken]
     print(f"\n{label}: {len(pool)} eligible flawed gpqa cells")
-    row = draw(pool, label, taken, set())
+    row = draw(pool, label, taken, set(), seed)
     if row is None:
         print("  ! no eligible flawed gpqa cell; NOT WRITING")
         return 1
@@ -258,16 +300,27 @@ def main() -> int:
               "NOT WRITING")
         return 1
 
-    OUT.write_text("\n".join(by_id[i] for i in sorted(item_ids)) + "\n",
+    # THE RE-SMOKE'S OWN ASSERT, before anything is written: the whole point of a second
+    # smoke is fresh text, and a draw that overlapped the file it was told to avoid would
+    # be testing the prompts on cells that have already been read.
+    overlap = sorted(set(item_ids) & named)
+    if overlap:
+        print(f"  ! {overlap} are in the --exclude files; NOT WRITING")
+        return 1
+
+    out.write_text("\n".join(by_id[i] for i in sorted(item_ids)) + "\n",
                    encoding="utf-8")
-    written = [l for l in OUT.read_text(encoding="utf-8").splitlines() if l.strip()]
+    written = [l for l in out.read_text(encoding="utf-8").splitlines() if l.strip()]
     if len(written) != N_WANTED:
         print(f"  ! wrote {len(written)} lines, wanted {N_WANTED}")
         return 1
 
-    print(f"\nwrote {len(written)} items -> {OUT}")
-    print(f"  seeded random.Random('{SEED}:<type>'), one per subset where the pool "
+    print(f"\nwrote {len(written)} items -> {out}")
+    print(f"  seeded random.Random('{seed}:<type>'), one per subset where the pool "
           f"allowed; python800 and gpqa reserved for types 5 and 6")
+    if named:
+        print(f"  overlap with the {len(named_files)} --exclude file(s): NONE "
+              f"(asserted before writing)")
     print(f"\n{'type':22s}{'cell_id':<74}{'subset':>10}{'gold_flawed':>13}"
           f"{'M0 verdict':>12}{'M0 right':>10}{'rec_words':>11}")
     print("-" * 152)
@@ -287,5 +340,17 @@ def main() -> int:
     return 0
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", type=int, default=SEED,
+                        help="re-seeds every per-type draw (default: smoke 1's seed)")
+    parser.add_argument("--out", type=Path, default=OUT,
+                        help="the cases file to write (default: smoke 1's)")
+    parser.add_argument("--exclude", type=Path, nargs="*", default=[],
+                        help="cases files whose items must not be drawn")
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    args = parse_args()
+    raise SystemExit(main(seed=args.seed, out=args.out, exclude=list(args.exclude)))

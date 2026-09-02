@@ -1473,6 +1473,9 @@ async def per_condition_pass(config, client_config, grading, by_id) -> int:
 # about rather than a fixture sentence that would be void against every one of them.
 FINDINGS_REPLIES = {
     "judge": (
+        # A PREAMBLE and, below, a trailing paragraph of self-commentary — both of them
+        # what the smoke of 2026-09-02 found published inside `<findings>`. The pass
+        # asserts that neither reaches the challenger, the ruling judge or the grader.
         "The flawed side raised two points about the same passage.\n"
         "Finding 1\n"
         'Passage: "' + SOLUTION_QUOTE + '"\n'
@@ -1486,6 +1489,8 @@ FINDINGS_REPLIES = {
         "Defence: the sound side called the wording conventional\n"
         "Reason: imprecision is not falsity\n"
         "Ruling: NOT A FLAW"
+        "\n\nFindings are done. The two are different ways of expressing the same "
+        "worry, which is why I listed them separately."
     ),
     "challenger": (
         "Thinking: I read the list against the record.\n"
@@ -1508,6 +1513,19 @@ FINDINGS_REPLIES = {
         '   Text says: "this sentence appears nowhere in the text under review"\n'
         '   Record says: "Alice argues in round 1."\n'
         "   Why: there is no finding 9, so this contest is void by construction.\n"
+        # R1, the rule the smoke corrected. Contest 5 quotes NOTHING under `Record
+        # says:` — optional for a contest of a finding, whose anchor is `Text says:` —
+        # and contest 6 quotes the FINDING'S OWN words there, which is what three of the
+        # smoke's four strong-arm contests did and were voided for.
+        "5. Contests: Finding 2\n"
+        "   Should be: FLAW\n"
+        '   Text says: "' + SOLUTION_QUOTE + '"\n'
+        "   Why: the wording is not merely imprecise, it is wrong.\n"
+        "6. Contests: Finding 2\n"
+        "   Should be: FLAW\n"
+        '   Text says: "' + SOLUTION_QUOTE + '"\n'
+        '   Record says: "imprecision is not falsity"\n'
+        "   Why: the finding's own reason concedes the passage says something false.\n"
         "Decision: REVERSE"
     ),
     # One line per contest, in the objection's numbering, and never a verdict. Contest 2
@@ -1516,11 +1534,18 @@ FINDINGS_REPLIES = {
     "recourse_judge": (
         "The quotations check out. Contest 1's claim is answered in the record, the "
         "omitted point is real but is not a flaw, the two findings make different "
-        "claims, and contest 4 quotes nothing I can find.\n"
+        "claims, contest 4 quotes nothing I can find, and contests 5 and 6 do not show "
+        "finding 2 mistaken.\n"
+        # R5: an ANNOUNCED lead-in. Once the lines are stripped it leaves prose ending on
+        # a promise, which is what defeated the smoke's reader; the strip drops it and
+        # `ruling_leadin_stripped` records that it did.
+        "The final rulings are:\n"
         "Contest 1 (Finding 1): NOT A FLAW\n"
         "Contest 2 (omission): NOT A FLAW\n"
         "Contest 3 (contradiction): NOT A CONTRADICTION\n"
-        "Contest 4 (Finding 9): FLAW"
+        "Contest 4 (Finding 9): FLAW\n"
+        "Contest 5 (Finding 2): NOT A FLAW\n"
+        "Contest 6 (Finding 2): NOT A FLAW"
     ),
     # The findings reader's own vocabulary. CONSISTENT is the consistent answer to the
     # ruling above, and it is translated against the RULING's derived verdict, so
@@ -1535,6 +1560,8 @@ FINDINGS_REPLIES = {
         "Contest 1: VALID — the finding is not about the recorded flaw.\n"
         "Contest 2: INVALID — the record does not raise that as a purported flaw.\n"
         "Contest 3: VALID — the two findings concern the same passage.\n"
+        "Contest 5: INVALID — the passage is not the recorded flaw.\n"
+        "Contest 6: INVALID — the passage is not the recorded flaw.\n"
         "Valid objection: YES"
     ),
 }
@@ -1646,8 +1673,47 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
         manifest = json.loads((directory / "run.json").read_text(encoding="utf-8"))
         if manifest.get("judge_form") != "findings":
             stray["a run whose manifest does not say which form judged it"] = 1
+        # R4: THE PUBLISHED GROUNDS ARE THE LIST. The judge wrote a preamble and a
+        # trailing paragraph of self-commentary; neither is a finding, and publishing
+        # them inside `<findings>` invites a contest against a sentence that is not one.
+        if not verdict["reasoning"].startswith("Finding 1"):
+            stray["the published findings start above the list"] = 1
+        if not verdict["reasoning"].rstrip().endswith("Ruling: NOT A FLAW"):
+            stray["the published findings run past the last ruling"] = 1
+        if "Findings are done" in verdict["reasoning"]:
+            stray["trailing self-commentary was published as part of the judgment"] = 1
+        if "Findings are done" not in verdict["raw"]:
+            stray["the whole reply was not kept beside the trimmed grounds"] = 1
+        if not (stored.get("preamble_chars") and stored.get("trailing_chars")):
+            stray["the trim dropped text without counting it"] = 1
     print(f"findings per judgment: {lists}   "
           f"(the verdict is derived from these, not written)")
+
+    # AND THE SAME TEXT ON THE WIRE. The `<findings>` block in the challenger's own
+    # request has to BE the published grounds — the challenger, the ruling judge and the
+    # grader all reading one document is what makes "Finding 3" mean the same finding to
+    # all of them.
+    published = {
+        json.loads((d / "verdict.json").read_text(encoding="utf-8"))["reasoning"]
+        for d in sorted(ROOT_FINDINGS.glob("cells/*/runs/*"))}
+    blocks: dict[str, int] = {}
+    for client in CLIENTS:
+        for call in client.calls:
+            if call["meta"].get("role") not in ("challenger", "recourse_judge",
+                                                "findings_grader"):
+                continue
+            sent = "".join(m["content"] for m in call["messages"])
+            if "<findings>" not in sent:
+                continue
+            block = sent.split("<findings>")[1].split("</findings>")[0].strip()
+            blocks[call["meta"]["role"]] = blocks.get(call["meta"]["role"], 0) + 1
+            if block not in published:
+                stray[f"the {call['meta']['role']} was shown a different findings text"] = 1
+            if "Findings are done" in sent:
+                stray[f"the {call['meta']['role']} was shown the judge's commentary"] = 1
+    print(f"requests carrying the published <findings> block: {blocks}")
+    if set(blocks) != {"challenger", "recourse_judge", "findings_grader"}:
+        stray["a findings reader was not shown the list at all"] = 1
 
     # THE CONTEST and THE RULING: four kinds, one of them void, one of them appending.
     kinds: dict[str, int] = {}
@@ -1657,9 +1723,22 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
             (directory / "challenge.json").read_text(encoding="utf-8"))
         if challenge.get("arm") != "findings":
             stray[f"a challenge recorded under arm {challenge.get('arm')!r}"] = 1
-        for contest in challenge.get("defects") or []:
+        by_number = {c["index"]: c for c in challenge.get("defects") or []}
+        for contest in by_number.values():
             kinds[contest["kind"]] = kinds.get(contest["kind"], 0) + 1
             void += bool(contest.get("void"))
+        # R1: `Record says:` is OPTIONAL on a contest of a finding — absent it is None
+        # (the check did not apply) and never False — and when it is given it may quote
+        # the FINDINGS as well as the record, which is what three of the four contests
+        # in the smoke's strong arm did and were voided for.
+        if by_number.get(5, {}).get("quote_in_record") is not None:
+            stray["a contest with no record quote was checked against one anyway"] = 1
+        if by_number.get(5, {}).get("void"):
+            stray["a finding contest was voided for not quoting the record"] = 1
+        if by_number.get(6, {}).get("quote_in_record") is not True:
+            stray["a contest quoting the findings' own words was not found there"] = 1
+        if by_number.get(6, {}).get("void"):
+            stray["a contest quoting the finding it contests was voided"] = 1
         ruling = json.loads((directory / "ruling.json").read_text(encoding="utf-8"))
         if ruling.get("form") != "derived_findings":
             stray[f"a ruling recorded under form {ruling.get('form')!r}"] = 1
@@ -1678,7 +1757,7 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
     print(f"contests parsed, by kind: {kinds}   void: {void}")
     print(f"findings appended at recourse: {added}   decisions overturned: "
           f"{overturned}/{len(grid)}")
-    if kinds != {"finding": 2 * len(grid), "omission": len(grid),
+    if kinds != {"finding": 4 * len(grid), "omission": len(grid),
                  "contradiction": len(grid)}:
         stray["the objection's four contests did not all parse"] = 1
     if void != len(grid):
@@ -1704,7 +1783,7 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
         grade = json.loads(path.read_text(encoding="utf-8"))
         modes[str(grade.get("mode"))] = modes.get(str(grade.get("mode")), 0) + 1
         by_index = {c["index"]: c for c in grade["contests"]}
-        if len(by_index) != 4:
+        if len(by_index) != 6:
             stray["a grade that did not rule on every contest the objection raised"] = 1
         # the void contest keeps its number and its MECHANICAL ruling; the grader's
         # opinion about a settled contest is discarded rather than merged
@@ -1736,7 +1815,12 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
                 "challenge_contests_contradiction_n", "challenge_contests_void_n",
                 "challenge_seeks_reversal", "ruling_contest_lines", "findings_after_n",
                 "findings_added_n", "ruling_prose_empty", "grade_contests_n",
-                "grade_contests_valid_n", "grade_line_mismatch")
+                "grade_contests_valid_n", "grade_line_mismatch",
+                # the revision of 2026-09-02: the judge's format, the void-only
+                # objection, and the lead-in the strip dropped
+                "findings_passage_exact_n", "findings_duplicate_passage_n",
+                "findings_preamble_chars", "findings_trailing_chars",
+                "challenge_void_only", "ruling_leadin_stripped")
     missing = sorted({column for row in rows for column in required
                       if column not in row})
     print(f"indexed {len(rows)} rows   index columns missing: {missing or 'none'}")
@@ -1756,6 +1840,34 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
     print(f"findings caveat: {caveat[:150]}...")
     if not caveat or "THIRD kind of validity" not in caveat:
         stray["the metrics do not say which validity this rate is"] = 1
+    # R2d: this objection contests six things, one of them void, so it is neither a
+    # phantom nor a void-only objection; R5: the judge announced its lines and the strip
+    # dropped the announcement.
+    if any(row.get("challenge_void_only") for row in rows):
+        stray["a mixed objection was recorded as void-only"] = 1
+    if any(row.get("phantom_contest") for row in rows):
+        stray["an objection with six contests was recorded as a phantom"] = 1
+    if not all(row.get("ruling_leadin_stripped") for row in rows):
+        stray["the announced lead-in was not stripped or not counted"] = 1
+    # R8: the reader is shown the lines it is checking — and never the lead-in, nor a
+    # decision line inside the prose it is reading.
+    reader_requests = ["".join(m["content"] for m in call["messages"])
+                       for client in CLIENTS for call in client.calls
+                       if call["meta"].get("role") == "ruling_reader"]
+    findings_requests = [text for text in reader_requests
+                         if "list of findings" in text]
+    print(f"ruling-reader requests: {len(reader_requests)} "
+          f"({len(findings_requests)} in the findings vocabulary)")
+    if not findings_requests:
+        stray["no ruling was read by the findings reader"] = 1
+    if not all("<lines>" in text and "Contest 1: NOT A FLAW" in text
+               for text in findings_requests):
+        stray["the findings reader was not shown the lines it is checking"] = 1
+    if any("The final rulings are:" in text for text in findings_requests):
+        stray["the reader was handed the judge's dangling lead-in"] = 1
+    if any("Contest 4 (Finding 9)" in text.split("<lines>")[0]
+           for text in findings_requests):
+        stray["a contest line survived inside the prose the reader was given"] = 1
 
     outcomes = rendered_outcome_lines(ROOT_FINDINGS)
     print(f"rendered outcome sentences: {sorted(outcomes)}")
@@ -1767,6 +1879,19 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
         stray["a contest document does not print the rulings it was derived from"] = 1
     if not all("were added at recourse" in text for text in documents):
         stray["a contest document does not say a finding was appended"] = 1
+    # R2b: the judge ruled `Contest 4 (Finding 9): FLAW` and the harness applied nothing,
+    # because the contest was void. The document prints that line ANNOTATED with the
+    # check that failed — a smoke record printed it bare, above a count that contradicted
+    # it, in front of the stakeholder whose objection it was.
+    if not all("Contests whose quotations could not be found were not applied." in text
+               for text in documents):
+        stray["a contest document does not say that a ruling was not applied"] = 1
+    if not all("Contest 4: FLAW — not applied: the finding it contests is not in the "
+               "list" in text for text in documents):
+        stray["a void contest's ruling line was printed as though it had counted"] = 1
+    if any("Every contest quoted words that could not be found" in text
+           for text in documents):
+        stray["a mixed objection was described as void-only"] = 1
 
     after_hash = tree_sha256(ROOT)
     print(f"source tree hash before {before[:16]}  after {after_hash[:16]}  "

@@ -1271,6 +1271,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
             row["findings_parse_mode"] = stored_findings.get("parse_mode")
             row["findings_ruling_normalised_n"] = stored_findings.get(
                 "ruling_normalised_n")
+            # HOW WELL THE JUDGE HELD THE FORMAT, reported and never enforced (the smoke
+            # of 2026-09-02: one claim listed as four findings, a quarter of the passages
+            # not verbatim). `findings_passage_exact_n` counts passages actually found in
+            # the text under review, `findings_duplicate_passage_n` findings repeating an
+            # earlier finding's passage, and the two char counts how much of the reply the
+            # publication trim dropped either side of the list — a judge that writes a
+            # page of commentary around every list is visible in a column rather than only
+            # in the full published document.
+            row["findings_passage_exact_n"] = stored_findings.get("passage_exact_n")
+            row["findings_duplicate_passage_n"] = stored_findings.get(
+                "duplicate_passage_n")
+            row["findings_preamble_chars"] = stored_findings.get("preamble_chars")
+            row["findings_trailing_chars"] = stored_findings.get("trailing_chars")
         manifest = _decision_manifest(record.directory)
         if manifest.get("kind") == "rejudge":
             row["rejudged_from"] = manifest.get("rejudged_from")
@@ -1376,6 +1389,16 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                         1 for c in contests if c.get("kind") == kind)
                 row["challenge_contests_void_n"] = sum(
                     1 for c in contests if c.get("void"))
+                # AN OBJECTION MADE ENTIRELY OF VOID CONTESTS. It cannot break anything
+                # by construction, so PREREG §2 reports the break rate over the
+                # denominator that excludes it — and it is NOT a phantom: the challenger
+                # contested in earnest and quoted the wrong document, which is a
+                # different failure from a REVERSE over an argument that endorses the
+                # decision. Kept apart since 2026-09-02, when the phantom column was
+                # measuring this instead.
+                row["challenge_void_only"] = (
+                    bool(contests)
+                    and all(c.get("void") for c in contests))
                 # A contest can be local and unable to move the verdict — one FLAW
                 # finding among five keeps a FLAWED verdict however it is ruled — so
                 # "objected" and "asked for a reversal" are two columns and not one.
@@ -1458,6 +1481,13 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     reading = json.loads(reading_path.read_text())
                     row["ruling_prose_conclusion"] = reading["prose_conclusion"]
                     row["ruling_line_mismatch"] = reading["mismatch"]
+                    # Whether the prose handed to the reader ended on a dangling lead-in
+                    # ("The final ruling for Contest 1 is:") that the strip dropped. A
+                    # fact about the RULING PROMPT, not about the reader: two of three
+                    # findings-reader mismatches in the smoke were caused by one, and the
+                    # prompt now says to write the lines rather than announce them.
+                    row["ruling_leadin_stripped"] = reading.get(
+                        "leadin_stripped", False)
             else:
                 # No ruling was sought because nothing was objected to. Not-revised is
                 # the right reading; "never contested" is preserved by challenge_raised.
