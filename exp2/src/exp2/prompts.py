@@ -458,7 +458,7 @@ Passage: "<exact words of the text under review>"
 Claim: <one sentence>
 Defence: <one sentence, or: none given>
 Reason: <why it is or is not a flaw>
-Ruling: FLAW
+Ruling: FLAW | NOT A FLAW
 
 `Ruling:` must read exactly `FLAW` or `NOT A FLAW`. Write nothing after the last \
 finding. If no purported flaw was raised, reply with the single line \
@@ -5474,9 +5474,19 @@ def parse_finding_contests(
     2026-09-02 (`outputs/fd1-smoke-1-read.md`):
 
       * a contest of a **finding** must anchor in the TEXT — `Text says:` absent, or not
-        found in the solution, is void. `Record says:` is OPTIONAL there: absent it is
-        `None` (the check did not apply), and present it must be found in the record body
-        **or in the findings text**, both of which the stakeholder was shown.
+        found in the solution, is void. `Record says:` is OPTIONAL there and **never
+        voids it**: absent it is `None` (the check did not apply), present it is checked
+        against the record body **and** the findings text, both of which the stakeholder
+        was shown, and the answer — True or False — is RECORDED beside the contest and
+        goes no further. The rule was narrowed again by smoke 3 (2026-09-02): on
+        `strong/law` the challenger wrote two real record quotations joined by "and",
+        each prefixed `"Bob: `, under an optional `Record says:`; `Text says:` checked
+        out, the ruling judge found both quotations in the record and ruled on the
+        contest, and the harness discarded its line because a field the contest did not
+        have to fill had failed a string comparison. An optional field cannot be allowed
+        to destroy a contest that met the requirement it was actually given; what the
+        flag buys is the report column `challenge_contests_record_unverified_n`, which
+        counts exactly this shape.
       * an **omission** must quote the record body under `Record says:` (the debate is
         where a purported flaw is either raised or not) and the solution under
         `Passage:`. Both are required.
@@ -5542,6 +5552,16 @@ def parse_finding_contests(
                                        != ruling_by_index[pair[1]])
         flags = (finding_exists, direction_ok, in_text, in_record,
                  pair_rulings_differ)
+        # WHICH OF THE FLAGS VOID, per kind. Every flag is recorded; not every flag
+        # decides. For a contest of a FINDING the voiding set is the three checks the
+        # prompt makes mandatory — the finding exists, the direction is a real change,
+        # and `Text says:` is in the text under review — and `quote_in_record` is left
+        # out of it, because that field is optional for this kind and a field a contest
+        # was never required to fill cannot be the thing that discards it (smoke 3,
+        # `strong/law`). For an omission both quotations are required and both void; for
+        # a contradiction the pair check is the whole of it.
+        voiding = ((finding_exists, direction_ok, in_text) if kind == "finding"
+                   else flags)
         contests.append({
             "index": position + 1,
             "numbered": int(head.group(1)) if head.group(1) else None,
@@ -5562,7 +5582,7 @@ def parse_finding_contests(
             # `GRADER_SKIPPED_JUDGMENT` lesson: a grader or a judge shown a renumbered
             # subset of an objection it can also read whole would attach every ruling to
             # the wrong contest.
-            "void": any(flag is False for flag in flags),
+            "void": any(flag is False for flag in voiding),
         })
     return contests
 
@@ -5586,8 +5606,13 @@ _VOID_REASONS: tuple[tuple[str, str, str], ...] = (
     ("quote_in_text",
      "the words quoted under Text says were not found in the text under review",
      "the words quoted under Passage were not found in the text under review"),
+    # ONLY REACHED BY AN OMISSION. A finding contest's `Record says:` is optional and
+    # does not void it (see `parse_finding_contests`), so `contest_void_reason` skips
+    # this row for that kind rather than reporting a check that did not decide anything.
+    # The finding-kind column is kept, and empty, so the table's shape still says one row
+    # per flag.
     ("quote_in_record",
-     "the words quoted under Record says were not found in the record or the findings",
+     "",
      "the words quoted under Record says were not found in the record"),
     ("pair_rulings_differ",
      "the two findings it names are not a pair ruled two ways",
@@ -5600,16 +5625,82 @@ def contest_void_reason(contest: dict[str, Any]) -> str:
 
     First rather than all of them, because the contest fails on the first one and a
     reader asking "why was my contest not applied" is owed the check that stopped it, not
-    an inventory. The wording differs between a contest of a finding and the other kinds
-    where the documents differ — a finding contest's `Record says:` may quote the
-    findings as well as the record, and saying otherwise would tell a stakeholder their
-    quotation had to be somewhere it did not.
+    an inventory. Only checks that VOID this kind of contest are looked at: a finding
+    contest's `Record says:` is optional, is recorded and never voids, so it is not a
+    reason a finding contest was set aside and this function does not name it as one.
     """
     finding_kind = contest.get("kind") == "finding"
     for flag, finding_words, other_words in _VOID_REASONS:
+        words = finding_words if finding_kind else other_words
+        if not words:
+            # A check that is recorded for this kind but does not void it. Reporting it
+            # as the reason would tell a stakeholder their contest failed on a field they
+            # were told was optional, which is the thing smoke 3 caught the code doing.
+            continue
         if contest.get(flag) is False:
-            return finding_words if finding_kind else other_words
+            return words
     return ""
+
+
+# WHAT THE JUDGE, THE GRADER AND THE READER ARE SHOWN, and why it is not the reply.
+#
+# Until smoke 3 the objection put to the recourse judge, to the grader and into
+# the published document was the challenger's PUBLIC SECTION verbatim — everything under
+# `Argument:`. That is the right text for an arm whose objection is prose. It is the
+# wrong text for an arm whose objection is a numbered list, and smoke 3 measured the
+# difference: on `weak/lojban` `gemini-2.5-flash` wrote `Argument:` as a HEADING inside
+# its own deliberation, so the public section held 9,142 characters of private working —
+# rejected drafts, notes to itself, a recount of the findings — of which the six lines
+# that parsed into contests were a fraction. All of it went into `<objection>`, and all
+# of it was published as the stakeholder's objection.
+#
+# So the objection is RE-RENDERED from the contests that parsed. Three properties follow,
+# and each of them is the point:
+#
+#   * the judge rules on what the harness will apply. The list it reads and the list
+#     `apply_contest_lines` walks are the same list, so a contest the parser did not see
+#     cannot be ruled on and a paragraph the parser ignored cannot be argued from.
+#   * the numbering is the harness's. `Contest k` means the contest at position k, which
+#     is what every join downstream — the ruling's lines, the grader's lines — is keyed
+#     on. A model that numbered its list 1, 2, 4 no longer makes those joins partial.
+#   * the published document is the objection. A stakeholder's record shows what was put
+#     to the judge, and the challenger's whole reply is still on disk in `challenge.raw`
+#     and in the full-transcript document beside it.
+#
+# NOTHING IN THE PARSER IS LOOSENED to make this work: what does not parse is not
+# rendered, and an objection with no parsed contests (a STANDS, or a list the parser
+# could not read) falls back to the public section, which is the only text there is.
+def render_contests(contests: Sequence[dict[str, Any]]) -> str:
+    """The parsed contests, in the canonical numbered format. ``""`` for an empty list.
+
+    Field order is the challenger template's own — `Contests:` / `Should be:` /
+    `Text says:` / `Record says:` / `Passage:` / `Findings:` / `Why:` — and a field is
+    written only if the contest carries it, so nothing is invented for a contest that
+    left one out. Quotations are written back exactly as they were parsed, quotation
+    marks and all: `_quotes` keeps the whole of the line after the label, and
+    `normalise_quote` is what removes the marks at comparison time.
+    """
+    lines: list[str] = []
+    for contest in contests:
+        index = contest.get("index")
+        kind = contest.get("kind")
+        head = (f"Finding {contest.get('finding')}" if kind == "finding"
+                else str(kind))
+        lines.append(f"{index}. Contests: {head}")
+        if contest.get("should_be"):
+            lines.append(f"   Should be: {contest['should_be']}")
+        for quote in contest.get("text_says") or []:
+            lines.append(f"   Text says: {quote}")
+        for quote in contest.get("record_says") or []:
+            lines.append(f"   Record says: {quote}")
+        for quote in contest.get("passage") or []:
+            lines.append(f"   Passage: {quote}")
+        pair = contest.get("pair")
+        if pair:
+            lines.append(f"   Findings: {pair[0]} and {pair[1]}")
+        if contest.get("why"):
+            lines.append(f"   Why: {contest['why']}")
+    return "\n".join(lines)
 
 
 def claimed_verdict_for_contests(

@@ -1034,6 +1034,46 @@ def section_recorded(arms, population, m0, jd5b_stats, scans) -> dict:
         void = sum(r.get("challenge_contests_void_n") or 0 for r in raised)
         print(f"      {'mechanically VOID':<28}{void:>6} contests  "
               f"({pct(void, total)} of contests)")
+        # THE DIRECTION OF A FINDING CONTEST, printed as its own table and never pooled
+        # with the kind mix or with the validity rate. PREREG §5(a): the two directions
+        # are graded against DIFFERENT bounds — NOT A FLAW -> FLAW is valid only if the
+        # finding is the annotated flaw (a LOWER bound), FLAW -> NOT A FLAW is valid by
+        # rule on every sound item (an UPPER bound) — so a validity number over the two
+        # together moves with the mix rather than with the challenger. This table is what
+        # says which mix it moved with. `Should be:` is not a field an omission or a
+        # contradiction has, so the two rows count FINDING contests only and need not sum
+        # to the finding row above: a contest that named no direction is in neither.
+        to_flaw = sum(r.get("challenge_contests_to_flaw_n") or 0 for r in raised)
+        to_not = sum(r.get("challenge_contests_to_not_a_flaw_n") or 0 for r in raised)
+        finding_n = sum(r.get("challenge_contests_finding_n") or 0 for r in raised)
+        if any(r.get("challenge_contests_to_flaw_n") is not None for r in raised):
+            print(f"    DIRECTION of the finding contests   "
+                  f"({finding_n} finding contests)")
+            print(f"      {'NOT A FLAW -> FLAW':<28}{to_flaw:>6}  "
+                  f"({pct(to_flaw, finding_n)})  validity is a LOWER bound (§5a)")
+            print(f"      {'FLAW -> NOT A FLAW':<28}{to_not:>6}  "
+                  f"({pct(to_not, finding_n)})  validity is an UPPER bound (§5a)")
+            missing = finding_n - to_flaw - to_not
+            if missing:
+                print(f"      {'no direction read':<28}{missing:>6}  "
+                      "— void by `direction_ok`, and kept in the list")
+        else:
+            print("    DIRECTION of the finding contests: NOT IN THE INDEX — this tree")
+            print("      predates `challenge_contests_to_flaw_n` (R12e, 2026-09-02).")
+        # A `Record says:` GIVEN AND NOT FOUND on a contest of a FINDING. Since R12a that
+        # does NOT void the contest — the field is optional for this kind and the anchor
+        # is `Text says:` — so it is reported here and never inside the void count. It is
+        # the rate at which this challenger attributes words to a document that does not
+        # carry them, which is a fact about the challenger and not about the contest.
+        if any(r.get("challenge_contests_record_unverified_n") is not None
+               for r in raised):
+            unverified = sum(
+                r.get("challenge_contests_record_unverified_n") or 0 for r in raised)
+            print(f"      {'record quote unverified':<28}{unverified:>6}  "
+                  f"({pct(unverified, finding_n)} of finding contests) — RECORDED, "
+                  "not voiding")
+        else:
+            print("      record quote unverified: NOT IN THE INDEX (R12a, 2026-09-02).")
         only_void = sum(1 for r in raised if void_only(r) is True)
         print(f"    VOID-ONLY objections             {rate(only_void, len(raised))}"
               "   — cannot break anything by construction, and NOT a phantom")
@@ -1080,6 +1120,27 @@ def section_recorded(arms, population, m0, jd5b_stats, scans) -> dict:
             print(f"    {str(basis):<28}{len(group):>12}"
                   f"{rate_ci(valid, len(group)):>26}")
         rule()
+        # ITEMS WHOSE ANNOTATION RECORDS NO LOCATION. `label_basis` says how the label
+        # was arrived at; this says whether the grader had a place to point at. A finding
+        # contest on a flawed item is graded by asking whether the finding IS the
+        # annotated flaw, and where `flaw.json` carries an empty `flaw_location` that
+        # question is answered from the annotation prose alone — a different instrument
+        # on the same row. Counted, not corrected, and printed here so the validity rate
+        # above is read with it. Read from the index if it is there; a tree written
+        # before the column existed gets the note and no number, on this file's rule that
+        # a missing measurement is said out loud rather than defaulted to zero.
+        if any(r.get("flaw_location_missing") is not None for r in graded_rows):
+            missing_loc = sum(1 for r in graded_rows if r.get("flaw_location_missing"))
+            flawed = [r for r in graded_rows if r.get("gold_flawed")]
+            missing_flawed = sum(1 for r in flawed if r.get("flaw_location_missing"))
+            print(f"    annotation with NO location      "
+                  f"{rate(missing_loc, len(graded_rows))} of graded cells, "
+                  f"{rate(missing_flawed, len(flawed))} of the FLAWED ones")
+        else:
+            print("    annotation with NO location: NOT IN THE INDEX — `flaw.json`'s")
+            print("      `flaw_location` is not carried as `flaw_location_missing` on")
+            print("      these rows, so how many finding contests were graded without a")
+            print("      place to point at is not derivable here.")
         contests_n = sum(r.get("grade_contests_n") or 0 for r in graded_rows)
         contests_valid = sum(r.get("grade_contests_valid_n") or 0 for r in graded_rows)
         mechanical = sum(r.get("grade_contests_mechanical_n") or 0 for r in graded_rows)

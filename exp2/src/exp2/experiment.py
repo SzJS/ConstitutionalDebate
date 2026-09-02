@@ -1405,6 +1405,32 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                         1 for c in contests if c.get("kind") == kind)
                 row["challenge_contests_void_n"] = sum(
                     1 for c in contests if c.get("void"))
+                # WHICH WAY EACH CONTEST OF A FINDING POINTS. The two directions are not
+                # one instrument: `NOT A FLAW -> FLAW` is graded valid only if the
+                # finding IS the annotated flaw (a lower bound on validity, PREREG §5a)
+                # and `FLAW -> NOT A FLAW` is valid on every sound item by rule (an upper
+                # bound), so a validity rate over the two pooled would move with the mix.
+                # Counted over finding contests only: `Should be:` is not a field an
+                # omission or a contradiction has.
+                row["challenge_contests_to_flaw_n"] = sum(
+                    1 for c in contests
+                    if c.get("kind") == "finding" and c.get("should_be") == "FLAW")
+                row["challenge_contests_to_not_a_flaw_n"] = sum(
+                    1 for c in contests
+                    if c.get("kind") == "finding"
+                    and c.get("should_be") == "NOT A FLAW")
+                # A RECORD QUOTATION THAT WAS GIVEN AND NOT FOUND, on a contest of a
+                # finding. Since 2026-09-02 (R12a) that does not void the contest —
+                # `Record says:` is optional for this kind and the anchor is `Text
+                # says:`, and voiding on an optional field discarded a contest the ruling
+                # judge had already ruled on (smoke 3, `strong/law`). The fact is still
+                # worth having, so it is a column: it is the rate at which this
+                # challenger attributes words to a document that does not carry them, and
+                # a hand check can read the contests it names.
+                row["challenge_contests_record_unverified_n"] = sum(
+                    1 for c in contests
+                    if c.get("kind") == "finding"
+                    and c.get("quote_in_record") is False)
                 # AN OBJECTION MADE ENTIRELY OF VOID CONTESTS. It cannot break anything
                 # by construction, so PREREG §2 reports the break rate over the
                 # denominator that excludes it — and it is NOT a phantom: the challenger

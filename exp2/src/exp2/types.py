@@ -995,6 +995,16 @@ class Challenge:
     # exactly what the transparency claim rules out.
     native_reasoning: str = ""
     reasoning_withheld: bool = False
+    # ``text`` IS NOT ALWAYS THE PUBLIC SECTION, and this says when it is not. Under the
+    # findings arm an objection whose contests parsed is published, put to the recourse
+    # judge and put to the grader as the harness's own rendering of those contests
+    # (`prompts.render_contests`) rather than as the challenger's public section — see
+    # the comment above that function for what smoke 3 measured. The whole reply is still
+    # in ``raw`` and in the full-transcript document; this flag is how a reader of one
+    # `challenge.json` can tell which of the two ``text`` holds without diffing them.
+    # False on every other arm, on every objection whose list did not parse, and on every
+    # challenge written before 2026-09-02.
+    text_rendered_from_contests: bool = False
 
     def __post_init__(self) -> None:
         if not self.stance:

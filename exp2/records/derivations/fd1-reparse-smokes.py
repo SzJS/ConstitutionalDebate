@@ -1,7 +1,21 @@
-"""Re-parse the fd1 smoke objections under R10 and say what it would have changed.
+"""Re-parse the fd1 smoke objections under today's rules and say what would change.
 
     cd exp2
     uv run python records/derivations/fd1-reparse-smokes.py 2>&1 | tee outputs/fd1-reparse-smokes.log
+    uv run python records/derivations/fd1-reparse-smokes.py --tree fd1-pilot-weak fd1-pilot-strong
+
+`--tree` takes tree names under `outputs/experiments/`, or paths; the default is the four
+smoke trees. It runs on any tree with `challenge.json` files in it, the pilots and the
+full runs included.
+
+WHAT R12a ADDED TO THIS SCRIPT (2026-09-02). The void rule was narrowed again: a contest
+of a FINDING is no longer void because an OPTIONAL `Record says:` could not be found —
+`Text says:` is that kind's anchor and the only quotation it is required to give. Smoke 3
+forced it: on `strong/law` the challenger gave two real record quotations joined by "and",
+each prefixed `"Bob: `, the ruling judge found both and ruled the contest, and the harness
+discarded its line. The second summary table below counts what the rule now records
+rather than enforces — `record unverified` — and how many stored-void contests it gives
+back (`un-voided by R12a`).
 
 R10 swapped the `Record says:` matcher in `parse_finding_contests` for
 `_record_quote_found`, the rule jd3's `record_quotes_in_record` gate already applied to a
@@ -53,6 +67,17 @@ REPO = Path(__file__).resolve().parents[2]
 TREES = ("fd1-smoke-weak", "fd1-smoke-strong", "fd1-smoke-2-weak", "fd1-smoke-2-strong")
 
 
+def tree_path(name: str, out: Path) -> Path:
+    """A `--tree` argument, as a directory. A bare name is looked up under `<out>/
+    experiments/`; anything with a separator in it, or that already exists, is taken as
+    the path it is — so the pilots and the full runs can be given by path without moving
+    them or symlinking them under another name."""
+    candidate = Path(name)
+    if candidate.is_dir() or candidate.is_absolute() or len(candidate.parts) > 1:
+        return candidate
+    return out / "experiments" / name
+
+
 def _flags(contests: list[dict[str, Any]], key: str) -> list[Any]:
     return [c[key] for c in contests]
 
@@ -102,19 +127,25 @@ def cells(tree: Path) -> list[tuple[str, Path]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=REPO / "outputs")
-    parser.add_argument("--trees", nargs="*", default=list(TREES))
+    # `--tree` is the name; `--trees` is kept as an alias because the log of the first
+    # run of this script names it, and a command in a record has to stay runnable.
+    parser.add_argument("--tree", "--trees", dest="trees", nargs="*",
+                        default=list(TREES),
+                        help="tree names under <out>/experiments, or paths. Default: "
+                             "the four smoke trees.")
     args = parser.parse_args()
 
     totals: dict[str, dict[str, int]] = {}
     verdict_changes: list[str] = []
     for name in args.trees:
-        tree = args.out / "experiments" / name
+        tree = tree_path(name, args.out)
         if not tree.is_dir():
             print(f"\n### {name}: no such tree, skipped")
             continue
         counted = {"contests": 0, "void_stored": 0, "void_pre": 0, "void_new": 0,
                    "verdict_changed": 0, "fixed": 0, "broken": 0, "cells": 0,
-                   "r10_moved": 0}
+                   "r10_moved": 0, "finding_contests": 0, "record_unverified": 0,
+                   "unvoided_by_r12a": 0}
         print(f"\n### {name}")
         for cell_name, run in cells(tree):
             challenge = json.loads((run / "challenge.json").read_text())
@@ -134,6 +165,22 @@ def main() -> int:
             counted["void_stored"] += sum(1 for c in stored if c["void"])
             counted["void_pre"] += sum(1 for c in pre if c["void"])
             counted["void_new"] += sum(1 for c in new if c["void"])
+            # R12a. `record_unverified` is a contest of a FINDING that gave a `Record
+            # says:` the matcher could not find. It no longer voids — the field is
+            # optional for this kind and the anchor is `Text says:` — so it is counted
+            # separately from `void_new` and never inside it. `unvoided_by_r12a` is the
+            # subset of those that WERE void as stored: the contests this change gives
+            # back, which on smoke 3 is the whole of what it does, since both smoke-3
+            # arms already ran under R10 and R11.
+            counted["finding_contests"] += sum(
+                1 for c in new if c["kind"] == "finding")
+            unverified = [c for c in new
+                          if c["kind"] == "finding" and c["quote_in_record"] is False]
+            counted["record_unverified"] += len(unverified)
+            by_index = {c["index"]: c for c in stored}
+            counted["unvoided_by_r12a"] += sum(
+                1 for c in unverified
+                if by_index.get(c["index"], {}).get("void") and not c["void"])
 
             print(f"\n  {cell_name}  ({len(new)} contest(s), gold "
                   f"{'FLAWED' if record.item.gold_flawed else 'SOUND'})")
@@ -144,6 +191,9 @@ def main() -> int:
             print(f"    void             stored {_flags(stored, 'void')}"
                   f"  pre-R10 {_flags(pre, 'void')}"
                   f"  new {_flags(new, 'void')}")
+            if unverified:
+                print(f"    record UNVERIFIED (finding contests, recorded and not "
+                      f"voiding): {[c['index'] for c in unverified]}")
 
             ruling_path = run / "ruling.json"
             if not ruling_path.is_file():
@@ -182,22 +232,42 @@ def main() -> int:
         totals[name] = counted
 
     print("\n\n### SUMMARY")
-    header = (f"{'tree':<20}{'cells':>6}{'contests':>10}{'void stored':>13}"
+    keys = ("cells", "contests", "void_stored", "void_pre", "void_new",
+            "verdict_changed", "r10_moved", "fixed", "broken")
+    header = (f"{'tree':<22}{'cells':>6}{'contests':>10}{'void stored':>13}"
               f"{'void pre-R10':>14}{'void new':>10}{'v. moved':>10}"
               f"{'by R10':>8}{'fixed':>7}{'broken':>8}")
     print(header)
     print("-" * len(header))
     for name, c in totals.items():
-        print(f"{name:<20}{c['cells']:>6}{c['contests']:>10}{c['void_stored']:>13}"
+        print(f"{name:<22}{c['cells']:>6}{c['contests']:>10}{c['void_stored']:>13}"
               f"{c['void_pre']:>14}{c['void_new']:>10}{c['verdict_changed']:>10}"
               f"{c['r10_moved']:>8}{c['fixed']:>7}{c['broken']:>8}")
-    grand = {k: sum(c[k] for c in totals.values()) for k in
-             ("cells", "contests", "void_stored", "void_pre", "void_new",
-              "verdict_changed", "r10_moved", "fixed", "broken")}
-    print(f"{'ALL':<20}{grand['cells']:>6}{grand['contests']:>10}"
+    grand = {k: sum(c[k] for c in totals.values()) for k in keys}
+    print(f"{'ALL':<22}{grand['cells']:>6}{grand['contests']:>10}"
           f"{grand['void_stored']:>13}{grand['void_pre']:>14}{grand['void_new']:>10}"
           f"{grand['verdict_changed']:>10}{grand['r10_moved']:>8}"
           f"{grand['fixed']:>7}{grand['broken']:>8}")
+
+    # R12a's own table, kept apart from the one above because it counts a different
+    # thing: `void new` is what the rules as they stand set aside, and these three
+    # columns are the check that was demoted to a report.
+    print()
+    header = (f"{'tree':<22}{'finding contests':>18}{'void new':>10}"
+              f"{'record unverified':>19}{'un-voided by R12a':>19}")
+    print(header)
+    print("-" * len(header))
+    for name, c in totals.items():
+        print(f"{name:<22}{c['finding_contests']:>18}{c['void_new']:>10}"
+              f"{c['record_unverified']:>19}{c['unvoided_by_r12a']:>19}")
+    r12 = {k: sum(c[k] for c in totals.values()) for k in
+           ("finding_contests", "void_new", "record_unverified", "unvoided_by_r12a")}
+    print(f"{'ALL':<22}{r12['finding_contests']:>18}{r12['void_new']:>10}"
+          f"{r12['record_unverified']:>19}{r12['unvoided_by_r12a']:>19}")
+    print("\n`record unverified` is a contest of a FINDING whose optional `Record says:` "
+          "was\ngiven and not found. Since R12a it is RECORDED and does not void; "
+          "`un-voided by R12a`\nis how many of them were void as stored, i.e. what this "
+          "change gives back.")
     print("\n`v. moved` is recorded vs R10 and so includes R1's work on smoke 1; "
           "`by R10` is pre-R10 vs R10, this change alone.")
     print("\nverdicts that move under R10:")

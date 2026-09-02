@@ -2790,6 +2790,105 @@ async def test_the_findings_contest_rules_per_finding_and_re_derives_the_verdict
         m["content"] for m in challenger_call["messages"])
 
 
+async def test_the_published_objection_is_the_contests_not_the_public_section(
+    tmp_path, no_network
+):
+    """R12b, and the case is smoke 3's `weak/lojban`.
+
+    `gemini-2.5-flash` wrote `Argument:` as a HEADING inside its own deliberation, so the
+    public section held 9,142 characters of private working — rejected drafts, notes to
+    itself — of which the lines that parsed into contests were a fraction. All of it went
+    into `<objection>` for the ruling judge and the grader, and all of it was published
+    as the stakeholder's objection.
+
+    So the objection is the harness's RENDERING of the contests it parsed. The judge
+    rules on what will actually be applied, the grader grades that, the published
+    document is that, and the whole reply survives in `raw`. The parser is not loosened
+    to buy it: what does not parse is not rendered.
+    """
+    from exp2.prompts import render_contests
+
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = (
+        "Thinking: I read the list.\n"
+        "Argument:\n"
+        "Wait — let me reconsider whether finding 1 is really wrong. Argument: no, it "
+        "is. Here is my objection, and I will not include the half-written second one.\n"
+        "1. Contests: Finding 1\n"
+        "   Should be: NOT A FLAW\n"
+        '   Text says: "Step 2: C_3 = 6."\n'
+        "   Why: six is the third Catalan number.\n"
+        "2. Contests: Fin\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "Six is the third Catalan number.\nContest 1 (Finding 1): NOT A FLAW")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    await run_stage_grade(grid, root=contests, config=findings_config(),
+                          grading=GradingConfig(), client_config=client_config(),
+                          api_key="k", decision_root=rejudged)
+
+    directory = sorted(contests.glob("cells/*/contests/*/runs/*"))[0]
+    challenge = json.loads((directory / "challenge.json").read_text())
+    expected = render_contests(challenge["defects"])
+    assert challenge["text"] == expected
+    assert challenge["text_rendered_from_contests"] is True
+    assert expected == ('1. Contests: Finding 1\n'
+                        '   Should be: NOT A FLAW\n'
+                        '   Text says: "Step 2: C_3 = 6."\n'
+                        '   Why: six is the third Catalan number.')
+    # the deliberation is out of the objection and still on disk
+    assert "let me reconsider" not in challenge["text"].lower()
+    assert "let me reconsider" in challenge["raw"].lower()
+
+    # ON THE WIRE: both readers of the objection were sent the rendering, byte for byte
+    def objection_block(role):
+        call = next(c for c in no_network.calls if c["meta"].get("role") == role)
+        sent = "".join(m["content"] for m in call["messages"])
+        return sent.split("<objection>")[1].split("</objection>")[0].strip()
+
+    assert objection_block("recourse_judge") == expected
+    assert objection_block("findings_grader") == expected
+    for role in ("recourse_judge", "findings_grader"):
+        assert "let me reconsider" not in objection_block(role).lower()
+
+    # AND THE PUBLISHED DOCUMENT is the same text
+    document = (directory / "transcript.md").read_text()
+    assert "Text says: \"Step 2: C_3 = 6.\"" in document
+    assert "let me reconsider" not in document.lower()
+
+
+async def test_an_objection_with_no_parsed_contests_keeps_its_public_section(
+    tmp_path, no_network
+):
+    """The fallback, and it is the reason the rendering is safe to make the default.
+
+    A STANDS, or a list the parser could not read, renders to nothing — so the objection
+    stays the public section, which is the only text there is. Publishing an empty
+    objection, or putting one to a judge, would be worse than publishing prose.
+    """
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = (
+        "Thinking: I read the list.\n"
+        "Argument:\n"
+        "I disagree with finding 1 in spirit but I cannot put it in the format.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = "Nothing to rule on."
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    directory = sorted(contests.glob("cells/*/contests/*/runs/*"))[0]
+    challenge = json.loads((directory / "challenge.json").read_text())
+    assert challenge["defects"] == []
+    assert challenge["text_rendered_from_contests"] is False
+    assert "I cannot put it in the format" in challenge["text"]
+
+
 async def test_an_upheld_omission_appends_a_finding_and_can_move_the_verdict(
     tmp_path, no_network
 ):
@@ -3005,7 +3104,8 @@ async def test_a_findings_grade_on_a_flawed_item_calls_the_grader_and_joins_by_n
     # in between — so the line is printed annotated, with the check that failed.
     document = next(
         contests.glob("cells/*/contests/*/runs/*/transcript.md")).read_text()
-    assert "Contests whose quotations could not be found were not applied." in document
+    assert ("A line marked *not applied* is one the harness set aside before the "
+            "derivation") in document
     assert ("Contest 2: NOT A FLAW — not applied: the finding it contests is not in "
             "the list") in document
     # the well-formed contest's line is printed exactly as the judge wrote it
@@ -3067,7 +3167,10 @@ async def test_a_void_only_objection_is_not_a_phantom_and_the_record_says_why(
 
     document = next(
         contests.glob("cells/*/contests/*/runs/*/transcript.md")).read_text()
-    assert "Every contest quoted words that could not be found" in document
+    # R12d: the header is worded FROM THE FLAGS, so a stakeholder whose contest failed
+    # on its index or its direction is not told their quotation was the problem.
+    assert ("Every contest was void: the words quoted under Text says were not found "
+            "in the text under review.") in document
     assert ("Contest 1: FLAW — not applied: the words quoted under Text says were not "
             "found in the text under review") in document
     # nothing moved: the verdict is the one the findings list derives, unchanged
@@ -3141,6 +3244,13 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert row["challenge_contests_omission_n"] == 0
     assert row["challenge_contests_contradiction_n"] == 0
     assert row["challenge_contests_void_n"] == 0
+    # R12e: WHICH WAY the finding contests point. The two directions are graded against
+    # different bounds (PREREG §5a) and are never pooled, so they are two columns.
+    assert row["challenge_contests_to_flaw_n"] == 0
+    assert row["challenge_contests_to_not_a_flaw_n"] == 1
+    # R12a: a record quotation given on a finding contest and not found. It no longer
+    # voids the contest, so it needs a column of its own or the fact disappears.
+    assert row["challenge_contests_record_unverified_n"] == 0
     # R2d: an objection every one of whose contests was void cannot break anything, and
     # is NOT a phantom. False here, because this objection's one contest is well formed.
     assert row["challenge_void_only"] is False
@@ -3179,6 +3289,9 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
         "finding": 2, "omission": 0, "contradiction": 0}
     assert metrics["findings_contests"]["contests_per_objection"] == 1.0
     assert metrics["findings_contests"]["void_only_objections"] == 0
+    assert metrics["findings_contests"]["by_direction"] == {
+        "to_flaw": 0, "to_not_a_flaw": 2}
+    assert metrics["findings_contests"]["record_unverified"] == 0
     assert metrics["findings_lists"]["duplicate_passages"] == 0
     # R11b in the metrics, totalled over both cells: every fixture passage is copied out
     # of the solution exactly, so the strict count equals the lenient one and nothing is
@@ -3194,6 +3307,101 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     # `grade_valid` here is a third kind of validity
     assert metrics["rates"]["valid_objection"]["n"] == 0
     assert metrics["rates"]["identified_flaw"]["n"] == 0
+
+
+async def test_an_unfound_record_quote_is_counted_and_the_contest_still_runs(
+    tmp_path, no_network
+):
+    """R12a end to end, and the case is smoke 3's `strong/law`.
+
+    The challenger gave a `Record says:` the matcher could not find, on a contest of a
+    FINDING — the one kind for which that field is optional. Before R12a the contest was
+    void: the ruling judge ruled on it, the grader was told not to, and the harness threw
+    the judge's line away, leaving a published record whose `Contest 1: FLAW` sat above a
+    verdict that had not moved. Now the contest is applied, is graded like any other, and
+    the unfound quotation is a REPORT COLUMN.
+    """
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = (
+        "Thinking: I read the list.\n"
+        "Argument:\n"
+        "1. Contests: Finding 2\n"
+        "   Should be: FLAW\n"
+        '   Text says: "Step 1: apply the formula."\n'
+        '   Record says: "Bob: this was never said by anybody at all"\n'
+        "   Why: the formula named really is the wrong one.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "The passage does name the wrong formula.\nContest 1 (Finding 2): FLAW")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    await run_stage_grade(grid, root=contests, config=findings_config(),
+                          grading=GradingConfig(), client_config=client_config(),
+                          api_key="k", decision_root=rejudged)
+
+    directory = sorted(contests.glob("cells/*/contests/*/runs/*"))[0]
+    challenge = json.loads((directory / "challenge.json").read_text())
+    contest = challenge["defects"][0]
+    assert contest["quote_in_record"] is False
+    assert contest["quote_in_text"] is True
+    assert contest["void"] is False
+    # THE JUDGE'S LINE WAS APPLIED: finding 2 took the ruling it wrote
+    after = json.loads((directory / "findings.after.json").read_text())
+    assert [f["ruling"] for f in after["findings"]] == ["FLAW", "FLAW"]
+    # and the document does not annotate the line as set aside
+    document = (directory / "transcript.md").read_text()
+    assert "not applied" not in document
+    # THE GRADER SAW IT: it was not settled mechanically as void
+    grade = json.loads((directory / "grade.json").read_text())
+    assert grade["contests"][0]["mechanical"] is False
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert rows[0]["challenge_contests_record_unverified_n"] == 1
+    assert rows[0]["challenge_contests_void_n"] == 0
+    assert rows[0]["challenge_contests_to_flaw_n"] == 1
+    assert rows[0]["challenge_contests_to_not_a_flaw_n"] == 0
+
+
+async def test_the_all_void_header_names_the_check_that_failed(tmp_path, no_network):
+    """R12d. The header is written from the FLAGS, as the outcome section's per-line
+    annotation already was.
+
+    It used to say every contest "quoted words that could not be found", which was the
+    common case and not the rule: a contest is void just as often because the finding it
+    names is not in the list, or because the ruling it asks for is the one that finding
+    already carries. Telling a stakeholder their QUOTATION failed when their INDEX failed
+    sends them to check the wrong thing.
+    """
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = (
+        "Argument:\n"
+        "1. Contests: Finding 9\n"
+        "   Should be: FLAW\n"
+        '   Text says: "Step 1: apply the formula."\n'
+        "   Why: there is no finding 9.\n"
+        "2. Contests: Finding 1\n"
+        "   Should be: FLAW\n"
+        '   Text says: "Step 2: C_3 = 6."\n'
+        "   Why: it already says FLAW.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "Neither contest can be granted.\n"
+        "Contest 1 (Finding 9): NOT A FLAW\n"
+        "Contest 2 (Finding 1): FLAW")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    directory = sorted(contests.glob("cells/*/contests/*/runs/*"))[0]
+    document = (directory / "transcript.md").read_text()
+    assert ("Every contest was void: the finding it contests is not in the list; and "
+            "the ruling it asks for is the one that finding already carries.") in document
+    assert "quoted words that could not be found" not in document
 
 
 async def test_a_findings_ruling_that_announces_its_lines_is_stripped_and_counted(

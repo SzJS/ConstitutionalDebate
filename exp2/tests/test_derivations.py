@@ -2069,6 +2069,52 @@ def test_fd1_runs_end_to_end_and_prints_every_section(tmp_path, capsys, fd1):
     assert "P1 is NULL" in out
 
 
+def test_fd1_prints_the_direction_table_and_says_when_it_cannot(tmp_path, capsys, fd1):
+    """R12e. The two directions of a finding contest are graded against DIFFERENT bounds
+    (PREREG §5a), so the mix has to be visible or the validity rate above it cannot be
+    read. And a tree written before the columns existed gets a note, never a zero — the
+    rule this whole file follows: a missing measurement is said out loud.
+
+    `flaw_location_missing` is here for the same reason. A finding contest on a flawed
+    item is graded by asking whether the finding IS the annotated flaw; where the
+    annotation records no location, that question is answered from prose alone.
+    """
+    _FD1_FLAGS.clear()
+    _FD1_FLAGS.update(fd1.ARM_FLAGS)
+    paths = _fd1_fixture(tmp_path)
+
+    # 1. WITHOUT the columns — the fixture's own rows, which predate them
+    assert fd1.main(_fd1_argv(paths)) == 0
+    out = capsys.readouterr().out
+    assert "DIRECTION of the finding contests: NOT IN THE INDEX" in out
+    assert "record quote unverified: NOT IN THE INDEX" in out
+    assert "annotation with NO location: NOT IN THE INDEX" in out
+
+    # 2. WITH them
+    for arm in ("weak", "strong"):
+        rows = [json.loads(line) for line in paths[arm].read_text().splitlines()]
+        for i, row in enumerate(rows):
+            if row.get("challenge_contests_n") is None:
+                continue
+            to_flaw = i % 2 == 0
+            row["challenge_contests_to_flaw_n"] = 1 if to_flaw else 0
+            row["challenge_contests_to_not_a_flaw_n"] = 0 if to_flaw else 1
+            row["challenge_contests_record_unverified_n"] = 1 if i % 5 == 0 else 0
+            row["flaw_location_missing"] = i % 3 == 0
+        _write(paths[arm], rows)
+
+    assert fd1.main(_fd1_argv(paths)) == 0
+    out = capsys.readouterr().out
+    assert "DIRECTION of the finding contests" in out
+    assert "NOT A FLAW -> FLAW" in out and "FLAW -> NOT A FLAW" in out
+    assert "validity is a LOWER bound (§5a)" in out
+    assert "validity is an UPPER bound (§5a)" in out
+    assert "record quote unverified" in out and "RECORDED, not voiding" in out
+    assert "annotation with NO location" in out
+    objection_block = out.split("(4e) THE OBJECTION ITSELF")[1].split("(4f)")[0]
+    assert "NOT IN THE INDEX" not in objection_block
+
+
 def test_fd1_the_two_denominators_are_both_printed_and_differ(tmp_path, capsys, fd1):
     """A void-only objection cannot break anything by construction, so it belongs in one
     denominator and not the other. Both are printed, ALWAYS, because dropping the void

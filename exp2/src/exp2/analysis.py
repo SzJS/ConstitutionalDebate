@@ -419,6 +419,24 @@ def _findings_contests(rows: Sequence[dict],
             for kind in ("finding", "omission", "contradiction")
         },
         "void": sum(r.get("challenge_contests_void_n") or 0 for r in raised),
+        # THE DIRECTION MIX, reported beside the kind mix and never pooled with it for
+        # the same reason: the two directions of a finding contest are graded against
+        # different bounds (PREREG §5a), so a validity rate that mixed them would move
+        # with the mix. Finding contests only — `Should be:` is not a field the other two
+        # kinds have — so these two need not sum to `by_kind["finding"]`: a contest that
+        # named no direction, or named one the parser did not recognise, is in neither.
+        "by_direction": {
+            "to_flaw": sum(
+                r.get("challenge_contests_to_flaw_n") or 0 for r in raised),
+            "to_not_a_flaw": sum(
+                r.get("challenge_contests_to_not_a_flaw_n") or 0 for r in raised),
+        },
+        # A `Record says:` given on a contest of a finding and not found. It does NOT
+        # void the contest (R12a: the field is optional for this kind), so it is reported
+        # here rather than inside `void` — the rate at which this challenger attributes
+        # words to a document that does not carry them.
+        "record_unverified": sum(
+            r.get("challenge_contests_record_unverified_n") or 0 for r in raised),
         # Objections every one of whose contests was void. They cannot break a decision
         # by construction, so PREREG §2's second denominator excludes them — and they are
         # NOT phantoms, which is why the two are counted apart.

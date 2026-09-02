@@ -239,6 +239,30 @@ def render_run_record(directory: Path) -> str:
 # document that presented such an objection as a contest which failed would be
 # describing a contest that never happened. What replaced the detection is the
 # `agreement` stage, which reads the prose rather than the label.
+# THE REASONS, IN THE HARNESS'S OWN WORDS, deduplicated and in the order they occur.
+#
+# Written from the FLAGS and never from a guess about which check failed. Until
+# 2026-09-02 the all-void header said every contest "quoted words that could not be
+# found", which was the common case and not the rule: a contest is void just as often
+# because the finding it names is not in the list, or because the ruling it asks for is
+# the one that finding already carries. A document that tells a stakeholder their
+# quotation failed when their INDEX failed sends them to check the wrong thing. The
+# outcome section has annotated each line from `contest_void_reason` since it was
+# written; this makes the header agree with it.
+def _void_reasons_phrase(contests: list[dict[str, Any]]) -> str:
+    """The distinct void reasons, joined; a fallback phrase if none can be named."""
+    reasons: list[str] = []
+    for contest in contests:
+        reason = contest_void_reason(contest)
+        if reason and reason not in reasons:
+            reasons.append(reason)
+    if not reasons:
+        return "a mechanical check failed on each of them"
+    if len(reasons) == 1:
+        return reasons[0]
+    return "; ".join(reasons[:-1]) + f"; and {reasons[-1]}"
+
+
 def _objection_section(challenge: dict,
                        parent_verdict: dict | None = None) -> list[str]:
     stance = challenge.get("stance") or (
@@ -280,9 +304,9 @@ def _objection_section(challenge: dict,
             # contests were not weighed and rejected — they never reached the judge's
             # standard at all. The outcome section names the failed check per contest.
             lines = [f"*Raised by a stakeholder who read only the record above. They "
-                     f"say the verdict should be **{claimed}**. Every contest quoted "
-                     f"words that could not be found in the documents they were "
-                     f"attributed to, so none of them could be applied.*", "", text]
+                     f"say the verdict should be **{claimed}**. Every contest was void: "
+                     f"{_void_reasons_phrase(contests)}. None of them could be "
+                     f"applied.*", "", text]
         elif (parent_verdict is not None
               and claimed == parent_verdict.get("verdict")):
             # A LOCAL CONTEST: one finding among several, contested and possibly right,
@@ -394,8 +418,10 @@ def _findings_outcome_lines(ruling: dict[str, Any],
             stated, (challenge or {}).get("defects") or [])
         lines += ["", "**The judge ruled on each contest:**"]
         if any_void:
-            lines += ["", "Contests whose quotations could not be found were not "
-                          "applied."]
+            lines += ["", "A line marked *not applied* is one the harness set aside "
+                          "before the derivation: the contest it rules on failed a "
+                          "mechanical check, and the check that failed is named on the "
+                          "line."]
         lines += ["", _quote(annotated)]
     if not after:
         return lines

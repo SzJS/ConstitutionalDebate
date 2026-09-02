@@ -72,6 +72,7 @@ from .prompts import (
     parse_comprehension_output,
     parse_defects,
     parse_finding_contests,
+    render_contests,
     parse_findings_reading_output,
     parse_findings_ruling_output,
     parse_objection_output,
@@ -237,6 +238,7 @@ async def generate_challenge(
     # that combination, and a cell that reached here without one is a wiring bug that
     # would otherwise produce a whole tree of objections against nothing.
     contests: list[dict[str, Any]] = []
+    rendered_from_contests = False
     if config.challenger_variant == FINDINGS_VARIANT:
         stored = load_findings(record.directory)
         if stored is None:
@@ -266,8 +268,20 @@ async def generate_challenge(
         # asked for.
         claimed = (claimed_verdict_for_contests(stored.get("findings") or [], contests)
                    if stance == "contests" else claimed)
+        # WHAT IS PUBLISHED AND WHAT IS PUT TO THE JUDGE is the harness's rendering of
+        # the contests it parsed, not the public section they were parsed out of. The
+        # reasons are in the comment above `render_contests`; the short of it is that
+        # smoke 3's weak challenger wrote `Argument:` as a heading inside its own
+        # deliberation and 9,142 characters of private working became the published
+        # objection. Nothing in the parser is loosened to buy this: an objection with no
+        # parsed contests — a STANDS, or a list that could not be read — keeps the public
+        # section, because that is the only text there is.
+        if contests:
+            text = render_contests(contests)
+            rendered_from_contests = True
     challenge = Challenge(
         text=text, origin="generated", raised=(stance == "contests"),
+        text_rendered_from_contests=rendered_from_contests,
         # The arm the objection is RULED as. Read off the config rather than
         # hard-coded, so that a reader of the row can tell which challenger wrote it and
         # the analysis can refuse to pool two of them — but NOT the identity, because

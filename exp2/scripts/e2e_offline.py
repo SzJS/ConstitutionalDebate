@@ -1496,6 +1496,13 @@ FINDINGS_REPLIES = {
         "Thinking: I read the list against the record.\n"
         "\n"
         "Argument:\n"
+        # PRIVATE WORKING INSIDE THE PUBLIC SECTION, which is what smoke 3's weak
+        # challenger did — `Argument:` written as a heading inside its own deliberation,
+        # so the section held 9,142 characters of notes to itself. The pass asserts that
+        # none of this reaches `<objection>` or the published document: the objection is
+        # the harness's rendering of the contests it parsed.
+        "Let me reconsider before I commit to this. Argument: no, the list is wrong "
+        "in the ways below, and I will leave out the half-formed seventh point.\n"
         "1. Contests: Finding 1\n"
         "   Should be: NOT A FLAW\n"
         '   Text says: "' + SOLUTION_QUOTE + '"\n'
@@ -1592,7 +1599,7 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
                      ruled, and say what it ruled contest by contest.
     """
     from exp2.persistence import load_findings
-    from exp2.prompts import derive_verdict
+    from exp2.prompts import derive_verdict, render_contests
 
     grid = build_grid([by_id[i] for i in ITEMS], ["debate"])
     findings_config = dataclasses.replace(
@@ -1715,6 +1722,36 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
     if set(blocks) != {"challenger", "recourse_judge", "findings_grader"}:
         stray["a findings reader was not shown the list at all"] = 1
 
+    # AND THE OBJECTION ON THE WIRE IS THE RENDERING (R12b). The block inside
+    # `<objection>` in the recourse judge's and the grader's requests must be
+    # `challenge.text` byte for byte, which the loop below asserts is
+    # `render_contests(challenge.defects)`. Checked on the wire and not only in the file,
+    # because what a model was sent is the only thing that decided anything.
+    objections = {
+        json.loads((d / "challenge.json").read_text(encoding="utf-8"))["text"].strip()
+        for d in sorted(ROOT_FINDINGS.glob("cells/*/contests/*/runs/*"))}
+    objection_blocks: dict[str, int] = {}
+    for client in CLIENTS:
+        for call in client.calls:
+            role = call["meta"].get("role")
+            if role not in ("recourse_judge", "findings_grader"):
+                continue
+            sent = "".join(m["content"] for m in call["messages"])
+            # `CLIENTS` accumulates every pass's calls, and `recourse_judge` is the wire
+            # role of the judgment arm's ruling too. `<findings>` is what tells the two
+            # apart: only this arm's ruling prompt carries the list.
+            if "<objection>" not in sent or "<findings>" not in sent:
+                continue
+            block = sent.split("<objection>")[1].split("</objection>")[0].strip()
+            objection_blocks[role] = objection_blocks.get(role, 0) + 1
+            if block not in objections:
+                stray[f"the {role} was shown an objection that was never published"] = 1
+            if "Let me reconsider" in block:
+                stray[f"the {role} was shown the challenger's private working"] = 1
+    print(f"requests carrying the published <objection> block: {objection_blocks}")
+    if set(objection_blocks) != {"recourse_judge", "findings_grader"}:
+        stray["an objection reader was not shown the objection at all"] = 1
+
     # THE CONTEST and THE RULING: four kinds, one of them void, one of them appending.
     kinds: dict[str, int] = {}
     void = added = overturned = 0
@@ -1739,6 +1776,20 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
             stray["a contest quoting the findings' own words was not found there"] = 1
         if by_number.get(6, {}).get("void"):
             stray["a contest quoting the finding it contests was voided"] = 1
+        # R12b: THE OBJECTION IS THE RENDERING, at every one of its three destinations.
+        # `challenge.text` is what the published document shows and what the recourse
+        # judge and the grader are sent, and it is `render_contests` of the very list
+        # `apply_contest_lines` walks — so the judge cannot rule on a paragraph the
+        # parser never saw, and `Contest k` means the contest at position k everywhere.
+        rendered = render_contests(challenge.get("defects") or [])
+        if challenge.get("text") != rendered or not rendered:
+            stray["the published objection is not the contests re-rendered"] = 1
+        if not challenge.get("text_rendered_from_contests"):
+            stray["a re-rendered objection did not record that it was"] = 1
+        if "Let me reconsider" in challenge.get("text", ""):
+            stray["the challenger's private working was published as its objection"] = 1
+        if "Let me reconsider" not in challenge.get("raw", ""):
+            stray["the challenger's whole reply was not kept"] = 1
         ruling = json.loads((directory / "ruling.json").read_text(encoding="utf-8"))
         if ruling.get("form") != "derived_findings":
             stray[f"a ruling recorded under form {ruling.get('form')!r}"] = 1
@@ -1885,9 +1936,15 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
     # because the contest was void. The document prints that line ANNOTATED with the
     # check that failed — a smoke record printed it bare, above a count that contradicted
     # it, in front of the stakeholder whose objection it was.
-    if not all("Contests whose quotations could not be found were not applied." in text
+    if not all("A line marked *not applied* is one the harness set aside" in text
                for text in documents):
         stray["a contest document does not say that a ruling was not applied"] = 1
+    # R12d: and the reason on the line is the check that actually failed. Contest 4 names
+    # a finding that is not in the list, so that is what the line says — not the quoting
+    # sentence the header used to give every void contest whatever had gone wrong.
+    if not all("not applied: the finding it contests is not in the list" in text
+               for text in documents):
+        stray["a void line does not name the check that failed"] = 1
     if not all("Contest 4: FLAW — not applied: the finding it contests is not in the "
                "list" in text for text in documents):
         stray["a void contest's ruling line was printed as though it had counted"] = 1

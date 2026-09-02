@@ -3137,6 +3137,163 @@ def test_a_contest_is_void_when_a_mechanical_check_fails():
     assert agreeing["pair_rulings_differ"] is False and agreeing["void"]
 
 
+def test_an_unfound_optional_record_quote_never_voids_a_finding_contest():
+    """R12a, and the case is smoke 3's `strong/law`.
+
+    The challenger wrote, under an OPTIONAL `Record says:` on a contest of a finding, two
+    quotations that are each really in the record, joined by " and " and each prefixed
+    `"Bob: `. `Text says:` — the field this kind of contest is actually required to
+    fill — checked out. The ruling judge found both quotations in the record, agreed with
+    the contest and wrote its line. The harness then threw the line away, because a
+    string comparison on a field the contest never had to fill came out False.
+
+    So `quote_in_record` is recorded on this kind and decides nothing. What it buys is a
+    number: `challenge_contests_record_unverified_n`, the rate at which this challenger
+    attributes words to a document that does not carry them.
+    """
+    from exp2.prompts import contest_void_reason, parse_finding_contests
+
+    findings = _parsed_findings()
+
+    def one(text, **kw):
+        return parse_finding_contests(text, findings, CONTEST_SOLUTION, CONTEST_RECORD,
+                                      **kw)[0]
+
+    unfound = one('1. Contests: Finding 2\n   Should be: FLAW\n'
+                  '   Text says: "we then apply Bayes"\n'
+                  '   Record says: "no debater ever said any of this"\n'
+                  '   Why: the finding is mistaken.\n')
+    assert unfound["quote_in_record"] is False
+    assert unfound["quote_in_text"] is True
+    assert unfound["void"] is False
+    assert contest_void_reason(unfound) == ""
+
+    # THE OTHER THREE CHECKS ARE UNTOUCHED — the rule was narrowed, not dropped.
+    assert one("1. Contests: Finding 9\n   Should be: FLAW\n"
+               '   Text says: "we then apply Bayes"\n')["void"] is True
+    assert one('1. Contests: Finding 1\n   Should be: FLAW\n'
+               '   Text says: "the sum is 42"\n')["void"] is True
+    assert one('1. Contests: Finding 2\n   Should be: FLAW\n'
+               '   Text says: "no such sentence is in the solution"\n'
+               '   Record says: "Alice said step four divides by zero"\n'
+               )["void"] is True
+
+    # AND AN OMISSION IS UNCHANGED: its record quotation is required, because the record
+    # is the only place that can show a purported flaw was raised, and it still voids.
+    omission = one('1. Contests: omission\n'
+                   '   Record says: "no debater ever said any of this"\n'
+                   '   Passage: "the sum is 42"\n')
+    assert omission["quote_in_record"] is False and omission["void"] is True
+    assert contest_void_reason(omission) == (
+        "the words quoted under Record says were not found in the record")
+
+
+def test_an_echoed_findings_repair_template_is_not_read_as_a_ruling():
+    r"""R12c. The repair's example line read `Ruling: FLAW`, which is a VALID ruling line.
+
+    A judge that answered a format repair by echoing the template back — which is what a
+    weak model does with a template it has just been shown — produced a finding ruled
+    FLAW that it had never ruled, and under `derive_verdict` one such finding is the
+    whole verdict. The line now reads `Ruling: FLAW | NOT A FLAW`, and the `(?!\s*\|)`
+    lookahead every decision line in this module carries refuses it: an echoed template
+    is a MALFORMED list, which the harness sees and fails, and never a silent FLAW.
+    """
+    import pytest
+
+    from exp2.prompts import (
+        JUDGE_REPAIR_FINDINGS,
+        MalformedOutputError,
+        parse_findings_output,
+    )
+
+    assert "Ruling: FLAW | NOT A FLAW" in JUDGE_REPAIR_FINDINGS
+
+    echoed = ("Finding 1\n"
+              'Passage: "<exact words of the text under review>"\n'
+              "Claim: <one sentence>\n"
+              "Defence: <one sentence, or: none given>\n"
+              "Reason: <why it is or is not a flaw>\n"
+              "Ruling: FLAW | NOT A FLAW")
+    with pytest.raises(MalformedOutputError) as raised:
+        parse_findings_output(echoed)
+    assert raised.value.kind == "other"
+    # and the real line still parses, so the lookahead did not cost the format anything
+    _, findings, _, _ = parse_findings_output(
+        echoed.replace("Ruling: FLAW | NOT A FLAW", "Ruling: FLAW"))
+    assert [f["ruling"] for f in findings] == ["FLAW"]
+
+
+def test_the_objection_the_judge_sees_is_the_contests_re_rendered():
+    """R12b. `render_contests` is the objection from smoke 3 onwards.
+
+    On smoke 3's `weak/lojban` `gemini-2.5-flash` wrote `Argument:` as a HEADING inside
+    its own deliberation, so the public section held 9,142 characters of private working
+    and every one of them went into `<objection>` and into the published record. The
+    objection is now the harness's rendering of the contests it parsed: what the judge
+    rules on is what the harness will apply, and the numbering is the harness's, so
+    `Contest k` means the contest at position k in every join downstream.
+    """
+    from exp2.prompts import parse_finding_contests, render_contests
+
+    findings = _parsed_findings()
+    noisy = (
+        "Argument:\n"
+        "Let me think about this again. Maybe finding 2 is fine after all?\n"
+        "No — here is my objection.\n"
+        "7. Contests: Finding 2\n"
+        "   Should be: FLAW\n"
+        '   Text says: "we then apply Bayes"\n'
+        '   Record says: "Alice said step four divides by zero"\n'
+        "   Why: the passage asserts something false.\n"
+        "Actually I will add one more, though I am not sure about it.\n"
+        "9. Contests: contradiction\n"
+        "   Findings: 1 and 2\n"
+        "   Why: the two findings rule the same passage two ways.\n"
+        "Decision: REVERSE"
+    )
+    contests = parse_finding_contests(noisy, findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    rendered = render_contests(contests)
+    assert rendered == (
+        '1. Contests: Finding 2\n'
+        '   Should be: FLAW\n'
+        '   Text says: "we then apply Bayes"\n'
+        '   Record says: "Alice said step four divides by zero"\n'
+        '   Why: the passage asserts something false.\n'
+        '2. Contests: contradiction\n'
+        '   Findings: 1 and 2\n'
+        '   Why: the two findings rule the same passage two ways.'
+    )
+    # the deliberation is gone, and the model's own numbering with it: `Contest 1` now
+    # means the first contest, which is what the ruling and the grade are joined on
+    assert "Let me think about this again" not in rendered
+    assert "7. Contests" not in rendered and "9. Contests" not in rendered
+
+    # AND IT RE-PARSES TO THE SAME LIST. The rendering is in the format the parser reads,
+    # so a reader who runs the parser over the published objection gets the contests the
+    # ruling was applied to — which is the transparency claim, checked.
+    again = parse_finding_contests(rendered, findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    keys = ("kind", "finding", "should_be", "text_says", "record_says", "passage",
+            "pair", "why", "void")
+    assert [{k: c[k] for k in keys} for c in again] == [
+        {k: c[k] for k in keys} for c in contests]
+
+    # an omission renders its two required fields in the template's own order
+    omission = parse_finding_contests(
+        '1. Contests: omission\n'
+        '   Record says: "Alice said step four divides by zero"\n'
+        '   Passage: "the sum is 42"\n'
+        '   Why: no finding lists it.\n', findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    assert render_contests(omission) == (
+        '1. Contests: omission\n'
+        '   Record says: "Alice said step four divides by zero"\n'
+        '   Passage: "the sum is 42"\n'
+        '   Why: no finding lists it.'
+    )
+    # an empty list renders to nothing, which is what makes the fallback in
+    # `generate_challenge` reachable rather than a rendering of no contests at all
+    assert render_contests([]) == ""
+
+
 def test_a_finding_contests_record_quote_is_optional_and_may_quote_the_findings():
     """R1, the one parser rule the smoke of 2026-09-02 changed.
 
@@ -3172,19 +3329,28 @@ def test_a_finding_contests_record_quote_is_optional_and_may_quote_the_findings(
         '   Record says: "Bayes applies to any conditional probability"\n',
         findings_text=findings_text)
     assert from_finding["quote_in_record"] is True and from_finding["void"] is False
-    # and with no findings text supplied it is not found in the record body, so the
-    # caller that passes the documents is the caller that gets the right answer
-    assert one('1. Contests: Finding 2\n   Should be: FLAW\n'
-               '   Text says: "we then apply Bayes"\n'
-               '   Record says: "Bayes applies to any conditional probability"\n'
-               )["void"] is True
+    # and with no findings text supplied it is not found in the record body — the flag
+    # says so, and since R12c the flag is all it does: the contest still stands on its
+    # `Text says:` anchor
+    without_findings = one('1. Contests: Finding 2\n   Should be: FLAW\n'
+                           '   Text says: "we then apply Bayes"\n'
+                           '   Record says: "Bayes applies to any conditional '
+                           'probability"\n')
+    assert without_findings["quote_in_record"] is False
+    assert without_findings["void"] is False
 
-    # 3. QUOTED FROM NEITHER — still void; the rule was widened, not dropped
+    # 3. QUOTED FROM NEITHER — RECORDED as unfound and NOT void. R12a, after smoke 3:
+    # on `strong/law` the challenger gave two real record quotations joined by "and",
+    # each prefixed `"Bob: `, under an OPTIONAL `Record says:`; `Text says:` checked out,
+    # the ruling judge found both quotations and ruled the contest, and the harness threw
+    # its line away because a field the contest did not have to fill had failed a string
+    # comparison. An optional field cannot destroy a contest that met the requirement it
+    # was given. What the flag buys now is a report column.
     invented = one('1. Contests: Finding 2\n   Should be: FLAW\n'
                    '   Text says: "we then apply Bayes"\n'
                    '   Record says: "Alice conceded the whole point in round 4"\n',
                    findings_text=findings_text)
-    assert invented["quote_in_record"] is False and invented["void"] is True
+    assert invented["quote_in_record"] is False and invented["void"] is False
 
     # 4. `Text says:` IS STILL REQUIRED — the anchor of a finding contest
     no_anchor = one('1. Contests: Finding 2\n   Should be: FLAW\n'
@@ -3255,7 +3421,9 @@ def test_a_contests_record_quote_is_matched_by_the_house_record_matcher():
     # attribution wrapping one real span and one invented one is wrapping an invented one.
     half = one('Alice: "Bayes cannot apply to a joint distribution" '
                'Alice: "Alice conceded the whole point"')
-    assert half["quote_in_record"] is False and half["void"] is True
+    # RECORDED False, and — since R12a — not void: this is a contest of a finding, whose
+    # `Record says:` is optional and whose anchor is `Text says:`.
+    assert half["quote_in_record"] is False and half["void"] is False
 
     # 3. ONE PREFIXED SPAN — the medqa and gpqa shape, the second of them with an
     # ellipsis stitched inside the span, which `quote_in_text` already splits.
@@ -3293,8 +3461,9 @@ def test_a_contests_record_quote_is_matched_by_the_house_record_matcher():
 def test_a_void_contest_says_which_check_it_failed():
     """R2b. The published record prints a void contest's ruling line annotated, so a
     stakeholder is never shown `Contest 1: FLAW` above a count that contradicts it. The
-    wording is per kind where the documents differ: a finding contest's `Record says:`
-    may quote the findings as well as the record."""
+    wording is per kind, and so is WHICH CHECKS COUNT: a finding contest's `Record says:`
+    is optional, does not void it, and is therefore never given as the reason one was set
+    aside."""
     from exp2.prompts import contest_void_reason, parse_finding_contests
 
     findings = _parsed_findings()
@@ -3311,11 +3480,16 @@ def test_a_void_contest_says_which_check_it_failed():
     assert reason('1. Contests: Finding 2\n   Should be: FLAW\n'
                   '   Text says: "nothing like this is in the text"\n') == (
         "the words quoted under Text says were not found in the text under review")
-    assert reason('1. Contests: Finding 2\n   Should be: FLAW\n'
-                  '   Text says: "we then apply Bayes"\n'
-                  '   Record says: "nothing like this was ever said"\n') == (
-        "the words quoted under Record says were not found in the record or the "
-        "findings")
+    # A FINDING CONTEST IS NEVER VOID ON `Record says:` (R12a), so there is no reason
+    # to give: the field is optional for this kind, the flag is recorded, and naming a
+    # check that did not void anything would send a stakeholder to fix the wrong thing.
+    unverified = parse_finding_contests(
+        '1. Contests: Finding 2\n   Should be: FLAW\n'
+        '   Text says: "we then apply Bayes"\n'
+        '   Record says: "nothing like this was ever said"\n',
+        findings, CONTEST_SOLUTION, CONTEST_RECORD)[0]
+    assert unverified["quote_in_record"] is False and unverified["void"] is False
+    assert contest_void_reason(unverified) == ""
     # an omission is told the record alone, because that is where its quotation had to be
     assert reason('1. Contests: omission\n'
                   '   Record says: "nothing like this was ever said"\n'
@@ -3978,8 +4152,15 @@ FROZEN_FD1_PROMPTS = {
         "d0ca4e5acc7363ebc860895f9d8687399cc6443c97e220a5a6f8cb4ac584dde9",
     "JUDGE_CLOSING_FINDINGS":
         "ed52a192937c39d85315efedaab785ba1d47f71d6b04ca49b99fa3ea5f7c26e4",
+    # MOVED after smoke 3, by R12c, and the only fd1 prompt text that moved with it.
+    # The example line read `Ruling: FLAW`, which is a valid ruling line: a judge that
+    # echoed the template back verbatim produced a finding ruled FLAW that it had never
+    # ruled. It now reads `Ruling: FLAW | NOT A FLAW`, the alternation the judge's own
+    # closing shows, and `_FINDING_RULING_RE`'s `(?!\s*\|)` lookahead refuses it — an
+    # echoed template parses as no ruling at all, which is a repair failure and not a
+    # silent FLAW. (was 99a242a348bb89cf2b26cbc67ab8a36a10bd135c8edaaf6eaa2b44a5ede1def3)
     "JUDGE_REPAIR_FINDINGS":
-        "99a242a348bb89cf2b26cbc67ab8a36a10bd135c8edaaf6eaa2b44a5ede1def3",
+        "38b768b77435f5ed8b9508ba67c710a5f62e8c95cf36990ee237e935d8ec87e7",
     "CHALLENGER_SYSTEM_FINDINGS":
         "96b33b9f6e0f3850c46fb7b72f98f2afba776c6ed83be7f2dcaefba4e0073692",
     "CHALLENGER_USER_FINDINGS":
@@ -4019,8 +4200,9 @@ FROZEN_FD1_PROMPTS = {
     "GRADER_REPAIR_FINDINGS":
         "40779cff1a88f116073148f948a1720869d3ec77bd092b98c8e13b37d289e0a1",
     # the four wire roles: the text is pinned above, the WIRING is pinned here
+    # moves with `JUDGE_REPAIR_FINDINGS` above, which it aliases (R12c)
     "REPAIR_INSTRUCTIONS['judge_findings']":
-        "99a242a348bb89cf2b26cbc67ab8a36a10bd135c8edaaf6eaa2b44a5ede1def3",
+        "38b768b77435f5ed8b9508ba67c710a5f62e8c95cf36990ee237e935d8ec87e7",
     "REPAIR_INSTRUCTIONS['recourse_judge_findings']":
         "42191f875ca60f0fbd6ec4649e787aec00f6ff26ff638fec6a29d9b6525100db",
     "REPAIR_INSTRUCTIONS['ruling_reader_findings']":
