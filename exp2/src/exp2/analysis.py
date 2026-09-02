@@ -374,6 +374,15 @@ def _findings_lists(rows: Sequence[dict]) -> dict[str, Any]:
         # findings repeating an earlier finding's passage, and the two char totals what
         # the publication trim dropped either side of the list.
         "passages_exact": sum(r.get("findings_passage_exact_n") or 0 for r in listed),
+        # R11b: the STRICT pair beside the lenient one. `passages_exact` goes through
+        # `quote_in_text`, which case-folds and strips backticks, so it counted a
+        # debater's prose rendering of a LaTeX formula as exact; `passages_verbatim` is
+        # the case-sensitive substring test and `passages_ellipsis_joined` counts the
+        # joins the prompt forbids. The GAP between the first two is what to read.
+        "passages_verbatim": sum(
+            r.get("findings_passage_verbatim_n") or 0 for r in listed),
+        "passages_ellipsis_joined": sum(
+            r.get("findings_passage_ellipsis_n") or 0 for r in listed),
         "duplicate_passages": sum(
             r.get("findings_duplicate_passage_n") or 0 for r in listed),
         "preamble_chars_total": sum(

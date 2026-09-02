@@ -30,7 +30,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .prompts import contest_void_reason
+from .prompts import contest_void_reason, strip_ruling_prose
 from .types import verdict_for
 
 _MARKDOWN_STRUCTURE_RE = re.compile(r"(?m)^(#{1,6}[ \t]|-{3,}[ \t]*$|={3,}[ \t]*$)")
@@ -478,6 +478,18 @@ def render_recourse_record(directory: Path) -> str:
         # grounds end where the model's own decision line began, so the verdict has to
         # follow them or a dangling "**Final verdict:**" points at nothing.
         grounds = (ruling.get("reasoning") or "").strip()
+        if ruling.get("form") == "derived_findings":
+            # THE SAME STRIP THE READER GETS (R11a, after smoke 2). `Ruling.reasoning`
+            # already ends where the judge's contest lines began, and under this form
+            # the judge routinely announces them — "The final answer is:" — leaving the
+            # published grounds ending on a sentence that promises an answer printed
+            # three paragraphs further down, under "The judge ruled on each contest".
+            # `strip_ruling_prose` is the function the ruling-agreement reader is handed
+            # its copy through, so this makes the document and the instrument that
+            # audits it read the same words, and `ruling_leadin_stripped` records that a
+            # lead-in was dropped. Nothing is lost: `Verdict`/`Ruling` `raw` is untouched
+            # and `transcript_full.md` prints every byte the judge wrote.
+            grounds = strip_ruling_prose(grounds)[0].strip()
         if grounds:
             lines += ["", "**Grounds given:**", "", _quote(grounds)]
         if ruling.get("form") == "derived_findings":

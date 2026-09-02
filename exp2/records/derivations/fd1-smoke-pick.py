@@ -346,11 +346,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="re-seeds every per-type draw (default: smoke 1's seed)")
     parser.add_argument("--out", type=Path, default=OUT,
                         help="the cases file to write (default: smoke 1's)")
-    parser.add_argument("--exclude", type=Path, nargs="*", default=[],
-                        help="cases files whose items must not be drawn")
+    # `action="extend"` and not the default `store`: `--exclude a --exclude b` with a
+    # plain `nargs="*"` keeps only the LAST flag, so smoke 3 — which must avoid both
+    # earlier smoke files — would silently have been drawn against one of them. Repeated
+    # flags and `--exclude a b` both accumulate now. `default=None` rather than `[]`
+    # because `extend` mutates the default list in place.
+    parser.add_argument("--exclude", type=Path, nargs="*", action="extend", default=None,
+                        help="cases files whose items must not be drawn; repeatable")
     return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     args = parse_args()
-    raise SystemExit(main(seed=args.seed, out=args.out, exclude=list(args.exclude)))
+    raise SystemExit(main(seed=args.seed, out=args.out,
+                          exclude=list(args.exclude or [])))

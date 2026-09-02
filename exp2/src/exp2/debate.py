@@ -19,6 +19,7 @@ from .prompts import (
     build_judge_messages,
     parse_debater_output,
     findings_passage_counts,
+    findings_passage_strict_counts,
     findings_trim_counts,
     parse_findings_output,
     parse_verdict_output,
@@ -267,12 +268,19 @@ async def _judge(
             # reply. Report-only, both of them — see `record_findings`.
             passage_exact_n, duplicate_passage_n = findings_passage_counts(
                 findings, item.solution)
+            # The STRICT pair beside the lenient one (R11b, after smoke 2): a
+            # case-sensitive substring test and an ellipsis-join count, taken from the
+            # same two objects and reported the same way.
+            passage_verbatim_n, passage_ellipsis_n = findings_passage_strict_counts(
+                findings, item.solution)
             preamble_chars, trailing_chars = findings_trim_counts(
                 completion.content, reasoning)
             writer.record_findings(findings, verdict=verdict_word,
                                    parse_mode=verdict.parse_mode,
                                    passage_exact_n=passage_exact_n,
                                    duplicate_passage_n=duplicate_passage_n,
+                                   passage_verbatim_n=passage_verbatim_n,
+                                   passage_ellipsis_n=passage_ellipsis_n,
                                    preamble_chars=preamble_chars,
                                    trailing_chars=trailing_chars)
         writer.record_verdict(verdict, transcript)

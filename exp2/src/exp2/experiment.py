@@ -56,7 +56,11 @@ from .persistence import (
     load_recourse_transcript,
     load_run_record,
 )
-from .prompts import objection_defects_fabricated_n, objection_fabrication_ok
+from .prompts import (
+    objection_defects_fabricated_n,
+    objection_fabrication_ok,
+    strip_ruling_prose,
+)
 from .recourse import (
     _SAME_DEBATE_KEYS,
     _assert_same_debate,
@@ -1284,6 +1288,18 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 "duplicate_passage_n")
             row["findings_preamble_chars"] = stored_findings.get("preamble_chars")
             row["findings_trailing_chars"] = stored_findings.get("trailing_chars")
+            # THE STRICT PAIR (R11b, after smoke 2). `findings_passage_exact_n` above
+            # goes through `quote_in_text`, which case-folds and strips quote marks and
+            # backticks, so smoke 2's theoremqa list scored exact on passages that were a
+            # debater's prose rendering of the text's LaTeX.
+            # `findings_passage_verbatim_n` is the case-sensitive substring test the
+            # prompt actually asks for, and `findings_passage_ellipsis_n` counts the
+            # ellipsis joins the prompt forbids and the lenient matcher tolerates. Both
+            # report-only; the gap between exact and verbatim is the quantity to read.
+            row["findings_passage_verbatim_n"] = stored_findings.get(
+                "passage_verbatim_n")
+            row["findings_passage_ellipsis_n"] = stored_findings.get(
+                "passage_ellipsis_n")
         manifest = _decision_manifest(record.directory)
         if manifest.get("kind") == "rejudge":
             row["rejudged_from"] = manifest.get("rejudged_from")
@@ -1470,6 +1486,14 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     row["findings_after_flaw_n"] = after.get("n_flaw")
                     row["findings_added_n"] = after.get("n_added")
                     row["ruling_prose_empty"] = not (ruling.get("reasoning") or "").strip()
+                    # Whether the PUBLISHED grounds ended on a dangling lead-in that the
+                    # document's strip dropped (R11a). Recorded here as well as off the
+                    # `ruling_agreement.json` row below, and from the same function on
+                    # the same text, so the fact survives on a tree where the reader
+                    # stage has not run — the reading overwrites it with the identical
+                    # value where it has.
+                    row["ruling_leadin_stripped"] = strip_ruling_prose(
+                        ruling.get("reasoning") or "")[1]
                 row["changed_the_decision"] = ruling.get("changed_the_decision")
                 row["final_correct"] = ruling.get("correct")
                 reading_path = contest / "ruling_agreement.json"

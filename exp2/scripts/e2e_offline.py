@@ -1820,7 +1820,9 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
                 # objection, and the lead-in the strip dropped
                 "findings_passage_exact_n", "findings_duplicate_passage_n",
                 "findings_preamble_chars", "findings_trailing_chars",
-                "challenge_void_only", "ruling_leadin_stripped")
+                "challenge_void_only", "ruling_leadin_stripped",
+                # R11b: the strict pair beside the lenient one
+                "findings_passage_verbatim_n", "findings_passage_ellipsis_n")
     missing = sorted({column for row in rows for column in required
                       if column not in row})
     print(f"indexed {len(rows)} rows   index columns missing: {missing or 'none'}")
@@ -1892,6 +1894,18 @@ async def findings_pass(config, client_config, grading, by_id) -> int:
     if any("Every contest quoted words that could not be found" in text
            for text in documents):
         stray["a mixed objection was described as void-only"] = 1
+    # R11a: the judge announced its lines ("The final rulings are:") and the lines are
+    # past the cut, so the PUBLISHED grounds would have ended on a promise whose answer
+    # is printed under the next heading. The document is handed the same stripped prose
+    # the reader is; the full document still prints every byte.
+    if any("The final rulings are:" in text.split("The judge ruled on each contest")[0]
+           for text in documents):
+        stray["the published grounds kept the judge's dangling lead-in"] = 1
+    full_documents = [path.read_text(encoding="utf-8") for path in
+                      sorted(ROOT_FINDINGS.glob(
+                          "cells/*/contests/*/runs/*/transcript_full.md"))]
+    if not all("The final rulings are:" in text for text in full_documents):
+        stray["the full document lost what the judge actually wrote"] = 1
 
     after_hash = tree_sha256(ROOT)
     print(f"source tree hash before {before[:16]}  after {after_hash[:16]}  "

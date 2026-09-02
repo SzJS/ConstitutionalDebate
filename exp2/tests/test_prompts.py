@@ -3375,6 +3375,47 @@ def test_the_judges_passages_are_counted_for_exactness_and_repetition():
     assert findings_passage_counts(findings, "") == (0, 1)
 
 
+def test_the_strict_passage_counts_are_stricter_than_the_house_matcher():
+    """R11b, from smoke 2's weak/theoremqa list. `quote_in_text` case-folds, strips quote
+    marks and backticks, splits on an ellipsis and compares only the first
+    `QUOTE_MATCH_CHARS` — leniency that is right for grading a stakeholder's quotation
+    and wrong for asking whether the JUDGE copied the text. The strict pair is a plain
+    case-sensitive substring test after whitespace normalisation, plus a count of the
+    ellipsis joins the prompt forbids and the lenient matcher tolerates. The GAP between
+    the two is the measurement; neither refuses anything."""
+    from exp2.prompts import (
+        findings_passage_counts,
+        findings_passage_strict_counts,
+        strip_outer_quote_pair,
+    )
+
+    solution = "Step 1: apply the `formula`.\nStep 2: C_3 = 6."
+    findings = [
+        {"index": 1, "passage": '"Step 2: C_3 = 6."'},               # verbatim
+        {"index": 2, "passage": '"step 2: c_3 = 6."'},               # lenient only
+        {"index": 3, "passage": '"Step 1: apply the formula."'},     # backticks dropped
+        {"index": 4, "passage": '"Step 1: apply the ... C_3 = 6."'},  # an ellipsis join
+        {"index": 5, "passage": '"Step 1: apply the formula...."'},  # a TRAILING one
+        {"index": 6, "passage": ""},
+    ]
+    # the house matcher finds five of the six; the strict test finds one
+    assert findings_passage_counts(findings, solution)[0] == 5
+    assert findings_passage_strict_counts(findings, solution) == (1, 1)
+    # the outer pair of quotation marks is the FORMAT's, so it comes off; nothing else
+    # does, which is why the dropped backticks in finding 3 fail
+    assert strip_outer_quote_pair('"a b"') == "a b"
+    assert strip_outer_quote_pair("`a b`") == "a b"
+    # one pair and only one: the outer marks come off even when the text inside carries
+    # its own, which is the naive rule the strict check is meant to have
+    assert strip_outer_quote_pair('"a" and "b"') == 'a" and "b'
+    assert strip_outer_quote_pair("no marks") == "no marks"
+    # only whitespace is normalised: a wrapped quotation of contiguous words is verbatim
+    wrapped = [{"index": 1, "passage": '"Step 1: apply\n   the `formula`."'}]
+    assert findings_passage_strict_counts(wrapped, solution) == (1, 0)
+    # and nothing is verbatim in a text that was never supplied
+    assert findings_passage_strict_counts(findings, "") == (0, 1)
+
+
 def test_the_claimed_verdict_is_derived_from_the_contests_not_from_the_line():
     """A contest can be entirely LOCAL and unable to move the verdict, and the index has
     to be able to say so: `Decision: REVERSE` under this arm says only that something was
@@ -3665,6 +3706,22 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
         JUDGE_CLOSING_FINDINGS)
     assert "contiguous words copied exactly" in JUDGE_CLOSING_FINDINGS
     assert "never join two separate passages with an ellipsis" in JUDGE_CLOSING_FINDINGS
+    # R11b (smoke 2, weak/theoremqa): the passage is copied in the TEXT's notation, not
+    # in the rendering a debater gave it in prose.
+    assert "in the text's own notation" in JUDGE_CLOSING_FINDINGS
+    assert "quote the LaTeX or the code, not a debater's rendering of it" in (
+        JUDGE_CLOSING_FINDINGS)
+    # R11c (smoke 2, weak/theoremqa, weak/lojban, weak/gpqa): the distinct-claim rule
+    # gets its operational test, and the reply must hold exactly ONE list — those three
+    # cells each wrote a list, revised it, and wrote it again.
+    assert "ask whether one sentence would answer both" in JUDGE_CLOSING_FINDINGS
+    assert "the reply must contain exactly one list" in JUDGE_CLOSING_FINDINGS
+    assert (JUDGE_CLOSING_FINDINGS.index("exactly one list")
+            < JUDGE_CLOSING_FINDINGS.index("contiguous words copied exactly"))
+    # R11e (smoke 2, strong/medqa): the add-nothing rule covers dismissals too — a
+    # passage nobody alleged to be flawed is not a finding even when ruled NOT A FLAW.
+    assert "Do not list a passage the debater did not allege to be flawed, even to " \
+        "dismiss it." in JUDGE_SYSTEM_FINDINGS
     assert "Findings: none" in JUDGE_CLOSING_FINDINGS
     assert (JUDGE_CLOSING_FINDINGS.index("Reason:")
             < JUDGE_CLOSING_FINDINGS.index("Ruling:"))
@@ -3704,6 +3761,16 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
     # R5: the smoke's judge announced its lines ("The final ruling for Contest 1 is:")
     # and the reader was left with prose that ends on a promise.
     assert "Do not announce the lines — write them." in RECOURSE_JUDGE_USER_FINDINGS
+    # R11d (smoke 2, weak/lojban): each contest's reasoning ends on the RULING in words,
+    # so the ruling-agreement reader has a sentence to read the line against instead of
+    # a restatement of the test the judge applied. Before the final-lines instruction,
+    # because that is where the judge is still writing prose.
+    assert "end your reasoning on it with the ruling itself in words" in (
+        RECOURSE_JUDGE_USER_FINDINGS)
+    assert "'the finding stands'" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "not with a restatement of the test" in RECOURSE_JUDGE_USER_FINDINGS
+    assert (RECOURSE_JUDGE_USER_FINDINGS.index("the ruling itself in words")
+            < RECOURSE_JUDGE_USER_FINDINGS.index("Work through the contests."))
     # R6: the omission is a two-step, and a covered point is not ruled on at all
     assert "Say first, in one sentence, whether it is an omission" in (
         RECOURSE_JUDGE_USER_FINDINGS)

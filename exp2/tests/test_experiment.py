@@ -3129,6 +3129,13 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert row["findings_duplicate_passage_n"] == 0
     assert row["findings_preamble_chars"] == len("The flawed side raised two points.\n")
     assert row["findings_trailing_chars"] > 0
+    # R11b, beside the lenient pair and deliberately stricter: a CASE-SENSITIVE substring
+    # test with no ellipsis splitting and no quote stripping beyond the outer pair, and a
+    # count of ellipsis joins. Both fixture passages are copied out of the solution
+    # exactly, so verbatim == exact here — the GAP between the two columns is the
+    # quantity the pair exists to expose.
+    assert row["findings_passage_verbatim_n"] == 2
+    assert row["findings_passage_ellipsis_n"] == 0
     assert row["challenge_contests_n"] == 1
     assert row["challenge_contests_finding_n"] == 1
     assert row["challenge_contests_omission_n"] == 0
@@ -3173,6 +3180,12 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert metrics["findings_contests"]["contests_per_objection"] == 1.0
     assert metrics["findings_contests"]["void_only_objections"] == 0
     assert metrics["findings_lists"]["duplicate_passages"] == 0
+    # R11b in the metrics, totalled over both cells: every fixture passage is copied out
+    # of the solution exactly, so the strict count equals the lenient one and nothing is
+    # ellipsis-joined. On a real arm the GAP between the two is the measurement.
+    assert metrics["findings_lists"]["passages_exact"] == 4
+    assert metrics["findings_lists"]["passages_verbatim"] == 4
+    assert metrics["findings_lists"]["passages_ellipsis_joined"] == 0
     assert metrics["findings_lists"]["trailing_chars_total"] > 0
     assert "valid_objection_findings" in metrics["rates"]
     assert "phantom_contest_mechanical" in metrics["rates"]
@@ -3181,6 +3194,57 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     # `grade_valid` here is a third kind of validity
     assert metrics["rates"]["valid_objection"]["n"] == 0
     assert metrics["rates"]["identified_flaw"]["n"] == 0
+
+
+async def test_a_findings_ruling_that_announces_its_lines_is_stripped_and_counted(
+    tmp_path, no_network
+):
+    """R11a, from smoke 2's weak/medqa record. The judge is told to write its lines and
+    not announce them; when it announces them anyway the announcement is the LAST thing
+    in `Ruling.reasoning`, because the lines themselves are past the cut. Published as
+    it stood, the document's "Grounds given" ended on "The final answer is:" and the
+    answer appeared three paragraphs lower under a different heading.
+
+    The document now goes through `strip_ruling_prose` — the same function the
+    ruling-agreement reader is handed its copy through, so the reader and the reader's
+    audience see the same words — and `ruling_leadin_stripped` says it happened even on
+    a tree where the reader stage never ran. `raw` is never touched: the full document
+    still prints the announcement verbatim."""
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    no_network.replies["recourse_judge_findings"] = (
+        "Finding 1's passage does bear out the claim; the finding stands.\n"
+        "The final answer is:\n"
+        "Contest 1 (Finding 1): FLAW")
+    contests = tmp_path / "C"
+    assert [r["status"] for r in await run_stage_contest(
+        grid, root=contests, config=findings_config(), client_config=client_config(),
+        api_key="k", decision_root=rejudged)] == ["completed"] * 2
+
+    directory = next(contests.glob("cells/*/contests/*/runs/*/ruling.json")).parent
+    ruling = json.loads((directory / "ruling.json").read_text())
+    # `raw` and `reasoning` keep every word the judge wrote; only the DOCUMENT trims.
+    assert "The final answer is:" in ruling["reasoning"]
+    assert "The final answer is:" in ruling["raw"]
+
+    document = (directory / "transcript.md").read_text()
+    outcome = document[document.index("## The outcome"):]
+    grounds = outcome[outcome.index("**Grounds given:**"):
+                      outcome.index("**The judge ruled on each contest:**")]
+    assert "the finding stands" in grounds
+    assert "The final answer is:" not in grounds
+    # and the line it announced is still printed, under the heading that belongs to it
+    # (in the parser's canonical form, `Contest n: <ruling>`)
+    assert "Contest 1: FLAW" in outcome
+
+    # the whole reply, untouched, in the document meant to be checked rather than read
+    assert "The final answer is:" in (directory / "transcript_full.md").read_text()
+
+    # the column, on a tree where `ruling_agreement` has not run at all
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert rows[0]["ruling_leadin_stripped"] is True
+    assert "ruling_prose_conclusion" not in rows[0]
 
 
 def test_the_findings_caveat_says_which_validity_and_which_phantom(tmp_path):

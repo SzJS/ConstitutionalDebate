@@ -490,6 +490,8 @@ class RunWriter:
     def record_findings(self, findings: list[dict[str, Any]], *, verdict: str,
                         parse_mode: str, passage_exact_n: int | None = None,
                         duplicate_passage_n: int | None = None,
+                        passage_verbatim_n: int | None = None,
+                        passage_ellipsis_n: int | None = None,
                         preamble_chars: int = 0, trailing_chars: int = 0) -> None:
         """The decomposed judgment, written BEFORE ``verdict.json``.
 
@@ -503,15 +505,19 @@ class RunWriter:
         new key there would fail to load every existing tree, and the whole list would
         travel through a dataclass that has no field for it.
 
-        THE FOUR COUNTS ADDED 2026-09-02 ARE REPORTED AND NEVER ENFORCED.
+        THE SIX COUNTS ADDED 2026-09-02 ARE REPORTED AND NEVER ENFORCED.
         `passage_exact_n` and `duplicate_passage_n` say how well the judge held the
         format — how many passages are really in the text under review, and how many
         findings repeat an earlier finding's passage — after a smoke in which the weak
         judge listed one claim four times and quoted a quarter of its passages
         inexactly. `preamble_chars` and `trailing_chars` say how much of the reply the
-        publication trim dropped. All four are measurements of the judge; a list is never
-        refused for any of them, because refusing would turn a measurement into a lost
-        cell and make the two arms incomparable.
+        publication trim dropped. `passage_verbatim_n` and `passage_ellipsis_n` (R11b, added
+        after smoke 2, where a theoremqa list quoted a debater's prose rendering of a
+        LaTeX formula and the lenient count called it exact) are the STRICT pair beside
+        `passage_exact_n`: a case-sensitive substring test against the text under review,
+        and a count of passages joined with an ellipsis. All six are measurements of the
+        judge; a list is never refused for any of them, because refusing would turn a
+        measurement into a lost cell and make the two arms incomparable.
         """
         _write_json(self.dir / "findings.json", {
             "form": "findings",
@@ -523,6 +529,8 @@ class RunWriter:
                 1 for f in findings if f.get("ruling_normalised")),
             "passage_exact_n": passage_exact_n,
             "duplicate_passage_n": duplicate_passage_n,
+            "passage_verbatim_n": passage_verbatim_n,
+            "passage_ellipsis_n": passage_ellipsis_n,
             "preamble_chars": preamble_chars,
             "trailing_chars": trailing_chars,
             "parse_mode": parse_mode,

@@ -181,6 +181,38 @@ async def test_a_ruling_prints_its_grounds_before_the_verdict_too(tmp_path):
     assert document.index("**Grounds given:**") < document.index("**Verdict now:**")
 
 
+async def test_only_a_findings_ruling_loses_a_dangling_lead_in_from_its_grounds(
+    tmp_path,
+):
+    """R11a is scoped to `derived_findings`, and the scope is the point.
+
+    Under every other form the ruling's own conclusion is a SENTENCE the judge wrote,
+    and "Never quietly edit what a model wrote" governs: a lead-in there is prose and
+    stays. Under the findings form the conclusion is a set of LINES the harness parsed
+    off and prints itself under its own heading, so a lead-in is left pointing at
+    nothing — and the reader that audits the ruling is handed the stripped copy anyway.
+    The two forms are asserted side by side so that a later widening of the strip has to
+    break this test to happen.
+    """
+    from exp2.artifacts import render_recourse_record
+
+    announced = "It fails on the passage.\n\nThe final answer is:"
+    for form, kept in (("uphold_overturn", True), ("derived_findings", False)):
+        writer, _ = await recorded(tmp_path / form, "debate")
+        (writer.dir / "ruling.json").write_text(json.dumps({
+            "form": form, "ruling": "UPHOLD", "upheld": True, "verdict": "FLAWED",
+            "reasoning": announced, "conclusion_line": "Contest 1: FLAW",
+        }), encoding="utf-8")
+        (writer.dir / "challenge.json").write_text(json.dumps({
+            "text": "Finding 1 is wrong.", "origin": "generated", "raised": True,
+            "stance": "contests", "claimed_verdict": "SOUND", "arm": "findings",
+            "defects": [],
+        }), encoding="utf-8")
+        document = render_recourse_record(writer.dir)
+        assert "It fails on the passage." in document
+        assert ("The final answer is:" in document) is kept, form
+
+
 async def test_private_reasoning_is_not_in_the_readable_document_but_is_pointed_to(
     tmp_path,
 ):
