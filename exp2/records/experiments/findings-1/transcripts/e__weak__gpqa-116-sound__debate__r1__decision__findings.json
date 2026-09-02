@@ -1,0 +1,25 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Dimethyl fumarate, while having double bonds, does not have the necessary chiral centers or geometric constraints to exhibit optical isomerism.\"",
+      "claim": "The sentence is false because it denies the presence of geometric constraints in dimethyl fumarate, when in fact it has a double bond that gives rise to E/Z geometric isomerism.",
+      "defence": "The solution is not denying that dimethyl fumarate has any geometric features whatsoever; it is denying that it has the geometric features necessary for optical isomerism, which is true because it lacks chirality.",
+      "reason": "The phrase \"necessary chiral centers or geometric constraints to exhibit optical isomerism\" is qualified by its purpose (exhibiting optical isomerism), so it is not denying all geometric constraints, but rather those that lead to optical activity; the defence is valid.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 0,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 1,
+  "duplicate_passage_n": 0,
+  "passage_verbatim_n": 1,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 0,
+  "parse_mode": "strict"
+}

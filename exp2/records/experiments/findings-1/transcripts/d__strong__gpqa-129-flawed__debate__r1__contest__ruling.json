@@ -1,0 +1,23 @@
+{
+  "form": "derived_findings",
+  "ruling": "UPHOLD",
+  "protocol": "judge_only",
+  "parent_verdict": "SOUND",
+  "verdict": "SOUND",
+  "parse_mode": "strict",
+  "raw": "The quoted words are found in both places: the `Text says:` quotation matches the solution passage, and the `Record says:` quotation appears in Alice’s Round 3 argument. The contest therefore proceeds.\n\nThe objection argues that 410 nm is not the physical lower limit for ground-based detection because some ground-based observations reach roughly 300–350 nm. That point, however, does not establish that the passage is false as written. The passage refers to the “actual optical window” in the practical context of ordinary optical observations, not the absolute atmospheric-transmission limit. A 410 nm blue edge is a defensible practical approximation for routine optical work, while the shorter near-UV range involves different observational constraints and is not necessarily the assumed regime of the question. The objection therefore identifies an alternative convention, but does not show the finding mistaken. The finding stands.\n\nContest 1 (Finding 1): NOT A FLAW",
+  "call_id": "522bff884492",
+  "finish_reason": "stop",
+  "correct": false,
+  "repair_attempts": 0,
+  "reasoning": "The quoted words are found in both places: the `Text says:` quotation matches the solution passage, and the `Record says:` quotation appears in Alice’s Round 3 argument. The contest therefore proceeds.\n\nThe objection argues that 410 nm is not the physical lower limit for ground-based detection because some ground-based observations reach roughly 300–350 nm. That point, however, does not establish that the passage is false as written. The passage refers to the “actual optical window” in the practical context of ordinary optical observations, not the absolute atmospheric-transmission limit. A 410 nm blue edge is a defensible practical approximation for routine optical work, while the shorter near-UV range involves different observational constraints and is not necessarily the assumed regime of the question. The objection therefore identifies an alternative convention, but does not show the finding mistaken. The finding stands.",
+  "native_reasoning": null,
+  "reasoning_withheld": false,
+  "conclusion_line": "Contest 1: NOT A FLAW",
+  "prompt_form": "findings",
+  "recourse_rounds": 0,
+  "recourse_pro_speaker": null,
+  "recourse_exchange_sha256": null,
+  "upheld": true,
+  "changed_the_decision": false
+}

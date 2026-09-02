@@ -1,0 +1,131 @@
+{
+  "run_id": "20260902T174629Z-medqa-train_3661-recourse",
+  "kind": "recourse",
+  "condition": "debate",
+  "item_id": "medqa-train_3661",
+  "row_id": "medqa:train_3661",
+  "subset": "medqa",
+  "parent_run_id": "20260902T165921Z-medqa-train_3661-rejudge",
+  "parent_sha256": "1040fb608cb02bb14ac8c21dc67f3a2a8623e65a5ef54f0a7f4610e17101964e",
+  "parent_copied": true,
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 32,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 24,
+    "copy_parent": true
+  },
+  "cell_id": "medqa-train_3661__debate__r1",
+  "challenger_model": "google/gemini-2.5-flash",
+  "recourse_form": "third_party",
+  "challenger_variant": "findings",
+  "challenge_raised": true,
+  "challenge_sha256": "a492dd142edf0cf24d8ecbffded97271e2a98dd820a6147be30429c9818d5591",
+  "error": null,
+  "decision_path": {
+    "calls": 2,
+    "attempts": 3,
+    "prompt_tokens": 20360,
+    "completion_tokens": 5556,
+    "reasoning_tokens": 0,
+    "cached_tokens": 5106,
+    "total_tokens": 25916,
+    "cost_usd": 0.015883
+  },
+  "off_path": {
+    "calls": 1,
+    "attempts": 1,
+    "prompt_tokens": 9905,
+    "completion_tokens": 60,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 9965,
+    "cost_usd": 0.003122
+  },
+  "by_role": {
+    "challenger": {
+      "calls": 1,
+      "attempts": 2,
+      "prompt_tokens": 14627,
+      "completion_tokens": 4357,
+      "reasoning_tokens": 0,
+      "cached_tokens": 5106,
+      "total_tokens": 18984,
+      "cost_usd": 0.013902
+    },
+    "comprehension": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 9905,
+      "completion_tokens": 60,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 9965,
+      "cost_usd": 0.003122
+    },
+    "recourse_judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 5733,
+      "completion_tokens": 1199,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 6932,
+      "cost_usd": 0.001981
+    }
+  },
+  "by_purpose": {
+    "challenge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 5359,
+      "completion_tokens": 3837,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 9196,
+      "cost_usd": 0.0112
+    },
+    "comprehension": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 9905,
+      "completion_tokens": 60,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 9965,
+      "cost_usd": 0.003122
+    },
+    "repair": {
+      "calls": 0,
+      "attempts": 1,
+      "prompt_tokens": 9268,
+      "completion_tokens": 520,
+      "reasoning_tokens": 0,
+      "cached_tokens": 5106,
+      "total_tokens": 9788,
+      "cost_usd": 0.002702
+    },
+    "rule": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 5733,
+      "completion_tokens": 1199,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 6932,
+      "cost_usd": 0.001981
+    }
+  },
+  "providers": {
+    "DigitalOcean": 1,
+    "Google": 3
+  },
+  "repairs": 1,
+  "failed_attempts": 0
+}

@@ -1,0 +1,35 @@
+/workspace/ConstitutionalDebate/exp2/outputs/experiments/jd3-main: 1644 decided cells (a `verdict` in index.jsonl)
+  turns scanned: 9864
+
+TOTALS (occurrences, and the cells carrying at least one)
+  glued `Argument:` inside an argument :   1056 in   854 of 1644 cells (51.9%)
+  scaffolding tags                     :    162 in   105 of 1644 cells (6.4%)
+      <thinking>          0
+      </thinking>        26
+      <argument>         27
+      </argument>       109
+  private-deliberation markers         :      8 in     4 of 1644 cells (0.2%)
+      'I need to respond as'                1
+      'I am assigned the position'          2
+      'I must argue otherwise'              4
+      'My previous argument was weak'       1
+
+PER SUBSET (cells; occurrences; cells carrying at least one)
+subset        cells   glued  w/glued   tags  w/tags  private  w/private
+-----------------------------------------------------------------------
+gpqa            319     221      183     31      26        0          0
+law              37      23       20      3       1        0          0
+lojban          117      97       71     10       8        0          0
+medqa           203     103       86      9       9        0          0
+python800       637     365      297     62      39        8          4
+surgery         196     141      118     21       9        0          0
+theoremqa       135     106       79     26      13        0          0
+
+CELLS WITH ANY PRIVATE-DELIBERATION MARKER (4)
+  python800-p02607-flawed__debate__r1                          python800  I must argue otherwise
+  python800-p02711-flawed__debate__r1                          python800  I must argue otherwise
+  python800-p03284-flawed__debate__r1                          python800  I am assigned the position; I must argue otherwise; I need to respond as; My previous argument was weak
+  python800-p03296-flawed__debate__r1                          python800  I am assigned the position; I must argue otherwise
+
+wrote 1644 cells -> /workspace/ConstitutionalDebate/exp2/outputs/fd1-source-scan.json
+NOTHING IS EXCLUDED on the strength of this scan; it is a PREREG caveat, and every cell above stays in every table.

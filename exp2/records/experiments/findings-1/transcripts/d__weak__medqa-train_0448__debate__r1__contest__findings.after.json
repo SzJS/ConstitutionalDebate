@@ -1,0 +1,50 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"The patient also complains of occasional headaches and had diarrhea several days ago. ...  Mild narrowing of the patient's visual fields\"",
+      "claim": "The solution contains a clear flaw: it selects (D) Intracerebellar mass despite the fact that the clinical picture does not support a cerebellar lesion and actually points to a different intracranial mass, because a cerebellar mass cannot cause visual field narrowing.",
+      "defence": "A cerebellar mass can raise ICP and cause visual field changes via papilledema or hydrocephalus affecting the optic pathways.",
+      "reason": "The solution does not claim the cerebellar mass directly compresses the optic chiasm; it attributes the visual field narrowing to increased intracranial pressure due to a mass, which is anatomically plausible.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 2,
+      "passage": "\"The patient's gait is stable, and he is able to jump up and down.\"",
+      "claim": "The stable gait and ability to jump rule out a cerebellar mass because cerebellar lesions typically produce ataxia, dysmetria, and truncal instability.",
+      "defence": "A localized or early cerebellar mass may not yet impair coordination, so the absence of ataxia does not exclude a small lesion.",
+      "reason": "The solution explicitly acknowledges that a small or localized cerebellar mass may not affect coordination, making this a reasonable and defensible interpretation.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 3,
+      "passage": "\"The option that fits the visual field narrowing plus morning vomiting is (E) Remnant of Rathke's pouch—a craniopharyngioma arising from the Rathke's pouch remnant.\"",
+      "claim": "The solution dismisses (E) based on a false stereotype that it \"would more likely affect hormones or have different neurological symptoms,\" but craniopharyngiomas commonly present with visual field defects and signs of increased ICP.",
+      "defence": "The solution's statement is a reasonable generalization since craniopharyngiomas often present with endocrine dysfunction, and it does not claim (E) cannot cause visual field defects.",
+      "reason": "The solution does not deny that a Rathke's pouch remnant can cause visual field defects; it weighs the probabilities and considers the overall presentation.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 4,
+      "passage": "\"The solution itself notes the visual fields are narrowed—that is a localizing sign to the suprasellar region, not a generic effect of any intracranial mass.\"",
+      "claim": "The solution makes a localizing inference that is anatomically unsupported by attributing visual field narrowing to a cerebellar mass without a plausible mechanism.",
+      "defence": "A cerebellar mass can cause visual field narrowing via raised ICP, for example through papilledema or hydrocephalus.",
+      "reason": "The solution's inference that a cerebellar mass can cause visual field narrowing via increased intracranial pressure is plausible, even if not directly through chiasmal compression.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "parent_verdict": "SOUND",
+  "n_findings": 4,
+  "n_flaw": 2,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "FLAW",
+    "2": "FLAW"
+  }
+}

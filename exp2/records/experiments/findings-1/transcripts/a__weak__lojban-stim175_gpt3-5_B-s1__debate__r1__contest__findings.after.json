@@ -1,0 +1,22 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"The correct answer is (B) because it follows the proper Lojban sentence structure.\"",
+      "claim": "The text under review contains a flaw because the reason \"because it follows the proper Lojban sentence structure\" is false due to the analyst's mistaken model of Lojban grammar.",
+      "defence": "A vague reason is not false unless shown to be false, and Bob hasn't shown that (B) fails to follow proper Lojban structure; he's only shown the analyst's account of it is flawed.",
+      "reason": "The claim that the reason is false hinges on interpreting \"proper Lojban sentence structure\" through the lens of the analyst's later, flawed explanations. However, sentence 1 itself does not specify what \"proper structure\" means, and it could be satisfied by a correct description of Lojban grammar. Bob has not demonstrated that (B) does not follow proper Lojban structure; he has only shown that the analyst's description is incorrect.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "parent_verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 1,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "FLAW"
+  }
+}

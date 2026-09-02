@@ -1,0 +1,38 @@
+{
+  "contests": [
+    {
+      "index": 1,
+      "kind": "finding",
+      "should_be": "FLAW",
+      "valid": false,
+      "reason": "the item is sound, so no finding can have missed a flaw",
+      "mechanical": true,
+      "alleged": true
+    },
+    {
+      "index": 2,
+      "kind": "finding",
+      "should_be": "FLAW",
+      "valid": false,
+      "reason": "the item is sound, so no finding can have missed a flaw",
+      "mechanical": true,
+      "alleged": true
+    }
+  ],
+  "line_valid": false,
+  "model": "",
+  "parse_mode": "mechanical_only",
+  "raw": "",
+  "call_id": "",
+  "finish_reason": null,
+  "repair_attempts": 0,
+  "reasoning": "",
+  "native_reasoning": "",
+  "reasoning_withheld": false,
+  "mode": "findings",
+  "valid": false,
+  "line_mismatch": false,
+  "contests_n": 2,
+  "contests_valid_n": 0,
+  "contests_mechanical_n": 2
+}

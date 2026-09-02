@@ -1,0 +1,93 @@
+=== fd1: two arms, sequentially — started 2026-09-02T17:01:34Z ===
+PREREG: records/experiments/findings-1/PREREG.md
+arms:   W (fd1-weak), S (fd1-strong)
+runner: scripts/run_sweep.sh   outputs: outputs/experiments   logs: outputs
+
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+########## ARM W  (fd1-weak)  2026-09-02T17:01:52Z
+########## stages: rejudge contest agreement ruling_agreement grade analyse   -> outputs/fd1-fd1-weak-driver.log
+########## ARM W exited 0  2026-09-02T18:21:59Z
+  ! The debate condition is adjudicated by the WEAK judge while single and self_critique are decided by the STRONG model, so the wrong-sets differ in size and character by construction. There is no weak_alone condition, so a debate-vs-single difference cannot separate the mechanism from model strength.
+
+  ! There is no specious-objection control, so a high revision rate cannot be distinguished from a judge that overturns under any pushback. Every ruling here was made by the third-party recourse judge, so no condition adjudicates its own appeal — but one asymmetry survives it: that judge is the same weak model that DECIDED the debate condition, and debate is the run's ONLY condition, so it is ruling on its own decision on every cell here — the asymmetry is not one condition of several, it is the whole run.
+
+  ! Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived from them is bounded by the rate at which a ruling's recorded outcome disagrees with the judge's own reasoning: where the two disagree, the revision is an artifact of the ruling line and not a re-decision. Measured here at 136/999 (13.6%) of the rulings the `ruling_agreement` stage could read (forms present: derived_findings); `ruling_line_mismatch_on_flawed_parent` is the number to read, since that is where the collision lives. NEITHER counts as a mismatch, so this is an upper bound — `ruling_prose_conclusion` in the index separates the outright contradictions from the reasonings that settled on nothing.
+
+  ! Rates are not pooled across label_basis: injected_pair, sentence_labels and final_answer are three different claims about what 'flawed' means. medqa's final_answer basis in particular labels a badly-reasoned solution 'sound' whenever it reached the right answer.
+
+  ! `agreed_with_decision` is structurally 0 and says nothing: the challenger now writes one line stated relative to the decision (`Decision: STANDS|REVERSE`), and a reply cannot both ask for a reversal and name the verdict it is reversing to. The stance it used to count is measured instead by the `agreement` stage, whose cross-tab is `line_vs_prose` — read `phantom_contest` there before reading any `contests` number.
+
+  ! Natural errors only: a weak judge errs where the correct side argued badly, so debate's incorrect cell selects the debates in which debate worked worst. This understates debate; single has no equivalent filter, so it applies asymmetrically.
+
+  ! DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS (outputs/experiments/jd3-main): the debates behind these 1639 cells were argued in another run and this one only judged them again, so `verdict` and `initially_correct` are this spec's judge reading a record it did not commission, `source_verdict` beside them is what the source tree's judge made of the same transcript, and `decision_cost_usd` is the one judge call rather than the debate that preceded it.
+
+  ! THIS ARM'S DECISION IS A LIST, NOT A VERDICT (`judge_form = "findings"`). The judge wrote one numbered finding per purported flaw the FLAWED-side debater raised, each ruled FLAW or NOT A FLAW, and the verdict was DERIVED by code — FLAWED iff any finding is FLAW, SOUND on an empty list — so `verdict` here is not a sentence any model wrote. Four things follow. `grade_valid` is a THIRD kind of validity: the share of objections raising at least one contest of a finding, an omission or a contradiction that held up, graded partly against the annotation (finding contests, on flawed items) and partly against the record (omissions and contradictions) — never comparable with the flaw grader's `valid_objection` or the audit's `valid_objection_judgment`, and never pooled across `label_basis` or across the three kinds. Every contested cell is graded, sound items and correct decisions included, and on a sound item a finding contest is settled by the label with no grader call at all. `phantom_contest` here is MECHANICAL — `(stance == contests) != (parsed contests > 0)`, a string comparison — and is NOT the Haiku prose reading the other arms report under that name; the two are different instruments and a table that put them in one column would be comparing a parser with a model. A void contest is a contest for that count: an objection whose quotations could not be found still contested something, and it is counted separately under `challenge_void_only`. `ruling_line_mismatch` on this arm is a LOWER bound and not comparable with the other arms' column: the findings reader is shown the ruling's contest lines and what each contest asked for, because it cannot otherwise tell how many contests the reasoning had to settle nor which lines refuse a contest and which grant it, and a reader shown the lines can defer to them. It is ABSENT, not False, on an objection every one of whose contests was void: the ruling's verdict there is derived with all of the judge's lines discarded, so there is no line for the prose to agree or disagree with. And `challenge_raised` is not `challenge_seeks_reversal`: a contest can be local and unable to move the verdict, and only verdict-moving outcomes enter the accuracy endpoint.
+
+wrote outputs/experiments/fd1-weak/metrics.json
+=== run_sweep: analyse exited 0  2026-09-02T18:21:59Z ===
+
+run_sweep: ALL STAGES COMPLETED (rejudge contest agreement ruling_agreement grade analyse) -> outputs/experiments/fd1-weak/DONE.md
+########## ARM W findings lists: 1657 of 1644 decided cells (1657 verdicts derived)
+########## ARM W objections: 1636   rulings: 1067   amended lists: 1067   grades: 1070
+########## ARM W decision runs: 3310 attempted, 3288 completed, 14 failed
+########## ARM W contest runs:  1639 attempted, 1631 completed, 8 failed
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+########## ARM S  (fd1-strong)  2026-09-02T18:22:42Z
+########## stages: rejudge contest agreement ruling_agreement grade analyse   -> outputs/fd1-fd1-strong-driver.log
+########## ARM S exited 0  2026-09-02T18:42:34Z
+  ! The debate condition is adjudicated by the WEAK judge while single and self_critique are decided by the STRONG model, so the wrong-sets differ in size and character by construction. There is no weak_alone condition, so a debate-vs-single difference cannot separate the mechanism from model strength.
+
+  ! There is no specious-objection control, so a high revision rate cannot be distinguished from a judge that overturns under any pushback. Every ruling here was made by the third-party recourse judge, so no condition adjudicates its own appeal — but one asymmetry survives it: that judge is the same weak model that DECIDED the debate condition, and debate is the run's ONLY condition, so it is ruling on its own decision on every cell here — the asymmetry is not one condition of several, it is the whole run.
+
+  ! Every `revised_*` rate, `final_correct`, and any net-accuracy figure derived from them is bounded by the rate at which a ruling's recorded outcome disagrees with the judge's own reasoning: where the two disagree, the revision is an artifact of the ruling line and not a re-decision. Measured here at 9/570 (1.6%) of the rulings the `ruling_agreement` stage could read (forms present: derived_findings); `ruling_line_mismatch_on_flawed_parent` is the number to read, since that is where the collision lives. NEITHER counts as a mismatch, so this is an upper bound — `ruling_prose_conclusion` in the index separates the outright contradictions from the reasonings that settled on nothing.
+
+  ! Rates are not pooled across label_basis: injected_pair, sentence_labels and final_answer are three different claims about what 'flawed' means. medqa's final_answer basis in particular labels a badly-reasoned solution 'sound' whenever it reached the right answer.
+
+  ! `agreed_with_decision` is structurally 0 and says nothing: the challenger now writes one line stated relative to the decision (`Decision: STANDS|REVERSE`), and a reply cannot both ask for a reversal and name the verdict it is reversing to. The stance it used to count is measured instead by the `agreement` stage, whose cross-tab is `line_vs_prose` — read `phantom_contest` there before reading any `contests` number.
+
+  ! Natural errors only: a weak judge errs where the correct side argued badly, so debate's incorrect cell selects the debates in which debate worked worst. This understates debate; single has no equivalent filter, so it applies asymmetrically.
+
+  ! DECISIONS RE-JUDGED FROM STORED TRANSCRIPTS (outputs/experiments/jd3-main): the debates behind these 1644 cells were argued in another run and this one only judged them again, so `verdict` and `initially_correct` are this spec's judge reading a record it did not commission, `source_verdict` beside them is what the source tree's judge made of the same transcript, and `decision_cost_usd` is the one judge call rather than the debate that preceded it.
+
+  ! THIS ARM'S DECISION IS A LIST, NOT A VERDICT (`judge_form = "findings"`). The judge wrote one numbered finding per purported flaw the FLAWED-side debater raised, each ruled FLAW or NOT A FLAW, and the verdict was DERIVED by code — FLAWED iff any finding is FLAW, SOUND on an empty list — so `verdict` here is not a sentence any model wrote. Four things follow. `grade_valid` is a THIRD kind of validity: the share of objections raising at least one contest of a finding, an omission or a contradiction that held up, graded partly against the annotation (finding contests, on flawed items) and partly against the record (omissions and contradictions) — never comparable with the flaw grader's `valid_objection` or the audit's `valid_objection_judgment`, and never pooled across `label_basis` or across the three kinds. Every contested cell is graded, sound items and correct decisions included, and on a sound item a finding contest is settled by the label with no grader call at all. `phantom_contest` here is MECHANICAL — `(stance == contests) != (parsed contests > 0)`, a string comparison — and is NOT the Haiku prose reading the other arms report under that name; the two are different instruments and a table that put them in one column would be comparing a parser with a model. A void contest is a contest for that count: an objection whose quotations could not be found still contested something, and it is counted separately under `challenge_void_only`. `ruling_line_mismatch` on this arm is a LOWER bound and not comparable with the other arms' column: the findings reader is shown the ruling's contest lines and what each contest asked for, because it cannot otherwise tell how many contests the reasoning had to settle nor which lines refuse a contest and which grant it, and a reader shown the lines can defer to them. It is ABSENT, not False, on an objection every one of whose contests was void: the ruling's verdict there is derived with all of the judge's lines discarded, so there is no line for the prose to agree or disagree with. And `challenge_raised` is not `challenge_seeks_reversal`: a contest can be local and unable to move the verdict, and only verdict-moving outcomes enter the accuracy endpoint.
+
+wrote outputs/experiments/fd1-strong/metrics.json
+=== run_sweep: analyse exited 0  2026-09-02T18:42:34Z ===
+
+run_sweep: ALL STAGES COMPLETED (rejudge contest agreement ruling_agreement grade analyse) -> outputs/experiments/fd1-strong/DONE.md
+########## ARM S findings lists: 1644 of 1644 decided cells (1644 verdicts derived)
+########## ARM S objections: 1644   rulings: 606   amended lists: 606   grades: 606
+########## ARM S decision runs: 3288 attempted, 3288 completed, 0 failed
+########## ARM S contest runs:  1644 attempted, 1644 completed, 0 failed
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+=== fd1: both arms done 2026-09-02T18:44:23Z ===
+# fd1 — both arms done, 2026-09-02T18:43:33Z
+
+| arm | spec | decisions attempted | completed | failed | contests attempted | completed | failed | findings | verdicts | objections | rulings | after-lists | grades |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| W | `fd1-weak` | 3310 | 3288 | 14 | 1639 | 1631 | 8 | 1657 | 1657 | 1636 | 1067 | 1067 | 1070 |
+| S | `fd1-strong` | 3288 | 3288 | 0 | 1644 | 1644 | 0 | 1644 | 1644 | 1644 | 606 | 606 | 606 |
+
+The findings column is against **1644** decided debate cells in
+`jd3-main`. Every list here was written by a judge under `judge_form =
+"findings"`, and the verdict beside it was DERIVED from it by code rather than
+stated by the judge.
+
+**Failed cells are COUNTED, never absorbed.** Under `PREREG.md`'s missing-cell
+rule a cell lost at rejudge has no before-state and leaves every table (and is
+the numerator of the feasibility rate); one lost at contest leaves P1's pairing
+and P2's denominator; one lost at ruling is contested with no after-state and is
+never an uphold; one lost at grade or at the instrument stays in P1-P3 and leaves
+that table alone. The derivation's section (0) lists each with the error that
+lost it, per stage and per arm, and breaks the rejudge losses down by subset.
+`--retry-failed` was on, so a cell failed at rejudge here failed TWICE.
+
+`jd3-main` byte-identical before and after: `dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c`.
+
+Hashes in `outputs/fd1-fingerprints.md`.
+
+Next: `uv run python records/derivations/findings-1.py`.

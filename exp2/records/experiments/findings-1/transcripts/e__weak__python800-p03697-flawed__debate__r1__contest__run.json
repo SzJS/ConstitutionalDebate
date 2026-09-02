@@ -1,0 +1,131 @@
+{
+  "run_id": "20260902T180353Z-python800-p03697-flawed-recourse",
+  "kind": "recourse",
+  "condition": "debate",
+  "item_id": "python800-p03697-flawed",
+  "row_id": "python800:p03697",
+  "subset": "python800",
+  "parent_run_id": "20260902T171351Z-python800-p03697-flawed-rejudge",
+  "parent_sha256": "7994d1d3bcc18a7321a97116ddc35c1396b08f881b0e5c92a86342e578315ea7",
+  "parent_copied": true,
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 32,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 24,
+    "copy_parent": true
+  },
+  "cell_id": "python800-p03697-flawed__debate__r1",
+  "challenger_model": "google/gemini-2.5-flash",
+  "recourse_form": "third_party",
+  "challenger_variant": "findings",
+  "challenge_raised": true,
+  "challenge_sha256": "aaad68e47b7d0c8927c6c0021e01458c9c3061ceb0d0ac6e8279f751a16db17f",
+  "error": null,
+  "decision_path": {
+    "calls": 2,
+    "attempts": 3,
+    "prompt_tokens": 17150,
+    "completion_tokens": 3031,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 20181,
+    "cost_usd": 0.011046
+  },
+  "off_path": {
+    "calls": 1,
+    "attempts": 1,
+    "prompt_tokens": 7545,
+    "completion_tokens": 61,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 7606,
+    "cost_usd": 0.002416
+  },
+  "by_role": {
+    "challenger": {
+      "calls": 1,
+      "attempts": 2,
+      "prompt_tokens": 12052,
+      "completion_tokens": 2384,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 14436,
+      "cost_usd": 0.009576
+    },
+    "comprehension": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 7545,
+      "completion_tokens": 61,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 7606,
+      "cost_usd": 0.002416
+    },
+    "recourse_judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 5098,
+      "completion_tokens": 647,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 5745,
+      "cost_usd": 0.00147
+    }
+  },
+  "by_purpose": {
+    "challenge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 4972,
+      "completion_tokens": 2036,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 7008,
+      "cost_usd": 0.006582
+    },
+    "comprehension": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 7545,
+      "completion_tokens": 61,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 7606,
+      "cost_usd": 0.002416
+    },
+    "repair": {
+      "calls": 0,
+      "attempts": 1,
+      "prompt_tokens": 7080,
+      "completion_tokens": 348,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 7428,
+      "cost_usd": 0.002994
+    },
+    "rule": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 5098,
+      "completion_tokens": 647,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 5745,
+      "cost_usd": 0.00147
+    }
+  },
+  "providers": {
+    "DigitalOcean": 1,
+    "Google": 3
+  },
+  "repairs": 1,
+  "failed_attempts": 0
+}

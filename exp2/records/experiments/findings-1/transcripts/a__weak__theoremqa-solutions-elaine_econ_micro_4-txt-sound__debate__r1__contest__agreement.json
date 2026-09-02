@@ -1,0 +1,15 @@
+{
+  "prose_stance": "WRONG",
+  "line_word": "REVERSE",
+  "reasoning": "mechanical: 2 contests in the objection's own list, 0 of them void",
+  "model": "",
+  "parse_mode": "mechanical",
+  "raw": "",
+  "call_id": "",
+  "finish_reason": null,
+  "repair_attempts": 0,
+  "native_reasoning": "",
+  "reasoning_withheld": false,
+  "agrees": true,
+  "phantom_contest": false
+}

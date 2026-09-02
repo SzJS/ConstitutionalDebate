@@ -1,0 +1,83 @@
+{
+  "run_id": "20260902T164022Z-lojban-stim182_gpt3-5_B-s5-rejudge",
+  "kind": "rejudge",
+  "condition": "debate",
+  "item_id": "lojban-stim182_gpt3-5_B-s5",
+  "row_id": "lojban:stim182_gpt3-5_B",
+  "subset": "lojban",
+  "rejudged_from": "outputs/experiments/jd3-main",
+  "source_run_dir": "outputs/experiments/jd3-main/cells/lojban-stim182_gpt3-5_B-s5__debate__r1/runs/20260828T115412Z-lojban-stim182_gpt3-5_B-s5-rejudge",
+  "source_run_id": "20260828T115412Z-lojban-stim182_gpt3-5_B-s5-rejudge",
+  "source_sha256": "0ad6148924cae3806396c39b0b767a209ef63a0cd8041b31379642f4c0371d51",
+  "source_verdict": "SOUND",
+  "source_correct": false,
+  "source_judge_model": "meta-llama/llama-4-maverick",
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 16,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 8,
+    "copy_parent": true
+  },
+  "cell_id": "lojban-stim182_gpt3-5_B-s5__debate__r1",
+  "judge_model": "meta-llama/llama-4-maverick",
+  "judge_form": "findings",
+  "findings_n": 2,
+  "findings_flaw_n": 0,
+  "error": null,
+  "decision_path": {
+    "calls": 1,
+    "attempts": 1,
+    "prompt_tokens": 3769,
+    "completion_tokens": 623,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 4392,
+    "cost_usd": 0.001187
+  },
+  "off_path": {
+    "calls": 0,
+    "attempts": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "by_role": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3769,
+      "completion_tokens": 623,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4392,
+      "cost_usd": 0.001187
+    }
+  },
+  "by_purpose": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 3769,
+      "completion_tokens": 623,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 4392,
+      "cost_usd": 0.001187
+    }
+  },
+  "providers": {
+    "DigitalOcean": 1
+  },
+  "repairs": 0,
+  "failed_attempts": 0
+}

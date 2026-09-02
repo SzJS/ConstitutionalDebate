@@ -1,0 +1,25 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Clearly the only way to get a number divisible by 3 by adding three of these is 2 + 1 + 1\"",
+      "claim": "The statement that the only way to get a number divisible by 3 by adding three of the residues is 2+1+1 is false because (1,1,1) is another valid combination.",
+      "defence": "The claim is not about arbitrary triples of scores, but about the first three entries and their compatibility with the fourth entry; it is a compressed way of saying that among possible triples that can be the first three while still allowing a valid fourth entry, only the 2+1+1 arrangement leads to the unique solution.",
+      "reason": "The passage makes a standalone mathematical assertion about the residues that is false; the defence attempts to reinterpret it in context, but the text does not explicitly include the additional constraints Bob mentions.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "n_findings": 1,
+  "n_flaw": 1,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 1,
+  "duplicate_passage_n": 0,
+  "passage_verbatim_n": 1,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 207,
+  "parse_mode": "strict"
+}

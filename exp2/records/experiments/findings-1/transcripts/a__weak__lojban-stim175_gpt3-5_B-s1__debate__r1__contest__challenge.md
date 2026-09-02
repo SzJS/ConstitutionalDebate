@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "The correct answer is (B) because it follows the proper Lojban sentence structure."
+   Record says: Bob: "The analyst’s own later sentences define what he means by “proper Lojban sentence structure”: verb-first, then subject, then object, with “cu” as the verb. That is not proper Lojban. ... So the reason given in sentence 1—that (B) follows proper structure—is demonstrably false under the analyst’s own account."
+   Why: The finding incorrectly dismisses Bob's argument by stating that the claim "hinges on interpreting 'proper Lojban sentence structure' through the lens of the analyst's later, flawed explanations." However, Bob's core argument is precisely that the analyst's own words *do* define the term, and that this definition (SVO with 'cu' as verb) is grammatically incorrect in Lojban. Therefore, the reason provided in sentence 1, as intended and explained by the analyst himself, is false, making sentence 1 flawed.

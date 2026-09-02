@@ -1,0 +1,83 @@
+{
+  "run_id": "20260902T182522Z-python800-p03161-flawed-rejudge",
+  "kind": "rejudge",
+  "condition": "debate",
+  "item_id": "python800-p03161-flawed",
+  "row_id": "python800:p03161",
+  "subset": "python800",
+  "rejudged_from": "outputs/experiments/jd3-main",
+  "source_run_dir": "outputs/experiments/jd3-main/cells/python800-p03161-flawed__debate__r1/runs/20260828T121254Z-python800-p03161-flawed-rejudge",
+  "source_run_id": "20260828T121254Z-python800-p03161-flawed-rejudge",
+  "source_sha256": "f6e4e3e353f1abaada3cda14eb644dfd1ddaa59fe05743e3638b99ccbc1b3871",
+  "source_verdict": "FLAWED",
+  "source_correct": true,
+  "source_judge_model": "meta-llama/llama-4-maverick",
+  "status": "completed",
+  "client_config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_concurrency": 32,
+    "max_attempts": 4,
+    "backoff_base_s": 1.0,
+    "backoff_cap_s": 30.0,
+    "connect_timeout_s": 15.0,
+    "read_timeout_s": 300.0,
+    "run_timeout_s": 1800.0,
+    "max_runs_in_flight": 24,
+    "copy_parent": true
+  },
+  "cell_id": "python800-p03161-flawed__debate__r1",
+  "judge_model": "openai/gpt-5.6-luna-20260709",
+  "judge_form": "findings",
+  "findings_n": 2,
+  "findings_flaw_n": 2,
+  "error": null,
+  "decision_path": {
+    "calls": 1,
+    "attempts": 1,
+    "prompt_tokens": 4960,
+    "completion_tokens": 304,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 5264,
+    "cost_usd": 0.001605
+  },
+  "off_path": {
+    "calls": 0,
+    "attempts": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "reasoning_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "by_role": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 4960,
+      "completion_tokens": 304,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 5264,
+      "cost_usd": 0.001605
+    }
+  },
+  "by_purpose": {
+    "judge": {
+      "calls": 1,
+      "attempts": 1,
+      "prompt_tokens": 4960,
+      "completion_tokens": 304,
+      "reasoning_tokens": 0,
+      "cached_tokens": 0,
+      "total_tokens": 5264,
+      "cost_usd": 0.001605
+    }
+  },
+  "providers": {
+    "OpenAI": 1
+  },
+  "repairs": 0,
+  "failed_attempts": 0
+}

@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "Due to the mass of V being added to the system, the endpoint of the E spectrum in the variant decay will increase."
+   Record says: Alice: "First, in the variant decay, the two V particles are *not* added; they are replaced by one massless M. ... The phrase "the mass of V being added" describes the opposite of what happens. Second, the endpoint increases precisely *because* the V mass is removed. ... The solution's stated cause—adding V mass—would actually *decrease* the endpoint, not increase it."
+   Why: The statement explicitly links the "mass of V being added to the system" to an "increase" in the variant decay's endpoint. This is factually incorrect because V is replaced by M in the variant, and causally incorrect because adding mass to the final state would decrease, not increase, the available kinetic energy and thus the endpoint. The ruling's interpretation that it refers to the original decay's mass does not resolve the flawed causal link stated in the sentence regarding the variant's endpoint increase.

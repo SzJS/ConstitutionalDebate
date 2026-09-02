@@ -1,0 +1,4 @@
+1. Contests: omission
+   Record says: "Moreover, the proposed program is actually incorrect for the problem. For 1, 5, 2, the correct maximum is 52+1=53, but the program outputs 17. The analyst's conclusion "The code seems to correctly solve the problem" is therefore false."
+   Passage: "The code seems to correctly solve the problem. So the answer is [Yes]."
+   Why: Alice explicitly argues that the program itself is incorrect for the given input (1, 5, 2, outputting 17 instead of 53) and that the analyst's final conclusion about the program's correctness is therefore false. This distinct claim is not covered by Finding 1 (which addresses an arithmetic error in an example calculation) or Finding 2 (which addresses a misdescription of which variable is multiplied by 10).

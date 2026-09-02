@@ -1,0 +1,25 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Acid fast cysts are characteristic of infections with Cryptosporidium species, which can cause diarrhea but are less likely to cause liver abscesses and the described symptoms.\"",
+      "claim": "The solution incorrectly calls Cryptosporidium’s acid-fast environmental stage a cyst, because Cryptosporidium produces oocysts rather than cysts.",
+      "defence": "Bob argued that the solution was echoing the question’s wording, that “acid-fast cysts” is used as loose shorthand for Cryptosporidium oocysts, and that the clinically relevant exclusion of Cryptosporidium was correct.",
+      "reason": "The passage makes a factual assertion rather than merely quoting the option, and the precise biological term for Cryptosporidium’s acid-fast stage is “oocyst,” not “cyst.” Although the option uses the same imprecise wording and the clinical conclusion is correct, repeating the misidentification without qualification is an untrue statement and therefore a real flaw.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "n_findings": 1,
+  "n_flaw": 1,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 1,
+  "duplicate_passage_n": 0,
+  "passage_verbatim_n": 0,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 0,
+  "parse_mode": "strict"
+}

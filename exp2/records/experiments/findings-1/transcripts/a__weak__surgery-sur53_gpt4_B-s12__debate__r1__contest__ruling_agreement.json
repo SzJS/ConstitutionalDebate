@@ -1,0 +1,17 @@
+{
+  "prose_conclusion": "FLAWED",
+  "line_conclusion": "FLAWED",
+  "reasoning": "",
+  "model": "anthropic/claude-haiku-4.5",
+  "parse_mode": "strict",
+  "raw": "Reading: CONSISTENT\n\nThe reasoning works through to a definite conclusion. The reviewer examines the contest's objection, acknowledges that \"the contest raises a valid point,\" explicitly states \"the contest shows that the finding is mistaken,\" and concludes \"The finding is mistaken; the passage does contain a flaw.\" This reasoning directly supports the final ruling of `FLAW` on Contest 1. The prose reaches a clear answer and the line matches that answer.",
+  "call_id": "ab0f53c4546b",
+  "finish_reason": "stop",
+  "ruling_form": "derived_findings",
+  "parent_verdict": "SOUND",
+  "repair_attempts": 0,
+  "native_reasoning": null,
+  "reasoning_withheld": false,
+  "leadin_stripped": false,
+  "mismatch": false
+}

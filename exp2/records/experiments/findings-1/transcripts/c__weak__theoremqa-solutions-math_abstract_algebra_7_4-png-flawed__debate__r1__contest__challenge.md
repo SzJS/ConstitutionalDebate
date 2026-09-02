@@ -1,0 +1,9 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: `\[ (a * b) * c = (a + b + 3) * c = (a + b + 3) + c + 3 = a + b + c + 6 \neq a + (b + c + 3) = a + (b * c) \], as required for associativity.`
+   Record says: (from Bob in Round 1) "The solution's expression "a + (b + c + 3)" is missing the final "+3" from the outer operation. They then claim this is unequal to a+b+c+6, but if computed correctly, both equal a+b+c+6. So their "≠" is false."
+   Why: The solution implicitly claims that `a * (b * c)` is equal to `a + (b * c)`. This is a miscalculation of the operation `*`, as `a * x` is defined as `a + x + 3`. Therefore, `a * (b * c)` should be `a + (b * c) + 3`, which simplifies to `a + b + c + 6`. Since `(a * b) * c` is also `a + b + c + 6`, associativity holds. The solution's statement that associativity fails, indicated by the "≠" in the context of "as required for associativity," is thus false. The ruling's reason, which states that comparing `(a*b)*c` with `a+(b*c)` is a "valid demonstration that the operation fails associativity," is incorrect because `a+(b*c)` is not the correct expression for `a*(b*c)` in an associativity check.
+2. Contests: omission
+   Record says: (from Bob in Round 1) "Moreover, because associativity holds, and Steps 3 and 4 correctly identify the identity and inverses, the conclusion in Step 5 that "G is not a group" is also false."
+   Passage: "Step 5: Therefore, G is not a group."
+   Why: Bob explicitly raises the claim that the final conclusion in Step 5 is false, arguing that if the associativity calculation in Step 2 is corrected, G would be a group. This is a distinct purported flaw regarding the solution's overall conclusion, separate from the calculation error in Step 2 itself.

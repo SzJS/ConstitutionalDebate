@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "Therefore, the consumer surplus in this case is equal to (53 - 29) * 48 = 1152."
+   Record says: "Bob: The text's statement that consumer surplus is equal to (53 - 29) * 48 is false because it uses the monopoly price (29) instead of the competitive price (5) and represents a rectangle, not the consumer surplus triangle." and "Bob: The text explicitly identifies the expression (53-29)*48 as "the consumer surplus in this case." That identification is false. ... The text’s expression uses 29, the monopoly price, which has no role in the competitive equilibrium. ... The text's claim is not merely "the answer is 1152"; it is "the consumer surplus is equal to (53-29)*48." That claim is false in its content."
+   Why: The statement is misleading because it identifies competitive consumer surplus with an expression that uses the monopoly price (29), which has no economic relevance to competitive consumer surplus, even though the numerical result is coincidentally correct. This violates the "misleading" clause of the flaw definition.

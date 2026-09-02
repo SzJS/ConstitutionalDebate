@@ -1,0 +1,588 @@
+====================================================================================================
+findings-1 — the decomposed judgment, and whether a local contest breaks fewer
+====================================================================================================
+Pre-registration: records/experiments/findings-1/PREREG.md
+Section (1) is P1 and (2) is P2; the registered claim for F-weak is the
+CONJUNCTION of the two. (3) is REPORTED. (4) is DESCRIPTIVE throughout and its
+(4b) is an ABLATION. (5) names the outcome and reports a split as a split.
+
+arm         index                                                                           rows
+----------------------------------------------------------------------------------------------------
+weak        outputs/experiments/fd1-weak/index.jsonl                                        1644
+strong      outputs/experiments/fd1-strong/index.jsonl                                      1644
+m0          outputs/experiments/jd3-main/index.jsonl                                        1644
+jd5b        records/experiments/judgment-debate-5/arm-real/index.jsonl                      1644
+weak scan   records/experiments/findings-1/arm-weak/format-scan.jsonl                       1644
+strong scan records/experiments/findings-1/arm-strong/format-scan.jsonl                     1644
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+(0) THE LOSSES, THE PARSE AND THE FORMAT  [DESCRIPTIVE — and PREREG §6's rule]
+====================================================================================================
+PREREG §6's missing-cell rule, applied stage by stage. A cell lost at REJUDGE has
+no before-state and leaves every table (it is the numerator of the feasibility
+rate, and it is NOT a SOUND verdict with an empty list); lost at CONTEST it has an
+unknown stance and is not a decline; lost at RULING it was contested and has no
+after-state, and it is never counted as an uphold; lost at GRADE or at the
+instrument it stays in P1-P3 and leaves that table alone. A retried cell is a
+DIFFERENT DRAW and is never folded into a denominator.
+
+arm                                 attempted  decided  stance  raised  ruled  graded  well-formed
+----------------------------------------------------------------------------------------------------
+F-weak  (Maverick, both roles)           1644     1644    1644    1076   1073    1073         1007
+F-strong (luna, both roles)              1644     1644    1644     606    606     606          571
+----------------------------------------------------------------------------------------------------
+population: 1644 cells (jd3-M0's decided debate cells, read from --m0)
+
+  F-weak  (Maverick, both roles)
+    lost at rejudge       0   (no before-state; leaves every table)
+    lost at contest       0   (unknown stance, and NOT a decline)
+    lost at ruling        3   (contested, no after-state; never an uphold)
+    lost at grade         0   (stays in P1-P3, leaves the validity table)
+    stances           contests 1076, agrees 0, declines 565, unclear 3
+    REJUDGE LOSSES BY SUBSET  none — every cell in the population reached the index
+
+  F-strong (luna, both roles)
+    lost at rejudge       0   (no before-state; leaves every table)
+    lost at contest       0   (unknown stance, and NOT a decline)
+    lost at ruling        0   (contested, no after-state; never an uphold)
+    lost at grade         0   (stays in P1-P3, leaves the validity table)
+    stances           contests 606, agrees 0, declines 1038, unclear 0
+    REJUDGE LOSSES BY SUBSET  none — every cell in the population reached the index
+
+
+====================================================================================================
+  THE PARSE AND THE FORMAT, PER ARM  [the feasibility gate's own columns]
+====================================================================================================
+`findings_parse_mode` is the JUDGE's, copied into the index so the feasibility
+gate is a column rather than a walk of the tree. The four format columns beside
+it are REPORTED AND NEVER ENFORCED (the smoke of 2026-09-02: one claim listed as
+four findings, a quarter of the passages not verbatim) — a judge that writes a
+page of commentary around every list, or quotes loosely, is visible here rather
+than only in the published document.
+
+====================================================================================================
+  F-weak  (Maverick, both roles)
+====================================================================================================
+    parse modes                      {'strict': 1532, 'strict_after_repair': 112}
+    findings per list                min 0  median 2  max 6  mean 2.00
+    distribution                     0:2  1:682  2:414  3:437  4:84  5+:25
+    EMPTY LIST (verdict SOUND)       2/1644 0.1%   — contestable by omission, and not a loss
+    rulings normalised FLAWED/SOUND  0 over 0 lists   (the one parser tolerance, counted so it is visible)
+    passages found verbatim          2755/3284 83.9%   (of findings, not of cells)
+    passages repeating an earlier one 347/3284 10.6%
+    preamble chars trimmed           min 0  median 0  max 0  mean 0.00
+    trailing chars trimmed           min 0  median 0  max 1731  mean 88.52
+    repairs, judge                   112 over 112 of 1644 calls
+    repairs, challenger              1615 over 1615 of 1644 calls
+    repairs, recourse judge          4 over 4 of 1073 calls
+
+====================================================================================================
+  F-strong (luna, both roles)
+====================================================================================================
+    parse modes                      {'strict': 1644}
+    findings per list                min 0  median 2  max 8  mean 1.77
+    distribution                     0:2  1:789  2:536  3:247  4:50  5+:20
+    EMPTY LIST (verdict SOUND)       2/1644 0.1%   — contestable by omission, and not a loss
+    rulings normalised FLAWED/SOUND  0 over 0 lists   (the one parser tolerance, counted so it is visible)
+    passages found verbatim          2806/2913 96.3%   (of findings, not of cells)
+    passages repeating an earlier one 87/2913 3.0%
+    preamble chars trimmed           min 0  median 0  max 0  mean 0.00
+    trailing chars trimmed           min 0  median 0  max 0  mean 0.00
+    repairs, judge                   0 over 0 of 1644 calls
+    repairs, challenger              1626 over 1626 of 1644 calls
+    repairs, recourse judge          3 over 3 of 606 calls
+
+====================================================================================================
+(1) P1 — DOES RECOURSE ON A DECOMPOSED JUDGMENT RAISE ACCURACY?  [PRIMARY]
+====================================================================================================
+Exact two-sided McNemar on before/after correctness, alpha = 0.05, PER ARM and
+never pooled: F-weak's P1 and P2 are one intersection-union claim, and F-strong's
+P1 is a separate family at its own alpha (PREREG §2's alpha policy).
+
+BEFORE is the findings judge's OWN derived verdict (`initially_correct`) and not
+jd3-M0's. Every fd1 arm is a rejudge, so the arm made its own decision; M0 is a
+recorded comparator in section (4) and never P1's baseline. AFTER is
+`final_correct`, and a cell nobody ruled on keeps the decision it had.
+
+====================================================================================================
+  F-weak  (Maverick, both roles) — every decided cell
+====================================================================================================
+                               after correct       after wrong     total
+----------------------------------------------------------------------------------------------------
+before correct                           858               260      1118
+before wrong                             278               248       526
+----------------------------------------------------------------------------------------------------
+total                                   1136               508      1644
+
+  fixed   (before wrong -> after correct)   b = 278
+  broken  (before correct -> after wrong)   c = 260
+  NET                                    +18 cells
+  discordant pairs                       538   (concordant 1106, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.463638   not significant at alpha=0.05
+
+  accuracy before         1118/1644 68.0%  [65.7, 70.2]   (95% Wilson)
+  accuracy after          1136/1644 69.1%  [66.8, 71.3]   (95% Wilson)
+
+  THE TWO DENOMINATORS PREREG §2 REQUIRES, on the same cells. A decision
+  nobody contested cannot move, so the whole-arm net above is diluted by
+  every uncontested cell; and an objection made ENTIRELY of mechanically
+  void contests cannot move one either, by construction.
+    contested and ruled         n  1073   fixed  278   broken  260   net   +18   p = 0.4636  not significant at alpha=0.05
+    >= 1 well-formed contest    n  1007   fixed  278   broken  260   net   +18   p = 0.4636  not significant at alpha=0.05
+
+====================================================================================================
+  F-strong (luna, both roles) — every decided cell
+====================================================================================================
+                               after correct       after wrong     total
+----------------------------------------------------------------------------------------------------
+before correct                          1268                11      1279
+before wrong                               7               358       365
+----------------------------------------------------------------------------------------------------
+total                                   1275               369      1644
+
+  fixed   (before wrong -> after correct)   b = 7
+  broken  (before correct -> after wrong)   c = 11
+  NET                                    -4 cells
+  discordant pairs                       18   (concordant 1626, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.480682   not significant at alpha=0.05
+
+  accuracy before         1279/1644 77.8%  [75.7, 79.7]   (95% Wilson)
+  accuracy after          1275/1644 77.6%  [75.5, 79.5]   (95% Wilson)
+
+  THE TWO DENOMINATORS PREREG §2 REQUIRES, on the same cells. A decision
+  nobody contested cannot move, so the whole-arm net above is diluted by
+  every uncontested cell; and an objection made ENTIRELY of mechanically
+  void contests cannot move one either, by construction.
+    contested and ruled         n   606   fixed    7   broken   11   net    -4   p = 0.4807  not significant at alpha=0.05
+    >= 1 well-formed contest    n   571   fixed    7   broken   11   net    -4   p = 0.4807  not significant at alpha=0.05
+
+====================================================================================================
+(2) P2 — DOES THE LOCAL CONTEST BREAK FEWER RIGHT DECISIONS?  [CO-PRIMARY]
+====================================================================================================
+F-weak only, ONE-SIDED at alpha = 0.05. Among F-weak's contested, ruled,
+before-RIGHT cells, is `broken | right` BELOW jd5-B's 167/622 = 26.8%?
+
+jd5-B recomputed from its index: broken 167/622 26.8%, fixed 144/274 52.6% — matches the published 26.8% and 52.6%.
+
+THIS COMPARISON IS UNPAIRED AND IT COMPARES TWO MECHANISMS. The contest object
+(a finding vs the whole judgment), the ruling prompt, the before-state (the
+findings judge's own derived verdict vs M0's) and the routing all moved between
+the two rows. Fisher's exact test is the right SHAPE — jd5-B's 622 are data with
+their own sampling error, and the one-sample binomial the questionnaire defaulted
+to would call a four-point drop significant that a fair test calls borderline —
+but no test here can attribute the difference to the decomposition alone. The
+paired table at the end of this section is the one that holds the cell fixed, and
+it is DESCRIPTIVE with its n.
+
+  DENOMINATOR: all contested-and-ruled cells that were RIGHT before
+                                broken      kept     total                          rate
+----------------------------------------------------------------------------------------------------
+F-weak                             260       412       672    260/672 38.7% [35.1, 42.4]
+jd5-B (the check arm)              167       455       622    167/622 26.8% [23.5, 30.5]
+----------------------------------------------------------------------------------------------------
+  difference (F-weak - jd5-B)          +11.8 pts   Newcombe 95% [+6.7, +16.8]
+  FISHER'S EXACT, ONE-SIDED (less)     p = 0.999998   P2 NOT SHOWN at alpha = 0.05
+
+  DENOMINATOR: >= 1 well-formed contest (not void-only), RIGHT before
+                                broken      kept     total                          rate
+----------------------------------------------------------------------------------------------------
+F-weak                             260       373       633    260/633 41.1% [37.3, 44.9]
+jd5-B (the check arm)              167       455       622    167/622 26.8% [23.5, 30.5]
+----------------------------------------------------------------------------------------------------
+  difference (F-weak - jd5-B)          +14.2 pts   Newcombe 95% [+9.0, +19.3]
+  FISHER'S EXACT, ONE-SIDED (less)     p = 1   P2 NOT SHOWN at alpha = 0.05
+
+  The registered P2 is the FIRST denominator; the second is reported beside it
+  because an objection made only of void contests cannot break anything by
+  construction, and PREREG §2 fixed both before the run so neither can be chosen
+  after the table.
+
+====================================================================================================
+  THE PAIRED 2x2 ON THE INTERSECTION  [DESCRIPTIVE — not the endpoint]
+====================================================================================================
+The cells that were RIGHT under BOTH before-states — the findings judge's own
+derived verdict and jd3-M0's decision — and that BOTH challengers contested. It
+is the only table here that holds the cell fixed, and it is small by construction:
+the two before-states are different judgments about the same debate, so a cell
+only qualifies where they agree.
+
+                                  jd5-B kept     jd5-B broke     total
+----------------------------------------------------------------------------------------------------
+F-weak kept                              149              41       190
+F-weak broke                              83              64       147
+----------------------------------------------------------------------------------------------------
+total                                    232             105       337
+
+  broken by F-weak ALONE                83
+  broken by jd5-B ALONE                 41
+  broken by BOTH                        64
+  broken by NEITHER                     149
+  discordant pairs                      124   (concordant 213, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR               p = 0.000203789   SIGNIFICANT at alpha=0.05
+
+  DESCRIPTIVE. The two rows are different mechanisms on the same cell, not two
+  treatments of one; the pairing removes the cell's difficulty and nothing else.
+
+====================================================================================================
+(3) P3 — THE FIX SIDE  [REPORTED, NOT TESTED]
+====================================================================================================
+`fixed | wrong` among the contested, ruled, before-WRONG cells, with a Wilson
+interval, beside jd5-B's 144/274 = 52.6%. PREREG §2 registers this as REPORTED:
+there is no test and no alpha, because P2 is the break side and the conjunction
+P1-and-P2 is the claim. A fix rate that fell would explain a P1 failure that P2
+could not, which is why it is printed rather than left out.
+
+mechanism                                  n wrong               fixed | wrong
+----------------------------------------------------------------------------------------------------
+F-weak  (Maverick, both roles)                 401  278/401 69.3% [64.6, 73.6]
+F-strong (luna, both roles)                    126      7/126 5.6% [2.7, 11.0]
+jd5-B (the check arm)                          274  144/274 52.6% [46.6, 58.4]
+----------------------------------------------------------------------------------------------------
+F-strong's row is DESCRIPTIVE beside F-weak's: P2 and P3 are F-weak's, because
+jd5-B's judge is Maverick and only F-weak shares it.
+
+====================================================================================================
+(4) RECORDED, NOT TESTED  [every number here is DESCRIPTIVE]
+====================================================================================================
+PREREG §3's list. None of it carries an alpha and none of it is an endpoint; the
+two McNemar p-values printed below are labelled DESCRIPTIVE where they appear and
+are there so a reader can see the size of a difference, not to test it.
+
+====================================================================================================
+  (4a) THE FINDINGS JUDGE AGAINST jd3-M0  [DESCRIPTIVE — p is not a test]
+====================================================================================================
+M0 decided these same debates under the ORDINARY verdict prompt. The difference
+below contains, inseparably: Maverick's own disagreement with itself on a re-draw,
+the findings FORMAT, the DERIVATION rule (FLAWED iff any finding is FLAW) and a
+routing change. NO FLOOR ARM PRICES THE RE-DRAW, so none of it is attributed.
+
+====================================================================================================
+    F-weak  (Maverick, both roles) — decision vs M0's decision
+====================================================================================================
+                              F-weak correct      F-weak wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                               980               231      1211
+M0 wrong                                 138               295       433
+----------------------------------------------------------------------------------------------------
+total                                   1118               526      1644
+
+  fixed   (M0 wrong -> F-weak correct)   b = 138
+  broken  (M0 correct -> F-weak wrong)   c = 231
+  NET                                    -93 cells
+  discordant pairs                       369   (concordant 1275, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 1.4823e-06   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy F-weak         1118/1644 68.0%  [65.7, 70.2]   (95% Wilson)
+
+====================================================================================================
+    F-strong (luna, both roles) — decision vs M0's decision
+====================================================================================================
+                            F-strong correct    F-strong wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                              1037               174      1211
+M0 wrong                                 242               191       433
+----------------------------------------------------------------------------------------------------
+total                                   1279               365      1644
+
+  fixed   (M0 wrong -> F-strong correct)   b = 242
+  broken  (M0 correct -> F-strong wrong)   c = 174
+  NET                                    +68 cells
+  discordant pairs                       416   (concordant 1228, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.000996728   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy F-strong       1279/1644 77.8%  [75.7, 79.7]   (95% Wilson)
+
+====================================================================================================
+  (4b) ACCURACY AFTER RECOURSE AGAINST M0  [ABLATION — NOT AN ENDPOINT]
+====================================================================================================
+The same caveat, plus the recourse stage. It is the quantity jd3-jd5 reported as
+P1 and it is demoted here for the reason §3ac gives: it is dominated by the base
+rate of wrong decisions, so a mechanism that breaks and fixes at equal RATES still
+nets negative. P1 of section (1) is the endpoint; this is the ablation.
+
+====================================================================================================
+    F-weak  (Maverick, both roles) — after recourse vs M0's decision
+====================================================================================================
+                            recourse correct    recourse wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                               950               261      1211
+M0 wrong                                 186               247       433
+----------------------------------------------------------------------------------------------------
+total                                   1136               508      1644
+
+  fixed   (M0 wrong -> recourse correct)   b = 186
+  broken  (M0 correct -> recourse wrong)   c = 261
+  NET                                    -75 cells
+  discordant pairs                       447   (concordant 1197, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.000452348   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy recourse       1136/1644 69.1%  [66.8, 71.3]   (95% Wilson)
+
+====================================================================================================
+    F-strong (luna, both roles) — after recourse vs M0's decision
+====================================================================================================
+                            recourse correct    recourse wrong     total
+----------------------------------------------------------------------------------------------------
+M0 correct                              1034               177      1211
+M0 wrong                                 241               192       433
+----------------------------------------------------------------------------------------------------
+total                                   1275               369      1644
+
+  fixed   (M0 wrong -> recourse correct)   b = 241
+  broken  (M0 correct -> recourse wrong)   c = 177
+  NET                                    +64 cells
+  discordant pairs                       418   (concordant 1226, and they carry no direction)
+  EXACT TWO-SIDED McNEMAR                p = 0.00202397   SIGNIFICANT at alpha=0.05
+
+  accuracy M0             1211/1644 73.7%  [71.5, 75.7]   (95% Wilson)
+  accuracy recourse       1275/1644 77.6%  [75.5, 79.5]   (95% Wilson)
+
+====================================================================================================
+  (4c) §3ac's IDENTITY, PER MECHANISM  [the bar P1 has to clear]
+====================================================================================================
+Recourse does not lower accuracy iff `f / b >= a / (1 - a)`, where `a` is the
+accuracy of the decisions the mechanism SEES. Equivalently it hurts above the
+break-even accuracy `a* = f / (f + b)` — and `f` and `b` there are RATES. The
+derived verdict changes `a`, and therefore moves the bar, which is exactly why
+this row is printed for every arm rather than left to the write-up.
+
+mechanism                                     n        a   f = fix|wrong   b = break|right    f / b   a* = f/(f+b)     net
+----------------------------------------------------------------------------------------------------
+F-weak  (Maverick, both roles)             1073    62.6%           69.3%             38.7%     1.79          64.2%     +18
+F-strong (luna, both roles)                 606    79.2%            5.6%              2.3%     2.42          70.8%      -4
+jd5-B (the check arm)                       896    69.4%           52.6%             26.8%     1.96          66.2%     -23
+----------------------------------------------------------------------------------------------------
+Read `f / b` against `a / (1 - a)` in the same row: the mechanism nets positive
+only where the first exceeds the second. `a*` says the same thing as a threshold
+on the first-instance accuracy.
+
+====================================================================================================
+  (4d) THE TWO RATES SPLIT BY BEFORE-VERDICT AND BY `findings_flaw_n`
+====================================================================================================
+PREREG §3 registers this split because the two directions are NOT symmetric under
+a derived verdict, and jd5-B has no such asymmetry to compare against: breaking a
+right SOUND verdict takes ONE upheld contest, and breaking a right FLAWED verdict
+takes EVERY FLAW finding flipped. A break rate that is high on SOUND and near zero
+on FLAWED is the derivation rule showing through, not the judge.
+
+====================================================================================================
+    F-weak  (Maverick, both roles)
+====================================================================================================
+    split                            n             fixed | wrong            broken | right
+----------------------------------------------------------------------------------------------------
+    before-verdict FLAWED          239    4/32 12.5% [5.0, 28.1]     2/207 1.0% [0.3, 3.5]
+    before-verdict SOUND           834274/369 74.3% [69.6, 78.5]258/465 55.5% [50.9, 59.9]
+    findings_flaw_n = 0            834274/369 74.3% [69.6, 78.5]258/465 55.5% [50.9, 59.9]
+    findings_flaw_n = 1            149    4/25 16.0% [6.4, 34.7]     2/124 1.6% [0.4, 5.7]
+    findings_flaw_n >= 2            90      0/7 0.0% [0.0, 35.4]      0/83 0.0% [0.0, 4.4]
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+    F-strong (luna, both roles)
+====================================================================================================
+    split                            n             fixed | wrong            broken | right
+----------------------------------------------------------------------------------------------------
+    before-verdict FLAWED          198      0/42 0.0% [0.0, 8.4]     0/156 0.0% [0.0, 2.4]
+    before-verdict SOUND           408     7/84 8.3% [4.1, 16.2]    11/324 3.4% [1.9, 6.0]
+    findings_flaw_n = 0            408     7/84 8.3% [4.1, 16.2]    11/324 3.4% [1.9, 6.0]
+    findings_flaw_n = 1             97     0/33 0.0% [0.0, 10.4]      0/64 0.0% [0.0, 5.7]
+    findings_flaw_n >= 2           101      0/9 0.0% [0.0, 29.9]      0/92 0.0% [0.0, 4.0]
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+  (4e) THE OBJECTION ITSELF — CONTESTS PER OBJECTION, BY KIND
+====================================================================================================
+Three kinds, and they are three different claims: a FINDING contest asks for the
+opposite ruling on a numbered finding, an OMISSION says the list missed a flaw the
+record raised, a CONTRADICTION says two findings say the same thing and were ruled
+differently. The mix is what the decomposition bought, and it has no counterpart
+in jd3-jd6, where the objection was the whole judgment.
+
+====================================================================================================
+    F-weak  (Maverick, both roles)
+====================================================================================================
+    objections raised                1076
+    contests per objection           1427 total, 1.33 mean
+      finding                       1296 contests over 1016 objections (90.8% of contests)
+      omission                        89 contests over 85 objections (6.2% of contests)
+      contradiction                   42 contests over 41 objections (2.9% of contests)
+      mechanically VOID              134 contests  (9.4% of contests)
+    DIRECTION of the finding contests   (1296 finding contests)
+      NOT A FLAW -> FLAW            1277  (98.5%)  validity is a LOWER bound (§5a)
+      FLAW -> NOT A FLAW              18  (1.4%)  validity is an UPPER bound (§5a)
+      no direction read                1  — void by `direction_ok`, and kept in the list
+      record quote unverified        145  (11.2% of finding contests) — RECORDED, not voiding
+    VOID-ONLY objections             66/1076 6.1%   — cannot break anything by construction, and NOT a phantom
+    seeking a reversal               837/1076 77.8%   — a contest can be local and unable to move the verdict
+    MECHANICAL phantom rate          1/1641 0.1%
+      `phantom = (stance == contests) != (n_well_formed > 0)`, computed and
+      NOT read by a model. NEVER pooled with jd3-jd6's Haiku phantom column.
+      Its two blind spots — a well-formed contest whose `Why` argues the
+      finding is RIGHT, and a STANDS whose prose attacks a finding without an
+      entry — are scored by the 20-cell hand read in HANDCHECK.md.
+    comprehension mean               4.41 over 1641 cells
+
+====================================================================================================
+    F-strong (luna, both roles)
+====================================================================================================
+    objections raised                606
+    contests per objection           684 total, 1.13 mean
+      finding                        551 contests over 498 objections (80.6% of contests)
+      omission                       130 contests over 126 objections (19.0% of contests)
+      contradiction                    3 contests over 3 objections (0.4% of contests)
+      mechanically VOID               42 contests  (6.1% of contests)
+    DIRECTION of the finding contests   (551 finding contests)
+      NOT A FLAW -> FLAW             506  (91.8%)  validity is a LOWER bound (§5a)
+      FLAW -> NOT A FLAW              44  (8.0%)  validity is an UPPER bound (§5a)
+      no direction read                1  — void by `direction_ok`, and kept in the list
+      record quote unverified         96  (17.4% of finding contests) — RECORDED, not voiding
+    VOID-ONLY objections             35/606 5.8%   — cannot break anything by construction, and NOT a phantom
+    seeking a reversal               426/606 70.3%   — a contest can be local and unable to move the verdict
+    MECHANICAL phantom rate          0/1644 0.0%
+      `phantom = (stance == contests) != (n_well_formed > 0)`, computed and
+      NOT read by a model. NEVER pooled with jd3-jd6's Haiku phantom column.
+      Its two blind spots — a well-formed contest whose `Why` argues the
+      finding is RIGHT, and a STANDS whose prose attacks a finding without an
+      entry — are scored by the 20-cell hand read in HANDCHECK.md.
+    comprehension mean               4.63 over 1644 cells
+
+====================================================================================================
+  (4f) VALIDITY, BY KIND AND BY `label_basis`  [NEVER POOLED ACROSS THE TWO]
+====================================================================================================
+PREREG §5(a): on FLAWED items 'a real flaw' is operationalised as THE ANNOTATED
+flaw, so a NOT A FLAW -> FLAW contest on a genuine but unannotated error is
+INVALID BY RULE — validity on flawed items is a LOWER BOUND — while its mirror
+FLAW -> NOT A FLAW is VALID by rule, an UPPER bound. The two are never averaged
+together, and `label_basis` is where that split lives.
+
+====================================================================================================
+    F-weak  (Maverick, both roles)
+====================================================================================================
+    label_basis                   objections           valid objection
+----------------------------------------------------------------------------------------------------
+    final_answer                         154 79/154 51.3% [43.5, 59.1]
+    injected_pair                        668248/668 37.1% [33.5, 40.9]
+    sentence_labels                      254 90/254 35.4% [29.8, 41.5]
+----------------------------------------------------------------------------------------------------
+    annotation with NO location: NOT IN THE INDEX — `flaw.json`'s
+      `flaw_location` is not carried as `flaw_location_missing` on
+      these rows, so how many finding contests were graded without a
+      place to point at is not derivable here.
+    contests graded                  1428
+    contests VALID                   537/1428 37.6%
+    graded MECHANICALLY (no call)    657/1428 46.0%   — a void flag, or the sound-item rules of D1.4
+
+    kind                            contests                     valid
+----------------------------------------------------------------------------------------------------
+    None                                   1      0/1 0.0% [0.0, 79.3]
+    contradiction                         42  25/42 59.5% [44.5, 73.0]
+    finding                             1296477/1296 36.8% [34.2, 39.5]
+    omission                              89  35/89 39.3% [29.8, 49.7]
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+    F-strong (luna, both roles)
+====================================================================================================
+    label_basis                   objections           valid objection
+----------------------------------------------------------------------------------------------------
+    final_answer                          83  35/83 42.2% [32.1, 52.9]
+    injected_pair                        344 58/344 16.9% [13.3, 21.2]
+    sentence_labels                      179 47/179 26.3% [20.4, 33.2]
+----------------------------------------------------------------------------------------------------
+    annotation with NO location: NOT IN THE INDEX — `flaw.json`'s
+      `flaw_location` is not carried as `flaw_location_missing` on
+      these rows, so how many finding contests were graded without a
+      place to point at is not derivable here.
+    contests graded                  684
+    contests VALID                   144/684 21.1%
+    graded MECHANICALLY (no call)    411/684 60.1%   — a void flag, or the sound-item rules of D1.4
+
+    kind                            contests                     valid
+----------------------------------------------------------------------------------------------------
+    contradiction                          3     1/3 33.3% [6.1, 79.2]
+    finding                              551 92/551 16.7% [13.8, 20.0]
+    omission                             130 51/130 39.2% [31.3, 47.8]
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+  (4g) THE RULING — LINE/PROSE MISMATCH, EMPTY PROSE, AND THE APPENDED FINDINGS
+====================================================================================================
+`ruling_line_mismatch` is the instrument that keeps `changed_the_decision`
+falsifiable: Haiku reads the ruling's PROSE and says whether it supports every
+line. `ruling_leadin_stripped` is a fact about the RULING PROMPT and not the
+reader — two of three findings-reader mismatches in the smoke were a dangling
+lead-in ('The final ruling for Contest 1 is:') that the strip dropped — so the
+two are printed together and the mismatch rate is read with the lead-in count.
+
+====================================================================================================
+    F-weak  (Maverick, both roles)
+====================================================================================================
+    rulings                          1073
+    read by the ruling reader        1005
+    line / prose MISMATCH            137/1005 13.6%
+    of which a lead-in was stripped  26   (a prompt fact, not a reader fact)
+    ruling with NO prose at all      3/1073 0.3%   — the reader cannot read it; counted, not silently unmeasured
+    findings APPENDED at recourse    54 over 51 rulings   (an upheld omission, built from the contest's
+                                     own quotes and marked `added_at_recourse`)
+    appended findings that MOVED a verdict   18 of 51
+      (a before-SOUND cell whose appended FLAW re-derived the verdict to
+       FLAWED — the only route by which an omission overturns a decision)
+
+====================================================================================================
+    F-strong (luna, both roles)
+====================================================================================================
+    rulings                          606
+    read by the ruling reader        570
+    line / prose MISMATCH            9/570 1.6%
+    of which a lead-in was stripped  0
+    ruling with NO prose at all      1/606 0.2%   — the reader cannot read it; counted, not silently unmeasured
+    findings APPENDED at recourse    8 over 8 rulings   (an upheld omission, built from the contest's
+                                     own quotes and marked `added_at_recourse`)
+    appended findings that MOVED a verdict   0 of 8
+      (a before-SOUND cell whose appended FLAW re-derived the verdict to
+       FLAWED — the only route by which an omission overturns a decision)
+
+====================================================================================================
+(5) THE PRE-REGISTERED READING
+====================================================================================================
+PREREG §4's four names were written down before either arm ran, so that no rule
+is invented after the table:
+  (A) P1 POSITIVE and P2 HOLDS       the first arm to net positive, by the
+                                     hypothesised route
+  (B) P2 HOLDS, P1 NULL or NEGATIVE  fewer right decisions broken and STILL not
+                                     enough: f/b below a/(1-a)
+  (C) P1 POSITIVE, P2 NOT SHOWN      nets positive by the FIX side, not the break
+                                     side
+  (D) neither
+
+AND THE RULE THAT GOVERNS ALL FOUR: SPLITS ARE REPORTED AS SPLITS. A result that
+is none of the four names — jd6 produced exactly one — is written down as the
+split it is, with both tests' numbers, and is NOT rounded to whichever name it is
+nearest. Nothing below is rounded.
+
+P1  F-weak: fixed 278, broken 260, net +18 on 1644 cells, p = 0.4636 -> P1 is NULL
+P2  F-weak: broken | right 260/672 38.7% against jd5-B's 167/622 = 26.8%, +11.8 pts, one-sided Fisher p = 1 -> P2 is NOT SHOWN
+
+NAMED OUTCOME FOR F-WEAK: (D)
+  NEITHER — P1 is NULL and P2 is not shown. The decomposition did not move the endpoint.
+
+P1  F-strong: fixed 7, broken 11, net -4 on 1644 cells, p = 0.4807 -> P1 is NULL
+  F-strong has NO P2: jd5-B's judge is Maverick, so only F-weak shares the
+  comparator's model. Its P1 is a SEPARATE FAMILY at its own alpha = 0.05 and
+  is never pooled with F-weak's; its rates sit beside F-weak's as descriptive.
+
+Both arms' P1 read NULL. That is agreement about the endpoint and not
+about the mechanism: the two judges differ in what they find, and section
+(4d)'s splits are where that shows.
+
+The descriptive paired table stands at n = 337: F-weak broke 83 that jd5-B kept and kept 41 that jd5-B broke, p = 0.0002038. It is not P2 and does not decide it.
+
+WHAT THIS FILE DOES NOT CLAIM: nothing about jd3's P1, `single`/`self_critique`,
+natural-error selection, or the same-model property (the findings judge also
+rules on the appeals in both arms — accepted and disclosed, as jd3-jd6). No number
+here is pooled with jd3-jd6's: the judgment form, the contest object and the
+ruling prompt all differ.

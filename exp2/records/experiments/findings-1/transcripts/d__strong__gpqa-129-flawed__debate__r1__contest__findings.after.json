@@ -1,0 +1,22 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Due to the varying atmospheric conditions, the actual optical window for ground-based observations starts around 410 nm (4100 Å…).\"",
+      "claim": "Alice claims that stating the ground-based optical window starts around 410 nm is factually incorrect because ground-based telescopes can routinely observe nearer 3000–3500 Å.",
+      "defence": "Bob argues that 410 nm is a standard practical approximation for the blue edge of routine ground-based optical observations, whereas 3000 Å is near-ultraviolet and requires specialized equipment and sites.",
+      "reason": "The passage presents 410 nm as the practical start of the optical observing window, not as an absolute atmospheric-opacity cutoff. Although the atmosphere can transmit some shorter near-ultraviolet wavelengths, those are not generally equivalent to the ordinary optical window assumed by this estimate. Thus Alice identifies a debatable choice of convention, but not a clear false or misleading claim.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "parent_verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 0,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "NOT A FLAW"
+  }
+}

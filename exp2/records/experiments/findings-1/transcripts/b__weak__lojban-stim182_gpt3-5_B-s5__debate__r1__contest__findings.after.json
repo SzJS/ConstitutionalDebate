@@ -1,0 +1,41 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"However, in (A), the sentence structure is incorrect.\"",
+      "claim": "The assertion that \"(A) has an incorrect sentence structure\" is false because (A) has a coherent grammatical shape with a well-formed quoted construction and a plausible selbri-plus-sumti structure.",
+      "defence": "Even if the analyst's explanation is flawed, sentence 5's assertion can still be true; Alice has not shown that (A) is a valid Lojban sentence.",
+      "reason": "The claim hinges on whether (A) is grammatically correct. Alice argues (A) is coherent with \"lu...li'u\" forming a quotation and \"kerfa le jbama\" being a plausible structure. Bob counters that plausibility is not validity and that Alice hasn't proven (A) is grammatical by Lojban rules. The text under review is a claim about (A)'s grammaticality. If (A) is not grammatically incorrect as Alice suggests, sentence 5 is flawed.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 2,
+      "passage": "\"However, in (A), the sentence structure is incorrect.\"",
+      "claim": "Sentence 5 is misleading because it labels a structurally coherent Lojban construction as \"incorrect\" based on a false SVO model and ignores that (B) has a clear structural defect with an unclosed \"lu\".",
+      "defence": "Sentence 5 asserts a fact about (A), not a justification; even if the analyst's explanation is wrong, a wrong reason for a true claim does not make the claim itself flawed.",
+      "reason": "Alice argues that sentence 5 is misleading due to its basis on a false SVO model and its failure to acknowledge (B)'s structural defect. Bob defends that sentence 5's truth value stands independently of the reasoning. The issue is whether sentence 5 is flawed due to being misleading. If the claim about (A) being incorrect is not supported by valid reasoning and misleads, it could be a flaw.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 3,
+      "passage": "\"However, in (A), the sentence structure is incorrect.\"",
+      "claim": "\"So the analyst's own criterion, if applied correctly, would point to (B), not (A), as the one with incorrect structure. Sentence 5 asserts the opposite of what the evidence indicates.\"",
+      "defence": "",
+      "reason": "Alice consistently argued that sentence 5 is factually incorrect because, in the context of the problem's two options, (B) has a clear and undeniable structural defect (an unclosed 'lu'), making it the one with the incorrect structure, not (A). This makes the claim in sentence 5 a false comparative judgment, a distinct flaw not covered by the existing findings.",
+      "ruling": "FLAW",
+      "ruling_normalised": false,
+      "added_at_recourse": true
+    }
+  ],
+  "verdict": "FLAWED",
+  "parent_verdict": "SOUND",
+  "n_findings": 3,
+  "n_flaw": 1,
+  "n_added": 1,
+  "contest_lines": {
+    "1": "FLAW"
+  }
+}

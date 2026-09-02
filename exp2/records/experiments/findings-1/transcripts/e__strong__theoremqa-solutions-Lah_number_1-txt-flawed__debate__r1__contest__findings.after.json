@@ -1,0 +1,22 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Step 2: Let n=7 and k=3 and we calculate that $L(7,3)=(6 choose 2)\\cdot\\frac{6!}{2!} = 15 \\cdot 360= 5400$ is the answer.\"",
+      "claim": "The solution treats the three committees as unlabeled, although committees are distinct by default, so it should multiply by \\(3!\\) and give 32,400.",
+      "defence": "Alice argued that the problem does not specify labels and that the solution explicitly counts partitions into linearly ordered subsets, making 5,400 correct under a legitimate unlabeled interpretation.",
+      "reason": "The problem statement is genuinely ambiguous about whether committees are labeled, and the solution’s stated Lah-number interpretation is mathematically correct for unlabeled committees; therefore Bob has not established that the asserted answer is wrong rather than an answer under one reasonable interpretation.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "parent_verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 0,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "NOT AN OMISSION"
+  }
+}

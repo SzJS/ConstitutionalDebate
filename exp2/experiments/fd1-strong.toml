@@ -197,8 +197,8 @@ challenger_temperature = 0.7
 [client]
 # 16/8, as the sweep proved and every judgment-debate run re-confirmed. Every stage here
 # is one to three short calls per cell where `decide` was up to seven strong-model ones.
-max_concurrency = 16
-max_runs_in_flight = 8
+max_concurrency = 32   # raised from 16 at 16:59Z on 2026-09-02, mid-rejudge, on the user's instruction to run as fast as possible; operational ([client] is recorded in run.json, not config.json) and cannot change a decision
+max_runs_in_flight = 24  # raised from 8, same change
 
 # Each contest directory carries a full copy of the decision it contests — here a findings
 # decision, which carries `findings.json`, the copied transcript and the debate's own wire

@@ -1,0 +1,40 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"The rate of frameshifting in vitro is not strictly linearly correlated with the number of conformations that a pseudoknot can adopt.\"",
+      "claim": "The phrase \"not strictly linearly correlated\" is misleading because it implies a near-linear relationship with minor deviations, whereas the actual relationship is non-linear and depends on specific structural features.",
+      "defence": "The phrase \"not strictly linearly correlated\" is a denial of the precise linear relationship claimed in Choice 3, and is a correct rejection of the original claim of linear correlation.",
+      "reason": "The phrase \"not strictly linearly correlated\" accurately conveys that the relationship is not precisely linear, and is a valid scientific way to express that the claimed linearity is false. It correctly rejects the original claim.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 2,
+      "passage": "\"The rate of frameshifting in vitro is not strictly linearly correlated with the number of conformations that a pseudoknot can adopt. ... This illustrates the complex nature of how frameshifting is regulated.\"",
+      "claim": "The solution fails to address the actual factual error in Choice 3, which is the claim that both SARS-CoV and SARS-CoV-2 frameshift signals \"show two conformations when under tension.\"",
+      "defence": "The solution's task is to identify the incorrect choice, not to enumerate every possible defect within it; it correctly identifies the false assertion about linear correlation and explains why it is wrong.",
+      "reason": "The solution is not required to list every false statement in Choice 3; identifying one sufficient reason (the false linear correlation claim) is enough to justify rejecting Choice 3. Omitting another reason does not make the solution flawed.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 3,
+      "passage": "\"The rate of frameshifting in vitro is not strictly linearly correlated with the number of conformations that a pseudoknot can adopt. ... This illustrates the complex nature of how frameshifting is regulated.\"",
+      "claim": "The solution mischaracterizes the defect in Choice 3 by failing to mention the false claim about \"two conformations\" and instead offering a vague explanation about \"other factors.\"",
+      "defence": "The solution's explanation is not vague or misleading; it correctly identifies that the rate is governed by factors other than the number of conformations, such as stability and structural features.",
+      "reason": "While the solution does not mention the \"two conformations\" claim, its explanation about the non-linear correlation is not vague or misleading. It provides a valid reason for rejecting Choice 3.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "parent_verdict": "SOUND",
+  "n_findings": 3,
+  "n_flaw": 0,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "NOT A FLAW"
+  }
+}

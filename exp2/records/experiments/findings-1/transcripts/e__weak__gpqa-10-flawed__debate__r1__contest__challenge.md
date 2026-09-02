@@ -1,0 +1,5 @@
+1. Contests: Finding 3
+   Should be: FLAW
+   Text says: "The rate of frameshifting in vitro is not strictly linearly correlated with the number of conformations that a pseudoknot can adopt."
+   Record says: "the solution's phrasing is misleading: it implies the problem is a slight deviation from linearity, when in fact the claimed linear correlation is not a meaningful predictor at all." (Bob, Round 3)
+   Why: Bob repeatedly argues that the solution's explanation, "not strictly linearly correlated," is misleading because it implies a near-linear relationship with minor deviations, whereas the scientific literature supports that the relationship is entirely non-linear and the number of conformations is not a meaningful linear predictor. If the explanation misrepresents the true scientific nature of the correlation, it is a misleading statement and thus a flaw in the reasoning. The ruling that the explanation is "not vague or misleading" fails to acknowledge this specific point of mischaracterization.

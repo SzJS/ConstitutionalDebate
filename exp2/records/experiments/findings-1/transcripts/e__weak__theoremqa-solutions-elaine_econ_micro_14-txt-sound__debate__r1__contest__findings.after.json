@@ -1,0 +1,22 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Therefore, the consumer surplus in this case is equal to (53 - 29) * 48 = 1152.\"",
+      "claim": "The text's statement that consumer surplus is equal to (53 - 29) * 48 is false because it uses the monopoly price (29) instead of the competitive price (5) and represents a rectangle, not the consumer surplus triangle.",
+      "defence": "The text does not claim (53 - 29) * 48 is the definition or formula for consumer surplus; it states a true numerical equality between the consumer surplus and the expression's value.",
+      "reason": "The text asserts a numerical equality, not a definitional identity. The statement is true because both sides equal 1152, and it does not claim to represent the area under the demand curve or use the competitive price directly.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "parent_verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 1,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "FLAW"
+  }
+}

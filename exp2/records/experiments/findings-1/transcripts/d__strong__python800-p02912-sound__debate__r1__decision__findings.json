@@ -1,0 +1,25 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"The correct line should be `heapq.heapify(A)`.\"",
+      "claim": "The proposed correction is false because the existing import does not define the name `heapq`, so changing only the line to `heapq.heapify(A)` would still raise a `NameError`.",
+      "defence": "Alice argued that the statement describes the correct call in a fixed version that also imports the `heapq` module, rather than prescribing a one-line replacement in the unchanged program.",
+      "reason": "In context, the analyst presents `heapq.heapify(A)` as the correction but does not mention adding `import heapq`; with the shown import, that name is undefined. Although the central diagnosis of the original `heapify(A)` error is correct, this explicit repair instruction is misleading and would not fix the program as stated.",
+      "ruling": "FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "FLAWED",
+  "n_findings": 1,
+  "n_flaw": 1,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 1,
+  "duplicate_passage_n": 0,
+  "passage_verbatim_n": 1,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 0,
+  "parse_mode": "strict"
+}

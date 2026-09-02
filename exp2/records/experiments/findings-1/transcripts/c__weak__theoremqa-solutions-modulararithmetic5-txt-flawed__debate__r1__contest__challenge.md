@@ -1,0 +1,4 @@
+1. Contests: omission
+   Record says: "Because Step 4 is based on this false claim, the subsequent deduction—"so those scores must be entered first"—does not follow. The reasoning is invalid."
+   Passage: ", so those scores must be entered first."
+   Why: Alice explicitly raised a flaw regarding the invalidity of the inference "so those scores must be entered first" because it is based on a false premise. Finding 1 addresses the falsity of the premise ("the only way... is 2+1+1"), but it does not address the distinct logical flaw of an invalid inference stemming from that false premise, which is also part of Step 4.

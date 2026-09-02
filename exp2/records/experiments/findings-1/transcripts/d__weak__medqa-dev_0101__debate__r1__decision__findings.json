@@ -1,0 +1,25 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Acid fast cysts are characteristic of infections with Cryptosporidium species\"",
+      "claim": "The solution contains a factual flaw because it mislabels Cryptosporidium's life stage as \"cysts\" instead of \"oocysts\".",
+      "defence": "The solution is echoing the exam's own language from option (A) and is not making a novel taxonomic assertion; \"acid-fast cysts\" is widely used in medical education as shorthand for Cryptosporidium's oocysts.",
+      "reason": "The solution's statement is a direct echo of the option (A) and is using the exam's own terminology. While \"cysts\" is not the precise term, \"acid-fast cysts\" is used in medical education to refer to Cryptosporidium's oocysts. The substantive point that Cryptosporidium does not cause liver abscesses is correct, and the solution's reasoning is clinically accurate.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "n_findings": 1,
+  "n_flaw": 0,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 1,
+  "duplicate_passage_n": 0,
+  "passage_verbatim_n": 0,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 0,
+  "parse_mode": "strict"
+}

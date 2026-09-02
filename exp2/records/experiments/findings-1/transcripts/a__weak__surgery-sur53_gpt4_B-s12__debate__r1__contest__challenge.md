@@ -1,0 +1,5 @@
+1. Contests: Finding 3
+   Should be: FLAW
+   Text says: "its higher sensitivity for detecting small bowel lesions"
+   Record says: Bob: "The conclusion's claim that capsule endoscopy has 'higher sensitivity for detecting small bowel lesions' is misleading because it applies to chronic obscure bleeding, not acute overt hemorrhage."
+   Why: The claim that capsule endoscopy's "higher sensitivity for detecting small bowel lesions" makes it "likely to be more effective" at localizing the site of *GI bleeding* is misleading in the context of an acute overt bleed (maroon stool earlier in the day). For acute bleeding, the relevant sensitivity for localization is the detection of active extravasation, which is where the technetium-labeled red blood cell scan excels. While capsule endoscopy has high sensitivity for *lesions*, implying this lesion-detection sensitivity directly translates to superior effectiveness for *localizing acute bleeding* is a flawed inference, as the type of sensitivity most pertinent to acute bleeding localization is different.

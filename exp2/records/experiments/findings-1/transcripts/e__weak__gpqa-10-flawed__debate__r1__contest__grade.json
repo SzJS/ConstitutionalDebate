@@ -1,0 +1,29 @@
+{
+  "contests": [
+    {
+      "index": 1,
+      "kind": "finding",
+      "should_be": "FLAW",
+      "valid": false,
+      "reason": "void at parse time: a quotation, an index or a direction did not check out",
+      "mechanical": true,
+      "alleged": true
+    }
+  ],
+  "line_valid": false,
+  "model": "",
+  "parse_mode": "mechanical_only",
+  "raw": "",
+  "call_id": "",
+  "finish_reason": null,
+  "repair_attempts": 0,
+  "reasoning": "",
+  "native_reasoning": "",
+  "reasoning_withheld": false,
+  "mode": "findings",
+  "valid": false,
+  "line_mismatch": false,
+  "contests_n": 1,
+  "contests_valid_n": 0,
+  "contests_mechanical_n": 1
+}

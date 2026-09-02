@@ -1,0 +1,76 @@
+=== fd1 provider check 2026-09-02T13:06:29.633623+00:00 ===
+prompt='Reply with the single word: alive' temperature=0.0 max_tokens=16 reasoning_effort='off' max_attempts=1
+
+=== endpoint list: Maverick ===
+GET https://openrouter.ai/api/v1/models/meta-llama/llama-4-maverick/endpoints -> 200
+  5 endpoints: DigitalOcean -> digitalocean ($0.0000002/0.000000696); DeepInfra -> deepinfra/base ($0.0000002/0.0000008); Novita -> novita/fp8 ($0.00000027/0.00000085); Parasail -> parasail/fp8 ($0.00000035/0.000001); Google -> google-vertex/us-east5 ($0.00000035/0.00000115)
+  'digitalocean' serves under the display name 'DigitalOcean' — that is what the response must carry
+
+--- 1. maverick-pinned ---
+model:   meta-llama/llama-4-maverick
+pin:     ['digitalocean']
+HTTP 200
+SERVED BY: DigitalOcean
+resolved model:   meta-llama/llama-4-maverick
+finish_reason:    stop
+content:          'alive'
+reasoning_tokens: 0   (reasoning text: none)
+cost:             4.792e-06
+usage:            {"prompt_tokens": 17, "completion_tokens": 2, "total_tokens": 19, "cost": 4.792e-06, "is_byok": false, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0, "audio_tokens": 0, "video_tokens": 0}, "cost_details": {"upstream_inference_cost": 4.792e-06, "upstream_inference_prompt_cost": 3.4e-06, "upstream_inference_completions_cost": 1.392e-06}, "completion_tokens_details": {"reasoni
+
+--- 2. luna-dated ---
+model:   openai/gpt-5.6-luna-20260709
+pin:     (none — free routing)
+HTTP 200
+SERVED BY: OpenAI
+resolved model:   openai/gpt-5.6-luna
+finish_reason:    stop
+content:          'alive'
+reasoning_tokens: 0   (reasoning text: none)
+cost:             8.6e-06
+usage:            {"prompt_tokens": 13, "completion_tokens": 5, "total_tokens": 18, "cost": 8.6e-06, "is_byok": false, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0, "audio_tokens": 0, "video_tokens": 0}, "cost_details": {"upstream_inference_cost": 8.6e-06, "upstream_inference_prompt_cost": 2.6e-06, "upstream_inference_completions_cost": 6e-06}, "completion_tokens_details": {"reasoning_token
+
+--- 3. luna-bare ---
+model:   openai/gpt-5.6-luna
+pin:     (none — free routing)
+HTTP 200
+SERVED BY: OpenAI
+resolved model:   openai/gpt-5.6-luna
+finish_reason:    stop
+content:          'alive'
+reasoning_tokens: 0   (reasoning text: none)
+cost:             8.6e-06
+usage:            {"prompt_tokens": 13, "completion_tokens": 5, "total_tokens": 18, "cost": 8.6e-06, "is_byok": false, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0, "audio_tokens": 0, "video_tokens": 0}, "cost_details": {"upstream_inference_cost": 8.6e-06, "upstream_inference_prompt_cost": 2.6e-06, "upstream_inference_completions_cost": 6e-06}, "completion_tokens_details": {"reasoning_token
+
+=== endpoint list: openai/gpt-5.6-luna-20260709 (to turn the served display name 'OpenAI' into a pin slug) ===
+GET https://openrouter.ai/api/v1/models/openai/gpt-5.6-luna-20260709/endpoints -> 200
+  7 endpoints: OpenAI -> openai/flex ($0.0000001/0.0000006); Azure -> azure ($0.0000002/0.0000012); OpenAI -> openai ($0.0000002/0.0000012); Amazon Bedrock -> amazon-bedrock/us-east-1 ($0.00000022/0.00000132); Azure -> azure/eu ($0.00000022/0.00000132); Azure -> azure/us ($0.00000022/0.00000132); OpenAI -> openai/fast ($0.0000004/0.0000024)
+  'OpenAI' is pinned to its BASE slug 'openai' (tiers such as /fast and /flex are not the default route)
+
+--- 4. luna-pinned ---
+model:   openai/gpt-5.6-luna-20260709
+pin:     ['openai']
+HTTP 200
+SERVED BY: OpenAI
+resolved model:   openai/gpt-5.6-luna
+finish_reason:    stop
+content:          'alive'
+reasoning_tokens: 0   (reasoning text: none)
+cost:             8.6e-06
+usage:            {"prompt_tokens": 13, "completion_tokens": 5, "total_tokens": 18, "cost": 8.6e-06, "is_byok": false, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0, "audio_tokens": 0, "video_tokens": 0}, "cost_details": {"upstream_inference_cost": 8.6e-06, "upstream_inference_prompt_cost": 2.6e-06, "upstream_inference_completions_cost": 6e-06}, "completion_tokens_details": {"reasoning_token
+
+=== summary ===
+call                  model                           pin                   served          finish     rsn_tok       cost  content
+-------------------------------------------------------------------------------------------------------------------------------------------------
+1. maverick-pinned    meta-llama/llama-4-maverick     digitalocean          DigitalOcean    stop             0   0.000005  'alive'
+2. luna-dated         openai/gpt-5.6-luna-20260709    -                     OpenAI          stop             0   0.000009  'alive'
+3. luna-bare          openai/gpt-5.6-luna             -                     OpenAI          stop             0   0.000009  'alive'
+4. luna-pinned        openai/gpt-5.6-luna-20260709    openai                OpenAI          stop             0   0.000009  'alive'
+-------------------------------------------------------------------------------------------------------------------------------------------------
+total cost: $0.000031
+
+MAVERICK ID TO USE: meta-llama/llama-4-maverick  PIN: ['digitalocean']
+LUNA ID TO USE: openai/gpt-5.6-luna-20260709  PIN: [openai]
+These two lines are what `experiments/fd1-*-{weak,strong}.toml` must carry, and what PREREG §8 records with this log.
+
+VERDICT: PASS — Maverick served by the pinned DigitalOcean, a luna id reachable and pinned to the provider that serves it, and no reasoning tokens billed anywhere with reasoning disabled

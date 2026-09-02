@@ -1,0 +1,23 @@
+{
+  "form": "derived_findings",
+  "ruling": "UPHOLD",
+  "protocol": "judge_only",
+  "parent_verdict": "FLAWED",
+  "verdict": "FLAWED",
+  "parse_mode": "strict",
+  "raw": "The quotation attributed to the record is present: Alice wrote that the passage was “internally inconsistent,” describing medium-dose ICS+LABA both as a step up from (C) and as an option for more severe symptoms at presentation.\n\nThis is presented as an omission contest. It is not an omission. Finding 1 addresses the same passage and the substance of the alleged inconsistency: it expressly recognizes that (D) is described as a step after inadequate control on (C), while also noting the separate severe-presentation exception, and rules that the solution failed to establish why this patient required (D). Finding 2 likewise addresses the related failure to justify rejecting (C). The objection therefore identifies a point already covered in substance, even if it characterizes the issue somewhat differently. No ruling on the omitted claim is warranted.\n\nContest 1 (omission): NOT AN OMISSION",
+  "call_id": "5db010ffed0d",
+  "finish_reason": "stop",
+  "correct": true,
+  "repair_attempts": 0,
+  "reasoning": "The quotation attributed to the record is present: Alice wrote that the passage was “internally inconsistent,” describing medium-dose ICS+LABA both as a step up from (C) and as an option for more severe symptoms at presentation.\n\nThis is presented as an omission contest. It is not an omission. Finding 1 addresses the same passage and the substance of the alleged inconsistency: it expressly recognizes that (D) is described as a step after inadequate control on (C), while also noting the separate severe-presentation exception, and rules that the solution failed to establish why this patient required (D). Finding 2 likewise addresses the related failure to justify rejecting (C). The objection therefore identifies a point already covered in substance, even if it characterizes the issue somewhat differently. No ruling on the omitted claim is warranted.",
+  "native_reasoning": null,
+  "reasoning_withheld": false,
+  "conclusion_line": "Contest 1: NOT AN OMISSION",
+  "prompt_form": "findings",
+  "recourse_rounds": 0,
+  "recourse_pro_speaker": null,
+  "recourse_exchange_sha256": null,
+  "upheld": true,
+  "changed_the_decision": false
+}

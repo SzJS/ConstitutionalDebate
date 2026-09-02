@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "Reduction of cyclopentanecarbonyl chloride with lithium hydrides converts the carbonyl group into a primary alcohol."
+   Record says: "The problem specifically names lithium tri-tert-butoxyaluminum hydride. The solution's step 4 says reduction 'converts the carbonyl group into a primary alcohol.' That is chemically false for this reagent. Lithium tri-tert-butoxyaluminum hydride is a bulky, mild reducing agent that selectively reduces acyl chlorides to aldehydes, stopping at that stage. It does not produce primary alcohols." (Alice, Round 2)
+   Why: The solution is an answer to a specific problem that names lithium tri-tert-butoxyaluminum hydride as the reagent. In this context, the solution's statement implies that this specific reagent performs the described conversion to a primary alcohol, which is chemically incorrect as this reagent stops at the aldehyde stage.

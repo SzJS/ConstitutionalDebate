@@ -1,0 +1,98 @@
+{
+  "weak": {
+    "attempted": 1676,
+    "completed": 1662,
+    "failed": 6,
+    "failures": [
+      {
+        "cell_id": "gpqa-8-flawed__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/gpqa-8-flawed__debate__r1/runs/20260902T162804Z-gpqa-8-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03331-flawed__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03331-flawed__debate__r1/runs/20260902T170955Z-python800-p03331-flawed-rejudge"
+      },
+      {
+        "cell_id": "python800-p03597-flawed__debate__r1",
+        "error": "DebateFailure: judge_findings output still malformed after one format repair attempt: findings are numbered [1, 2, 1]; they must run 1..n with no gaps, because every contest, ruling and grade joins on that number",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03597-flawed__debate__r1/runs/20260902T171220Z-python800-p03597-flawed-rejudge"
+      },
+      {
+        "cell_id": "surgery-sur50_gpt3-5_A-s6__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/surgery-sur50_gpt3-5_A-s6__debate__r1/runs/20260902T172014Z-surgery-sur50_gpt3-5_A-s6-rejudge"
+      },
+      {
+        "cell_id": "surgery-sur51_gpt4_A-s10__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/surgery-sur51_gpt4_A-s10__debate__r1/runs/20260902T172017Z-surgery-sur51_gpt4_A-s10-rejudge"
+      },
+      {
+        "cell_id": "theoremqa-solutions-divisibility1-txt-flawed__debate__r1",
+        "error": "TruncatedOutputError: judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/theoremqa-solutions-divisibility1-txt-flawed__debate__r1/runs/20260902T172042Z-theoremqa-solutions-divisibility1-txt-flawed-rejudge"
+      }
+    ]
+  },
+  "weak-contest": {
+    "attempted": 1647,
+    "completed": 1639,
+    "failed": 8,
+    "failures": [
+      {
+        "cell_id": "gpqa-6-flawed__debate__r1",
+        "error": "TruncatedOutputError: recourse_judge response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/gpqa-6-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T172958Z-gpqa-6-flawed-recourse"
+      },
+      {
+        "cell_id": "medqa-dev_0761__debate__r1",
+        "error": "ValueError: ruling line for contest 1, which the objection does not contain (it raised [])",
+        "run_dir": "outputs/experiments/fd1-weak/cells/medqa-dev_0761__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T174056Z-medqa-dev_0761-recourse"
+      },
+      {
+        "cell_id": "python800-p03477-sound__debate__r1",
+        "error": "TruncatedOutputError: comprehension response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03477-sound__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180113Z-python800-p03477-sound-recourse"
+      },
+      {
+        "cell_id": "python800-p03486-flawed__debate__r1",
+        "error": "TruncatedOutputError: challenger response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03486-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180122Z-python800-p03486-flawed-recourse"
+      },
+      {
+        "cell_id": "python800-p03488-flawed__debate__r1",
+        "error": "TruncatedOutputError: comprehension response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03488-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180125Z-python800-p03488-flawed-recourse"
+      },
+      {
+        "cell_id": "python800-p03501-flawed__debate__r1",
+        "error": "TruncatedOutputError: challenger response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03501-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180138Z-python800-p03501-flawed-recourse"
+      },
+      {
+        "cell_id": "python800-p03631-flawed__debate__r1",
+        "error": "TruncatedOutputError: comprehension response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03631-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180309Z-python800-p03631-flawed-recourse"
+      },
+      {
+        "cell_id": "python800-p03634-flawed__debate__r1",
+        "error": "TruncatedOutputError: challenger response stopped on finish_reason='error' at max_tokens=16384. A truncated argument would enter the public transcript as if authored, so this is fatal. Raise max_tokens, or check whether native reasoning is consuming the budget.",
+        "run_dir": "outputs/experiments/fd1-weak/cells/python800-p03634-flawed__debate__r1/contests/google-gemini-2.5-flash/runs/20260902T180319Z-python800-p03634-flawed-recourse"
+      }
+    ]
+  },
+  "strong": {
+    "attempted": 1644,
+    "completed": 1644,
+    "failed": 0,
+    "failures": []
+  },
+  "strong-contest": {
+    "attempted": 1644,
+    "completed": 1644,
+    "failed": 0,
+    "failures": []
+  }
+}

@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "In conclusion, option (B) ... is a better answer ... because it follows the correct grammatical structure and uses the appropriate particles."
+   Record says: Alice: "Sentence 11 explicitly says option (B) "follows the correct grammatical structure" and is therefore "better" than (A). That is a factual claim about Lojban. It is false."
+   Why: The finding rules that sentence 11 is not flawed because it is a conclusion referring to earlier findings, not an independent assertion of Lojban grammar. However, the text under review makes a direct factual claim that (B) "follows the correct grammatical structure." If this claim is factually untrue, as Alice argues with detailed grammatical analysis, then the sentence contains a flaw as defined ("untrue, illogical, or misleading") regardless of whether it summarizes earlier, also potentially false, premises.

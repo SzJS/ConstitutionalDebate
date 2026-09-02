@@ -1,0 +1,34 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"In the past, Loras' hand was electric to Jim.\"",
+      "claim": "The translation is flawed because it misrepresents the Lojban structure by implying a possessive relation between Loras and a hand, and by treating \"dikca\" as a property of the hand with a dative \"to Jim\", which is not supported by the Lojban text.",
+      "defence": "The translation is a word-for-word gloss that is accurate, and \"Loras' hand\" is a natural way to express the juxtaposition of a name and a hand-predicate, while \"was electric to Jim\" mirrors \"dikca la djim.\" as \"is electric in relation to Jim\", which is a plausible rendering.",
+      "reason": "The translation does not claim the Lojban is grammatical, and it provides a reasonable interpretation of the given string; the possessive and dative relations are plausible English renderings of the Lojban predicates and arguments.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 2,
+      "passage": "\"In the past, Loras' hand was electric to Jim.\"",
+      "claim": "The translation silently inserts a possessive relation between Loras and a hand, and a dative relation \"to Jim\", which are not present in the Lojban string, making the translation misleading.",
+      "defence": "The translation is a loose English rendering that does not claim to represent Lojban morphology or grammar precisely; it conveys the predicate's argument structure in natural English.",
+      "reason": "The translation is not false or misleading because it provides a charitable interpretation of the Lojban string, even if it does not strictly adhere to Lojban grammatical rules; the alleged flaws are about the Lojban grammar, not the translation itself.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "n_findings": 2,
+  "n_flaw": 0,
+  "ruling_normalised_n": 0,
+  "passage_exact_n": 2,
+  "duplicate_passage_n": 1,
+  "passage_verbatim_n": 2,
+  "passage_ellipsis_n": 0,
+  "preamble_chars": 0,
+  "trailing_chars": 0,
+  "parse_mode": "strict"
+}

@@ -1,0 +1,4 @@
+1. Contests: omission
+   Record says: "So the analyst's own criterion, if applied correctly, would point to (B), not (A), as the one with incorrect structure. Sentence 5 asserts the opposite of what the evidence indicates."
+   Passage: "However, in (A), the sentence structure is incorrect."
+   Why: Alice consistently argued that sentence 5 is factually incorrect because, in the context of the problem's two options, (B) has a clear and undeniable structural defect (an unclosed 'lu'), making it the one with the incorrect structure, not (A). This makes the claim in sentence 5 a false comparative judgment, a distinct flaw not covered by the existing findings.

@@ -1,0 +1,283 @@
+
+### fd1-smoke-weak
+
+  gpqa-33-flawed__debate__r1  (2 contest(s), gold FLAWED)
+    kind         ['finding', 'finding']
+    quote_in_record  stored [True, True]  pre-R10 [True, True]  new [True, True]
+    void             stored [False, False]  pre-R10 [False, False]  new [False, False]
+    ruling lines     ['Contest 1: FLAW', 'Contest 2: NOT A FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  law-con2_gpt3-5_B-s1__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['omission']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold SOUND
+
+  lojban-stim165_gpt4_A-s2__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  python800-p03719-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  surgery-sur11_gpt3-5_B-s6__debate__r1  (3 contest(s), gold FLAWED)
+    kind         ['finding', 'finding', 'finding']
+    quote_in_record  stored [True, True, True]  pre-R10 [True, True, True]  new [True, True, True]
+    void             stored [False, False, False]  pre-R10 [False, False, False]  new [False, False, False]
+    ruling lines     ['Contest 1: FLAW', 'Contest 2: FLAW', 'Contest 3: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  theoremqa-solutions-Stirling_number_second_kind_1-txt-sound__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['contradiction']
+    quote_in_record  stored [None]  pre-R10 [None]  new [None]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold SOUND
+
+### fd1-smoke-strong
+
+  gpqa-33-flawed__debate__r1  (2 contest(s), gold FLAWED)
+    kind         ['finding', 'finding']
+    quote_in_record  stored [False, False]  pre-R10 [True, True]  new [True, True]
+    void             stored [True, True]  pre-R10 [False, False]  new [False, False]
+    ruling lines     ['Contest 1: FLAW', 'Contest 2: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+    >>> FIXED: SOUND -> FLAWED (gold FLAWED)
+
+  law-con2_gpt3-5_B-s1__debate__r1  (0 contest(s), gold SOUND)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  lojban-stim165_gpt4_A-s2__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [False]  pre-R10 [True]  new [True]
+    void             stored [True]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold FLAWED
+
+  python800-p03719-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  surgery-sur11_gpt3-5_B-s6__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  theoremqa-solutions-Stirling_number_second_kind_1-txt-sound__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold SOUND
+
+### fd1-smoke-2-weak
+
+  gpqa-145-flawed__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [False]  pre-R10 [False]  new [True]
+    void             stored [True]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  lojban-stim174_gpt3-5_B-s1__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['finding']
+    quote_in_record  stored [False]  pre-R10 [False]  new [True]
+    void             stored [True]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold SOUND
+
+  medqa-train_3292__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [False]  pre-R10 [False]  new [True]
+    void             stored [True]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded SOUND   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+    >>> FIXED: SOUND -> FLAWED (gold FLAWED)
+
+  python800-p03284-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  surgery-sur55_gpt4_A-s3__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold FLAWED
+
+  theoremqa-solutions-quantum5-png-sound__debate__r1  (0 contest(s), gold SOUND)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+### fd1-smoke-2-strong
+
+  gpqa-145-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  lojban-stim174_gpt3-5_B-s1__debate__r1  (0 contest(s), gold SOUND)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  medqa-train_3292__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  python800-p03284-flawed__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['omission']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT AN OMISSION']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  surgery-sur55_gpt4_A-s3__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold FLAWED
+
+  theoremqa-solutions-quantum5-png-sound__debate__r1  (0 contest(s), gold SOUND)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+### fd1-smoke-3-weak
+
+  gpqa-74-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  law-con3_gpt4_A-s11__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold SOUND
+
+  lojban-stim191_gpt3-5_A-s4__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  medqa-train_1480__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  python800-p03137-flawed__debate__r1  (1 contest(s), gold FLAWED)
+    kind         ['omission']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT AN OMISSION']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold FLAWED
+
+  surgery-sur23_gpt4_B-s13__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['finding']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: FLAW']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold SOUND
+
+### fd1-smoke-3-strong
+
+  gpqa-74-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  law-con3_gpt4_A-s11__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['finding']
+    quote_in_record  stored [False]  pre-R10 [False]  new [False]
+    void             stored [True]  pre-R10 [False]  new [False]
+    record UNVERIFIED (finding contests, recorded and not voiding): [1]
+    ruling lines     ['Contest 1: NOT A FLAW']
+    verdict          recorded SOUND   pre-R10 SOUND   under R10 SOUND   gold SOUND
+
+  lojban-stim191_gpt3-5_A-s4__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  medqa-train_1480__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  python800-p03137-flawed__debate__r1  (0 contest(s), gold FLAWED)
+    kind         []
+    quote_in_record  stored []  pre-R10 []  new []
+    void             stored []  pre-R10 []  new []
+    ruling: none (the cell did not reach a ruling)
+
+  surgery-sur23_gpt4_B-s13__debate__r1  (1 contest(s), gold SOUND)
+    kind         ['omission']
+    quote_in_record  stored [True]  pre-R10 [True]  new [True]
+    void             stored [False]  pre-R10 [False]  new [False]
+    ruling lines     ['Contest 1: NOT AN OMISSION']
+    verdict          recorded FLAWED   pre-R10 FLAWED   under R10 FLAWED   gold SOUND
+
+
+### SUMMARY
+tree                   cells  contests  void stored  void pre-R10  void new  v. moved  by R10  fixed  broken
+------------------------------------------------------------------------------------------------------------
+fd1-smoke-weak             6         7            0             0         0         0       0      0       0
+fd1-smoke-strong           6         4            3             0         0         1       0      1       0
+fd1-smoke-2-weak           6         4            3             0         0         1       0      1       0
+fd1-smoke-2-strong         6         2            0             0         0         0       0      0       0
+fd1-smoke-3-weak           6         5            0             0         0         0       0      0       0
+fd1-smoke-3-strong         6         2            1             0         0         0       0      0       0
+ALL                       36        24            7             0         0         2       0      2       0
+
+tree                    finding contests  void new  record unverified  un-voided by R12a
+----------------------------------------------------------------------------------------
+fd1-smoke-weak                         5         0                  0                  0
+fd1-smoke-strong                       4         0                  0                  0
+fd1-smoke-2-weak                       4         0                  0                  0
+fd1-smoke-2-strong                     1         0                  0                  0
+fd1-smoke-3-weak                       4         0                  0                  0
+fd1-smoke-3-strong                     1         0                  1                  1
+ALL                                   19         0                  1                  1
+
+`record unverified` is a contest of a FINDING whose optional `Record says:` was
+given and not found. Since R12a it is RECORDED and does not void; `un-voided by R12a`
+is how many of them were void as stored, i.e. what this change gives back.
+
+`v. moved` is recorded vs R10 and so includes R1's work on smoke 1; `by R10` is pre-R10 vs R10, this change alone.
+
+verdicts that move under R10:
+  fd1-smoke-strong/gpqa-33-flawed__debate__r1: SOUND -> FLAWED (gold FLAWED) — FIXED
+  fd1-smoke-2-weak/medqa-train_3292__debate__r1: SOUND -> FLAWED (gold FLAWED) — FIXED

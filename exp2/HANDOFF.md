@@ -126,6 +126,20 @@ checkable.
 > read [`CHECKLIST.md`](records/experiments/judgment-debate-5/CHECKLIST.md) **§0 first**;
 > write-up `LLM_NOTES.md` **§3aa**.
 
+> **THE FINDINGS VARIANT IS DONE — `findings-1` (`fd1`), 2026-09-02. DO NOT RE-RUN IT.**
+> The user's decomposed-judgment idea (`debate_variants.md`): the judge writes numbered
+> findings ruled FLAW / NOT A FLAW, the verdict is derived by code, and a contest is a
+> finding, an omission or a contradiction. Two arms over jd3-main's 1,644 transcripts,
+> F-weak (Maverick) and F-strong (luna), each ruling on contests to its own findings.
+> **Outcome (D): P1 NULL in both arms (+18, p = 0.46; −4, p = 0.48) and P2 NOT SHOWN in the
+> wrong direction — the local contest broke 38.7% of right decisions against jd5-B's
+> 26.8%.** The decomposition made Maverick worse (68.0% vs M0's 73.7%) and luna better
+> (77.8%); the challenger contests only toward FLAW (98.5%); the weak recourse judge adopts
+> arguable contests (5/5 breaks read); luna refuses 97% of contests. $48.76 for the
+> campaign. Evidence: [`records/experiments/findings-1/`](records/experiments/findings-1/README.md);
+> write-up `LLM_NOTES.md` **§3ad**; pre-registration committed at `a4dfd12` before the
+> first paid call.
+
 > **THE CONTESTABILITY DEBATE ROUND IS DONE — `judgment-debate-6`, 2026-08-30. DO NOT
 > RE-RUN IT.** DESIGN.md's ablation, and the answer to the user's weak-vs-weak hypothesis is
 > **no**. Two arms on jd3 M1's 896 objections, paired cell for cell, both reading `jd3-main`
@@ -362,7 +376,7 @@ uv run python scripts/e2e_offline.py 2>&1 | tee outputs/e2e-offline.log
 
 ## 4. Where things stand
 
-Total spent so far: **$236.35**. It breaks into six blocks, each itemised where it is
+Total spent so far: **$285.11** ($236.35 through jd6, plus **$48.76** for `findings-1`, itemised in its README). It breaks into seven blocks, each itemised where it is
 reported:
 
 * **$99.68 through the debate-only judgment-challenge run** — $63.00 through the auditor
@@ -1143,6 +1157,58 @@ intent and not a measured fact (`logs/stage-tails.md`).
    carrying arm B's whole loss (−12 of −23, unchanged from M1's −12); the **`weak_alone` arm**;
    the **flaw definition's threshold**; and the **same-model property**, which these arms bound
    once more and do not repair.
+
+### The findings variant, `findings-1` (2026-09-02) — DONE
+
+**The user's decomposed-judgment protocol, built, pre-registered and run in one day. DO NOT
+RE-RUN IT.** Evidence: [`records/experiments/findings-1/`](records/experiments/findings-1/README.md)
+(`CHECKLIST.md` for every table, `HANDCHECK.md` for the 40-cell read); write-up
+`LLM_NOTES.md` **§3ad**; specification `debate_variants.md`; pre-registration
+[`PREREG.md`](records/experiments/findings-1/PREREG.md), committed at `a4dfd12` before
+either arm's first paid call, with 28 prompt digests pinned by
+`tests/test_prompts.py::FROZEN_FD1_PROMPTS`.
+
+**What it is.** `judge_form = "findings"`: the judge lists one finding per purported flaw
+the FLAWED-side debater raised (passage, claim, defence, reason, ruling FLAW / NOT A FLAW),
+writes no verdict, and `derive_verdict` makes the verdict (FLAWED iff any FLAW). The
+`findings` challenger variant contests a finding (opposite ruling, anchored in a text
+quote; record quote optional and matched by the house record matcher), an omission or a
+contradiction; the recourse judge rules per contest with absolute lines and the list is
+updated by code (`apply_contest_lines`), an upheld omission appending a finding; the grader
+applies the location test on flawed items and mechanical rules on sound ones; the
+`agreement` stage is mechanical. Everything is in `src/exp2/` behind the two config keys;
+every pre-existing prompt is byte-identical (the three older digest tables pass).
+
+**What ran.** Three six-cell smokes ($0.59, twelve revisions R1–R12), two 60-cell pilots
+($1.86; weak parse 60/60 against the 51/60 feasibility floor), a reader re-read ($0.16),
+the injection instrument on the pilot lists ($0.55), then the two arms under
+`outputs/fd1-run-all.sh` (copied to the records): 16:21Z→18:47Z including a relaunch at
+17:01Z with `[client]` 32/24 on the user's instruction to run as fast as possible, and a
+mop-up resume pass. $26.95 + $18.66 for the arms; **$48.76 for the campaign**. jd3-main
+fingerprinted before and after, unchanged.
+
+**Result.** Outcome (D) for F-weak: P1 NULL (278 fixed / 260 broken, +18, p = 0.464), P2
+NOT SHOWN (`broken | right` 260/672 = 38.7% vs jd5-B's 167/622 = 26.8%, one-sided Fisher
+p = 1, Newcombe +11.8 [6.7, 16.8]); P3 69.3% vs 52.6%. F-strong P1 NULL (7 / 11, −4,
+p = 0.481). Findings judge vs M0: Maverick 68.0% (−93, p = 1.5e-6), luna 77.8% (+68).
+After recourse vs M0: −75 / +64. Every verdict move but six was on a list with no FLAW
+finding: 55.5% of contested right SOUND lists broken in F-weak, 1.0% of right FLAWED.
+Contests sought FLAW 98.5% / 91.8% of the time; Maverick granted, luna refused.
+
+**Caveats a reader must carry.** The P2 comparator is unpaired (the contest object, the
+ruling prompt, the before-state and the routing all moved; the paired intersection is
+descriptive). The findings-judge-vs-M0 difference bundles a re-draw, the format, the
+derived rule and the pin. Each arm's judge rules on contests to its own findings. Validity
+on flawed items is a lower bound (the annotated flaw only), on the mirror an upper bound.
+The inherited jd3-main records carry a glued `Argument:` label in 52% of cells
+(`logs/source-scan.log`). The run's two incidents are in the README.
+
+**Still owed after this campaign, in order.** (1) A two-directional challenger — the
+spec's deferred judgment-audit form on findings or a partisan variant; the user asked for
+this to be raised if the result was negative. (2) A recourse judge that is not the
+findings judge, in both directions. (3) An omission rule that excludes consequences of a
+listed finding. (4) The findings judge's base rate under the derived rule. (5) The
+prover-estimator variant, on this machinery.
 
 ### The open findings the write-up must carry
 

@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "In the past, Loras' hand was electric to Jim."
+   Record says: Bob in Round 2: "The translation makes specific structural claims that the Lojban string does not license. 'Loras' hand' implies a possessive relation between Loras and a hand. ... The translation silently inserts a possessive that the Lojban text does not contain. Likewise, 'was electric to Jim' invents a dative or directional relation. ... The Lojban string does not say the hand was electric *to* Jim; it just places Jim as another argument. The translation therefore misleads by adding relational content absent from the original. ... That is exactly a flaw: the translation claims the Lojban says something it does not say. So sentence 8 is misleading, not just inelegant."
+   Why: The translation asserts specific semantic relationships (possessive for "Loras' hand" and a dative for "electric to Jim") that are not explicitly present or licensed by the grammatical structure of the Lojban source text, thereby making the translation itself misleading about the meaning conveyed by the Lojban.

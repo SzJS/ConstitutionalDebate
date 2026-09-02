@@ -1,0 +1,9 @@
+=== fd1: two arms, sequentially — started 2026-09-02T16:21:06Z ===
+PREREG: records/experiments/findings-1/PREREG.md
+arms:   W (fd1-weak), S (fd1-strong)
+runner: scripts/run_sweep.sh   outputs: outputs/experiments   logs: outputs
+
+  fingerprint jd3-main dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c
+
+########## ARM W  (fd1-weak)  2026-09-02T16:21:26Z
+########## stages: rejudge contest agreement ruling_agreement grade analyse   -> outputs/fd1-fd1-weak-driver.log

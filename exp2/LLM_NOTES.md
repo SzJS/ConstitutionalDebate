@@ -6200,3 +6200,174 @@ the dry-run conversation beside its cost and its wall-clock — this one was est
 (`records/logs/sweep-1-estimate.txt` projects cost and clock, and never mentions bytes).
 And a crashed stage leaves `run.json` at `"running"`, which §3o pins as *not a decision*:
 those cells are retried into fresh run directories rather than skipped or written over.
+
+## 3ad. The decomposed judgment: a local contest does NOT break fewer right decisions — it breaks more, because the challenger only pushes toward FLAW and the weak judge adopts; the decomposition itself made the weak judge worse and the strong one inert (2026-09-02)
+
+**Written after both arms and the mop-up finished (2026-09-02T16:21:06Z → 18:47:33Z,
+$45.61 for the arms and $48.76 for the campaign; 1,644 of 1,644 cells decided in both
+arms, 1,073 of 1,076 objections ruled in F-weak and 606 of 606 in F-strong; jd3-main's
+fingerprint `dfa9bdca…` unchanged before and after). Every number here is quoted from
+`records/experiments/findings-1/` — `arm-weak/`, `arm-strong/`, `derivation.log`,
+`CHECKLIST.md`, `HANDCHECK.md`, `logs/` and the 45 `transcripts/` triples — or from
+`PREREG.md` in that directory, committed at `a4dfd12` before either arm's first paid
+call.** All of it is re-derivable on a bare clone with
+`records/derivations/findings-1.py`, whose defaults point at the committed indexes and
+scans. The specification is the user's `debate_variants.md` (2026-09-02).
+
+**THE HYPOTHESIS WAS THE USER'S AND THE ANSWER IS NO.** The judge wrote numbered findings
+instead of a verdict, the verdict was derived by code, and the challenger contested a
+finding, an omission or a contradiction instead of the decision. The pre-registered
+reading is **outcome (D) for F-weak**: P1 NULL (recourse fixed 278 and broke 260 of 1,644,
+net +18, p = 0.46) and P2 NOT SHOWN in the wrong direction — the local contest broke
+**38.7%** of the right decisions it was put to against jd5-B's 26.8% (+11.8 points,
+Newcombe [6.7, 16.8]; one-sided Fisher p = 1; on the 337 cells both mechanisms saw, F-weak
+alone broke 83 and jd5-B alone 41, McNemar p = 0.0002). F-strong's P1 is NULL too, from
+the other side: luna fixed 7 and broke 11.
+
+### What ran
+
+| | F-weak | F-strong |
+|---|---|---|
+| findings judge = recourse judge | `meta-llama/llama-4-maverick` at 0, pinned `digitalocean` | `openai/gpt-5.6-luna-20260709` at 0, pinned `openai` |
+| challenger | `google/gemini-2.5-flash` at 0.7, neutral + the certainty clause, decision last | same |
+| lists / objections / rulings / graded | 1,644 / 1,076 / 1,073 / 1,073 | 1,644 / 606 / 606 / 606 |
+| findings parse | 1,532 strict + 112 after one repair | all strict |
+| spend, wall-clock | $26.95, 16:21Z→18:25Z (relaunched 17:01Z at 32/24 in flight) | $18.66, 18:22Z→18:43Z |
+
+Both arms re-judged jd3-main's 1,644 stored transcripts (`rejudge`), contested every
+list, ruled every contest with the arm's own judge, graded every contested cell (sound
+items included) and read every ruling's prose. The `agreement` stage made no call: the
+phantom instrument is mechanical on a structured objection (1 phantom in 1,641 weak
+objections, 0 in 1,644 strong).
+
+### The endpoint, as registered
+
+| | F-weak | F-strong | jd5-B (the existence-check arm) |
+|---|---|---|---|
+| accuracy before → after | 68.0% → 69.1% | 77.8% → 77.6% | — |
+| P1 fixed / broken / net / p | 278 / 260 / **+18** / 0.464 NULL | 7 / 11 / −4 / 0.481 NULL | — |
+| `broken \| right` (P2, F-weak only) | **260/672 = 38.7%** [35.1, 42.4] | 11/324 = 3.4% (descriptive) | 167/622 = 26.8% |
+| `fixed \| wrong` (P3) | 278/401 = 69.3% | 7/126 = 5.6% | 144/274 = 52.6% |
+| `a`, `f/b`, `a*` (§3ac) | 62.6%, 1.79, 64.2% | 79.2%, 2.42, 70.8% | 69.4%, 1.96, 66.2% |
+
+F-weak clears §3ac's bar (1.79 > 62.6/37.4 = 1.67) by a hair, which is the +18; it clears
+it because the findings judge lowered `a` first. Against M0 the arm is **−75** (p =
+4.5e-4): the decomposition cost 93 cells and recourse gave 18 back.
+
+### The two judges under the findings form
+
+**The decomposition made Maverick worse and luna better, and neither is about
+recourse.** On the same 1,644 transcripts, M0 (Maverick, verdict form) was 73.7%; the
+findings form with the derived rule is **68.0%** for the same model (138 fixed, 231 broken,
+−93, p = 1.5e-6 — a re-draw at temperature 0 plus the format plus the rule plus the
+DigitalOcean pin, unattributed, as PREREG says) and **77.8%** for luna (+68, a different
+model). Maverick under-calls: 834 of its 1,073 contested lists carried no FLAW finding.
+Luna over-calls on technicalities (a terminology point, a `NameError` in a proposed fix —
+`HANDCHECK.md` (d)). Every verdict move in either arm, bar six, happened on a list with
+zero FLAW findings — the derived rule's asymmetry, registered before the run: one
+granted contest breaks a right SOUND verdict (F-weak 258/465 = **55.5%**), while a right
+FLAWED verdict needs every FLAW finding flipped (2/207 = 1.0%).
+
+### Why the local contest breaks more, not fewer
+
+Three facts, each in a registered table, compose into the +11.8 points.
+
+1. **The contest is one-directional.** 1,277 of F-weak's 1,296 finding contests (98.5%)
+   and 506 of F-strong's 551 (91.8%) sought FLAW. A neutral challenger told to raise only
+   what it is certain of still contests only the NOT A FLAW findings — on the strong arm's
+   one false positive in the hand check it asked for a *third* flaw rather than
+   disputing either FLAW. Recourse under this challenger can only correct a judge's
+   under-calls and only break its right SOUND verdicts. That is exactly the shape of the
+   split table.
+2. **The weak recourse judge adopts.** In the hand check every one of the five breaks read
+   is an arguable contest — "could be seen as misleading", "informality is an invalid
+   inference", a conditional "if the analyst's later sentences define…" — and every
+   ruling restates the contest and calls it shown (5/5 adopt, 0/5 show, 2/5 on a hedge
+   or a conditional the prompt bars). Maverick granted 72% of live finding contests at
+   the pilot and the full run's 43:16 FLAW-to-NOT-A-FLAW line ratio is the same fact.
+   §3ab's mechanism on a local object: the certainty clause restrained nothing, and the
+   "stands unless shown" standard did not hold.
+3. **The fix side rose for the same reason** (69.3% against 52.6%): a SOUND-heavy list
+   contested toward FLAW and granted is a fix whenever the item was flawed, and 3 of the 5
+   fixes read were on the annotated flaw, two of them by adoption.
+
+**Luna does the opposite and recourse under it is inert.** It refused 97% of contests
+(18 of 21 live rulings NOT A FLAW at the pilot; 3 FLAW of 606 rulings at scale moved a
+verdict), including the one cell in the hand check where the challenger was right and luna
+wrong. A strong findings judge that rules on contests to its own findings does not change
+its mind, so the arm measures the judge and not the mechanism.
+
+### The designed object exists and is rare
+
+The thing the decomposition was meant to buy — a contest that points at a checkable error
+*inside* a finding — happened. On `theoremqa-…abstract_algebra_7_4` the finding's reason
+compared `(a*b)*c` with `a+(b*c)`, dropping the outer +3; the challenger quoted the
+finding's own words, and the ruling redid the arithmetic. It was the only certain-grade
+contest among the twenty contested cells read, and the pilot read found one in 44. The
+form makes such contests possible; the challenger does not produce them at a rate that
+matters against the arguable ones it also produces.
+
+### The instruments
+
+Validity: F-weak 537 of 1,428 contests VALID (37.6%; 657 settled mechanically — void, or
+a sound item contested toward FLAW), F-strong 144 of 684 (21.1%); by `label_basis`
+`final_answer` 51.3%/42.2%, `injected_pair` 37.1%/16.9%, `sentence_labels` 35.4%/26.3%,
+never pooled. Ruling-line mismatch under the revised reader (void-only rulings excluded,
+the reader shown the lines) 137/1,005 = 13.6% weak and 9/570 = 1.6% strong. Upheld
+omissions appended 54 findings over 51 weak rulings, 18 of which moved a verdict; the
+hand check found 4 of 5 appended points to be consequences of a finding already ruled —
+the "covered in substance" rule does not stop a judge from appending a conclusion it has
+already reached. Void contests 9.4%/6.1% after R12; record quotes recorded as unverified
+on 11%/17% of finding contests without voiding. Comprehension 4.41/4.63. No private text
+and no gold above the ground-truth section in any of the 40 documents read.
+
+### What the smokes, the pilots and the run changed on the way
+
+Three six-cell smokes and two 60-cell pilots ($2.45 together), each read by Fable and an
+independent reviewer agent, produced twelve revisions before the pre-registration
+(`PREREG.md` §"What the smokes changed"): the record-quote matcher, void semantics, the
+distinct-claim and verbatim-passage rules, trimmed grounds, lead-in stripping, the
+omission two-step, a location-test grader, a reader that is told it does not judge
+rightness (weak-arm mismatch 17/44 → 1/36 on re-reading the same rulings), and the
+objection rendered from its parsed contests after a stray `Argument:` heading published
+9,142 characters of private working. Declined: accepting a glued `Argument:` label to save
+the challenger's repair call on 117 of 120 pilot objections — the leak rule HANDOFF §2.7
+forbids loosening; the repairs cost ~$16 an arm and were paid. Two run incidents,
+disclosed: the relaunch at higher concurrency left a stage running beside its replacement
+for two minutes (one cell decided twice, eight run directories re-attempted by a mop-up
+pass with the arm's five failed lists and eight failed contests), and the driver's DONE
+table rendered empty.
+
+### What this shows, and what it does not
+
+**It shows** that decomposing the judgment into findings does not, by itself, make a weak
+judge's decisions more contestable in the sense that matters: a local contest is as
+adoptable as a global one, and the one-directional challenger plus the derived rule
+concentrate the damage on right SOUND verdicts. It shows the decomposition changes the
+first-instance decision (Maverick worse, luna better) before any recourse happens, which
+moves §3ac's bar. And it shows the designed object — a checkable error inside a finding's
+reason — is real and rare under this challenger.
+
+**It does not show** that findings cannot work with a challenger that seeks both
+directions, a recourse judge that is not the findings judge, or a rule for omissions that
+excludes consequences — none was run. It says nothing about `single`/`self_critique`,
+natural-error selection, or jd3's P1. No number here is pooled with jd3–jd6's: the judgment
+form, the contest object, the ruling prompt and the challenger's instruction all differ.
+The comparator for P2 is unpaired and the paired intersection is descriptive.
+
+### Still owed
+
+1. **A two-directional challenger** — the spec's deferred judgment-audit form on findings,
+   or a partisan variant assigned the side the list went against, which the user asked to
+   be raised if the result was negative. It was.
+2. **A recourse judge that is not the findings judge**, in either direction (luna ruling on
+   Maverick's lists; Maverick on luna's) — separates adoption from ownership.
+3. **The omission rule against consequences**: "a conclusion drawn from a finding already
+   ruled is not an omission".
+4. **The findings judge's base rate**: why the derived rule makes Maverick SOUND-heavy
+   (a NOT A FLAW default per finding compounds), and whether a per-finding confidence or
+   a "which side would a careful expert take" framing repairs it.
+5. **Prover-estimator** (the spec's deferred variant): the findings machinery now exists
+   to build it on.
+
+---

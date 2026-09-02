@@ -1,0 +1,31 @@
+{
+  "form": "findings",
+  "findings": [
+    {
+      "index": 1,
+      "passage": "\"Reduction of cyclopentanecarbonyl chloride with lithium hydrides converts the carbonyl group into a primary alcohol.\"",
+      "claim": "The statement is false because lithium tri-tert-butoxyaluminum hydride, the specific reagent used, reduces acyl chlorides to aldehydes, not primary alcohols.",
+      "defence": "The solution's statement is true as written because \"lithium hydrides\" is a class term that includes reagents like lithium aluminum hydride, which does reduce acyl chlorides to primary alcohols.",
+      "reason": "The solution's wording is general and does not claim that the specific bulky reagent performs the conversion to a primary alcohol; it makes a true statement about a class of reagents.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    },
+    {
+      "index": 2,
+      "passage": "\"The final product, cyclopentylmethanol, possesses 7 chemically distinct hydrogen atoms.\"",
+      "claim": "The count of 7 distinct hydrogen atoms for cyclopentylmethanol is incorrect.",
+      "defence": "The solution asserts 7, and it is possible that diastereotopic hydrogens on the CH₂OH or ring methylenes could raise the count above five.",
+      "reason": "Bob concedes in round 1 that a simple count yields 5, not 7, but Alice does not demonstrate that the count is wrong beyond that simple count, and Bob suggests that a more detailed analysis could support 7.",
+      "ruling": "NOT A FLAW",
+      "ruling_normalised": false
+    }
+  ],
+  "verdict": "SOUND",
+  "parent_verdict": "SOUND",
+  "n_findings": 2,
+  "n_flaw": 0,
+  "n_added": 0,
+  "contest_lines": {
+    "1": "NOT A FLAW"
+  }
+}

@@ -1,0 +1,5 @@
+1. Contests: Finding 1
+   Should be: FLAW
+   Text says: "Due to the varying atmospheric conditions, the actual optical window for ground-based observations starts around 410 nm (4100 Å…)."
+   Record says: "Alice: The solution explicitly states that "the actual optical window for ground-based observations starts around 410 nm." That is not a standard approximation; it is wrong. The actual atmospheric cutoff for ground-based UV/optical observations is set by ozone absorption near ~3000 Å, not 4100 Å."
+   Why: The statement that the "actual optical window" starts around 410 nm is factually incorrect for ground-based optical telescopes, which routinely observe down to 300-350 nm in the U-band. This is not merely a conventional choice but an untrue claim about the physical capabilities of ground-based observation, directly leading to an overestimated redshift for the "lower limit" of detectability.
