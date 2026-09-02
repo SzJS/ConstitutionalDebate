@@ -17,6 +17,7 @@ from exp2.prompts import (
     _round_instructions,
     CHALLENGER_ARMS,
     FLAW_DEFINITION,
+    FLAW_DEFINITION_FINDINGS,
     FLAW_PHRASE,
     SOLO_CRITIQUE_INSTRUCTION,
     SOUND_PHRASE,
@@ -187,12 +188,34 @@ def test_all_five_roles_are_told_what_a_flaw_is_and_told_the_same_thing():
     # here: it has no prompt at all, so there is no system message for the definition to
     # be missing from.
     assert len(challengers) == 8
-    for name in ("debater-a-r1", "judge", "judge-findings", "solo-answer", "grader",
+
+    # THE fd1 ROLES CARRY THE DEFINITION MINUS ITS SECOND PARAGRAPH (the user's revision
+    # of 2026-09-02). That paragraph teaches the words `SOUND` and `FLAWED` — the
+    # vocabulary of an overall verdict — and no findings role is asked for one: the judge
+    # rules findings one at a time and the verdict is derived by code. They are held to
+    # the same standard by the same test, one line lower down: the same first paragraph,
+    # cut from the same constant so it cannot drift, and the verdict paragraph ABSENT
+    # rather than reworded.
+    findings_roles = ("judge-findings", "challenger-findings")
+    for name in ("debater-a-r1", "judge", "solo-answer", "grader",
                  "recourse-debater-pro", "recourse-debater-anti", *challengers):
+        if name in findings_roles:
+            continue
         system = built[name][0]
         assert system["role"] == "system", name
         assert FLAW_DEFINITION in system["content"], (
             f"{name} does not carry the flaw definition")
+
+    # Cut from `FLAW_DEFINITION`, not retyped: it is a prefix of it, and a shorter one.
+    assert FLAW_DEFINITION.strip().startswith(FLAW_DEFINITION_FINDINGS)
+    assert FLAW_DEFINITION_FINDINGS != FLAW_DEFINITION.strip()
+    for name in findings_roles:
+        system = built[name][0]
+        assert system["role"] == "system", name
+        assert FLAW_DEFINITION_FINDINGS in system["content"], (
+            f"{name} does not carry the findings flaw definition")
+        assert "SOUND does not mean perfect" not in system["content"], name
+        assert "FLAWED means" not in system["content"], name
 
     # The wording the corpus was annotated against, and the anti-nitpick clause that
     # is the whole point of adding it.
@@ -3314,9 +3337,11 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
 
     # THE JUDGE: no verdict, nothing invented, the two numbering edge cases, the empty
     # list, and `Reason:` before `Ruling:`
-    assert "Do not give an overall verdict" in JUDGE_SYSTEM_FINDINGS
+    assert "Your judgment is a **list of findings**, and nothing else." in (
+        JUDGE_SYSTEM_FINDINGS)
     assert "Add nothing the debaters did not raise" in JUDGE_SYSTEM_FINDINGS
-    assert "Write no verdict" in JUDGE_CLOSING_FINDINGS
+    assert "Stop after the last `Ruling:` line; add nothing after it." in (
+        JUDGE_CLOSING_FINDINGS)
     assert "the same claim is never listed twice" in JUDGE_CLOSING_FINDINGS
     assert "two findings if they are different claims" in JUDGE_CLOSING_FINDINGS
     assert "Findings: none" in JUDGE_CLOSING_FINDINGS
@@ -3367,6 +3392,73 @@ def test_the_findings_prompts_say_the_things_the_design_turns_on():
     assert "the same claim about the same passage" in GRADER_SYSTEM_FINDINGS
     # THE READER: the question is about the lines, not about the text
     assert "Reading: CONSISTENT" in RULING_AGREEMENT_USER_FINDINGS
+
+
+def test_no_findings_prompt_names_an_overall_verdict():
+    """The user's revision of 2026-09-02, and the reason for it: the challenger and the
+    ruling judge kept being shown a verdict they were not asked to rule on, which is the
+    whole thing the decomposition removes. So the verdict vocabulary is absent from every
+    fd1 template and from every message the three fd1 roles send — a role told `FLAWED`
+    and `SOUND` is a role that will reach for them. `Decision: REVERSE|STANDS` is the
+    challenger's stance line and is a different thing entirely."""
+    import exp2.prompts as prompts_module
+
+    forbidden = ("verdict", "Verdict", "SOUND", "FLAWED")
+    constants = {name: value for name, value in vars(prompts_module).items()
+                 if "FINDINGS" in name and isinstance(value, str)}
+    # the judge's two, the challenger's three, the ruling's three, the reader's three,
+    # the grader's eight, plus the flaw definition and the variant name
+    assert len(constants) >= 15, sorted(constants)
+    for name, value in sorted(constants.items()):
+        for word in forbidden:
+            assert word not in value, f"{name} still says {word!r}"
+
+    config, sides, item = make_config(), make_sides(), make_item()
+    built = dict(every_message_list(item, sides, config))
+    for name in ("judge-findings", "challenger-findings", "recourse-judge-findings"):
+        sent = "".join(m["content"] for m in built[name])
+        for word in forbidden:
+            assert word not in sent, f"{name} was sent {word!r}"
+
+
+def test_the_findings_challenger_is_told_to_raise_only_what_it_is_certain_of():
+    """The standard of grounds, added 2026-09-02. Every recourse arm so far broke right
+    decisions at 20-36% because a challenger with nothing to lose raises what it merely
+    doubts; the paragraph says what a ground IS and what raising a bad one costs. It sits
+    immediately after the neutral standpoint clause, which is still spliced in BYTE FOR
+    BYTE — the arm under test is the neutral one and this test is what says so."""
+    config, sides, item = make_config(), make_sides(), make_item()
+    built = dict(every_message_list(item, sides, config))
+    system = built["challenger-findings"][0]["content"]
+
+    assert CHALLENGER_ARMS["neutral"] in system
+    certainty = "Raise a contest only if you are certain of it:"
+    assert certainty in system
+    assert "If you are less than certain, leave it out." in system
+    assert ("A contest that fails on inspection costs the ones that would have "
+            "succeeded.") in system
+    assert system.index(CHALLENGER_ARMS["neutral"]) < system.index(certainty)
+    # and the encouragement it replaces is gone from both templates
+    from exp2.prompts import CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+
+    assert "raise every one you can support" not in system
+    assert "raise every" not in CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+
+
+def test_a_trailing_verdict_line_does_not_break_a_findings_judgment():
+    """The prompts no longer say `Write no verdict`, so a judge that adds one anyway must
+    cost a finding rather than a cell. The verdict is DERIVED either way: a trailing line
+    is tail text of the last finding's block, carries no `Ruling:` label and no
+    `Finding n` header, and is ignored."""
+    from exp2.prompts import derive_verdict, parse_findings_output
+
+    verdict, findings, reasoning, mode = parse_findings_output(
+        FINDINGS_REPLY + "\n\nVerdict: FLAWED")
+    assert [f["index"] for f in findings] == [1, 2]
+    assert [f["ruling"] for f in findings] == ["FLAW", "NOT A FLAW"]
+    assert verdict == FLAWED == derive_verdict(findings)
+    assert mode == "strict"
+    assert reasoning.endswith("Verdict: FLAWED")
 
 
 def test_the_findings_grader_is_told_when_it_may_judge_by_location_alone():

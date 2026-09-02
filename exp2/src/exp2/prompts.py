@@ -128,6 +128,22 @@ invalid.
 at least one thing in it is."""
 
 
+# The findings variant of the definition: the FIRST paragraph only, cut from
+# `FLAW_DEFINITION` rather than retyped so the two cannot drift. The second paragraph
+# teaches the words `SOUND` and `FLAWED` — the vocabulary of an overall verdict — and
+# under `judge_form = "findings"` there is no overall verdict to teach: the judge rules
+# findings `FLAW` / `NOT A FLAW` one at a time and the verdict is derived by code
+# (`derive_verdict`). A role told the verdict words is a role that will write one.
+_FLAW_DEFINITION_SOUND_MARKER = "\n\n**SOUND does not mean perfect.**"
+if FLAW_DEFINITION.count(_FLAW_DEFINITION_SOUND_MARKER) != 1:
+    raise ValueError(
+        "FLAW_DEFINITION no longer splits at exactly one "
+        f"{_FLAW_DEFINITION_SOUND_MARKER!r}; FLAW_DEFINITION_FINDINGS is cut from it "
+        "and cannot be derived any more"
+    )
+FLAW_DEFINITION_FINDINGS = FLAW_DEFINITION.split(_FLAW_DEFINITION_SOUND_MARKER)[0].strip()
+
+
 def _with_flaw_definition(template: str) -> str:
     """Substitute `{flaw_definition}` at import time, leaving other fields alone.
 
@@ -139,6 +155,18 @@ def _with_flaw_definition(template: str) -> str:
     if "{flaw_definition}" not in template:
         raise ValueError("system prompt is missing its {flaw_definition} placeholder")
     return template.replace("{flaw_definition}", FLAW_DEFINITION)
+
+
+def _with_flaw_definition_findings(template: str) -> str:
+    """`_with_flaw_definition`, minus the paragraph that teaches the verdict words.
+
+    Same placeholder check and the same reason for it: a findings role that lost the
+    definition would be asked a different question from every other role, and that must
+    be an import error rather than a silent change.
+    """
+    if "{flaw_definition}" not in template:
+        raise ValueError("system prompt is missing its {flaw_definition} placeholder")
+    return template.replace("{flaw_definition}", FLAW_DEFINITION_FINDINGS)
 
 
 # --------------------------------------------------------------------------- #
@@ -316,12 +344,15 @@ Your previous response could not be parsed. Reply with exactly one line:
 # THREE THINGS THE TEMPLATE HAS TO DO AT ONCE, and each is a sentence someone will be
 # tempted to delete:
 #
-#   1. NO VERDICT LINE, said twice and shown by the absence of one in the template. The
-#      verdict is `derive_verdict(findings)` — FLAWED iff any ruling is FLAW — and a
-#      judge that also states a verdict would give a reader two answers, one of which the
-#      harness ignores. `parse_findings_output` refuses nothing on this account, so the
-#      prose is the only thing stopping it; hence it is said in the instruction and again
-#      in the closing.
+#   1. NO VERDICT — and since the user's revision of 2026-09-02 that is done by SILENCE,
+#      not by prohibition. The verdict is `derive_verdict(findings)` — FLAWED iff any
+#      ruling is FLAW — and the earlier drafts said so twice ("Do not give an overall
+#      verdict", "Write no verdict"). Naming a thing to forbid it teaches the word: this
+#      prompt, its closing and its repair now carry no verdict vocabulary at all, and the
+#      flaw definition is cut to its first paragraph (`FLAW_DEFINITION_FINDINGS`) so the
+#      second one does not teach `SOUND` and `FLAWED` either. `parse_findings_output`
+#      ignores a trailing `Verdict:` line rather than refusing it, so a judge that writes
+#      one anyway costs nothing (a test pins that).
 #   2. FINDINGS COME FROM THE TRANSCRIPT ONLY. The judge may not add a flaw it noticed
 #      itself. That is not modesty about the judge's reading: the whole contestability
 #      claim is that the list can be checked against the record, and a finding with no
@@ -338,7 +369,7 @@ Your previous response could not be parsed. Reply with exactly one line:
 # and is contestable by omission. It has to be sayable, or a judge that finds the FLAWED
 # side raised nothing identifiable will invent a finding to satisfy the format — which is
 # exactly the failure rule 2 exists to prevent.
-JUDGE_SYSTEM_FINDINGS = _with_flaw_definition("""\
+JUDGE_SYSTEM_FINDINGS = _with_flaw_definition_findings("""\
 You are judging a structured debate. Two debaters were each assigned one of the two \
 positions on whether a piece of reasoning contains a flaw. Neither chose their \
 position, so the fact that someone argued a position is no evidence for it.
@@ -354,10 +385,6 @@ Decide each finding on the transcript and the material below. Weigh whether a cl
 flaw is real and whether a defence actually answers it. A debater who quotes the text \
 precisely and explains why something is wrong is more credible than one who asserts. \
 Check quotations against the text yourself.
-
-**Do not give an overall verdict.** You are not asked for one and you must not write \
-one: the findings are the judgment, and what follows from them is worked out from your \
-rulings, not from a sentence you add at the end.
 
 **Add nothing the debaters did not raise.** A flaw you noticed yourself, and neither \
 debater argued, is not a finding. The list is a reading of this debate, and a reader \
@@ -404,8 +431,7 @@ one line instead:
 
 Findings: none
 
-**Write no verdict.** Do not add `Verdict:`, a summary, or a sentence saying what the \
-findings add up to. Stop after the last `Ruling:` line."""
+Stop after the last `Ruling:` line; add nothing after it."""
 
 JUDGE_REPAIR_FINDINGS = """\
 Your previous response could not be parsed. Reply again with the findings only, \
@@ -418,8 +444,8 @@ Defence: <one sentence, or: none given>
 Reason: <why it is or is not a flaw>
 Ruling: FLAW
 
-`Ruling:` must read exactly `FLAW` or `NOT A FLAW`. Write no verdict line and nothing \
-after the last finding. If no purported flaw was raised, reply with the single line \
+`Ruling:` must read exactly `FLAW` or `NOT A FLAW`. Write nothing after the last \
+finding. If no purported flaw was raised, reply with the single line \
 `Findings: none`."""
 
 
@@ -961,7 +987,7 @@ be reconsidered.
 # AND THE DECISION LINE IS LAST, for the reason `CHALLENGE_DECISION_INSTRUCTION` gives at
 # length: a weak model asked for its label first writes it before it has read anything,
 # and 51.8% of the sweep's objections were labels over prose that argued the other way.
-CHALLENGER_SYSTEM_FINDINGS = _with_flaw_definition("""\
+CHALLENGER_SYSTEM_FINDINGS = _with_flaw_definition_findings("""\
 You are a stakeholder affected by the decision below. You did not make it and you were \
 not part of the process that produced it.
 
@@ -969,12 +995,10 @@ not part of the process that produced it.
 
 The decision was made by ruling on a numbered list of **findings** — one for each \
 purported flaw raised in the debate, each with the passage it concerns, the claim, the \
-strongest answer given to it, and a ruling of FLAW or NOT A FLAW. The overall verdict \
-was worked out from those rulings: the text counts as flawed if any finding is ruled \
-FLAW, and sound if none is.
+strongest answer given to it, and a ruling of FLAW or NOT A FLAW.
 
 You are checking that list against the record. There are exactly three things you may \
-contest, and you should raise every one you can support:
+contest:
 
 1. **a finding** — finding k is ruled the wrong way. Say which ruling it should have \
 and show, from the text under review and from the record, why.
@@ -984,6 +1008,14 @@ finding lists. Quote it from the record and quote the passage it concerns.
 are ruled differently.
 
 {arm_clause}
+
+Raise a contest only if you are certain of it: you can point to the words in the text \
+under review that show the ruling wrong, and you would stake the objection on those \
+words alone. A doubt, a point you find arguable, or a ruling you would merely have \
+written differently is not a ground, and the same holds for an omission: raise it only \
+if you are certain the point was raised by the debater arguing for a flaw and that no \
+finding covers it in substance. If you are less than certain, leave it out. A contest \
+that fails on inspection costs the ones that would have succeeded.
 
 Contest a finding on what the record and the text actually say, not on how the finding \
 is worded. Every contest must quote: a claim with nothing quoted behind it cannot be \
@@ -1021,9 +1053,7 @@ CHALLENGER_USER_FINDINGS = """\
 
 The question was whether the text in <solution> contains a flaw.
 {record_block}
-The decision reached was: {decision_phrase}
-
-The findings the decision was worked out from:
+The findings:
 
 <findings>
 {grounds}
@@ -1584,6 +1614,26 @@ Conclusion: the original text in <solution> does not contain a flaw"""
 # word. python800's texts are assessments OF programs, and without it "the text says the
 # program has a bug" gets read as "the program has a bug"; the smoke that chose the
 # object-level wording measured a variant without it contradicting itself 5 times in 19.
+# The system prompt is this arm's OWN, not the shared `RECOURSE_JUDGE_SYSTEM`, for one
+# reason: the shared one says "the decision stands unless the objection shows it to be
+# mistaken", and under this form there is no decision in front of the judge to stand or
+# fall — there is a list of findings, each of which stands or falls on its own, and the
+# verdict is derived afterwards by code from the whole list. Restating the standard per
+# FINDING is the smallest change that keeps the recourse standard identical in force
+# while removing a sentence that would have the judge ruling on something it is not
+# shown. `RECOURSE_JUDGE_SYSTEM` itself is untouched and every other arm still sends it.
+RECOURSE_JUDGE_SYSTEM_FINDINGS = """\
+You are ruling on a challenge to findings you did not make. A judge read the published \
+record and wrote a numbered list of findings, each ruling one purported flaw; a \
+stakeholder has read the record and contested some of them.
+
+Each finding stands unless the contest shows it to be mistaken. That is the standard: a \
+contest that raises a doubt without showing an error is not enough, and neither is one \
+that is merely well written. Equally, a contest that identifies a real error must be \
+upheld even if it is briefly made.
+
+Explain your reasoning, then rule on the final lines."""
+
 RECOURSE_JUDGE_USER_FINDINGS = """\
 <problem>
 {problem}
@@ -1595,11 +1645,9 @@ RECOURSE_JUDGE_USER_FINDINGS = """\
 
 The question was whether the text in <solution> contains a flaw.
 {record_block}
-The decision reached was: {decision_phrase}
-
-The decision was made by ruling on a numbered list of findings — one per purported flaw \
-raised in the record — and the verdict was worked out from those rulings: the text \
-counts as flawed if any finding is ruled FLAW, and sound if none is. This is that list:
+A judge read the record and wrote a numbered list of findings — one per purported flaw \
+raised in the record — each with the passage it concerns, the claim, the strongest \
+answer given, and a ruling of FLAW or NOT A FLAW. This is that list:
 
 <findings>
 {findings}
@@ -1613,9 +1661,8 @@ objection:
 </objection>
 
 **Rule only on the contests, one at a time, in the objection's own numbering.** You are \
-not re-judging the debate and you are not asked for a verdict: every finding the \
-objection does not contest stands exactly as it is, and what the whole list adds up to \
-is worked out afterwards from your rulings.
+not re-judging the debate: every finding the objection does not contest stands exactly \
+as it is.
 
 **Step 1 — the quotations.** For each contest, find the words it quotes in the document \
 it attributes them to: `Text says:` and `Passage:` in the text inside <solution>, \
@@ -2584,8 +2631,8 @@ purported flaw raised — the passage it concerns, the claim, the strongest answ
 and a ruling of FLAW or NOT A FLAW. A stakeholder has contested some of those findings. \
 Your job is to say, contest by contest, whether the contest is right.
 
-You are NOT ruling on the objection's manners, its length or how well it is written, and \
-you are not deciding the overall verdict. Judge each contest on what it claims.
+You are NOT ruling on the objection's manners, its length or how well it is written. \
+Judge each contest on what it claims.
 
 There are three kinds of contest and they are judged against different things.
 
@@ -2618,8 +2665,7 @@ GRADER_USER_FINDINGS = """\
 {solution}
 </solution>
 
-The question was whether the text in <solution> contains a flaw, and the decision \
-reached was: {decision_phrase}
+The question was whether the text in <solution> contains a flaw.
 
 This is the published record the decision was made from:
 
@@ -3156,7 +3202,6 @@ def build_challenger_messages(
                     problem=neutralise_tags(item.problem),
                     solution=neutralise_tags(item.solution),
                     record_block=record_block,
-                    decision_phrase=side_phrase(decision_verdict),
                     grounds=neutralise_tags(render_findings(decision_grounds)),
                     decision_instruction=CHALLENGE_DECISION_INSTRUCTION_FINDINGS,
                 ),
@@ -3352,7 +3397,11 @@ def build_recourse_judge_messages(
     described inaccurately is not ruling on the decision that was made.
 
     ``arm`` is the OBJECTION's arm — `Challenge.arm`, what the challenger was asked —
-    and it selects the template, so each arm is ruled in the form its objection has. A
+    and it selects the template, so each arm is ruled in the form its objection has. The
+    findings arm selects a system prompt of its own as well (`RECOURSE_JUDGE_SYSTEM_
+    FINDINGS`), because the shared standard is stated per DECISION and under that form
+    the judge is shown no decision — only a list whose entries stand or fall one at a
+    time. Every other arm sends `RECOURSE_JUDGE_SYSTEM` byte for byte. A
     judgment-variant objection alleges defects in the JUDGMENT, and the neutral prompt
     tells the judge to disregard the decision's reasoning, which is the only thing that
     objection is about; `RECOURSE_JUDGE_USER_JUDGMENT` explains the whole of why. Every
@@ -3414,6 +3463,10 @@ def build_recourse_judge_messages(
             )
         content = RECOURSE_JUDGE_USER_FINDINGS.format(
             findings=neutralise_tags(render_findings(judgment)), **common)
+        return [
+            {"role": "system", "content": RECOURSE_JUDGE_SYSTEM_FINDINGS},
+            {"role": "user", "content": content},
+        ]
     elif arm == JUDGMENT_VARIANT:
         if judgment is None:
             raise ValueError(
@@ -3648,7 +3701,6 @@ def build_findings_grader_messages(
                 solution=neutralise_tags(item.solution),
                 record=neutralise_tags(record),
                 findings=neutralise_tags(render_findings(findings)),
-                decision_phrase=side_phrase(decision_verdict),
                 annotation_block=annotation_block,
                 objection=neutralise_tags(objection),
                 n_contests=(f"{n_contests} numbered contest"
