@@ -78,7 +78,7 @@
 #     ----
 #     `analyse` makes none.
 #
-# MEASURED AT THE SMOKE: TBD. The per-cell figure from `outputs/fd1-smoke-cost.txt` and
+# MEASURED AT THE PILOT (60 cells, all six stages, challenger repairs included): $0.0182 per cell -> about $30 over 1,644 cells, $39 with 1.3x headroom. The per-cell figure from `outputs/fd1-smoke-cost.txt` and
 # the pilot's, times 1.3, is what PREREG §8 registers; this line is filled in before the
 # first full-run call and not before.
 #
