@@ -3931,3 +3931,145 @@ def test_the_default_judge_path_does_not_move_when_the_findings_form_is_added():
     swapped = build_judge_messages(
         item, other, dataclasses.replace(config, judge_form="findings"), transcript)
     assert swapped == findings_form
+
+
+# sha256 of every prompt the findings campaign `fd1` introduces. Every digest below is
+# byte-identical to what fd1 smoke 3 (2026-09-02, commit 2a95388) sent; a change here
+# means a re-smoke on six fresh cells and a rewrite of
+# records/experiments/findings-1/PREREG.md before any paid call.
+#
+# Pinned the way `FROZEN_PROMPTS` pins the four campaigns before it, and
+# `FROZEN_JD6_PROMPTS` the contest round, and for the same reason: `fd1` is a comparison of two JUDGE FORMS —
+# a findings list against a verdict — and the findings half is entirely new text. A
+# whitespace fix to any of these, the kind of edit that passes review, would make the
+# comparison a comparison of two instruments with nothing else in the repo noticing.
+#
+# A SEPARATE TABLE AGAIN, for the reason the jd6 table gives: each table's failure
+# message names the smoke it was frozen against, and these constants did not exist when
+# either earlier smoke ran. What all three share is the rule — the digest is recorded
+# before the first paid call, in `PREREG.md` as well as here, and it does not move
+# afterwards.
+#
+# WHAT IS PINNED, and why each kind is here:
+#
+#   * the twenty-three module constants matching `^[A-Z_]*FINDINGS[A-Z_]* = ` or
+#     `^FLAW_DEFINITION_FINDINGS` in `src/exp2/prompts.py` — the judge's four, the
+#     challenger's three, the recourse judge's four, the ruling reader's three, the
+#     grader's eight, and the flaw definition the family is built on.
+#   * the four `REPAIR_INSTRUCTIONS` entries `fd1` adds. Three of them alias a constant
+#     already pinned above, and are pinned AGAIN under their table key on purpose: the
+#     digest above catches a change to the text, this one catches a change to the
+#     WIRING — a role re-pointed at another role's repair is asked for a format its own
+#     parser then refuses, which is the exact mistake the table's own comment records.
+#   * the RENDERED system message of the findings challenger, on the jd6 precedent for
+#     splices. `CHALLENGER_SYSTEM_FINDINGS` is a template with the neutral arm clause
+#     spliced into it, and a splice is only as frozen as both halves AND the join: the
+#     clause itself is pinned by `FROZEN_ARMS`, the template by the row above, but which
+#     clause is selected, where it lands, and what the builder wraps around it are pinned
+#     by nothing else. `test_the_findings_challenger_is_told_to_raise_only_what_it_is_
+#     certain_of` asserts the ORDER of two of those pieces in prose; this pins the whole
+#     rendered message in bytes. It is built from the same dummy config and the same
+#     helpers `every_message_list` uses, so what is hashed is what that function returns
+#     for `challenger-findings`.
+FROZEN_FD1_PROMPTS = {
+    "FLAW_DEFINITION_FINDINGS":
+        "65f5f0cb06e05f959e41ad656f49f744445b98250b71e320f7177aac8d0879b9",
+    "JUDGE_SYSTEM_FINDINGS":
+        "d0ca4e5acc7363ebc860895f9d8687399cc6443c97e220a5a6f8cb4ac584dde9",
+    "JUDGE_CLOSING_FINDINGS":
+        "ed52a192937c39d85315efedaab785ba1d47f71d6b04ca49b99fa3ea5f7c26e4",
+    "JUDGE_REPAIR_FINDINGS":
+        "99a242a348bb89cf2b26cbc67ab8a36a10bd135c8edaaf6eaa2b44a5ede1def3",
+    "CHALLENGER_SYSTEM_FINDINGS":
+        "96b33b9f6e0f3850c46fb7b72f98f2afba776c6ed83be7f2dcaefba4e0073692",
+    "CHALLENGER_USER_FINDINGS":
+        "40ffc1e94a8c524950c0bd39baac0b2f72080bce5ded65cee8c3e3dfec8e16d9",
+    "CHALLENGE_DECISION_INSTRUCTION_FINDINGS":
+        "33bd972af20db73cc4870100f653992da72556685ed309303a74b21c53be5f05",
+    "RECOURSE_JUDGE_SYSTEM_FINDINGS":
+        "1acf1201aecb5dfd63631ca56d1701f70f78c1b46c4d14136949482005a2fdf3",
+    "RECOURSE_JUDGE_USER_FINDINGS":
+        "8c8dd20b5e0b4f155ae1f0c0327b160a1630feec4cdf5a9fe0299002a2308722",
+    "RECOURSE_JUDGE_CLOSING_FINDINGS":
+        "c74ecf7b8639f91e5c4d25a93e08a0edf97bf23834bf73aee77d53870e4e9109",
+    "RECOURSE_JUDGE_REPAIR_FINDINGS":
+        "42191f875ca60f0fbd6ec4649e787aec00f6ff26ff638fec6a29d9b6525100db",
+    "RULING_AGREEMENT_SYSTEM_FINDINGS":
+        "172c8351c7ff504342e0e976d0a002c11f39cb1e900da99da98cd259d01923c5",
+    "RULING_AGREEMENT_USER_FINDINGS":
+        "5e782bbbd6e633523e8f076e478b001929177ffdb500c8bb6f442162db5c93b0",
+    "RULING_AGREEMENT_REPAIR_FINDINGS":
+        "ad28d291e97f3c025fd2a914a0c22eb90f39baa4468a1e01ff1a59d01ccbfea9",
+    "GRADER_SYSTEM_FINDINGS":
+        "9a21917749671d637fe9a819bad9cd38200163fbaa7cadd87e56e07b1c87cb55",
+    "GRADER_USER_FINDINGS":
+        "699294369c788fb7cf9757ad75ea2330062a71f15bde5453116c4b2e59bcc863",
+    "GRADER_FINDINGS_ANNOTATION":
+        "6090dbad7751b94ff0375bc9b5601be42b2d647b0eed10fd30d90f0b6745b4c0",
+    "GRADER_FINDINGS_SOUND":
+        "6247b3f1d09851e22cbc508623e4cb8ea568903f4365e544f98d75a5f8b83d40",
+    "GRADER_CLOSING_FINDINGS":
+        "680408a852b87d3b1596a08a136c52a641fc7cf5341339e1e13971da740370cb",
+    "GRADER_CLOSING_FINDINGS_LOCATION_ONLY":
+        "f13d042e553f7543b0b68f29960c7afe20961be08739e6a676fe65110360fcb6",
+    "GRADER_SKIPPED_FINDINGS":
+        "17ef44f6d4b9dd00de925fc8389cbac9e382397303c7d9769edf3b5871d2a513",
+    "GRADER_CLOSING_FINDINGS_UNNUMBERED":
+        "763cedfdf23b744f2fa29ea2d2b727cea1330a39645006c47c0875b68a2975ba",
+    "GRADER_REPAIR_FINDINGS":
+        "40779cff1a88f116073148f948a1720869d3ec77bd092b98c8e13b37d289e0a1",
+    # the four wire roles: the text is pinned above, the WIRING is pinned here
+    "REPAIR_INSTRUCTIONS['judge_findings']":
+        "99a242a348bb89cf2b26cbc67ab8a36a10bd135c8edaaf6eaa2b44a5ede1def3",
+    "REPAIR_INSTRUCTIONS['recourse_judge_findings']":
+        "42191f875ca60f0fbd6ec4649e787aec00f6ff26ff638fec6a29d9b6525100db",
+    "REPAIR_INSTRUCTIONS['ruling_reader_findings']":
+        "ad28d291e97f3c025fd2a914a0c22eb90f39baa4468a1e01ff1a59d01ccbfea9",
+    "REPAIR_INSTRUCTIONS['findings_grader']":
+        "40779cff1a88f116073148f948a1720869d3ec77bd092b98c8e13b37d289e0a1",
+    # the neutral-arm splice, rendered
+    "challenger-findings system message (rendered)":
+        "1d0c2db1a155f774f289b83c1770aae562a32637752ab4b49889fc8e9686183a",
+}
+
+
+def _frozen_fd1_text(prompts, name):
+    """Resolve one `FROZEN_FD1_PROMPTS` key to the exact string it pins.
+
+    Three kinds of key, in the order the table lists them: a module constant, one
+    `REPAIR_INSTRUCTIONS` entry, and the rendered system message of the findings
+    challenger — built here from the same dummy config and the same helpers
+    `every_message_list` uses, so what is hashed is what that function returns.
+    """
+    if name == "challenger-findings system message (rendered)":
+        config, sides, item = make_config(), make_sides(), make_item()
+        record = DecisionRecord.for_debate(full_transcript(sides))
+        messages = prompts.build_challenger_messages(
+            item, dataclasses.replace(config, challenger_variant="findings",
+                                      judge_form="findings"),
+            record, sides=sides, decision_verdict=FLAWED,
+            decision_grounds="Finding 1\nRuling: FLAW")
+        return messages[0]["content"]
+    if name.startswith("REPAIR_INSTRUCTIONS["):
+        role = name[len("REPAIR_INSTRUCTIONS['"):-len("']")]
+        return prompts.REPAIR_INSTRUCTIONS[role]
+    return getattr(prompts, name)
+
+
+def test_the_findings_prompts_are_the_ones_smoke_3_ran():
+    """The digests `records/experiments/findings-1/PREREG.md` records.
+
+    The house rule is that a changed prompt is re-smoked and the pre-registration
+    rewritten before any paid call. This is the assertion that makes "the prompt is fixed
+    at the version the smoke ran" checkable rather than remembered.
+    """
+    import hashlib
+
+    from exp2 import prompts
+
+    for name, digest in FROZEN_FD1_PROMPTS.items():
+        text = _frozen_fd1_text(prompts, name)
+        actual = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        assert actual == digest, (
+            f"{name} has changed since fd1 smoke 3. If that is deliberate, re-smoke on "
+            "six fresh cells and rewrite PREREG.md before any paid call.")
