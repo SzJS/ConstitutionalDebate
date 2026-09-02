@@ -129,11 +129,16 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=REPO / "outputs")
     # `--tree` is the name; `--trees` is kept as an alias because the log of the first
     # run of this script names it, and a command in a record has to stay runnable.
-    parser.add_argument("--tree", "--trees", dest="trees", nargs="*",
-                        default=list(TREES),
-                        help="tree names under <out>/experiments, or paths. Default: "
-                             "the four smoke trees.")
+    # ACCUMULATES rather than overwrites, so `--tree a --tree b` and `--tree a b` both
+    # run both trees. With the plain `nargs="*"` the repeated form silently kept only
+    # the LAST tree, which is a summary table that looks complete and is not.
+    parser.add_argument("--tree", "--trees", dest="trees", nargs="*", action="extend",
+                        default=None,
+                        help="tree names under <out>/experiments, or paths. Repeatable. "
+                             "Default: the four smoke trees.")
     args = parser.parse_args()
+    if not args.trees:
+        args.trees = list(TREES)
 
     totals: dict[str, dict[str, int]] = {}
     verdict_changes: list[str] = []

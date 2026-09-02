@@ -3811,6 +3811,107 @@ def test_the_findings_reader_is_shown_the_lines_and_told_they_are_not_the_questi
         assert "<lines>" not in other and "Contest 1: FLAW" not in other
 
 
+def test_the_findings_reader_is_told_it_is_not_grading_the_ruling():
+    """R12g, after the pilot read. `ruling_line_mismatch` fired on 17 of the weak arm's
+    44 rulings and a hand read of five found the reader doing two things its prompt
+    permitted and its job forbids: marking INCONSISTENT because it DISAGREED ON THE
+    MERITS with a ruling whose prose does reach the answer its reasons argue for, and
+    once misreading what a `Contest k` line means. Both are now said outright, and the
+    second is also SHOWN — each contest's kind and `Should be:` beside its line."""
+    from exp2.prompts import (
+        RULING_AGREEMENT_SYSTEM_FINDINGS,
+        build_ruling_agreement_messages,
+        findings_contest_summary,
+    )
+
+    system = RULING_AGREEMENT_SYSTEM_FINDINGS
+    # (i) not asked whether the ruling is RIGHT, said in those words
+    assert "YOU ARE NOT ASKED WHETHER THE RULING IS RIGHT." in system
+    assert ("but which ends on the answer its own reasons argue for — is "
+            "CONSISTENT") in system
+    # (ii) what a line IS: the finding's ruling after the contest, not a report on
+    # whether the objection succeeded
+    assert "states the FINDING'S RULING AFTER that contest" in system
+    assert "The line does not report whether the objection succeeded" in system
+    assert "REFUSING the contest" in system
+    assert "are DEFINITE rulings" in system
+    # (iii) INCONSISTENT is a closed list of three shapes, not a description
+    assert "INCONSISTENT — ONLY in these cases" in system
+    assert "Nothing else is INCONSISTENT." in system
+    # and the recitation trap the pilot's theoremqa reading fell into
+    assert "a recitation is not the reviewer's conclusion" in system
+
+    contests = [
+        {"index": 1, "kind": "finding", "finding": 3, "should_be": "NOT A FLAW"},
+        {"index": 2, "kind": "omission"},
+        {"index": 3, "kind": "contradiction", "pair": [2, 5]},
+    ]
+    lines = "Contest 1 (Finding 3): FLAW\nContest 2 (omission): NOT AN OMISSION"
+    user = build_ruling_agreement_messages(
+        "prose", mode="findings", lines=lines, contests=contests)[1]["content"]
+    assert ("Contest 1: an objection to Finding 3, asking for it to be ruled "
+            "`NOT A FLAW`. The reviewer's line: `FLAW`") in user
+    assert ("Contest 2: a claim that a purported flaw was left out of the list "
+            "altogether. The reviewer's line: `NOT AN OMISSION`") in user
+    # a contest the judge never answered says so rather than borrowing its neighbour
+    assert ("Contest 3: a claim that Findings 2 and 5 contradict each other. The "
+            "reviewer's line: (none)") in user
+    # the lines block is still there, verbatim, beside it
+    assert f"<lines>\n{lines}\n</lines>" in user
+    # ABSENT is a stated fact, not an empty block
+    assert "(the contests were not recorded)" in build_ruling_agreement_messages(
+        "prose", mode="findings", lines=lines)[1]["content"]
+    assert findings_contest_summary(None, lines) == ""
+    assert findings_contest_summary([], lines) == ""
+    # and the other two readers are not handed one
+    for mode in ("object_level", "materiality"):
+        other = build_ruling_agreement_messages(
+            "prose", mode=mode, lines=lines, contests=contests)[1]["content"]
+        assert "<contests>" not in other and "Finding 3" not in other
+
+
+def test_a_ruling_line_in_the_wrong_vocabulary_for_its_contest_is_counted():
+    """D5 of the pilot read. `NOT AN OMISSION` answering an objection to a numbered
+    finding is a no-op in `apply_contest_lines` — the safe direction — so nothing in the
+    derivation moves with it, and until it was counted a contest disposed of by a
+    category error was indistinguishable from one never raised. 1/60 lines in the weak
+    pilot and 1/26 in the strong one."""
+    from exp2.prompts import (
+        apply_contest_lines,
+        contest_lines_from_text,
+        count_kind_mismatched_lines,
+    )
+
+    assert contest_lines_from_text(
+        "Contest 1 (Finding 2): NOT AN OMISSION\nContest 2 (omission): FLAW"
+    ) == {1: "NOT AN OMISSION", 2: "FLAW"}
+    assert contest_lines_from_text("") == {}
+
+    contests = [
+        {"index": 1, "kind": "finding", "finding": 2, "should_be": "FLAW"},
+        {"index": 2, "kind": "omission"},
+        {"index": 3, "kind": "contradiction", "pair": [1, 2]},
+    ]
+    # one per kind, each answered in a vocabulary that does not apply to it
+    assert count_kind_mismatched_lines(contests, {1: "NOT AN OMISSION"}) == 1
+    assert count_kind_mismatched_lines(contests, {2: "NOT A CONTRADICTION"}) == 1
+    assert count_kind_mismatched_lines(contests, {3: "NOT AN OMISSION"}) == 1
+    # and every word that DOES apply is not counted
+    assert count_kind_mismatched_lines(
+        contests, {1: "FLAW", 2: "NOT AN OMISSION", 3: "NOT A CONTRADICTION"}) == 0
+    assert count_kind_mismatched_lines(
+        contests, {1: "NOT A FLAW", 2: "FLAW", 3: "NOT A FLAW"}) == 0
+    # nothing to count is 0, not a crash
+    assert count_kind_mismatched_lines(None, {1: "FLAW"}) == 0
+    assert count_kind_mismatched_lines(contests, None) == 0
+    # a line for a contest that was never raised is NOT counted here: that is the
+    # condition `apply_contest_lines` refuses outright
+    assert count_kind_mismatched_lines(contests, {9: "NOT AN OMISSION"}) == 0
+    findings = [{"index": 1, "ruling": "FLAW"}, {"index": 2, "ruling": "NOT A FLAW"}]
+    assert [f["ruling"] for f in apply_contest_lines(
+        findings, contests, {1: "NOT AN OMISSION"})] == ["FLAW", "NOT A FLAW"]
+
+
 def test_every_new_findings_repair_asks_for_a_format_its_own_parser_accepts():
     """exp1 learned this the hard way and this table is where it is remembered: a role
     repaired with another role's instruction is asked for a format its parser then
@@ -4175,10 +4276,22 @@ FROZEN_FD1_PROMPTS = {
         "c74ecf7b8639f91e5c4d25a93e08a0edf97bf23834bf73aee77d53870e4e9109",
     "RECOURSE_JUDGE_REPAIR_FINDINGS":
         "42191f875ca60f0fbd6ec4649e787aec00f6ff26ff638fec6a29d9b6525100db",
+    # MOVED AFTER THE PILOT READ, by R12g (2026-09-02), and VALIDATED by re-reading the
+    # two pilots' 66 stored rulings with the new text — no pilot tree was written to and
+    # no decision-path prompt moved. `ruling_line_mismatch` fired on 17 of the weak arm's
+    # 44 rulings and a hand read of five found the reader (a) marking INCONSISTENT
+    # because it disagreed ON THE MERITS with a ruling whose prose does reach the answer
+    # its reasons argue for, and (b) once misreading what a `Contest k` line means ("'the
+    # finding stands' means the objection fails, but 'Contest 2: FLAW' suggests the
+    # objection succeeds"). The system prompt now says outright that the reader is not
+    # asked whether the ruling is right, gives INCONSISTENT as a closed list of three
+    # shapes, and states that the line is the FINDING's ruling after the contest; the
+    # user prompt shows each contest's kind and `Should be:` beside its line.
+    # (was 172c8351… and 5e782bbb…)
     "RULING_AGREEMENT_SYSTEM_FINDINGS":
-        "172c8351c7ff504342e0e976d0a002c11f39cb1e900da99da98cd259d01923c5",
+        "b9789bc8a0f518eb0e8a29054b0a12fc240456985f393aaaa8541b041df1d4cd",
     "RULING_AGREEMENT_USER_FINDINGS":
-        "5e782bbbd6e633523e8f076e478b001929177ffdb500c8bb6f442162db5c93b0",
+        "413d41ca61e3678a955c4e6ba4e9f90dfcb5033bc2197c2c0f0be7b28afd2e93",
     "RULING_AGREEMENT_REPAIR_FINDINGS":
         "ad28d291e97f3c025fd2a914a0c22eb90f39baa4468a1e01ff1a59d01ccbfea9",
     "GRADER_SYSTEM_FINDINGS":

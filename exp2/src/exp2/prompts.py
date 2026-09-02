@@ -2278,39 +2278,75 @@ def prose_conclusion_for_reading(reading: str, parent_verdict: str) -> str:
 # The residual risk is stated rather than hidden: a reader shown the lines can agree with
 # them out of deference, which makes `ruling_line_mismatch` a LOWER bound on this arm and
 # not directly comparable with the sweep's column. The analysis caveat says so.
+#
+# AND IT MOVED AGAIN AFTER THE PILOT READ (R12g, 2026-09-02). `ruling_line_mismatch` fired
+# on 17 of the weak arm's 44 rulings, and a hand read of five of them found the reader
+# doing two things its prompt permitted and its job forbids. It marked INCONSISTENT when
+# it DISAGREED ON THE MERITS with a ruling whose prose does reach the answer its reasons
+# argue for ("reasonableness and plausibility do not negate the flaw" — an argument about
+# the passage, not about the reasoning); and once it misread what the line means, saying
+# in its own words that "'the finding stands' means the objection fails, but 'Contest 2:
+# FLAW' suggests the objection succeeds". The first is answered bluntly — you are not
+# asked whether the ruling is right, and a ruling you think badly argued that ends on the
+# answer its reasons argue for is CONSISTENT — and INCONSISTENT is now given as a closed
+# list of three shapes rather than a description. The second is answered by saying what a
+# `Contest k` line IS (the FINDING's ruling after the contest, absolute, never a report on
+# whether the objection succeeded) and by SHOWING the reader each contest's kind and its
+# `Should be:` beside its line, so "kept the ruling" and "changed it" are visible facts
+# rather than an inference. The two readings coincide whenever a contest seeks FLAW and
+# invert when it seeks NOT A FLAW, which is why the weak pilot — 58/58 contests seeking
+# FLAW — hid it and the strong pilot did not. The revision was validated by RE-READING the
+# two pilots' 66 stored rulings with the new prompt (`records/derivations/
+# fd1-reread-pilot-rulings.py`); no pilot tree was written to.
 RULING_AGREEMENT_SYSTEM_FINDINGS = """\
 You are reading the reasoning a reviewer wrote while ruling on an objection, and \
-reporting whether that reasoning actually settles what it was asked to settle. You are \
-not judging whether the reviewer was right, and you are not being asked for your own \
-view — only for what this reasoning does.
+reporting one thing only: whether that reasoning ends on the rulings its own reasons \
+argue for.
 
-The reviewer was ruling on a list of contests, one at a time. Each contest is either an \
-objection to a numbered finding, a claim that a purported flaw was left out of the list, \
-or a claim that two findings contradict each other. For each one the reviewer had to \
-reach a definite ruling: the claim identifies a real flaw, or it does not; the point was \
-omitted, or it was not; the pair contradicts, or it does not.
+YOU ARE NOT ASKED WHETHER THE RULING IS RIGHT. A ruling whose reasons you find weak, \
+thin, or plainly mistaken — but which ends on the answer its own reasons argue for — is \
+CONSISTENT. Your own view of the passage, of the claim, or of the standard the reviewer \
+applied is not the question and must not enter your answer.
 
-So the reasoning is one of three things:
+WHAT THE LINES MEAN. The reviewer was ruling on a numbered list of contests. Each one \
+is either an objection to a numbered finding, a claim that a purported flaw was left \
+out of the list, or a claim that two findings contradict each other. Each `Contest k` \
+line states the FINDING'S RULING AFTER that contest: `FLAW` means the passage is now \
+found to contain a flaw, `NOT A FLAW` that it is not. For an omission or a \
+contradiction the line says whether it was real — `NOT AN OMISSION`, `NOT A \
+CONTRADICTION` — and, if it was, the ruling given. The line does not report whether the \
+objection succeeded: a line that KEEPS the finding's existing ruling is the reviewer \
+REFUSING the contest, and a line that changes it is the reviewer granting it. Beside \
+each line you are told what that contest asked for, so you can tell the two apart.
 
-CONSISTENT — it works through the contests and reaches a definite ruling on each one it \
-discusses, and its stated reasons support those rulings.
+So "the existing ruling stands", "the objection does not show the finding mistaken", \
+"this is not an omission" and similar are DEFINITE rulings, and a line that keeps the \
+existing ruling is exactly what follows from them. A reviewer who says the contest \
+fails has settled that contest, whatever words it used.
 
-INCONSISTENT — it reaches a ruling that its own reasons contradict: it argues at length \
-that a claim is right and then rules against it, or the other way round.
+Answer one of three things.
 
-NEITHER — it weighs contests without settling them, leaves rulings conditional ("if the \
-objection is right about this, then..."), discusses something else, or is too vague to \
-tell. Answer NEITHER rather than picking the closer of the other two.
+CONSISTENT — the reasoning works through the contests and ends on the lines its own \
+reasons argue for. This is the answer whenever the prose reaches an answer and the line \
+is that answer, however weakly the prose argues for it, and however much you disagree.
 
-"The existing ruling stands", "the objection does not show the finding mistaken", and \
-similar are DEFINITE rulings that a NOT A FLAW / NOT AN OMISSION / NOT A CONTRADICTION \
-line follows from. A reviewer who says the contest fails has settled that contest, \
-whatever words it used.
+INCONSISTENT — ONLY in these cases: the prose argues for one answer and the line gives \
+the other; or the prose concedes the contest ("the contest shows...", "the objection is \
+valid", "the finding is mistaken") and the line refuses it; or the prose says the \
+contest fails and the line grants it. Nothing else is INCONSISTENT.
 
-One trap to avoid. The text under review may itself be an assessment of something else — \
-a program, a proof, an argument. Reasoning that says "the finding is right that the text \
-correctly identifies the bug" is about the TEXT, not about the program, and it is a \
-definite ruling."""
+NEITHER — the reasoning weighs contests without settling them, leaves rulings \
+conditional ("if the objection is right about this, then..."), discusses something \
+else, or is too vague to tell. Answer NEITHER rather than picking the closer of the \
+other two.
+
+Two traps to avoid. First, the reviewer often RECITES a finding's own ruling and reason \
+("the finding's ruling is NOT A FLAW because...") before giving its own answer; a \
+recitation is not the reviewer's conclusion, so read to the end of what it says about \
+that contest. Second, the text under review may itself be an assessment of something \
+else — a program, a proof, an argument. Reasoning that says "the finding is right that \
+the text correctly identifies the bug" is about the TEXT, not about the program, and it \
+is a definite ruling."""
 
 RULING_AGREEMENT_USER_FINDINGS = """\
 This is a reviewer's reasoning, ruling on contests raised against a list of findings:
@@ -2319,17 +2355,24 @@ This is a reviewer's reasoning, ruling on contests raised against a list of find
 {reasoning}
 </reasoning>
 
-These are the rulings the reviewer ended on — one line per contest. They are shown so \
-you know which contests the reasoning had to settle; you are NOT being asked whether \
-they are correct:
+These are the contests it had to settle — what each one asked for, beside the line the \
+reviewer ended on for it:
+
+<contests>
+{contests}
+</contests>
+
+And these are the reviewer's closing lines, verbatim. They are shown so you know which \
+contests the reasoning had to settle; you are NOT being asked whether they are correct:
 
 <lines>
 {lines}
 </lines>
 
-Does this reasoning reach definite rulings that its own reasons support, does it reach \
-rulings its own reasons contradict, or neither? Reply on the final line exactly: \
-`Reading: CONSISTENT`, `Reading: INCONSISTENT`, or `Reading: NEITHER`."""
+Does this reasoning end on rulings its own reasons argue for, does it end on rulings \
+its own reasons contradict, or neither? You are not being asked whether the reviewer \
+was right. Reply on the final line exactly: `Reading: CONSISTENT`, \
+`Reading: INCONSISTENT`, or `Reading: NEITHER`."""
 
 RULING_AGREEMENT_REPAIR_FINDINGS = """\
 Your previous response could not be parsed. Reply with exactly one line:
@@ -2382,8 +2425,53 @@ RULING_READER_ROLES = {
 }
 
 
+def findings_contest_summary(
+    contests: Sequence[dict[str, Any]] | None, lines: str
+) -> str:
+    """One line per contest: what it asked for, beside the line the ruling gave it.
+
+    The findings reader's second failure mode, found in the pilot read of 2026-09-02 and
+    stated in its own words: "'the finding stands' means the objection fails, but
+    'Contest 2: FLAW' suggests the objection succeeds". A `Contest k` line is the
+    FINDING's ruling after the contest, so whether it refuses or grants the contest can
+    only be seen against what the contest asked for — which the reader was never shown.
+    It is shown here, mechanically, from the challenge's own parsed contests.
+
+    The line word is read back out of the ruling's own `conclusion_line` with the same
+    regex the ruling parser uses, so a contest the judge never answered says `(none)`
+    rather than borrowing its neighbour's line. Returns "" when there are no contests to
+    describe; the builder turns that into a sentence saying so, because "not recorded"
+    and "none raised" are different facts.
+    """
+    if not contests:
+        return ""
+    words = contest_lines_from_text(lines)
+    rows: list[str] = []
+    for contest in contests:
+        try:
+            index = int(contest.get("index"))
+        except (TypeError, ValueError):
+            continue
+        kind = contest.get("kind")
+        if kind == "finding":
+            asked = (f"an objection to Finding {contest.get('finding')}, asking for it "
+                     f"to be ruled `{contest.get('should_be')}`")
+        elif kind == "omission":
+            asked = ("a claim that a purported flaw was left out of the list "
+                     "altogether")
+        else:
+            pair = [str(n) for n in (contest.get("pair") or [])]
+            named = " and ".join(pair) if pair else "two findings"
+            asked = f"a claim that Findings {named} contradict each other"
+        word = words.get(index)
+        rows.append(f"Contest {index}: {asked}. The reviewer's line: "
+                    + (f"`{word}`" if word else "(none)"))
+    return "\n".join(rows)
+
+
 def build_ruling_agreement_messages(
-    reasoning: str, *, mode: str = "object_level", lines: str = ""
+    reasoning: str, *, mode: str = "object_level", lines: str = "",
+    contests: Sequence[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """The one call the ``ruling_agreement`` stage makes, over one recorded ruling.
 
@@ -2399,6 +2487,14 @@ def build_ruling_agreement_messages(
     reasoning had to settle, which the smoke of 2026-09-02 showed it could not otherwise
     know. A ruling whose lines were not recorded says so rather than showing an empty
     block, so "no lines" and "no contests" stay different facts.
+
+    ``contests`` is the objection's own parsed contest list — `Challenge.defects` under
+    this arm — and is used by the findings mode ONLY, to say beside each line what that
+    contest asked for. Without it the reader cannot tell a line that REFUSES a contest
+    from one that GRANTS it, which is the second thing the pilot read of 2026-09-02
+    caught it getting wrong. The `Ruling` record does not carry the contests, so the
+    caller loads them from the sibling `challenge.json`; where it cannot, the block says
+    the contests were not recorded rather than being silently empty.
     """
     if mode not in RULING_READER_ROLES:
         raise ValueError(f"unknown ruling-agreement mode {mode!r}")
@@ -2412,7 +2508,10 @@ def build_ruling_agreement_messages(
         {"role": "user", "content": user.format(
             reasoning=neutralise_tags(reasoning),
             lines=(neutralise_tags(lines.strip()) if lines.strip()
-                   else "(the reviewer's lines were not recorded)"))},
+                   else "(the reviewer's lines were not recorded)"),
+            contests=(neutralise_tags(summary) if (
+                summary := findings_contest_summary(contests, lines))
+                else "(the contests were not recorded)"))},
     ]
 
 
@@ -5754,6 +5853,19 @@ _CONTEST_LINE_RE = re.compile(
 )
 
 
+def contest_lines_from_text(text: str) -> dict[int, str]:
+    """``{contest index: ruling word}`` from a ruling's closing lines, best-effort.
+
+    The same regex `parse_findings_ruling_output` reads the reply with, without its
+    completeness check: it answers "what did this ruling say about contest k", which is
+    what the reader's contest block and `count_kind_mismatched_lines` need and which a
+    parser that raises on a missing line cannot be used for. A repeated index keeps the
+    LAST occurrence, as the parser does.
+    """
+    return {int(match.group(1)): match.group(3).upper()
+            for match in _CONTEST_LINE_RE.finditer(text or "")}
+
+
 def parse_findings_ruling_output(
     text: str, n_contests: int = 0
 ) -> tuple[dict[int, str], str, str]:
@@ -5858,6 +5970,53 @@ def apply_contest_lines(
                 if number in by_index:
                     by_index[number]["ruling"] = word
     return working
+
+
+# Which ruling words APPLY to which kind of contest. `apply_contest_lines` silently does
+# nothing with a word outside its contest's row — the safe direction, since a category
+# error must not move a finding — but until R12g nothing counted it, so a contest disposed
+# of by a category error was indistinguishable from one never raised. The pilot read of
+# 2026-09-02 found one in each arm (weak `python800-p02982` contest 2 and strong `gpqa-19`
+# contest 2, both finding contests answered `NOT AN OMISSION`), i.e. 1/60 and 1/26 lines.
+_RULINGS_FOR_KIND: dict[str, frozenset[str]] = {
+    "finding": frozenset(FINDING_RULINGS),
+    "omission": frozenset(FINDING_RULINGS) | {"NOT AN OMISSION"},
+    "contradiction": frozenset(FINDING_RULINGS) | {"NOT A CONTRADICTION"},
+}
+
+
+def count_kind_mismatched_lines(
+    contests: Sequence[dict[str, Any]] | None, lines: dict[int, str] | None
+) -> int:
+    """How many of this ruling's lines answered a contest in the wrong vocabulary.
+
+    `NOT AN OMISSION` on an objection to a numbered finding, `NOT A CONTRADICTION` on an
+    omission, and so on. Every such line is a no-op in `apply_contest_lines`, so this is
+    NOT a correctness bug and no number in the campaign moves with it; it is a fact about
+    the ruling prompt, and one a rate can be computed on. VOID contests are counted here
+    like any other: their lines are ignored for a different reason, and a judge that
+    answered a void contest in the wrong vocabulary made both mistakes.
+
+    A line for a contest the objection does not contain is not counted — that is the
+    condition `apply_contest_lines` REFUSES, and counting it here would report a
+    programming error as a prompt one.
+    """
+    if not contests or not lines:
+        return 0
+    by_index = {}
+    for contest in contests:
+        try:
+            by_index[int(contest.get("index"))] = contest.get("kind")
+        except (TypeError, ValueError):
+            continue
+    mismatched = 0
+    for index, word in lines.items():
+        kind = by_index.get(index)
+        if kind is None:
+            continue
+        if word not in _RULINGS_FOR_KIND.get(kind, frozenset()):
+            mismatched += 1
+    return mismatched
 
 
 def parse_findings_reading_output(text: str) -> tuple[str, str, str]:

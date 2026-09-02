@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -897,6 +898,7 @@ def mechanical_agreement(challenge: Challenge) -> Agreement:
 async def judge_ruling_prose(
     ruling: Ruling,
     *,
+    contests: Sequence[dict[str, Any]] | None = None,
     config: DebateConfig,
     grading: GradingConfig,
     client: ChatClient,
@@ -929,6 +931,15 @@ async def judge_ruling_prose(
     of their own, because it has to know how many contests the reasoning had to settle;
     what that costs is stated in `prompts.py` beside the prompt and in the analysis
     caveat.
+
+    ``contests`` is that same reader's second input, added by R12g after the pilot read:
+    the objection's own parsed contest list, so each line can be shown beside what its
+    contest ASKED for. A `Contest k` line is the finding's ruling and not a report on
+    whether the objection succeeded, and the pilot's reader said in its own words that it
+    could not tell the two apart. The `Ruling` record does not carry the contests — the
+    caller reads them off the sibling `challenge.json` — so this stays optional and the
+    block says they were not recorded where it is not passed. Inert for the other two
+    modes, whose templates have no such placeholder.
     """
     # Which question to ask is a property of the RULING, not of the config: a materiality
     # ruling's prose argues about the defect and reaches the text only by implication, so
@@ -947,7 +958,8 @@ async def judge_ruling_prose(
         # The findings reader is shown the lines it is checking against — see
         # `build_ruling_agreement_messages`. The other two modes carry no such
         # placeholder and the argument is inert for them.
-        lines=(ruling.conclusion_line or "") if findings_mode else "")
+        lines=(ruling.conclusion_line or "") if findings_mode else "",
+        contests=contests if findings_mode else None)
     (answer, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=grading.grader_model, messages=messages,

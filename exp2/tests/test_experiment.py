@@ -3178,11 +3178,27 @@ async def test_a_void_only_objection_is_not_a_phantom_and_the_record_says_why(
         next(contests.glob("cells/*/contests/*/runs/*/findings.after.json")).read_text())
     assert [f["ruling"] for f in after["findings"]] == ["FLAW", "NOT A FLAW"]
 
+    await run_stage_ruling_agreement(grid, root=contests, config=findings_config(),
+                                     grading=GradingConfig(),
+                                     client_config=client_config(), api_key="k")
+
     rows = build_index(grid, root=contests, challenger_model="strong/model",
                        decision_root=rejudged)
     assert rows[0]["challenge_contests_void_n"] == 2
     assert rows[0]["challenge_void_only"] is True
     assert rows[0]["phantom_contest"] is False
+    # R12g: `ruling_line_mismatch` IS NOT COMPUTED HERE. The ruling's verdict was derived
+    # with both of the judge's lines discarded, so the reader's reading of the prose is
+    # being compared against a conclusion the prose never argued for. The READING is kept
+    # — it is still a reading — and only the comparison is dropped, as None rather than
+    # False so that "not measurable" cannot read as "measured and consistent".
+    assert rows[0]["ruling_prose_conclusion"] is not None
+    assert rows[0]["ruling_line_mismatch"] is None
+    from exp2.analysis import funnel
+
+    metrics = funnel(rows)
+    assert metrics["rates"]["ruling_line_mismatch"]["n"] == 0
+    assert metrics["findings_contests"]["void_only_rulings_unmeasured"] == 1
 
 
 async def test_the_index_carries_every_findings_column_and_the_analysis_reads_them(
@@ -3280,6 +3296,17 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     # they are not what it is judging
     asked = "".join(m["content"] for m in no_network.sent_to("ruling_reader"))
     assert "<lines>" in asked and "Contest 1: NOT A FLAW" in asked
+    # R12g: and it was shown WHAT EACH CONTEST ASKED FOR beside its line, loaded from the
+    # sibling `challenge.json` — without which it cannot tell a line that REFUSES a
+    # contest from one that GRANTS it, which is what the pilot's reader got wrong.
+    assert ("Contest 1: an objection to Finding 1, asking for it to be ruled "
+            "`NOT A FLAW`. The reviewer's line: `NOT A FLAW`") in asked
+    assert "(the contests were not recorded)" not in asked
+    # D5 of the pilot read: a line answered in the wrong vocabulary for its contest's
+    # kind. 0 is the judge answering in the right one, and the column has to be there for
+    # that to be a fact rather than an absence.
+    assert row["ruling_lines_kind_mismatch_n"] == 0
+    assert row["ruling_line_mismatch"] is False
 
     metrics = funnel(rows)
     assert metrics["n_findings_graded"] == 2
@@ -3292,6 +3319,9 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     assert metrics["findings_contests"]["by_direction"] == {
         "to_flaw": 0, "to_not_a_flaw": 2}
     assert metrics["findings_contests"]["record_unverified"] == 0
+    assert metrics["findings_contests"]["ruling_lines_kind_mismatched"] == 0
+    assert metrics["findings_contests"]["rulings_with_a_kind_mismatched_line"] == 0
+    assert metrics["findings_contests"]["void_only_rulings_unmeasured"] == 0
     assert metrics["findings_lists"]["duplicate_passages"] == 0
     # R11b in the metrics, totalled over both cells: every fixture passage is copied out
     # of the solution exactly, so the strict count equals the lenient one and nothing is
@@ -3307,6 +3337,37 @@ async def test_the_index_carries_every_findings_column_and_the_analysis_reads_th
     # `grade_valid` here is a third kind of validity
     assert metrics["rates"]["valid_objection"]["n"] == 0
     assert metrics["rates"]["identified_flaw"]["n"] == 0
+
+
+async def test_a_ruling_line_in_the_wrong_vocabulary_is_counted_not_applied(
+    tmp_path, no_network
+):
+    """D5 of the fd1 pilot read, end to end. A contest of a numbered FINDING answered
+    `NOT AN OMISSION`: `apply_contest_lines` changes nothing, which is the safe
+    direction, and the count is what stops such a contest being indistinguishable from
+    one never raised. It happened once in each pilot arm."""
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    no_network.replies["recourse_judge_findings"] = (
+        "The list already covers it.\nContest 1 (Finding 1): NOT AN OMISSION")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+
+    after = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/findings.after.json")).read_text())
+    # nothing moved: the word does not apply to the kind, so the list is untouched
+    assert [f["ruling"] for f in after["findings"]] == ["FLAW", "NOT A FLAW"]
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert rows[0]["ruling_lines_kind_mismatch_n"] == 1
+    from exp2.analysis import funnel
+
+    metrics = funnel(rows)
+    assert metrics["findings_contests"]["ruling_lines_kind_mismatched"] == 2
+    assert metrics["findings_contests"]["rulings_with_a_kind_mismatched_line"] == 2
 
 
 async def test_an_unfound_record_quote_is_counted_and_the_contest_still_runs(

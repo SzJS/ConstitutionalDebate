@@ -57,6 +57,8 @@ from .persistence import (
     load_run_record,
 )
 from .prompts import (
+    contest_lines_from_text,
+    count_kind_mismatched_lines,
     objection_defects_fabricated_n,
     objection_fabrication_ok,
     strip_ruling_prose,
@@ -961,8 +963,9 @@ async def run_stage_ruling_agreement(
     form beside the reading so the comparison is in the record rather than in a script.
 
     It takes no ``decision_root``: everything it needs — the judge's prose, the verdict
-    the line amounted to, the parent verdict — is in ``ruling.json``. That is also what
-    makes it re-runnable over any finished tree for nothing but the grader's cents.
+    the line amounted to, the parent verdict — is in ``ruling.json``, and for a findings
+    ruling the contests it answered are in the ``challenge.json`` beside it. That is also
+    what makes it re-runnable over any finished tree for nothing but the grader's cents.
 
     The calls carry ``role="ruling_reader"``, which ``accounting.OFF_PATH_ROLES`` keeps
     out of every decision-path total. Here that rule bites harder than it does for the
@@ -991,12 +994,21 @@ async def run_stage_ruling_agreement(
             # an empty string would be a NEITHER that looked like a measurement.
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": "the ruling recorded no reasoning to read"}
+        # THE CONTESTS THE RULING ANSWERED, for the findings reader only. They live on
+        # the sibling `challenge.json` and not on the `Ruling` — the record was never
+        # asked to carry them — so they are loaded here rather than threaded through the
+        # ruling. A ruling whose challenge is missing or unreadable is still read, with
+        # the reader told the contests were not recorded: an unmeasured contest block is
+        # a worse failure than a reading made without one, and "absent" must stay a
+        # visible fact rather than an empty block that reads as "none raised".
+        contests = _read_json_or_empty(directory / "challenge.json").get("defects")
         try:
             async with OpenRouterClient(api_key, client_config,
                                         sink=_sink_to(directory / "calls.jsonl"),
                                         semaphore=semaphore) as client:
                 reading = await judge_ruling_prose(
-                    ruling, config=config, grading=grading, client=client)
+                    ruling, contests=contests if isinstance(contests, list) else None,
+                    config=config, grading=grading, client=client)
         except Exception as error:
             return {"cell_id": cell.cell_id, "status": "failed",
                     "error": f"{type(error).__name__}: {error}"}
@@ -1512,6 +1524,17 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     row["findings_after_flaw_n"] = after.get("n_flaw")
                     row["findings_added_n"] = after.get("n_added")
                     row["ruling_prose_empty"] = not (ruling.get("reasoning") or "").strip()
+                    # A LINE ANSWERED IN THE WRONG VOCABULARY — `NOT AN OMISSION` on an
+                    # objection to a numbered finding, and its two mirrors.
+                    # `apply_contest_lines` treats such a line as no change, which is the
+                    # safe direction, so nothing in the derivation moves with this column;
+                    # what it buys is that a contest disposed of by a category error stops
+                    # being indistinguishable from one never raised. 1/60 lines in the
+                    # weak pilot and 1/26 in the strong one, which is why it is a count
+                    # and not an assertion.
+                    row["ruling_lines_kind_mismatch_n"] = count_kind_mismatched_lines(
+                        challenge.defects if challenge is not None else None,
+                        contest_lines_from_text(ruling.get("conclusion_line") or ""))
                     # Whether the PUBLISHED grounds ended on a dangling lead-in that the
                     # document's strip dropped (R11a). Recorded here as well as off the
                     # `ruling_agreement.json` row below, and from the same function on
@@ -1530,7 +1553,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     # and consistent" stay different facts.
                     reading = json.loads(reading_path.read_text())
                     row["ruling_prose_conclusion"] = reading["prose_conclusion"]
-                    row["ruling_line_mismatch"] = reading["mismatch"]
+                    # NOT COMPUTED FOR A VOID-ONLY OBJECTION (R12g). `mismatch` compares
+                    # the reader's reading of the prose against the ruling's own verdict
+                    # — and where every contest was void that verdict is DERIVED with all
+                    # of the judge's lines discarded, so the comparison is against a
+                    # number the prose never argued for. The reader is not told the
+                    # contests were voided either. So the column is None here rather than
+                    # False: `_rate` and every derivation already skip a None, and "not
+                    # measurable on this row" must not read as "measured and consistent".
+                    # `ruling_prose_conclusion` above is kept, since the READING is still
+                    # a reading; it is only the comparison that has no meaning.
+                    row["ruling_line_mismatch"] = (
+                        None if row.get("challenge_void_only")
+                        else reading["mismatch"])
                     # Whether the prose handed to the reader ended on a dangling lead-in
                     # ("The final ruling for Contest 1 is:") that the strip dropped. A
                     # fact about the RULING PROMPT, not about the reader: two of three

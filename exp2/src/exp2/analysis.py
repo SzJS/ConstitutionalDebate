@@ -450,6 +450,22 @@ def _findings_contests(rows: Sequence[dict],
             r.get("findings_added_n") or 0 for r in rows),
         "rulings_with_no_prose": sum(
             1 for r in rows if r.get("ruling_prose_empty")),
+        # A RULING LINE IN THE WRONG VOCABULARY for its contest's kind — `NOT AN
+        # OMISSION` answering an objection to a numbered finding, and its mirrors. Every
+        # one of them is a no-op in `apply_contest_lines`, so no rate in this block moves
+        # with them; counted so that a contest disposed of by a category error is not
+        # indistinguishable from one never raised. Both the total and the number of
+        # rulings carrying at least one, since one ruling can make several.
+        "ruling_lines_kind_mismatched": sum(
+            r.get("ruling_lines_kind_mismatch_n") or 0 for r in rows),
+        "rulings_with_a_kind_mismatched_line": sum(
+            1 for r in rows if r.get("ruling_lines_kind_mismatch_n")),
+        # Rulings whose `ruling_line_mismatch` is deliberately NOT computed: every
+        # contest was void, so the ruling's verdict ignored the judge's lines by
+        # construction. They are out of that rate's denominator and counted here.
+        "void_only_rulings_unmeasured": sum(
+            1 for r in rows
+            if r.get("challenge_void_only") and r.get("ruling_form") is not None),
     }
 
 
@@ -486,8 +502,12 @@ def _findings_arm_caveat(rows: Sequence[dict]) -> str | None:
         "not be found still contested something, and it is counted separately under "
         "`challenge_void_only`. `ruling_line_mismatch` on this arm is a LOWER bound and "
         "not comparable with the other arms' column: the findings reader is shown the "
-        "ruling's contest lines, because it cannot otherwise tell how many contests the "
-        "reasoning had to settle, and a reader shown the lines can defer to them. "
+        "ruling's contest lines and what each contest asked for, because it cannot "
+        "otherwise tell how many contests the reasoning had to settle nor which lines "
+        "refuse a contest and which grant it, and a reader shown the lines can defer to "
+        "them. It is ABSENT, not False, on an objection every one of whose contests was "
+        "void: the ruling's verdict there is derived with all of the judge's lines "
+        "discarded, so there is no line for the prose to agree or disagree with. "
         "And `challenge_raised` is not `challenge_seeks_reversal`: a contest can be "
         "local and unable to move the verdict, and only verdict-moving outcomes enter "
         "the accuracy endpoint."
@@ -633,6 +653,13 @@ def _ruling_line_vs_prose(ruled: Sequence[dict]) -> dict[str, Any]:
     by_form: dict[str, dict[str, int]] = {}
     measured = 0
     for row in ruled:
+        # A VOID-ONLY OBJECTION HAS NO COMPARISON TO MAKE (R12g). Its ruling's verdict is
+        # derived with every one of the judge's lines discarded, so the prose is being
+        # checked against a conclusion it never argued for; `build_index` writes
+        # `ruling_line_mismatch` as None on such a row and this table drops it for the
+        # same reason, so `measured` here and the rate above stay the same denominator.
+        if row.get("challenge_void_only"):
+            continue
         prose = row.get("ruling_prose_conclusion")
         # The index carries the PARENT verdict as `verdict` and the ruling as
         # `changed_the_decision`; the line's own conclusion is what those two imply,
