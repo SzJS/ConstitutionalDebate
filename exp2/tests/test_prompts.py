@@ -3207,6 +3207,89 @@ def test_a_finding_contests_record_quote_is_optional_and_may_quote_the_findings(
     assert real_omission["void"] is False
 
 
+# A record rendered the way the harness renders one: rounds, and a speaker on every turn.
+# `CONTEST_RECORD` above is a bare sentence pair and cannot show what R10 is about, which
+# is the attribution a challenger writes INTO its quotation of a speakered document.
+CONTEST_RECORD_SPEAKERS = (
+    "Round 1:\n"
+    "  Alice: Bayes cannot apply to a joint distribution like this one.\n"
+    "  Bob: the rounding to 42 is intended and stated in the text.\n"
+    "Round 2:\n"
+    "  Alice: step four divides by zero, which nobody answered.\n"
+)
+
+
+def test_a_contests_record_quote_is_matched_by_the_house_record_matcher():
+    """R10, and the three shapes are `gemini-2.5-flash`'s own from fd1's smoke 2.
+
+    Three of the weak arm's four contests were VOID on `quote_in_record` with every span
+    they quoted present in the record: the challenger writes `Record says:` as
+    `Alice: "…" Alice: "…"` — a speaker prefix and one or more quoted spans — and the
+    record renders its turns as `Round 1:\n  Alice: …`, so the string as written is
+    nowhere. `Record says:` is therefore matched by `_record_quote_found`, the SAME rule
+    jd3's `record_quotes_in_record` gate applies to a judgment defect's record
+    quotation. `Text says:` and `Passage:` quote the solution, which has no speakers, and
+    keep plain `quote_in_text`.
+    """
+    from exp2.prompts import parse_finding_contests
+
+    findings = _parsed_findings()
+
+    def one(record_says, kind="finding", **kw):
+        head = ('1. Contests: Finding 2\n   Should be: FLAW\n'
+                '   Text says: "we then apply Bayes"\n'
+                if kind == "finding" else
+                '1. Contests: omission\n   Passage: "the sum is 42"\n')
+        return parse_finding_contests(
+            f"{head}   Record says: {record_says}\n", findings, CONTEST_SOLUTION,
+            CONTEST_RECORD_SPEAKERS, **kw)[0]
+
+    # 1. TWO PREFIXED SPANS, both really in the record — the lojban shape. Found on the
+    # quoted-span rule: the stitched string is in nothing and each span is in the record.
+    both = one('Alice: "Bayes cannot apply to a joint distribution" '
+               'Alice: "step four divides by zero"')
+    assert both["quote_in_record"] is True and both["void"] is False
+
+    # 2. THE SAME SHAPE WITH ONE SPAN INVENTED — still not found. The leniency is about
+    # where the speaker's name went, never about whether the evidence exists: an
+    # attribution wrapping one real span and one invented one is wrapping an invented one.
+    half = one('Alice: "Bayes cannot apply to a joint distribution" '
+               'Alice: "Alice conceded the whole point"')
+    assert half["quote_in_record"] is False and half["void"] is True
+
+    # 3. ONE PREFIXED SPAN — the medqa and gpqa shape, the second of them with an
+    # ellipsis stitched inside the span, which `quote_in_text` already splits.
+    single = one('Bob: "the rounding to 42 is intended"')
+    assert single["quote_in_record"] is True and single["void"] is False
+    elided = one('Alice: "Bayes cannot apply to a joint... which nobody answered"')
+    assert elided["quote_in_record"] is True and elided["void"] is False
+
+    # 4. AN UNQUOTED ATTRIBUTION — nothing is marked as quoted, so the span rule has
+    # nothing to work on and the leading `Bob: ` is stripped instead. What survives the
+    # stripping still has to be verbatim in the record, so over-stripping cannot pass.
+    stripped = one("Bob: the rounding to 42 is intended and stated in the text")
+    assert stripped["quote_in_record"] is True and stripped["void"] is False
+    assert one("Bob: the rounding to 41 was never mentioned")["quote_in_record"] is False
+
+    # 5. AN OMISSION IS THE RECORD BODY ONLY, matcher or no matcher. A finding's own
+    # words cannot show that the debate failed to raise something, so a prefixed
+    # quotation of the FINDINGS text is not found even with the findings supplied.
+    from_findings = one('Alice: "Bayes applies to any conditional probability"',
+                        kind="omission", findings_text=FINDINGS_REPLY)
+    assert from_findings["quote_in_record"] is False and from_findings["void"] is True
+    real = one('Alice: "step four divides by zero"', kind="omission",
+               findings_text=FINDINGS_REPLY)
+    assert real["quote_in_record"] is True and real["void"] is False
+
+    # 6. THE TEXT SIDE IS UNTOUCHED: the solution has no speaker to strip, so a `Text
+    # says:` written with an attribution is not found, exactly as before.
+    prefixed_text = parse_finding_contests(
+        '1. Contests: Finding 2\n   Should be: FLAW\n'
+        '   Text says: Alice: "we then apply Bayes"\n', findings, CONTEST_SOLUTION,
+        CONTEST_RECORD_SPEAKERS)[0]
+    assert prefixed_text["quote_in_text"] is False and prefixed_text["void"] is True
+
+
 def test_a_void_contest_says_which_check_it_failed():
     """R2b. The published record prints a void contest's ruling line annotated, so a
     stakeholder is never shown `Contest 1: FLAW` above a count that contradicts it. The

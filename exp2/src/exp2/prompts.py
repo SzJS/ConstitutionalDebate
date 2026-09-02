@@ -5320,20 +5320,49 @@ def _all_quotes_in(quotes: Sequence[str], source: str) -> bool:
     return bool(quotes) and all(quote_in_text(quote, source) for quote in quotes)
 
 
-def _all_quotes_in_any(quotes: Sequence[str], sources: Sequence[str]) -> bool:
+# WHY THE RECORD SIDE USES A DIFFERENT MATCHER FROM THE TEXT SIDE, and why it is the
+# matcher jd3 already wrote. `Text says:` and `Passage:` quote the SOLUTION, which has no
+# speakers; `Record says:` quotes the DEBATE, which has nothing but speakers. Asked to
+# quote a record that renders its turns as `Round 1:\n  Alice: ...`, a challenger writes
+# the attribution into the quotation and often stitches two turns together:
+#
+#     Record says: Alice: "the log was kept for 15 years" Alice: "no rule required more"
+#
+# and that string is nowhere in the record, though both halves of it are. This is not a
+# new tolerance invented for fd1: it is exactly `_record_quote_found`, the rule jd3's
+# `record_quotes_in_record` gate applies to a judgment defect's `Record says:` — strict
+# comparison first, then every substantial quoted span, then a leading attribution of up
+# to sixty characters stripped — written because 140 of the 191 record quotations that
+# failed the strict comparison on M1's first 400 gated objections failed on exactly this
+# shape. fd1's smoke 2 reproduced it on the other side of the same document: three of
+# the weak challenger's four contests were VOID on `quote_in_record` with every span they
+# quoted present in the record. A gate that voids those is measuring where the challenger
+# put the speaker's name, not whether the evidence exists — and here, unlike jd3's
+# after-the-fact gate, it is on the decision path, so it decides contests.
+#
+# The leniency is ONE-WAY and tried only after the strict comparison has already failed,
+# so nothing that passed before can start failing, and it cannot manufacture a pass:
+# every span, and whatever survives the stripping, must still be verbatim in a document.
+def _all_record_quotes_in(quotes: Sequence[str], source: str) -> bool:
+    """`_all_quotes_in` with the record matcher; an empty list is False, as there."""
+    return bool(quotes) and all(_record_quote_found(quote, source) for quote in quotes)
+
+
+def _all_record_quotes_in_any(quotes: Sequence[str], sources: Sequence[str]) -> bool:
     """Every quotation found in AT LEAST ONE of the documents; an empty list is False.
 
-    The two-document form of `_all_quotes_in`, added after the smoke of 2026-09-02. A
-    contest of a FINDING may quote under `Record says:` either a debater's words or the
-    FINDING's own words: both are documents the stakeholder was shown, and the smoke's
-    strong challenger quoted a finding's `Reason:` there to show what that finding's
-    ruling rested on — legitimate evidence about that finding, voided by a rule that
-    looked in the record body alone. Each quotation is checked against each document
+    The two-document form of `_all_record_quotes_in`, added after the smoke of
+    2026-09-02. A contest of a FINDING may quote under `Record says:` either a debater's
+    words or the FINDING's own words: both are documents the stakeholder was shown, and
+    the smoke's strong challenger quoted a finding's `Reason:` there to show what that
+    finding's ruling rested on — legitimate evidence about that finding, voided by a rule
+    that looked in the record body alone. Each quotation is checked against each document
     separately rather than against their concatenation, so a "quotation" that exists only
-    across the join of two documents is still not found.
+    across the join of two documents is still not found — and, for the same reason, a
+    stitched quotation is never re-stitched across the join either.
     """
     return bool(quotes) and all(
-        any(quote_in_text(quote, source) for source in sources if source)
+        any(_record_quote_found(quote, source) for source in sources if source)
         for quote in quotes)
 
 
@@ -5369,6 +5398,10 @@ def parse_finding_contests(
       * an **omission** must quote the record body under `Record says:` (the debate is
         where a purported flaw is either raised or not) and the solution under
         `Passage:`. Both are required.
+
+    `Record says:` is matched by `_record_quote_found` — jd3's rule for a speakered
+    document, see the comment above `_all_record_quotes_in` — and `Text says:` and
+    `Passage:` by plain `quote_in_text`, since the solution has no speaker to strip.
     """
     heads = list(_CONTEST_HEAD_RE.finditer(text))
     ruling_by_index = {int(f["index"]): f.get("ruling") for f in findings}
@@ -5407,10 +5440,11 @@ def parse_finding_contests(
             # is that None is "the check did not apply" and only False voids a contest.
             # The anchor for a finding contest is `Text says:` above.
             if record_says and (record or findings_text):
-                in_record = _all_quotes_in_any(record_says, (record, findings_text))
+                in_record = _all_record_quotes_in_any(record_says,
+                                                      (record, findings_text))
         elif kind == "omission":
             if record:
-                in_record = _all_quotes_in(record_says, record)
+                in_record = _all_record_quotes_in(record_says, record)
             if solution:
                 in_text = _all_quotes_in(passage, solution)
         else:

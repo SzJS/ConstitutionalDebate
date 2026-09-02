@@ -1664,3 +1664,702 @@ def test_jd6_reports_the_primary_table_in_the_words_of_two_after_states(capsys, 
     assert "broken" not in printed2
     # the exact test does not depend on which way the table is read
     assert out["p"] == out2["p"] == jd6.mcnemar_exact(1, 3)
+
+
+# --- findings-1: the decomposed judgment, and the local contest -------------------------
+
+
+@pytest.fixture(scope="module")
+def fd1():
+    return _load("findings-1.py")
+
+
+_FD1_FLAGS: dict = {}
+
+
+def _fd1_only(*args):
+    """Arguments that run ONLY the indexes named.
+
+    Same reason as `_jd5_only` and `_jd6_only`, and it matters more here: two of this
+    script's four defaults (`--m0`, `--jd5b`) point at COMMITTED indexes that DO exist, so
+    without this a synthetic assertion about twenty fake cells would quietly be joined
+    against jd3's 1,644 real ones.
+    """
+    named = set(args[::2])
+    argv = []
+    for _key, (flag, _default) in _FD1_FLAGS.items():
+        if flag not in named:
+            argv += [flag, "/nonexistent/index.jsonl"]
+    return list(args) + argv
+
+
+def _fd1_row(cell, *, before, after=None, subset="theoremqa",
+             label_basis="injected_pair", verdict="SOUND", **kw):
+    """One fd1 index row. Every fd1 arm is a REJUDGE, so `initially_correct` is the
+    findings judge's OWN derived verdict and `final_correct` is the state after recourse —
+    absent where nothing was ruled, which is the rule `after_of` implements."""
+    row = {"cell_id": cell, "item_id": cell.split("__")[0], "row_id": cell,
+           "subset": subset, "label_basis": label_basis, "condition": "debate",
+           "gold_flawed": verdict == "FLAWED", "verdict": verdict,
+           "judge_form": "findings", "findings_parse_mode": "strict",
+           "findings_n": 2, "findings_flaw_n": 1 if verdict == "FLAWED" else 0,
+           "initially_correct": before, "initially_incorrect": not before}
+    if after is not None:
+        row.update({"challenge_arm": "findings", "challenge_stance": "contests",
+                    "challenge_raised": True, "challenge_contests_n": 1,
+                    "challenge_contests_finding_n": 1, "challenge_contests_omission_n": 0,
+                    "challenge_contests_contradiction_n": 0,
+                    "challenge_contests_void_n": 0, "challenge_void_only": False,
+                    "challenge_seeks_reversal": True, "phantom_contest": False,
+                    "comprehension": 4, "ruling_form": "derived_findings",
+                    "ruling_prompt_form": "findings", "ruling_prose_empty": False,
+                    "ruling_line_mismatch": False, "ruling_leadin_stripped": False,
+                    "findings_after_n": 2, "findings_after_flaw_n": 1,
+                    "findings_added_n": 0,
+                    "changed_the_decision": before != after, "final_correct": after,
+                    "grade_mode": "findings", "grade_valid": True,
+                    "grade_contests_n": 1, "grade_contests_valid_n": 1,
+                    "grade_contests_mechanical_n": 0, "grade_line_mismatch": False})
+    row.update(kw)
+    return row
+
+
+def _fd1_jd5b_row(cell, *, before, after):
+    """A jd5-B row: a RERULE, so `initially_correct` is M0's and `final_correct` the
+    ruling's. Its contested set is its own, never fd1's."""
+    return {"cell_id": cell, "item_id": cell, "row_id": cell, "subset": "theoremqa",
+            "label_basis": "injected_pair", "condition": "debate", "gold_flawed": True,
+            "verdict": "SOUND", "initially_correct": before,
+            "initially_incorrect": not before, "challenge_stance": "contests",
+            "challenge_raised": True, "ruling_form": "stated_conclusion",
+            "ruling_prompt_form": "materiality",
+            "changed_the_decision": before != after, "final_correct": after}
+
+
+def _fd1_fixture(tmp_path: Path):
+    """A four-index fixture with a KNOWN P1 and a KNOWN P2.
+
+    F-weak: 20 cells right before, 1 of them broken; 10 wrong before, 6 of them fixed.
+        P1 -> McNemar(6, 1) = 0.125, a NULL with a positive net.
+        P2 -> Fisher one-sided on [[1, 19], [20, 40]] = 0.00909, which HOLDS.
+    That combination is PREREG §4's outcome (B) — the break side moved and the endpoint
+    did not — and it is chosen here because it is the one that a careless reader would
+    round to (A) or to (D).
+
+    F-strong is deliberately flat (nothing moves) so the two arms' readings differ and the
+    cross-arm disagreement line has something to say.
+    """
+    weak, strong, m0, jd5b = [], [], [], []
+    for i in range(20):
+        weak.append(_fd1_row(f"w{i:02d}__debate__r1", before=True,
+                             after=(i != 0)))
+    for i in range(10):
+        weak.append(_fd1_row(f"x{i:02d}__debate__r1", before=False,
+                             after=(i < 6), verdict="FLAWED"))
+    for i in range(30):
+        strong.append(_fd1_row(f"{'w' if i < 20 else 'x'}{i % 20:02d}__debate__r1",
+                               before=i < 20, after=i < 20))
+    for row in weak:
+        m0.append({"cell_id": row["cell_id"], "item_id": row["item_id"],
+                   "row_id": row["cell_id"], "subset": row["subset"],
+                   "label_basis": row["label_basis"], "condition": "debate",
+                   "gold_flawed": True, "verdict": "SOUND",
+                   "initially_correct": True, "initially_incorrect": False,
+                   "challenge_raised": True})
+    for i in range(60):
+        jd5b.append(_fd1_jd5b_row(f"j{i:02d}__debate__r1", before=True, after=i >= 20))
+    for i in range(20):
+        jd5b.append(_fd1_jd5b_row(f"k{i:02d}__debate__r1", before=False, after=i < 10))
+
+    paths = {}
+    for name, rows in (("weak", weak), ("strong", strong), ("m0", m0), ("jd5b", jd5b)):
+        paths[name] = tmp_path / f"{name}.jsonl"
+        _write(paths[name], rows)
+    return paths
+
+
+def _fd1_argv(paths, *extra):
+    return _fd1_only("--weak", str(paths["weak"]), "--strong", str(paths["strong"]),
+                     "--m0", str(paths["m0"]), "--jd5b", str(paths["jd5b"]), *extra)
+
+
+def test_fd1_imports_its_statistics_rather_than_copying_them(jd4, jd5, jd6, fd1):
+    """`findings-1.py` prints `fixed | wrong` and `broken | right` BESIDE jd5-B's, in one
+    write-up, on populations that overlap cell for cell. A definition that drifted between
+    the two files would be invisible, so it re-exports jd6's objects — which are jd5's,
+    which are jd4's — and this asserts IDENTITY, not equality of results."""
+    _FD1_FLAGS.clear()
+    _FD1_FLAGS.update(fd1.ARM_FLAGS)
+    assert fd1.mcnemar_exact is fd1.jd6.mcnemar_exact
+    assert fd1.wilson is fd1.jd6.wilson
+    assert fd1.paired_block is fd1.jd6.paired_block
+    assert fd1.load is fd1.jd6.load
+    assert fd1.restrict is fd1.jd6.restrict
+    assert fd1.conditional_rates is fd1.jd6.jd5.conditional_rates
+    assert fd1.jd6.jd5.jd4.__file__ == jd4.__file__, "the same file, one chain up"
+    assert fd1.ALPHA == jd6.ALPHA == jd5.ALPHA == jd4.ALPHA == 0.05
+    for b, c in ((0, 0), (1, 0), (3, 10), (7, 7)):
+        assert fd1.mcnemar_exact(b, c) == jd4.mcnemar_exact(b, c)
+
+
+def test_fd1_fisher_one_sided_matches_the_hand_computation(fd1):
+    """The 2x2 `[[3, 7], [6, 4]]`. Conditioning on both margins, the count in the top-left
+    cell is Hypergeometric(n=20, K=9, N=10) and the LOWER tail is
+
+        P(X <= 3) = [ C(10,0)C(10,9) + C(10,1)C(10,8) + C(10,2)C(10,7) + C(10,3)C(10,6) ]
+                    / C(20,9)
+                  = [ 1*10 + 10*45 + 45*120 + 120*210 ] / 167960
+                  = [ 10 + 450 + 5400 + 25200 ] / 167960
+                  = 31060 / 167960
+                  = 0.1849249821386...
+
+    Written out here rather than delegated to the function under test, which is the whole
+    point of the check. There is NO scipy in this repo and this is the arithmetic that
+    would otherwise be taken on trust.
+    """
+    assert fd1.fisher_one_sided(3, 7, 6, 4) == pytest.approx(31060 / 167960)
+    assert fd1.fisher_one_sided(3, 7, 6, 4) == pytest.approx(0.18492498213860442,
+                                                             abs=1e-12)
+    # the two tails OVERLAP at k = a (both include it), so they sum to more than 1 — which
+    # is what makes this a one-sided test and not half of a two-sided one
+    upper = fd1.fisher_one_sided(3, 7, 6, 4, alternative="greater")
+    assert upper == pytest.approx(0.9651107406525363, abs=1e-12)
+    assert upper + fd1.fisher_one_sided(3, 7, 6, 4) > 1.0
+    # a table with no signal at all: the lower tail cannot be small
+    assert fd1.fisher_one_sided(5, 5, 5, 5) > 0.5
+    # and the direction is the one P2 asks about: fewer in the top-left is a SMALLER p
+    assert fd1.fisher_one_sided(1, 9, 6, 4) < fd1.fisher_one_sided(3, 7, 6, 4)
+
+
+def test_fd1_fisher_refuses_what_it_cannot_compute(fd1):
+    with pytest.raises(ValueError):
+        fd1.fisher_one_sided(-1, 1, 1, 1)
+    with pytest.raises(ValueError):
+        fd1.fisher_one_sided(1, 1, 1, 1, alternative="two-sided")
+    # an empty table is 1.0 and not a crash: an arm with no before-RIGHT cells has to
+    # print NOT RUN, not raise inside a table
+    assert fd1.fisher_one_sided(0, 0, 0, 0) == 1.0
+
+
+def test_fd1_newcombe_matches_the_hand_computation(fd1):
+    """Newcombe's method 10 on 56/70 against 48/80, worked through by hand.
+
+        p1 = 0.8   Wilson [0.691830, 0.876952]
+        p2 = 0.6   Wilson [0.490453, 0.700383]
+        d  = 0.2
+        lower = 0.2 - sqrt((0.8 - 0.691830)^2 + (0.700383 - 0.6)^2) = 0.052429
+        upper = 0.2 + sqrt((0.876952 - 0.8)^2 + (0.6 - 0.490453)^2) = 0.333875
+
+    The interval is asymmetric about the difference, which is the whole reason it is used
+    instead of a Wald interval: at the small counts P2's second denominator can reach, a
+    Wald interval runs off the end of [-1, 1] and its coverage collapses.
+    """
+    low, high = fd1.newcombe_diff(56, 70, 48, 80)
+    assert low == pytest.approx(0.0524287, abs=1e-6)
+    assert high == pytest.approx(0.3338749, abs=1e-6)
+    assert high - 0.2 != pytest.approx(0.2 - low, abs=1e-3), "it is not symmetric"
+
+    # it is built out of the SAME Wilson every other rate in the campaign is printed with
+    l1, u1 = fd1.wilson(56, 70)
+    l2, u2 = fd1.wilson(48, 80)
+    assert low == pytest.approx(0.8 - 0.6 - math.sqrt((0.8 - l1) ** 2 + (u2 - 0.6) ** 2))
+    assert high == pytest.approx(0.8 - 0.6 + math.sqrt((u1 - 0.8) ** 2 + (0.6 - l2) ** 2))
+
+    # equal rates put 0 inside, and the interval is clamped to [-1, 1]
+    low, high = fd1.newcombe_diff(10, 20, 10, 20)
+    assert low < 0 < high
+    assert fd1.newcombe_diff(0, 1, 1, 1)[0] >= -1.0
+    assert fd1.newcombe_diff(1, 1, 0, 1)[1] <= 1.0
+
+
+def test_fd1_reads_the_before_and_after_states_out_of_the_right_columns(fd1):
+    """EVERY fd1 ARM IS A REJUDGE, which is what makes this file's accessors simpler than
+    jd6's and no less load-bearing: `initially_correct` is the FINDINGS JUDGE's own derived
+    verdict, `final_correct` is the state after recourse, and `source_correct` — jd3-M0's
+    decision — is never read here. M0 comes from its OWN index, where `initially_correct`
+    is M0's decision and `final_correct` is what jd3's M1 audit did to it.
+    """
+    row = {"initially_correct": True, "final_correct": False,
+           "source_correct": False, "ruling_form": "derived_findings"}
+    assert fd1.before_of(row) is True
+    assert fd1.after_of(row) is False
+    assert fd1.was_ruled(row) is True
+
+    # a cell nobody ruled on keeps the decision it had, and is not "ruled"
+    assert fd1.after_of({"initially_correct": True, "final_correct": None}) is True
+    assert fd1.was_ruled({"initially_correct": True}) is False
+
+    # M0's own index: the DECISION, never the audited state
+    m0 = {"verdict": "SOUND", "initially_correct": True, "final_correct": False}
+    assert fd1.m0_of(m0) is True
+    assert fd1.m0_verdict_of(m0) == "SOUND"
+
+
+def test_fd1_void_only_is_the_second_denominator_and_has_a_fallback(fd1):
+    """PREREG §2's second denominator. An objection made ENTIRELY of mechanically void
+    contests cannot break anything by construction — `apply_contest_lines` ignores its
+    ruling lines — so the break rate is reported over both denominators and neither can be
+    chosen after the table.
+
+    `challenge_void_only` is the column, added 2026-09-02; an index written before it
+    existed carries the same fact in two counts, and the fallback is asserted here because
+    the smoke indexes on disk are exactly such indexes.
+    """
+    assert fd1.void_only({"challenge_void_only": True}) is True
+    assert fd1.void_only({"challenge_void_only": False}) is False
+    # the fallback, off the two counts
+    assert fd1.void_only({"challenge_contests_n": 2, "challenge_contests_void_n": 2}) is True
+    assert fd1.void_only({"challenge_contests_n": 2, "challenge_contests_void_n": 1}) is False
+    assert fd1.void_only({"challenge_contests_n": 0, "challenge_contests_void_n": 0}) is False
+    # no list at all is a DIFFERENT fact from "all of them were void"
+    assert fd1.void_only({}) is None
+
+    contested = {"challenge_raised": True}
+    assert fd1.well_formed({**contested, "challenge_void_only": False}) is True
+    assert fd1.well_formed({**contested, "challenge_void_only": True}) is False
+    assert fd1.well_formed({**contested}) is True, "unknown is not void"
+    assert fd1.well_formed({"challenge_raised": False}) is False
+
+
+def test_fd1_arm_rates_agree_with_the_shared_conditional_rates(fd1, tmp_path):
+    """`arm_rates` is `jd4.conditional_rates` with a filter, and it must stay that way:
+    these two numbers are printed side by side with jd5-B's in one table."""
+    rows = {f"c{i}": _fd1_row(f"c{i}", before=i < 6, after=(i in (0, 6, 7)))
+            for i in range(10)}
+    mine = fd1.arm_rates(rows)
+    theirs = fd1.conditional_rates(rows)
+    for key in ("fixed", "n_wrong", "broken", "n_right"):
+        assert mine[key] == theirs[key], key
+    assert mine["n"] == theirs["n"]
+
+    # and the filter is what makes one function serve all three denominators
+    only_one = fd1.arm_rates(rows, only=lambda r: r["cell_id"] == "c0")
+    assert only_one["n"] == 1 and only_one["n_right"] == 1
+
+
+def test_fd1_the_comparator_is_recomputed_and_asserted_in_one_place(fd1):
+    """PREREG §0's comparator, recomputed from the COMMITTED jd5-B index rather than typed
+    in — and then asserted, so a drift is loud. 167/622 = 26.8% and 144/274 = 52.6% are
+    what §3ac's table, jd5's CHECKLIST and this campaign's PREREG all quote."""
+    rows = fd1.load(DERIVATIONS.parent.parent / "records" / "experiments" /
+                    "judgment-debate-5" / "arm-real" / "index.jsonl")
+    assert len(rows) == 1644
+    cells = {c for c, r in rows.items() if fd1.contested(r)}
+    assert len(cells) == 896
+    stats = fd1.jd5b_rates(rows, cells)
+    assert stats == {"fixed": 144, "n_wrong": 274, "broken": 167, "n_right": 622,
+                     "n": 896}
+    assert fd1.JD5B_EXPECTED == {"broken": 167, "n_right": 622, "fixed": 144,
+                                 "n_wrong": 274}
+    note = fd1.check_jd5b(stats, len(rows))
+    assert "matches the published" in note
+
+    # a drift is an ERROR and not a footnote
+    with pytest.raises(AssertionError) as caught:
+        fd1.check_jd5b({**stats, "broken": 168}, len(rows))
+    assert "DRIFTED" in str(caught.value)
+
+    # a fixture or a slice SKIPS the assertion, loudly, rather than failing
+    skipped = fd1.check_jd5b({"broken": 1, "n_right": 2, "fixed": 1, "n_wrong": 2}, 12)
+    assert "SKIPPED" in skipped
+
+
+def test_fd1_the_identity_row_is_the_one_from_LLM_NOTES(fd1):
+    """§3ac: recourse does not lower accuracy iff `f / b >= a / (1 - a)`, and the
+    break-even accuracy is `a* = f / (f + b)` where f and b are RATES.
+
+    jd5-B's published row is f 52.6%, b 26.8%, f/b 1.96, a* 66%, on cells whose accuracy
+    is 622/896 = 69%. That row is reproduced here from the counts, because the one way to
+    get this table wrong is to put COUNTS where the identity wants rates.
+    """
+    row = fd1.identity_row({"fixed": 144, "n_wrong": 274, "broken": 167, "n_right": 622,
+                            "n": 896})
+    assert row["n"] == 896
+    assert row["a"] == pytest.approx(622 / 896, abs=1e-6)
+    assert row["f"] == pytest.approx(0.5255, abs=1e-3)
+    assert row["b"] == pytest.approx(0.2685, abs=1e-3)
+    assert row["f_over_b"] == pytest.approx(1.96, abs=0.01)
+    assert row["a_star"] == pytest.approx(0.662, abs=0.01)
+    assert row["net"] == 144 - 167 == -23
+    # the mechanism hurts because a (69%) sits ABOVE its own break-even (66%)
+    assert row["a"] > row["a_star"]
+    assert row["f_over_b"] < row["odds"]
+
+    # an empty denominator is n/a and never a crash or a zero
+    empty = fd1.identity_row({"fixed": 0, "n_wrong": 0, "broken": 0, "n_right": 0, "n": 0})
+    assert empty["a"] is None and empty["f"] is None and empty["b"] is None
+
+
+def test_fd1_names_the_outcome_by_prereg_rule_and_never_rounds(fd1):
+    """PREREG §4's four names, and the rule that governs all four.
+
+    "POSITIVE" is a SIGNIFICANT gain and not a positive net: an arm that fixes three more
+    than it breaks at p = 0.6 has shown nothing, and calling that positive is exactly the
+    rounding §4's last sentence forbids.
+    """
+    assert fd1.p1_reading(+9, 0.01) == "POSITIVE"
+    assert fd1.p1_reading(-9, 0.01) == "NEGATIVE"
+    assert fd1.p1_reading(+9, 0.60) == "NULL"
+    assert fd1.p1_reading(+9, 0.05) == "NULL", "alpha is a strict inequality"
+    assert fd1.p1_reading(0, 1.0) == "NULL"
+
+    assert fd1.named_outcome("POSITIVE", True)[0] == "(A)"
+    assert fd1.named_outcome("NULL", True)[0] == "(B)"
+    assert fd1.named_outcome("NEGATIVE", True)[0] == "(B)"
+    assert fd1.named_outcome("POSITIVE", False)[0] == "(C)"
+    assert fd1.named_outcome("NULL", False)[0] == "(D)"
+    assert fd1.named_outcome("NEGATIVE", False)[0] == "(D)"
+    # before the arm has run there is no outcome, and that is not an error
+    assert fd1.named_outcome("NULL", None)[0] == "(not computable)"
+
+    source = (DERIVATIONS / "findings-1.py").read_text(encoding="utf-8")
+    assert "SPLITS ARE REPORTED AS SPLITS" in source
+    assert "[PRIMARY]" in source and "[CO-PRIMARY]" in source
+    assert "[ABLATION — NOT AN ENDPOINT]" in source
+    assert "[REPORTED, NOT TESTED]" in source
+    assert "UNPAIRED" in source
+
+
+def test_fd1_runs_end_to_end_and_prints_every_section(tmp_path, capsys, fd1):
+    """The whole file over a synthetic pair of arms with a KNOWN P1 and a KNOWN P2.
+
+    F-weak breaks 1 of 20 right cells and fixes 6 of 10 wrong ones, so P1 is
+    McNemar(6, 1) = 0.125 — a NULL with a positive net — and P2 is Fisher one-sided on
+    [[1, 19], [20, 40]] = 0.00909, which HOLDS. That is PREREG §4's outcome (B), the one a
+    careless reader would round to (A) or to (D), and the assertion is that the file names
+    it (B) and says why.
+    """
+    _FD1_FLAGS.clear()
+    _FD1_FLAGS.update(fd1.ARM_FLAGS)
+    paths = _fd1_fixture(tmp_path)
+    assert fd1.main(_fd1_argv(paths)) == 0
+    out = capsys.readouterr().out
+
+    for header in ("(0) THE LOSSES, THE PARSE AND THE FORMAT",
+                   "(1) P1 — DOES RECOURSE ON A DECOMPOSED JUDGMENT RAISE ACCURACY?",
+                   "(2) P2 — DOES THE LOCAL CONTEST BREAK FEWER RIGHT DECISIONS?",
+                   "THE PAIRED 2x2 ON THE INTERSECTION",
+                   "(3) P3 — THE FIX SIDE",
+                   "(4) RECORDED, NOT TESTED",
+                   "(4a) THE FINDINGS JUDGE AGAINST jd3-M0",
+                   "(4b) ACCURACY AFTER RECOURSE AGAINST M0",
+                   "(4c) §3ac's IDENTITY, PER MECHANISM",
+                   "(4d) THE TWO RATES SPLIT BY BEFORE-VERDICT",
+                   "(4e) THE OBJECTION ITSELF",
+                   "(4f) VALIDITY, BY KIND AND BY `label_basis`",
+                   "(4g) THE RULING",
+                   "(5) THE PRE-REGISTERED READING"):
+        assert header in out, header
+
+    # P1: the 2x2 and the exact p, as `paired_block` prints them
+    assert "b = 6" in out and "c = 1" in out
+    assert "NET                                    +5 cells" in out
+    assert f"p = {0.125:.6g}" in out
+    # P2: the Fisher p, both denominators, and the Newcombe interval beside it
+    assert f"p = {0.00909041037682113:.6g}" in out
+    assert "P2 HOLDS" in out
+    assert out.count("DENOMINATOR:") == 2
+    assert "Newcombe 95%" in out
+    # the comparator is a fixture here, so the published-number assertion is SKIPPED
+    assert "SKIPPED" in out
+    # and the outcome is named, not rounded
+    assert "NAMED OUTCOME FOR F-WEAK: (B)" in out
+    assert "SPLITS ARE REPORTED AS SPLITS" in out
+    # the two arms read differently, and that is reported rather than resolved
+    assert "P1 is NULL" in out
+
+
+def test_fd1_the_two_denominators_are_both_printed_and_differ(tmp_path, capsys, fd1):
+    """A void-only objection cannot break anything by construction, so it belongs in one
+    denominator and not the other. Both are printed, ALWAYS, because dropping the void
+    cells silently makes the mechanism look worse and keeping them silently makes it look
+    safer."""
+    _FD1_FLAGS.clear()
+    _FD1_FLAGS.update(fd1.ARM_FLAGS)
+    paths = _fd1_fixture(tmp_path)
+    # turn ten of F-weak's right cells into void-only objections that broke nothing
+    rows = [json.loads(line) for line in paths["weak"].read_text().splitlines()]
+    for row in rows:
+        if row["cell_id"].startswith("w") and row["cell_id"] < "w10__":
+            row["challenge_void_only"] = True
+            row["challenge_contests_void_n"] = row["challenge_contests_n"]
+    _write(paths["weak"], rows)
+
+    assert fd1.main(_fd1_argv(paths)) == 0
+    out = capsys.readouterr().out
+    section = out.split("(2) P2 —")[1].split("THE PAIRED 2x2")[0]
+    blocks = section.split("DENOMINATOR:")
+    assert len(blocks) == 3
+    # the first denominator keeps all 20 right cells, the second only the 10 well-formed
+    assert "        20" in blocks[1]
+    assert "        10" in blocks[2]
+
+
+def test_fd1_runs_on_missing_indexes_and_says_not_run(capsys, fd1):
+    """It is written before either arm exists and has to be runnable then — that is how a
+    derivation gets reviewed before it can be tuned to the numbers it will produce."""
+    _FD1_FLAGS.clear()
+    _FD1_FLAGS.update(fd1.ARM_FLAGS)
+    assert fd1.main(_fd1_only()) == 0
+    out = capsys.readouterr().out
+    assert "NOT RUN" in out
+    assert "NOTHING TO DERIVE" in out
+    assert "is not an error" in out
+
+
+def test_fd1_is_stdlib_only_like_every_other_derivation(fd1):
+    source = (DERIVATIONS / "findings-1.py").read_text(encoding="utf-8")
+    for banned in ("import numpy", "import scipy", "import pandas",
+                   "from scipy", "import statsmodels", "from exp2"):
+        assert banned not in source, banned
+
+
+def test_fd1_the_defaults_name_the_committed_indexes(fd1):
+    """Two of the four defaults are committed files that DO exist, which is why every
+    synthetic test in this module overrides all four."""
+    assert fd1.ARM_FLAGS["m0"][1] == (
+        "records/experiments/judgment-debate-3/arm-M0-M1/index.jsonl")
+    assert fd1.ARM_FLAGS["jd5b"][1] == (
+        "records/experiments/judgment-debate-5/arm-real/index.jsonl")
+    for key in ("m0", "jd5b"):
+        assert (DERIVATIONS.parent.parent / fd1.ARM_FLAGS[key][1]).is_file(), key
+    for key in ("weak", "strong"):
+        assert fd1.ARM_FLAGS[key][1].startswith("records/experiments/findings-1/")
+
+
+def test_fd1_scan_reads_the_repairs_and_the_per_contest_grades(tmp_path, fd1):
+    """The two facts PREREG §3 wants that no index column carries: the format repairs at
+    each call site, and validity PER CONTEST with its kind (`grade_contests_valid_n` is an
+    objection-level count and cannot be split afterwards).
+
+    The scan is walked by the DECISION run, not by `grade.json`, so a cell that was decided
+    and then lost its contest still appears with its judge columns — "the judge wrote a
+    list and the challenger call failed" is a fact PREREG §6's loss rule needs.
+    """
+    def cell(name, *, contest=True):
+        decision = tmp_path / "cells" / name / "runs" / "r0"
+        decision.mkdir(parents=True)
+        (decision / "verdict.json").write_text(json.dumps({
+            "verdict": "SOUND", "parse_mode": "strict", "repair_attempts": 1,
+            "finish_reason": "stop"}), encoding="utf-8")
+        (decision / "findings.json").write_text(json.dumps({
+            "parse_mode": "strict", "n_findings": 3}), encoding="utf-8")
+        if not contest:
+            return
+        run = tmp_path / "cells" / name / "contests" / "flash" / "runs" / "r0"
+        run.mkdir(parents=True)
+        (run / "challenge.json").write_text(json.dumps({
+            "parse_mode": "salvaged", "repair_attempts": 2}), encoding="utf-8")
+        (run / "ruling.json").write_text(json.dumps({
+            "parse_mode": "strict", "repair_attempts": 0}), encoding="utf-8")
+        (run / "grade.json").write_text(json.dumps({"parse_mode": "strict", "contests": [
+            {"index": 1, "kind": "finding", "valid": True, "mechanical": False},
+            {"index": 2, "kind": "omission", "valid": False, "mechanical": True}]}),
+            encoding="utf-8")
+
+    cell("decided-and-contested")
+    cell("lost-its-contest", contest=False)
+    rows = {r["cell_id"]: r for r in fd1.scan_tree(tmp_path)}
+
+    assert set(rows) == {"decided-and-contested", "lost-its-contest"}
+    got = rows["decided-and-contested"]
+    assert got["judge_repairs"] == 1 and got["challenge_repairs"] == 2
+    assert got["ruling_repairs"] == 0
+    assert got["grade_contests"] == [
+        {"kind": "finding", "valid": True, "mechanical": False},
+        {"kind": "omission", "valid": False, "mechanical": True}]
+    lost = rows["lost-its-contest"]
+    assert lost["judge_parse_mode"] == "strict"
+    assert "grade_contests" not in lost, "a lost contest is absent, not empty"
+
+
+# --- fd1-handcheck-pick: the cells a person reads --------------------------------------
+
+
+@pytest.fixture(scope="module")
+def fd1_pick():
+    return _load("fd1-handcheck-pick.py")
+
+
+def _pick_tree(root: Path, rows):
+    """A run tree with an index and one decision + contest directory per cell."""
+    root.mkdir(parents=True, exist_ok=True)
+    _write(root / "index.jsonl", rows)
+    for row in rows:
+        cell = row["cell_id"]
+        decision = root / "cells" / cell / "runs" / "r0"
+        decision.mkdir(parents=True)
+        (decision / "transcript.md").write_text("decision", encoding="utf-8")
+        contest = root / "cells" / cell / "contests" / "flash" / "runs" / "r0"
+        contest.mkdir(parents=True)
+        (contest / "transcript.md").write_text("contest", encoding="utf-8")
+        (contest / "challenge.json").write_text(
+            json.dumps({"text": row.pop("_argument", "")}), encoding="utf-8")
+
+
+def test_fd1_pick_draws_the_five_groups_and_writes_a_parseable_file(tmp_path, capsys,
+                                                                    fd1_pick, fd1):
+    """The pick file is READ BY `fd1-collect-records.py`, so its format is load-bearing:
+    `## (x)` headings and ``- **`cell`** [arm]`` lines. It scores nothing — a person reads
+    the documents — so what is asserted here is the SELECTION and the FORMAT."""
+    weak = [
+        # broke a right decision, and fixed a wrong one
+        _fd1_row("broke__debate__r1", before=True, after=False),
+        _fd1_row("fixed__debate__r1", before=False, after=True, verdict="FLAWED"),
+        # an appended finding, and an empty list
+        _fd1_row("appended__debate__r1", before=True, after=True, findings_added_n=1),
+        _fd1_row("empty__debate__r1", before=True, after=None, findings_n=0,
+                 findings_flaw_n=0, challenge_stance="agrees", challenge_raised=False),
+        # a STANDS with a real Argument — group (e)'s second blind spot
+        _fd1_row("stands__debate__r1", before=True, after=None,
+                 challenge_stance="declined", challenge_raised=False),
+    ]
+    strong = [_fd1_row(row["cell_id"], before=True, after=None,
+                       verdict="FLAWED" if row["cell_id"].startswith("broke") else "SOUND")
+              for row in weak]
+    for row in weak:
+        row["_argument"] = "the findings miss the point about finding 2 entirely"
+    _pick_tree(tmp_path / "weak", weak)
+    _pick_tree(tmp_path / "strong", strong)
+
+    assert fd1_pick.main(["--weak", str(tmp_path / "weak"),
+                          "--strong", str(tmp_path / "strong")]) == 0
+    out = capsys.readouterr().out
+
+    for group in ("## (a)", "## (b)", "## (c)", "## (d)", "## (e1)", "## (e2)"):
+        assert group in out, group
+    assert "- **`broke__debate__r1`** [weak]" in out
+    assert "- **`fixed__debate__r1`** [weak]" in out
+    assert "- **`appended__debate__r1`** [weak]" in out
+    assert "- **`empty__debate__r1`** [weak]" in out
+    # (d) is the ONLY group that names both arms on one cell
+    assert "- **`broke__debate__r1`** [both]" in out
+    # the STANDS half of the phantom read reads the challenge text, which no column carries
+    assert "Argument 52 chars" in out
+    # it scores nothing and says so
+    assert "it scores nothing" in out
+    assert "for READING, never for counting" in out
+
+
+def test_fd1_pick_says_an_empty_pool_is_a_reading(tmp_path, capsys, fd1_pick):
+    """A group with nothing in it is a finding — "recourse broke no right decision" — and
+    it is printed as one rather than left as a silent gap."""
+    _pick_tree(tmp_path / "weak", [_fd1_row("only__debate__r1", before=True, after=True)])
+    _pick_tree(tmp_path / "strong", [_fd1_row("only__debate__r1", before=True, after=True)])
+    assert fd1_pick.main(["--weak", str(tmp_path / "weak"),
+                          "--strong", str(tmp_path / "strong")]) == 0
+    out = capsys.readouterr().out
+    assert "*The pool is empty.*" in out
+    assert "That is itself a reading" in out
+
+
+def test_fd1_pick_runs_before_either_arm_exists(tmp_path, capsys, fd1_pick):
+    assert fd1_pick.main(["--weak", str(tmp_path / "none"),
+                          "--strong", str(tmp_path / "none")]) == 0
+    out = capsys.readouterr().out
+    assert "NOTHING TO PICK" in out
+    assert "is not an error" in out
+
+
+def test_fd1_pick_is_seeded_per_group_and_reproducible(fd1_pick):
+    """Per-group seeds, so a re-draw of one group does not move the others. A shared seed
+    would make re-picking (a) silently change which twenty cells were read for (e)."""
+    assert set(fd1_pick.SEEDS) == {"a", "b", "c", "d", "e-reverse", "e-stands"}
+    assert len(set(fd1_pick.SEEDS.values())) == len(fd1_pick.SEEDS)
+    pool = [f"c{i:03d}" for i in range(200)]
+    first = fd1_pick.sample(pool, fd1_pick.SEEDS["a"], 5)
+    assert first == fd1_pick.sample(pool, fd1_pick.SEEDS["a"], 5)
+    assert first != fd1_pick.sample(pool, fd1_pick.SEEDS["b"], 5)
+    assert first == sorted(first) and len(first) == 5
+    # a pool no bigger than the draw comes back whole, in order
+    assert fd1_pick.sample(["b", "a"], 1, 5) == ["a", "b"]
+
+
+# --- fd1-collect-records: what carries the evidence into git ---------------------------
+
+
+@pytest.fixture(scope="module")
+def fd1_collect():
+    return _load("fd1-collect-records.py")
+
+
+def test_fd1_collect_parses_the_pick_file_the_pick_script_writes(tmp_path, fd1_collect):
+    """The two files are coupled by ONE format, and it is the coupling most likely to rot:
+    the pick script writes `## (x)` headings and ``- **`cell`** [arm]`` lines, and this
+    script has to find every cell in them. Group (e) is written as `(e1)` and `(e2)` — the
+    two blind spots of PREREG §7's phantom instrument — and both belong under `e`."""
+    pick = tmp_path / "pick.md"
+    pick.write_text("\n".join([
+        "# findings-1 — the cells to read by hand",
+        "",
+        "## (a) recourse BROKE a right decision",
+        "",
+        "- **`alpha__debate__r1`** [weak] — a note",
+        "  - weak decision: `somewhere`",
+        "## (d) F-weak and F-strong DISAGREE on the before-verdict",
+        "- **`delta__debate__r1`** [both] — another note",
+        "## (e1) ten REVERSE objections",
+        "- **`echo__debate__r1`** [strong]",
+        "## (e2) ten STANDS with a non-empty Argument",
+        "- **`foxtrot__debate__r1`** [weak]",
+    ]), encoding="utf-8")
+
+    got = fd1_collect.wanted_cells(pick)
+    assert ("a", "weak", "alpha__debate__r1") in got
+    # [both] becomes ONE triple per arm, because each arm has its own documents
+    assert ("d", "weak", "delta__debate__r1") in got
+    assert ("d", "strong", "delta__debate__r1") in got
+    # (e1) and (e2) both land under (e)
+    assert ("e", "strong", "echo__debate__r1") in got
+    assert ("e", "weak", "foxtrot__debate__r1") in got
+    assert len(got) == 5
+
+
+def test_fd1_collect_copies_both_documents_for_every_hand_checked_cell(tmp_path,
+                                                                      capsys,
+                                                                      fd1_collect):
+    """This campaign's DECISION document is the one that carries the findings list, so a
+    hand check that saw only the contest would be reading the objection without the thing
+    it objects to. Both runs come across, named apart."""
+    out = tmp_path / "outputs"
+    tree = out / "experiments" / "fd1-weak"
+    (tree).mkdir(parents=True)
+    (tree / "index.jsonl").write_text("{}\n", encoding="utf-8")
+    (tree / "metrics.json").write_text("{}", encoding="utf-8")
+    decision = tree / "cells" / "alpha__debate__r1" / "runs" / "r0"
+    decision.mkdir(parents=True)
+    for name in ("transcript.md", "transcript_full.md", "verdict.json", "findings.json"):
+        (decision / name).write_text("x", encoding="utf-8")
+    contest = (tree / "cells" / "alpha__debate__r1" / "contests" / "flash" / "runs" / "r0")
+    contest.mkdir(parents=True)
+    for name in ("transcript.md", "ruling.json", "findings.after.json", "grade.json"):
+        (contest / name).write_text("y", encoding="utf-8")
+    (out / "fd1-handcheck-pick.md").write_text(
+        "## (a) broke\n- **`alpha__debate__r1`** [weak]\n", encoding="utf-8")
+    records = tmp_path / "records"
+
+    assert fd1_collect.main(["--out", str(out), "--records", str(records),
+                             "--weak-tree", "fd1-weak", "--strong-tree", "fd1-strong",
+                             "--create"]) == 0
+    printed = capsys.readouterr().out
+    names = {p.name for p in (records / "transcripts").glob("*")}
+    assert "a__weak__alpha__debate__r1__decision__transcript.md" in names
+    assert "a__weak__alpha__debate__r1__decision__findings.json" in names
+    assert "a__weak__alpha__debate__r1__contest__transcript.md" in names
+    assert "a__weak__alpha__debate__r1__contest__findings.after.json" in names
+    assert (records / "arm-weak" / "index.jsonl").is_file()
+    # PREREG.md and run-all.sh were committed before the first paid call, and this script
+    # says so rather than quietly leaving them out
+    assert "PREREG.md and run-all.sh" in printed
+    assert not (records / "PREREG.md").exists()
+    assert not (records / "run-all.sh").exists()
+
+
+def test_fd1_collect_refuses_a_records_directory_that_does_not_exist(tmp_path,
+                                                                     capsys,
+                                                                     fd1_collect):
+    """A typo in `--records` must not silently make a new tree beside the real one."""
+    assert fd1_collect.main(["--out", str(tmp_path), "--records",
+                             str(tmp_path / "typo")]) == 1
+    assert "does not exist" in capsys.readouterr().out
+    assert not (tmp_path / "typo").exists()
