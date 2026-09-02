@@ -238,7 +238,8 @@ def render_run_record(directory: Path) -> str:
 # document that presented such an objection as a contest which failed would be
 # describing a contest that never happened. What replaced the detection is the
 # `agreement` stage, which reads the prose rather than the label.
-def _objection_section(challenge: dict) -> list[str]:
+def _objection_section(challenge: dict,
+                       parent_verdict: dict | None = None) -> list[str]:
     stance = challenge.get("stance") or (
         "contests" if challenge.get("raised", True) else "declined")
     text = _quote(challenge.get("text", ""))
@@ -265,6 +266,19 @@ def _objection_section(challenge: dict) -> list[str]:
                  "it wanted.** No ruling was sought, and the contest is excluded from "
                  "the rates rather than counted either way. What they wrote:", "",
                  text, ""]
+    elif (challenge.get("arm") == "findings"
+          and parent_verdict is not None
+          and claimed == parent_verdict.get("verdict")):
+        # THE FINDINGS ARM'S LOCAL CONTEST. Here `claimed_verdict` is DERIVED from the
+        # contests rather than read off the decision line, so it can equal the decision's
+        # own verdict — an objection that contests one finding among several, correctly,
+        # and still leaves the verdict where it was. Printing "they say the verdict
+        # should be FLAWED" over a FLAWED decision would tell a stakeholder their
+        # objection asked for nothing, which is the opposite of what it did.
+        lines = [f"*Raised by a stakeholder who read only the record above. They "
+                 f"contest the findings below; granting every one of them would still "
+                 f"leave the verdict **{claimed}**, so the objection is about the "
+                 f"reasoning rather than about the answer.*", "", text]
     else:
         lines = [f"*Raised by a stakeholder who read only the record above. They say "
                  f"the verdict should be **{claimed}**.*", "", text]
@@ -314,6 +328,34 @@ def _exchange_section(exchange: dict[str, Any], ruling: dict[str, Any] | None) -
     return "\n".join(lines)
 
 
+def _findings_outcome_lines(ruling: dict[str, Any],
+                            after: dict[str, Any] | None) -> list[str]:
+    """The judge's contest rulings, and what they did to the list.
+
+    Printed from the RULING's own `conclusion_line` and from `findings.after.json`, not
+    re-derived here: the document's whole claim is that a reader can check the verdict
+    against the sentences it came from, and a renderer that recomputed the derivation
+    would be showing them its own arithmetic instead of the judge's.
+    """
+    lines: list[str] = []
+    stated = (ruling.get("conclusion_line") or "").strip()
+    if stated:
+        lines += ["", "**The judge ruled on each contest:**", "", _quote(stated)]
+    if not after:
+        return lines
+    added = [f for f in (after.get("findings") or []) if f.get("added_at_recourse")]
+    if added:
+        lines += ["", f"**{len(added)} finding(s) were added at recourse**, built from "
+                      "the objection's own quotations because the judge agreed a "
+                      "purported flaw had been left out of the list:", ""]
+        for finding in added:
+            lines.append(f"- *{finding.get('ruling')}* — "
+                         f"{finding.get('claim') or finding.get('passage') or ''}")
+    lines += ["", f"The list now holds {after.get('n_findings')} finding(s), of which "
+                  f"{after.get('n_flaw')} are ruled FLAW."]
+    return lines
+
+
 def render_recourse_record(directory: Path) -> str:
     """The published document for a contest: the decision, the objection, the outcome."""
     manifest = _read(directory, "run.json") or {}
@@ -337,7 +379,7 @@ def render_recourse_record(directory: Path) -> str:
     if challenge is None:
         parts.append("## The objection\n\n*No objection was recorded.*\n")
     else:
-        parts += _objection_section(challenge)
+        parts += _objection_section(challenge, parent_verdict)
 
     exchange = _read(directory, "recourse_transcript.json")
     if exchange is not None and exchange.get("turns"):
@@ -352,6 +394,18 @@ def render_recourse_record(directory: Path) -> str:
         if ruling.get("form") == "uphold_overturn":
             lines.append("*Ruled on by a judge who did not make the original decision. "
                          "The decision stood unless the objection showed it mistaken.*")
+        elif ruling.get("form") == "derived_findings":
+            # The account a stakeholder is handed of how their objection was heard, and
+            # here it has to say something no other form has to: the judge did not state
+            # a verdict at all. It ruled on each contest, those rulings were written into
+            # the findings list, and the verdict was worked out by counting. A reader who
+            # was told only "upheld" would have no way to check that, so the lines, the
+            # appended findings and the count are all printed below.
+            lines.append("*Ruled on by a judge who did not make the original decision. "
+                         "The judge ruled on each contest separately; the findings were "
+                         "updated with those rulings and the verdict was re-derived from "
+                         "the whole list — the text counts as flawed if any finding is "
+                         "ruled FLAW.*")
         elif ruling.get("form") == "stated_conclusion":
             # The same judge and the same standard; what changed is that it is no longer
             # asked for the relative word. Said plainly here because this sentence is the
@@ -370,6 +424,9 @@ def render_recourse_record(directory: Path) -> str:
         grounds = (ruling.get("reasoning") or "").strip()
         if grounds:
             lines += ["", "**Grounds given:**", "", _quote(grounds)]
+        if ruling.get("form") == "derived_findings":
+            lines += _findings_outcome_lines(ruling, _read(directory,
+                                                           "findings.after.json"))
         lines += ["", f"**Verdict now:** "
                       f"{_VERDICT_PHRASE.get(ruling['verdict'], ruling['verdict'])}.", ""]
         parts.append("\n".join(lines))

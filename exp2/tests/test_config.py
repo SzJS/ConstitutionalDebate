@@ -329,10 +329,24 @@ def test_the_challenger_variant_defaults_to_neutral_and_is_validated():
     assert CHALLENGER_VARIANTS == ("neutral", "partisan_advocate", "partisan_assigned",
                                    "partisan_auditor", "judgment",
                                    "judgment_specious", "judgment_fabricated",
-                                   "placeholder")
+                                   "placeholder", "findings")
     for variant in CHALLENGER_VARIANTS:
+        # `findings` is the one variant with a cross-check: it contests numbered findings
+        # by index, so it needs a judge that wrote some. Passing `judge_form` here rather
+        # than exempting the variant, so the loop still covers every name.
+        extra = {"judge_form": "findings"} if variant == "findings" else {}
         assert DebateConfig(
-            **debate_kwargs(challenger_variant=variant)).challenger_variant == variant
+            **debate_kwargs(challenger_variant=variant,
+                            **extra)).challenger_variant == variant
+    # And the cross-check itself: a findings challenger against a verdict judge is
+    # refused at config time, where the spec is approved from, rather than at the contest
+    # stage after the judgments are paid for.
+    with pytest.raises(ConfigError) as excinfo:
+        DebateConfig(**debate_kwargs(challenger_variant="findings"))
+    assert "needs judge_form='findings'" in str(excinfo.value)
+    with pytest.raises(ConfigError) as excinfo:
+        DebateConfig(**debate_kwargs(judge_form="prose"))
+    assert "judge_form must be one of" in str(excinfo.value)
     with pytest.raises(ConfigError) as excinfo:
         DebateConfig(**debate_kwargs(challenger_variant="partisan"))
     assert "challenger_variant must be one of" in str(excinfo.value)
@@ -353,16 +367,36 @@ def test_the_config_vocabulary_and_the_prompt_clauses_cannot_drift():
     is the same mode plus a different spliced clause, and `placeholder` has no prompt at
     all — it makes no call.
     """
-    from exp2.config import CHALLENGER_VARIANTS, JUDGMENT_FAMILY, JUDGMENT_VARIANT
+    from exp2.config import (
+        CHALLENGER_VARIANTS,
+        FINDINGS_VARIANT,
+        JUDGMENT_FAMILY,
+        JUDGMENT_VARIANT,
+    )
     from exp2.prompts import (
         CHALLENGER_ARMS,
+        CHALLENGER_SYSTEM_FINDINGS,
         CHALLENGER_SYSTEM_JUDGMENT,
         CHALLENGER_SYSTEM_JUDGMENT_FABRICATED,
         CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS,
     )
 
-    assert set(CHALLENGER_ARMS) | set(JUDGMENT_FAMILY) == set(CHALLENGER_VARIANTS)
+    # FIVE names are deliberately not in the clause table: `JUDGMENT_FAMILY`'s four and
+    # `findings`. The last is a MODE for the same reason `judgment` is — its challenger
+    # contests a numbered list rather than taking a standpoint on a verdict, so it has a
+    # system prompt of its own — and it is deliberately NOT in `JUDGMENT_FAMILY`, because
+    # it alleges no defect in a judgment and every consumer of `Challenge.defects` gated
+    # on `JUDGMENT_VARIANT` must go on refusing its list.
+    assert (set(CHALLENGER_ARMS) | set(JUDGMENT_FAMILY) | {FINDINGS_VARIANT}
+            == set(CHALLENGER_VARIANTS))
     assert not set(CHALLENGER_ARMS) & set(JUDGMENT_FAMILY)
+    assert FINDINGS_VARIANT not in JUDGMENT_FAMILY
+    assert FINDINGS_VARIANT not in CHALLENGER_ARMS
+    # The findings challenger reuses the NEUTRAL clause verbatim rather than carrying one
+    # of its own: the arm under test is the neutral standpoint, and a retyped paragraph
+    # would make "the standpoint did not move" a claim a reader has to diff.
+    assert CHALLENGER_ARMS["neutral"] in CHALLENGER_SYSTEM_FINDINGS.format(
+        arm_clause=CHALLENGER_ARMS["neutral"], length_rule="")
     assert JUDGMENT_VARIANT in CHALLENGER_VARIANTS
     assert CHALLENGER_SYSTEM_JUDGMENT  # the prompt that stands in for the missing clause
     assert CHALLENGER_SYSTEM_JUDGMENT_SPECIOUS  # and the control's spliced copy of it

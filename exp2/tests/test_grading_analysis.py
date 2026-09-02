@@ -100,6 +100,10 @@ async def test_a_judgment_objection_is_graded_against_the_record_not_the_annotat
         (1, "misstatement", True)]
     assert client.calls[0]["meta"]["role"] == "judgment_grader"
     assert "judgment_grader" in OFF_PATH_ROLES
+    # Its sibling, added with the findings arm: a new grader wire role that is NOT in
+    # this set would be billed to the condition it grades, and a grader that can inflate
+    # its own subject is measuring itself.
+    assert "findings_grader" in OFF_PATH_ROLES
     # the record and the judgment reached the prompt; the annotation did not
     sent = "".join(m["content"] for m in client.calls[0]["messages"])
     assert "Alice: step 2 holds." in sent and "Bob conceded step 2." in sent

@@ -77,6 +77,7 @@ from .config import (
     CLIENT_WHY,
     GRADING_WHY,
     FABRICATED_VARIANT,
+    FINDINGS_VARIANT,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
     SPECIOUS_VARIANT,
@@ -225,7 +226,14 @@ def print_estimate(grid, config: DebateConfig,
                     if config.extend_rounds and transcripts_from is not None else 0)
     # One short grader call per contest whose decision line parsed — the line-vs-prose
     # instrument. Bounded by the grid because every cell can produce at most one.
-    agreement = 0 if contests_from is not None else len(grid)
+    # ZERO for the findings arm: that stage makes NO call there. The objection's argument
+    # is a numbered list the harness already parsed, so line-vs-prose is a string
+    # comparison (`recourse.mechanical_agreement`) rather than a grader reading. Quoting
+    # a per-cell grader call for a stage that spends nothing would overstate the bill at
+    # the moment it is being agreed to.
+    agreement = (0 if contests_from is not None
+                 or config.challenger_variant == FINDINGS_VARIANT
+                 else len(grid))
     # One per ruling: the judge's line read against the judge's own prose.
     ruling_agreement = ruling
     # One per CONTESTED source cell, and only where a gate model is named: the M4
@@ -249,8 +257,14 @@ def print_estimate(grid, config: DebateConfig,
     # a `quote_check_only` grade with NO wire call, so the grader is called only on the
     # objections the manipulation failed on. Quoting the smaller number here would be
     # quoting a number that is only right if the arm succeeds.
+    # The FINDINGS arm takes the judgment grading term for the same reason: every
+    # contested cell is graded there too — sound items and correct decisions included —
+    # because two of its three contest kinds are graded against the record and the third
+    # is settled by the label on a sound item. It is an UPPER bound, like the fabricated
+    # arm's: an objection whose every contest is void or settled by the label is graded
+    # with no wire call at all (`grading._grade_findings`).
     judgment = config.challenger_variant in (JUDGMENT_VARIANT, SPECIOUS_VARIANT,
-                                             FABRICATED_VARIANT)
+                                             FABRICATED_VARIANT, FINDINGS_VARIANT)
     placeholder = config.challenger_variant == PLACEHOLDER_VARIANT
     gradable = (0 if contests_from is not None
                 else len(grid) if judgment
@@ -309,6 +323,18 @@ def print_estimate(grid, config: DebateConfig,
               f"\"{config.challenger_variant}\"` grades every cell whose objection "
               "contests, against the RECORD rather than the recorded flaw — so the "
               "annotation gates that hold the ordinary grading term down do not apply.")
+    if config.challenger_variant == FINDINGS_VARIANT:
+        print("the AGREEMENT term is 0 and that is not an omission: under the findings "
+              "arm the line-vs-prose instrument is MECHANICAL — the objection's "
+              "argument is a numbered list this harness parses, so `phantom_contest` is "
+              "`(stance == contests) != (well-formed contests > 0)`, a string "
+              "comparison rather than a grader reading. It is never pooled with the "
+              "Haiku column of the judgment campaigns. The DECISION term buys a "
+              "findings judgment per stored transcript: the judge writes a numbered "
+              "list and NO verdict line, and the verdict is derived by code (FLAWED iff "
+              "any finding is ruled FLAW). A list that will not parse buys one format "
+              "repair and then fails its cell, exactly as a malformed verdict does, and "
+              "both count against the arm's parse rate.")
     if config.challenger_variant == FABRICATED_VARIANT:
         # The one arm whose grading term is an upper bound rather than a forecast, and
         # the reader agreeing to the spend has to know which: a working fabricated arm
@@ -533,12 +559,29 @@ def main(argv: list[str] | None = None) -> int:
     # name that promised an audit.
     stated_variant = spec.get("debate", {}).get("challenger_variant")
     if stated_variant is None and any(word in name for word in
-                                      ("partisan", "judgment", "fabricated")):
+                                      ("partisan", "judgment", "fabricated",
+                                       "findings", "fd1")):
         raise SystemExit(
             f"this spec is named {name!r} but sets no `challenger_variant`, so it would "
             f"run the neutral challenger — `challenger_variant` defaults to "
             f"{config.challenger_variant!r}. Set it in the spec's [debate] table to one "
             f"of {CHALLENGER_VARIANTS[1:]}, or rename the spec."
+        )
+    # AND THE SECOND HALF OF THE SAME TRAP, for the findings campaign only. `judge_form`
+    # defaults to "verdict" — the historical value, so specs written before the field
+    # existed still mean what they ran — which makes the failure silent exactly where it
+    # costs most: a spec called `fd1-weak` with `judge_form` commented out would run the
+    # ORDINARY judge, write prose verdicts into `outputs/experiments/fd1-weak/`, and then
+    # fail every contest for want of a `findings.json` — after paying for 1,644
+    # judgments. `DebateConfig` refuses `challenger_variant = "findings"` without it, so
+    # this catches the other order: a findings-named spec that states neither.
+    stated_form = spec.get("debate", {}).get("judge_form")
+    if stated_form is None and any(word in name for word in ("findings", "fd1")):
+        raise SystemExit(
+            f"this spec is named {name!r} but sets no `judge_form`, so its judge would "
+            f"write a prose verdict — `judge_form` defaults to "
+            f"{config.judge_form!r}. Set `judge_form = \"findings\"` in the spec's "
+            "[debate] table, or rename the spec."
         )
 
     cases = load_cases(Path(spec["cases"]))

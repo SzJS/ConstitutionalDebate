@@ -39,6 +39,7 @@ from .client import ChatClient
 from .debate import _turn_from_completion
 from .config import (
     FABRICATED_VARIANT,
+    FINDINGS_VARIANT,
     JUDGMENT_FAMILY,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
@@ -48,6 +49,7 @@ from .config import (
     arm_for_variant,
 )
 from .engine import DebateFailure, _complete_with_repair
+from .persistence import load_findings
 from .prompts import (
     build_agreement_messages,
     build_challenger_messages,
@@ -69,10 +71,17 @@ from .prompts import (
     parse_agreement_output,
     parse_comprehension_output,
     parse_defects,
+    parse_finding_contests,
+    parse_findings_reading_output,
+    parse_findings_ruling_output,
     parse_objection_output,
     parse_ruling_agreement_materiality_output,
     parse_ruling_agreement_output,
     parse_ruling_output,
+    apply_contest_lines,
+    claimed_verdict_for_contests,
+    derive_verdict,
+    prose_conclusion_for_findings_reading,
     prose_conclusion_for_reading,
     ruling_prompt_form,
     parse_verdict_output,
@@ -216,6 +225,39 @@ async def generate_challenge(
     decision = record.verdict.verdict
     stance = challenge_stance(word)
     claimed = claimed_verdict_for(word, decision)
+    # THE FINDINGS ARM'S CONTEST LIST, and its claimed verdict, which is DERIVED.
+    #
+    # `findings.json` is loaded from the decision directory rather than re-parsed out of
+    # the judge's raw reply: the harness's parse is what every number in this arm is
+    # built on, and a second parse here could disagree with it — the challenger would
+    # then be contesting a finding 3 that is not the finding 3 the ruling applies to.
+    # Its ABSENCE is loud (`DebateFailure`), not a silent empty list: a decision made
+    # under the verdict form has no findings to contest, `DebateConfig` already refuses
+    # that combination, and a cell that reached here without one is a wiring bug that
+    # would otherwise produce a whole tree of objections against nothing.
+    contests: list[dict[str, Any]] = []
+    if config.challenger_variant == FINDINGS_VARIANT:
+        stored = load_findings(record.directory)
+        if stored is None:
+            raise DebateFailure(
+                f"{record.directory.name}: the findings challenger needs "
+                "`findings.json` beside the decision it contests, and there is none. A "
+                "decision made under `judge_form = \"verdict\"` has no numbered "
+                "findings to contest."
+            )
+        contests = parse_finding_contests(
+            text, stored.get("findings") or [],
+            solution=record.item.solution,
+            record=record.challenger_view().body,
+        )
+        # The claimed verdict is what the objection would produce if every well-formed
+        # contest were granted, re-derived from the whole list — not the complement of
+        # the decision. Under this arm `Decision: REVERSE` says only that something was
+        # contested, and a contest can be entirely local and unable to move the verdict
+        # (PREREG §5d). `claimed_verdict_for` would report a reversal the objection never
+        # asked for.
+        claimed = (claimed_verdict_for_contests(stored.get("findings") or [], contests)
+                   if stance == "contests" else claimed)
     challenge = Challenge(
         text=text, origin="generated", raised=(stance == "contests"),
         # The arm the objection is RULED as. Read off the config rather than
@@ -245,7 +287,15 @@ async def generate_challenge(
         # `quote_in_judgment` is settled here, at the moment the objection is read,
         # against the very text the challenger was shown. Deciding it later would mean
         # re-deriving that text from the tree and hoping the derivation matched.
-        defects=(parse_defects(text, record.decision_grounds)
+        # Two different lists in one field, told apart by the arm and never read
+        # together: judgment defects under `JUDGMENT_FAMILY`, findings contests under
+        # `findings`. Every consumer of `defects` is gated on `JUDGMENT_VARIANT` and the
+        # new ones on `FINDINGS_VARIANT`, so neither can be handed the other's shape.
+        # Running either parser over every arm would put an empty column on thousands of
+        # neutral rows and, worse, could pick a stray `Type:` or `Contests:` out of a
+        # stakeholder's prose and report it as an audited defect.
+        defects=(contests if config.challenger_variant == FINDINGS_VARIANT
+                 else parse_defects(text, record.decision_grounds)
                  if config.challenger_variant in JUDGMENT_FAMILY else []),
         claimed_verdict=claimed, stance=stance,
         # Unreachable with one line, and recorded as False rather than dropped: a
@@ -611,9 +661,85 @@ async def hear_exchange(
     return own
 
 
+async def _rule_findings_by_judge(
+    record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient,
+    *, writer: Any | None = None,
+) -> Ruling:
+    """The findings arm's ruling: per contest, absolute, and the verdict re-derived.
+
+    **The judge is never asked for a verdict, and never for UPHOLD/OVERTURN.** It answers
+    one line per contest in the findings' own vocabulary — `Contest 1 (Finding 3): FLAW`
+    — `apply_contest_lines` writes those rulings into the list, and `derive_verdict`
+    re-derives the verdict from the whole list, contested findings and uncontested ones
+    together. UPHOLD/OVERTURN is then the comparison of that with the parent, computed
+    here, and `Ruling.__post_init__` re-derives it and refuses the record if the two ever
+    disagree — the same invariant every other form satisfies.
+
+    That is the `stated_conclusion` change of 2026-08-27 taken one step further. There
+    the judge still had to state a fact about the whole text; here it states a fact about
+    one claim about one passage, which is the smallest question this experiment has put
+    to a recourse judge and the one furthest from the vocabulary collision that made the
+    relative word unreliable (8 contradictions in 12 hand-checked rulings).
+
+    ``n_contests`` is bound into the parser so a MISSING line is a parse failure: the
+    lines are the ruling, and a gap would silently leave a contested finding standing on
+    a ruling nobody wrote. It buys the one format repair — repair role
+    `recourse_judge_findings`, wire role `recourse_judge`, so accounting is untouched —
+    and then fails the cell.
+
+    `findings.after.json` is written beside `ruling.json` so a reader can check the
+    derivation by counting rather than take it on trust.
+    """
+    stored = load_findings(record.directory) or {}
+    findings = stored.get("findings") or []
+    contests = list(challenge.defects or [])
+    messages = build_recourse_judge_messages(
+        record.item, record.sides, record.challenger_view(),
+        decision_verdict=record.verdict.verdict, objection=challenge.text,
+        judgment=record.decision_grounds, arm=challenge.arm,
+    )
+    n_contests = len(contests)
+
+    def parse(text: str):
+        return parse_findings_ruling_output(text, n_contests)
+
+    (lines, reasoning, parse_mode), completion, repairs, _, _ = (
+        await _complete_with_repair(
+            client, model=config.recourse_judge_model_for(), messages=messages,
+            temperature=config.judge_temperature, config=config,
+            meta={"role": "recourse_judge", "speaker": None, "round": None,
+                  "purpose": "rule"},
+            parse=parse, role="recourse_judge_findings",
+            word_limit=config.word_limit,
+        )
+    )
+    after = apply_contest_lines(findings, contests, lines)
+    parent = record.verdict.verdict
+    verdict = derive_verdict(after)
+    word = "UPHOLD" if verdict == parent else "OVERTURN"
+    if writer is not None:
+        writer.record_findings_after(after, verdict=verdict, parent_verdict=parent,
+                                     contest_lines=lines)
+    return Ruling(
+        form="derived_findings", ruling=word, protocol=config.recourse_protocol,
+        prompt_form=ruling_prompt_form(challenge.arm),
+        parent_verdict=parent, verdict=verdict, parse_mode=parse_mode,
+        # The judge's own lines, joined, so a reader of one `ruling.json` can check the
+        # derived verdict against the sentences it was derived from — the same reason
+        # `stated_conclusion` records its `Conclusion:` line.
+        conclusion_line="\n".join(
+            f"Contest {index}: {lines[index]}" for index in sorted(lines)),
+        raw=completion.content, call_id=completion.call_id,
+        finish_reason=completion.finish_reason,
+        correct=(verdict == record.item.gold_verdict), repair_attempts=repairs,
+        reasoning=reasoning, native_reasoning=completion.reasoning,
+        reasoning_withheld=completion.reasoning_withheld,
+    )
+
+
 async def _rule_by_judge(
     record: Any, challenge: Challenge, config: DebateConfig, client: ChatClient,
-    *, exchange: Transcript | None = None,
+    *, exchange: Transcript | None = None, writer: Any | None = None,
 ) -> Ruling:
     """A third party states its conclusion; UPHOLD/OVERTURN is derived from it.
 
@@ -656,6 +782,9 @@ async def _rule_by_judge(
     so a `recourse_transcript.json` that were ever edited afterwards would no longer
     match the ruling that was made from it.
     """
+    if challenge.arm == FINDINGS_VARIANT:
+        return await _rule_findings_by_judge(record, challenge, config, client,
+                                             writer=writer)
     # `arm` is the OBJECTION's arm and not the config's variant. A re-rule pass reads
     # finished objections out of another tree, so the config in front of it need not be
     # the one that wrote them; keying on the challenge is what makes each objection ruled
@@ -701,6 +830,40 @@ async def _rule_by_judge(
     )
 
 
+def mechanical_agreement(challenge: Challenge) -> Agreement:
+    """The findings arm's line-vs-prose reading, computed rather than bought.
+
+    The `agreement` stage exists because the challenger's `Decision:` line is one relative
+    token and nothing mechanical could check it against the prose that followed. Under
+    this arm something mechanical CAN: the objection's argument is a numbered list, the
+    parser reads it, and "did this reply actually contest anything" is
+    `n_well_formed > 0` — a string comparison a reader can redo, not a grader's opinion.
+    So no call is made, and `phantom_contest` becomes exactly the disagreement between
+    the line and the list: REVERSE with nothing well formed under it, or STANDS with a
+    contest under it.
+
+    It is a real `Agreement`, so `agrees`, `phantom_contest` and every consumer are
+    unchanged, and `parse_mode` says `mechanical` rather than borrowing one of the
+    parser's names — nothing was parsed here, because nothing was generated. It is NEVER
+    pooled with the Haiku column of jd3–jd6: the two measure different things and the
+    analysis caveat says so.
+
+    Its two blind spots are stated in PREREG §7 and scored by hand rather than papered
+    over: a well-formed contest whose `Why` argues the finding is RIGHT, and a STANDS
+    whose prose attacks a finding without writing an entry.
+    """
+    well_formed = sum(1 for contest in (challenge.defects or [])
+                      if not contest.get("void"))
+    stance = "WRONG" if well_formed else "RIGHT"
+    return Agreement(
+        prose_stance=stance,
+        line_word={"contests": REVERSE, "declined": STANDS}.get(challenge.stance),
+        reasoning=(f"mechanical: {well_formed} well-formed contest"
+                   f"{'' if well_formed == 1 else 's'} in the objection's own list"),
+        model="", parse_mode="mechanical", raw="", call_id="", finish_reason=None,
+    )
+
+
 async def judge_ruling_prose(
     ruling: Ruling,
     *,
@@ -739,17 +902,19 @@ async def judge_ruling_prose(
     # finished tree — or a mixed one — is always asked the question its rulings answer.
     mode = ruling.prompt_form
     materiality = mode == "materiality"
+    findings_mode = mode == "findings"
     messages = build_ruling_agreement_messages(
         strip_decision_lines(ruling.reasoning), mode=mode)
     (answer, reasoning, parse_mode), completion, repairs, _, _ = (
         await _complete_with_repair(
             client, model=grading.grader_model, messages=messages,
             temperature=AGREEMENT_TEMPERATURE, config=config,
-            # The WIRE role is `ruling_reader` either way — accounting reads `meta`, and
-            # the two readings are one probe. Only the repair is per-question.
+            # The WIRE role is `ruling_reader` for all three — accounting reads `meta`,
+            # and the readings are one probe. Only the repair is per-question.
             meta={"role": "ruling_reader", "speaker": None, "round": None,
                   "purpose": "ruling_agreement"},
-            parse=(parse_ruling_agreement_materiality_output if materiality
+            parse=(parse_findings_reading_output if findings_mode
+                   else parse_ruling_agreement_materiality_output if materiality
                    else parse_ruling_agreement_output),
             role=RULING_READER_ROLES[mode], word_limit=0,
             max_tokens=grading.max_tokens,
@@ -757,8 +922,17 @@ async def judge_ruling_prose(
     )
     # STANDS -> the parent's own verdict, CHANGED -> the other, NEITHER unchanged. Done
     # here so `prose_conclusion` keeps its three values and `mismatch` keeps its meaning.
-    prose = (prose_conclusion_for_reading(answer, ruling.parent_verdict)
-             if materiality else answer)
+    #
+    # The findings reader answers a third question — do the reasons support the lines —
+    # and is translated against the RULING's own derived verdict rather than the
+    # parent's: under that form the lines ARE the ruling and the verdict is derived from
+    # them, so CONSISTENT means the reasoning amounts to the verdict the ruling reached.
+    if findings_mode:
+        prose = prose_conclusion_for_findings_reading(answer, ruling.verdict)
+    elif materiality:
+        prose = prose_conclusion_for_reading(answer, ruling.parent_verdict)
+    else:
+        prose = answer
     return RulingAgreement(
         prose_conclusion=prose, line_conclusion=ruling.verdict, reasoning=reasoning,
         ruling_form=ruling.form, parent_verdict=ruling.parent_verdict,
@@ -1016,7 +1190,8 @@ async def _hear_if_asked(
 
 async def _ruled_by(recoursers, record: Any, challenge: Challenge,
                     config: DebateConfig, client: ChatClient,
-                    exchange: Transcript) -> Ruling:
+                    exchange: Transcript, *,
+                    writer: Any | None = None) -> Ruling:
     """Route to the condition's ruler, handing the exchange to the one that takes one.
 
     Only `_rule_by_judge` hears an exchange. The solo re-decider is the model that made
@@ -1025,8 +1200,14 @@ async def _ruled_by(recoursers, record: Any, challenge: Challenge,
     its braces rather than a second policy.
     """
     ruler = recoursers[record.condition]
-    if exchange.all_turns() and ruler is _rule_by_judge:
-        return await ruler(record, challenge, config, client, exchange=exchange)
+    if ruler is _rule_by_judge:
+        # The writer goes only to the third-party judge, because it is the only ruler
+        # with a derivation to record: the findings branch writes `findings.after.json`
+        # beside its `ruling.json`. The solo re-decider states a verdict and has nothing
+        # to derive, and handing it a writer would give it a file it never fills.
+        return await ruler(record, challenge, config, client,
+                           exchange=exchange if exchange.all_turns() else None,
+                           writer=writer)
     return await ruler(record, challenge, config, client)
 
 
@@ -1054,7 +1235,7 @@ async def run_recourse(
         exchange = await _hear_if_asked(record, challenge, config, client,
                                         writer=writer)
         ruling = await _ruled_by(recoursers, record, challenge, config, client,
-                                 exchange)
+                                 exchange, writer=writer)
         if writer is not None:
             writer.record_ruling(ruling)
         return RecourseOutcome(challenge=challenge, ruling=ruling, comprehension=None,
@@ -1079,7 +1260,8 @@ async def run_recourse(
                                comprehension=comprehension)
 
     exchange = await _hear_if_asked(record, challenge, config, client, writer=writer)
-    ruling = await _ruled_by(recoursers, record, challenge, config, client, exchange)
+    ruling = await _ruled_by(recoursers, record, challenge, config, client, exchange,
+                             writer=writer)
     if writer is not None:
         writer.record_ruling(ruling)
     return RecourseOutcome(challenge=challenge, ruling=ruling,

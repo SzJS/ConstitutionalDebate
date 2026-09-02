@@ -104,6 +104,11 @@ def _claim_run_dir(root: Path, item_id: str, suffix: str = "") -> Path:
 # of its own and they are exactly what makes the record self-contained.
 _RERULE_EXCLUDED: frozenset[str] = frozenset(
     {"ruling.json", "calls.jsonl", "ruling_agreement.json",
+     # The findings list AFTER the ruling that is about to be re-made. It is a derivation
+     # of the ruling beside it, so a re-rule that copied it forward would put the OLD
+     # judge's applied rulings next to the new judge's, and `verdict_after` would no
+     # longer follow from the file that claims to state it.
+     "findings.after.json",
      # The contestability debate round's own two turns. A re-rule that copied them
      # forward would put ANOTHER run's exchange in front of this run's judge — and
      # `render_recourse_record` would print it as though these debaters had argued here.
@@ -114,8 +119,11 @@ _RERULE_EXCLUDED: frozenset[str] = frozenset(
 # ``calls.jsonl`` is not in the set because it is not dropped but RENAMED — the debate's
 # own prompts and replies are what makes the copied transcript verbatim, and they are the
 # source run's wire log, not this one's.
+# `findings.json` is here for exactly `verdict.json`'s reason: it IS the judgment, and a
+# re-judge exists to make a new one. Copying the source's list forward would hand this
+# run's challenger the previous judge's findings under this judge's verdict.
 _REJUDGE_EXCLUDED: frozenset[str] = frozenset(
-    {"verdict.json", "run.json", "config.json", "calls.jsonl"}
+    {"verdict.json", "run.json", "config.json", "calls.jsonl", "findings.json"}
 )
 
 # What the M4 GATE does not copy from the contest it gates. Note what is NOT here and is
@@ -479,6 +487,53 @@ class RunWriter:
         _write_json(self.dir / "verdict.json", verdict.to_dict())
         self._render()
 
+    def record_findings(self, findings: list[dict[str, Any]], *, verdict: str,
+                        parse_mode: str) -> None:
+        """The decomposed judgment, written BEFORE ``verdict.json``.
+
+        Before, and not after, because the verdict is DERIVED from this list: a crash
+        between the two writes has to leave a directory with findings and no verdict —
+        which `load_run_record` refuses as an incomplete run — rather than a verdict
+        whose derivation is missing.
+
+        Its own file rather than keys on `verdict.json`, because `Verdict` has no
+        ``from_dict`` and `load_run_record` filters exactly one key out of that file: a
+        new key there would fail to load every existing tree, and the whole list would
+        travel through a dataclass that has no field for it.
+        """
+        _write_json(self.dir / "findings.json", {
+            "form": "findings",
+            "findings": findings,
+            "verdict": verdict,
+            "n_findings": len(findings),
+            "n_flaw": sum(1 for f in findings if f.get("ruling") == "FLAW"),
+            "ruling_normalised_n": sum(
+                1 for f in findings if f.get("ruling_normalised")),
+            "parse_mode": parse_mode,
+        })
+
+    def record_findings_after(self, findings: list[dict[str, Any]], *, verdict: str,
+                              parent_verdict: str,
+                              contest_lines: dict[int, str]) -> None:
+        """The findings list after recourse, beside the ruling it was derived with.
+
+        Written by the contest stage into the contest directory, so a reader holding
+        `findings.json` (in `parent/`) and this file side by side can see exactly which
+        entries moved, which were appended, and that `verdict` follows from the list by
+        counting. `contest_lines` is the judge's own lines, keyed by contest number, so
+        the derivation can be checked against the sentence it came from.
+        """
+        _write_json(self.dir / "findings.after.json", {
+            "form": "findings",
+            "findings": findings,
+            "verdict": verdict,
+            "parent_verdict": parent_verdict,
+            "n_findings": len(findings),
+            "n_flaw": sum(1 for f in findings if f.get("ruling") == "FLAW"),
+            "n_added": sum(1 for f in findings if f.get("added_at_recourse")),
+            "contest_lines": {str(k): v for k, v in sorted(contest_lines.items())},
+        })
+
     def record_challenge(self, challenge: Challenge) -> None:
         _write_json(self.dir / "challenge.json", challenge.to_dict())
         _write_atomic(self.dir / "challenge.md", challenge.text)
@@ -635,6 +690,21 @@ def _turn_kwargs(data: dict[str, Any]) -> dict[str, Any]:
     from .types import Speaker
 
     return {**data, "speaker": Speaker(data["speaker"])}
+
+
+def load_findings(directory: Path) -> dict[str, Any] | None:
+    """A decision's decomposed judgment, or ``None`` where the judge wrote none.
+
+    ``None`` rather than an empty list, on the rule every conditional artifact here
+    follows: "this decision was made under the verdict form" and "this judge found
+    nothing" are different facts, and the second is `{"findings": []}` with a SOUND
+    verdict. The findings challenger raises `DebateFailure` on the first and contests the
+    second.
+    """
+    path = directory / "findings.json"
+    if not path.is_file():
+        return None
+    return _read_json(path)
 
 
 def load_flaw(directory: Path) -> FlawAnnotation | None:

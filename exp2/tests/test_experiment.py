@@ -2590,3 +2590,561 @@ async def test_extend_rounds_refuses_a_solo_or_already_long_source(
         api_key="k", transcript_root=source)
     assert [r["status"] for r in results] == ["failed"]
     assert "debater_model" in results[0]["error"]
+
+
+# --- the FINDINGS arm, campaign `fd1` (2026-09-02) -----------------------------------
+#
+# End to end through the stages a `fd1` spec actually runs — rejudge, contest, agreement,
+# ruling_agreement, grade, index — over the fake client, because the properties that
+# matter here are the joins between stages: a verdict that follows from a list by
+# counting at BOTH ends, a contest numbering that survives to the ruling and to the
+# grade, and a grade stage with none of the flaw grader's gates.
+
+FINDINGS_JUDGMENT = (
+    "The flawed side raised two points.\n"
+    "Finding 1\n"
+    'Passage: "Step 2: C_3 = 6."\n'
+    "Claim: the third Catalan number is 5, not 6\n"
+    "Defence: none given\n"
+    "Reason: the divisor is not bounded away from zero\n"
+    "Ruling: FLAW\n"
+    "Finding 2\n"
+    'Passage: "Step 1: apply the formula."\n'
+    "Claim: the formula named is the wrong one\n"
+    "Defence: the sound side said rounding is conventional\n"
+    "Reason: the convention is standard and the step is fine\n"
+    "Ruling: NOT A FLAW"
+)
+
+FINDINGS_OBJECTION = (
+    "Thinking: I read the list.\n"
+    "Argument:\n"
+    "1. Contests: Finding 1\n"
+    "   Should be: NOT A FLAW\n"
+    '   Text says: "Step 2: C_3 = 6."\n'
+    '   Record says: "Alice argues in round 1."\n'
+    "   Why: six is right and the record shows it."
+
+    "Decision: REVERSE"
+)
+
+
+def findings_config(**kw):
+    return make_config(judge_form="findings", challenger_variant="findings", **kw)
+
+
+async def _findings_tree(tmp_path, no_network, n=2):
+    """A source tree of decided debates, re-judged into a findings tree."""
+    grid = build_grid(cases(n), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    no_network.replies["judge_findings"] = FINDINGS_JUDGMENT
+    rejudged = tmp_path / "F"
+    results = await run_stage_rejudge(
+        grid, root=rejudged, config=findings_config(), client_config=client_config(),
+        api_key="k", transcript_root=source)
+    return grid, source, rejudged, results
+
+
+async def test_a_findings_rejudge_writes_a_list_and_a_verdict_derived_from_it(
+    tmp_path, no_network
+):
+    """The decision half of the arm. The judge writes no verdict line at all, so the
+    verdict in `verdict.json` has to be `derive_verdict(findings.json)` — computed, not
+    asserted — and `findings.json` has to be beside it for a reader to redo the count."""
+    from exp2.persistence import load_findings
+    from exp2.prompts import derive_verdict
+
+    grid, source, rejudged, results = await _findings_tree(tmp_path, no_network)
+    assert [r["status"] for r in results] == ["completed"] * 2
+    assert all(r["findings_n"] == 2 and r["findings_flaw_n"] == 1 for r in results)
+
+    for directory in sorted(rejudged.glob("cells/*/runs/*")):
+        stored = load_findings(directory)
+        assert stored is not None
+        assert stored["form"] == "findings" and stored["n_findings"] == 2
+        assert stored["n_flaw"] == 1 and stored["ruling_normalised_n"] == 0
+        assert [f["ruling"] for f in stored["findings"]] == ["FLAW", "NOT A FLAW"]
+        verdict = json.loads((directory / "verdict.json").read_text())
+        # THE INVARIANT: the verdict follows from the list by counting
+        assert verdict["verdict"] == derive_verdict(stored["findings"]) == "FLAWED"
+        # and the grounds are the judge's whole reply, so the challenger sees the list
+        assert verdict["reasoning"] == FINDINGS_JUDGMENT
+        manifest = json.loads((directory / "run.json").read_text())
+        assert manifest["judge_form"] == "findings"
+        assert (manifest["findings_n"], manifest["findings_flaw_n"]) == (2, 1)
+        # the wire role is unchanged, so accounting and the cost tables are untouched
+        logged = [json.loads(line) for line
+                  in (directory / "calls.jsonl").read_text().splitlines()]
+        assert [record["role"] for record in logged] == ["judge"]
+
+    # a rejudge does not carry the SOURCE's list forward — it makes a new judgment
+    assert not any(source.glob("cells/*/runs/*/findings.json"))
+
+
+async def test_an_unparseable_findings_list_fails_the_cell_after_one_repair(
+    tmp_path, no_network
+):
+    """The loss rule, unchanged: a malformed judgment buys one format repair and then the
+    cell has no decision. A lost cell is a number that is missing; a guessed verdict is a
+    number that is wrong and looks fine."""
+    grid = build_grid(cases(1), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    no_network.replies["judge_findings"] = "I think the text is fine overall."
+    results = await run_stage_rejudge(
+        grid, root=tmp_path / "F", config=findings_config(),
+        client_config=client_config(), api_key="k", transcript_root=source)
+    assert [r["status"] for r in results] == ["failed"]
+    assert "still malformed after one format repair" in results[0]["error"]
+    assert existing_decision(tmp_path / "F", grid[0]) is None
+    # the repair that was spent asked for the FINDINGS format, not "Verdict: FLAWED"
+    repairs = [c for c in no_network.calls
+               if c["meta"].get("purpose") == "repair"
+               and c["meta"].get("role") == "judge"]
+    assert repairs and "Findings: none" in repairs[-1]["messages"][-1]["content"]
+
+
+async def test_the_findings_contest_rules_per_finding_and_re_derives_the_verdict(
+    tmp_path, no_network
+):
+    """The recourse half. The judge answers one line per contest; the contested finding
+    takes that ruling, uncontested findings stand, and the verdict is re-derived from the
+    whole list — so `verdict == derive_verdict(findings.after.json)` at this end too."""
+    from exp2.prompts import derive_verdict
+
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    no_network.replies["recourse_judge_findings"] = (
+        "Six is the third Catalan number, so the claim does not hold.\n"
+        "Contest 1 (Finding 1): NOT A FLAW")
+    contests = tmp_path / "C"
+    results = await run_stage_contest(
+        grid, root=contests, config=findings_config(), client_config=client_config(),
+        api_key="k", decision_root=rejudged)
+    assert [r["status"] for r in results] == ["completed"] * 2
+
+    for directory in sorted(contests.glob("cells/*/contests/*/runs/*")):
+        challenge = json.loads((directory / "challenge.json").read_text())
+        assert challenge["arm"] == "findings"
+        assert len(challenge["defects"]) == 1
+        contest = challenge["defects"][0]
+        assert contest["kind"] == "finding" and contest["finding"] == 1
+        assert contest["should_be"] == "NOT A FLAW" and contest["void"] is False
+        # the claimed verdict is DERIVED: granting this contest leaves nothing FLAW
+        assert challenge["claimed_verdict"] == "SOUND"
+
+        ruling = json.loads((directory / "ruling.json").read_text())
+        assert ruling["form"] == "derived_findings"
+        assert ruling["prompt_form"] == "findings"
+        assert ruling["ruling"] == "OVERTURN" and ruling["verdict"] == "SOUND"
+        assert ruling["conclusion_line"] == "Contest 1: NOT A FLAW"
+        after = json.loads((directory / "findings.after.json").read_text())
+        assert [f["ruling"] for f in after["findings"]] == ["NOT A FLAW", "NOT A FLAW"]
+        assert after["n_added"] == 0
+        assert ruling["verdict"] == derive_verdict(after["findings"])
+        # the judge was sent the findings ruling prompt, not the object-level one
+        judge_calls = [c for c in no_network.calls
+                       if c["meta"].get("role") == "recourse_judge"]
+        sent = "".join(m["content"] for m in judge_calls[0]["messages"])
+        assert "Rule only on the contests" in sent
+        assert "<findings>" in sent
+
+
+async def test_an_upheld_omission_appends_a_finding_and_can_move_the_verdict(
+    tmp_path, no_network
+):
+    """The one contest an EMPTY list can face, and the only one that adds to the list.
+    The appended finding is built from the challenger's own quotations, not from the
+    judge's prose, so it stays checkable against the record like every other entry."""
+    grid = build_grid(cases(1), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    no_network.replies["judge_findings"] = "Nothing identifiable.\n\nFindings: none"
+    rejudged = tmp_path / "F"
+    await run_stage_rejudge(grid, root=rejudged, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            transcript_root=source)
+    # the empty list is an ANSWER: it derives SOUND
+    record = existing_decision(rejudged, grid[0])
+    assert record.verdict.verdict == "SOUND"
+
+    no_network.replies["challenger"] = (
+        "Argument:\n"
+        "1. Contests: omission\n"
+        '   Record says: "Alice argues in round 1."\n'
+        '   Passage: "Step 2: C_3 = 6."\n'
+        "   Why: the list is empty and this was raised.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "It was raised and nothing lists it.\n"
+        "Contest 1 (omission): FLAW")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    directory = sorted(contests.glob("cells/*/contests/*/runs/*"))[0]
+    after = json.loads((directory / "findings.after.json").read_text())
+    assert after["n_findings"] == 1 and after["n_added"] == 1
+    added = after["findings"][0]
+    assert added["added_at_recourse"] is True and added["ruling"] == "FLAW"
+    assert added["passage"] == '"Step 2: C_3 = 6."'
+    assert "Alice argues in round 1." in added["claim"]
+    ruling = json.loads((directory / "ruling.json").read_text())
+    assert ruling["verdict"] == "FLAWED" and ruling["ruling"] == "OVERTURN"
+    # and the document says what happened, in words a stakeholder can check
+    document = (directory / "transcript.md").read_text()
+    assert "The judge ruled on each contest" in document
+    assert "Contest 1: FLAW" in document
+    assert "were added at recourse" in document
+
+
+async def test_the_findings_agreement_is_mechanical_and_costs_nothing(
+    tmp_path, no_network
+):
+    """No call, and that is the point: under this arm the objection's argument is a
+    numbered list the harness already parsed, so `phantom_contest` is a string comparison
+    rather than a grader's reading of prose — and it is never pooled with the other
+    arms' Haiku column."""
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    before = sum(1 for c in no_network.calls if c["meta"].get("role") == "agreement")
+    results = await run_stage_agreement(
+        grid, root=contests, config=findings_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k", decision_root=rejudged)
+    assert [r["status"] for r in results] == ["completed"] * 2
+    after = sum(1 for c in no_network.calls if c["meta"].get("role") == "agreement")
+    assert after == before, "the findings agreement stage made a wire call"
+
+    for path in sorted(contests.glob("cells/*/contests/*/runs/*/agreement.json")):
+        agreement = json.loads(path.read_text())
+        assert agreement["parse_mode"] == "mechanical" and agreement["model"] == ""
+        assert agreement["prose_stance"] == "WRONG"
+        assert agreement["line_word"] == "REVERSE"
+        assert agreement["agrees"] is True
+        assert agreement["phantom_contest"] is False
+
+    # a REVERSE with nothing well formed under it IS the mechanical phantom
+    from exp2.recourse import mechanical_agreement
+    from exp2.types import Challenge
+
+    phantom = mechanical_agreement(Challenge(
+        text="t", origin="generated", raised=True, arm="findings", stance="contests",
+        claimed_verdict="SOUND", defects=[{"index": 1, "void": True}]))
+    assert phantom.prose_stance == "RIGHT" and phantom.phantom_contest is True
+
+
+async def test_every_contested_findings_cell_is_graded_including_the_ungradable_ones(
+    tmp_path, no_network
+):
+    """The grade stage's gates are DROPPED for this arm, and more of them than for the
+    judgment arm. A sound item is not ungradable here — it is the case where grading is
+    free, because both directions of a finding contest follow from the label with no
+    reading at all."""
+    grid = build_grid(cases(1, gold_flawed=False), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    no_network.replies["judge_findings"] = FINDINGS_JUDGMENT
+    rejudged = tmp_path / "F"
+    await run_stage_rejudge(grid, root=rejudged, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            transcript_root=source)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    before = sum(1 for c in no_network.calls
+                 if c["meta"].get("role") == "findings_grader")
+    results = await run_stage_grade(
+        grid, root=contests, config=findings_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k", decision_root=rejudged)
+    assert [r["status"] for r in results] == ["completed"]
+    assert results[0]["mode"] == "findings" and results[0]["valid"] is True
+    # NO WIRE CALL: on a sound item a `Should be: NOT A FLAW` contest is VALID by rule,
+    # so there was nothing left for a grader to decide
+    after = sum(1 for c in no_network.calls
+                if c["meta"].get("role") == "findings_grader")
+    assert after == before
+
+    grade = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/grade.json")).read_text())
+    assert grade["mode"] == "findings" and grade["parse_mode"] == "mechanical_only"
+    assert grade["contests_n"] == 1 and grade["contests_valid_n"] == 1
+    assert grade["contests_mechanical_n"] == 1
+    assert grade["line_mismatch"] is False
+    assert grade["contests"][0]["reason"].startswith("the item is sound")
+
+
+async def test_a_findings_grade_on_a_flawed_item_calls_the_grader_and_joins_by_number(
+    tmp_path, no_network
+):
+    """A finding contest on a FLAWED item is the one thing in this arm graded against the
+    annotation — this grader is that door — while a void contest beside it is settled by
+    a string comparison and is not the grader's to revisit."""
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network, n=1)
+    no_network.replies["challenger"] = (
+        "Argument:\n"
+        "1. Contests: Finding 1\n"
+        "   Should be: NOT A FLAW\n"
+        '   Text says: "Step 2: C_3 = 6."\n'
+        '   Record says: "Alice argues in round 1."\n'
+        "   Why: six is right.\n"
+        "2. Contests: Finding 9\n"
+        "   Should be: FLAW\n"
+        '   Text says: "Step 2: C_3 = 6."\n'
+        '   Record says: "Alice argues in round 1."\n'
+        "   Why: there is no finding 9.\n"
+        "Decision: REVERSE"
+    )
+    no_network.replies["recourse_judge_findings"] = (
+        "One holds, one quotes nothing I can find.\n"
+        "Contest 1 (Finding 1): FLAW\n"
+        "Contest 2 (Finding 9): NOT A FLAW")
+    no_network.replies["findings_grader"] = (
+        "The finding is about the annotated step.\n"
+        "Contest 1: INVALID — finding 1 IS the recorded flaw.\n"
+        "Contest 2: VALID — I disagree with the harness.\n"
+        "Valid objection: YES")
+    contests = tmp_path / "C"
+    await run_stage_contest(grid, root=contests, config=findings_config(),
+                            client_config=client_config(), api_key="k",
+                            decision_root=rejudged)
+    results = await run_stage_grade(
+        grid, root=contests, config=findings_config(), grading=GradingConfig(),
+        client_config=client_config(), api_key="k", decision_root=rejudged)
+    assert [r["status"] for r in results] == ["completed"]
+
+    grade = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/grade.json")).read_text())
+    assert grade["parse_mode"] == "strict"
+    assert grade["contests_n"] == 2
+    # the void contest keeps its NUMBER and its mechanical ruling; the grader's opinion
+    # about it is DISCARDED rather than merged — a model does not overturn a string
+    # comparison
+    by_index = {c["index"]: c for c in grade["contests"]}
+    assert by_index[2]["mechanical"] is True and by_index[2]["valid"] is False
+    assert by_index[2]["reason"].startswith("void at parse time")
+    assert by_index[1]["mechanical"] is False and by_index[1]["valid"] is False
+    # `valid` is the conjunction of the per-contest rulings, NOT the summary line, and
+    # the disagreement is recorded rather than clamped
+    assert grade["valid"] is False and grade["line_valid"] is True
+    assert grade["line_mismatch"] is True
+    # the annotation reached the grader and the void contest was named to it
+    sent = "".join(m["content"] for m in no_network.sent_to("findings_grader"))
+    assert "Step 2 miscounts." in sent
+    assert "Contest 2 has" in sent and "not yours to revisit" in sent
+    # the ruling only applied the well-formed contest; the void one changed nothing
+    after = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/findings.after.json")).read_text())
+    assert [f["ruling"] for f in after["findings"]] == ["FLAW", "NOT A FLAW"]
+
+
+async def test_the_index_carries_every_findings_column_and_the_analysis_reads_them(
+    tmp_path, no_network
+):
+    """Absent-not-False throughout: a column that reads 0 says the shape did not occur,
+    a column that is absent says nobody looked. And the grade branch has to be an `elif`
+    — the flaw grader's `else` would KeyError on the first graded findings cell."""
+    from exp2.analysis import funnel
+
+    grid, _, rejudged, _ = await _findings_tree(tmp_path, no_network)
+    no_network.replies["challenger"] = FINDINGS_OBJECTION
+    no_network.replies["recourse_judge_findings"] = (
+        "It does not hold.\nContest 1 (Finding 1): NOT A FLAW")
+    contests = tmp_path / "C"
+    for stage in (
+        lambda: run_stage_contest(grid, root=contests, config=findings_config(),
+                                  client_config=client_config(), api_key="k",
+                                  decision_root=rejudged),
+        lambda: run_stage_agreement(grid, root=contests, config=findings_config(),
+                                    grading=GradingConfig(),
+                                    client_config=client_config(), api_key="k",
+                                    decision_root=rejudged),
+        lambda: run_stage_ruling_agreement(grid, root=contests, config=findings_config(),
+                                           grading=GradingConfig(),
+                                           client_config=client_config(), api_key="k"),
+        lambda: run_stage_grade(grid, root=contests, config=findings_config(),
+                                grading=GradingConfig(),
+                                client_config=client_config(), api_key="k",
+                                decision_root=rejudged),
+    ):
+        assert [r["status"] for r in await stage()] == ["completed"] * 2
+
+    rows = build_index(grid, root=contests, challenger_model="strong/model",
+                       decision_root=rejudged)
+    assert len(rows) == 2
+    row = rows[0]
+    assert row["judge_form"] == "findings"
+    assert (row["findings_n"], row["findings_flaw_n"]) == (2, 1)
+    assert row["findings_parse_mode"] == "strict"
+    assert row["findings_ruling_normalised_n"] == 0
+    assert row["challenge_contests_n"] == 1
+    assert row["challenge_contests_finding_n"] == 1
+    assert row["challenge_contests_omission_n"] == 0
+    assert row["challenge_contests_contradiction_n"] == 0
+    assert row["challenge_contests_void_n"] == 0
+    assert row["challenge_seeks_reversal"] is True
+    assert row["ruling_form"] == "derived_findings"
+    assert row["ruling_contest_lines"] == "Contest 1: NOT A FLAW"
+    assert (row["findings_after_n"], row["findings_added_n"]) == (2, 0)
+    assert row["ruling_prose_empty"] is False
+    assert row["grade_mode"] == "findings"
+    assert row["grade_contests_n"] == 1
+    assert row["grade_contests_valid_n"] is not None
+    assert row["grade_line_mismatch"] is not None
+    # the flaw grader's columns are absent, not False
+    assert "identified_flaw" not in row and "grade_defects_n" not in row
+    # the ruling reader answered in the findings vocabulary and the reading was
+    # translated against the RULING's own verdict
+    reading = json.loads(
+        next(contests.glob("cells/*/contests/*/runs/*/ruling_agreement.json")).read_text())
+    # CONSISTENT was translated against the RULING's own derived verdict, not the
+    # parent's, so `prose_conclusion` is what the lines amount to and `mismatch` is False
+    assert reading["line_conclusion"] == reading["prose_conclusion"] == "SOUND"
+    assert reading["mismatch"] is False
+
+    metrics = funnel(rows)
+    assert metrics["n_findings_graded"] == 2
+    assert metrics["findings_lists"]["findings_per_judgment"] == 2.0
+    assert metrics["findings_lists"]["empty_lists"] == 0
+    assert metrics["findings_contests"]["by_kind"] == {
+        "finding": 2, "omission": 0, "contradiction": 0}
+    assert metrics["findings_contests"]["contests_per_objection"] == 1.0
+    assert "valid_objection_findings" in metrics["rates"]
+    assert "phantom_contest_mechanical" in metrics["rates"]
+    assert metrics["rates"]["seeks_reversal_given_contested"]["k"] == 2
+    # the flaw-graded bars are EMPTY: these rows are held out of both, because
+    # `grade_valid` here is a third kind of validity
+    assert metrics["rates"]["valid_objection"]["n"] == 0
+    assert metrics["rates"]["identified_flaw"]["n"] == 0
+
+
+def test_the_findings_caveat_says_which_validity_and_which_phantom(tmp_path):
+    from exp2.analysis import caveats
+
+    rows = [{"cell_id": "c", "item_id": "i", "condition": "debate",
+             "judge_form": "findings", "grade_mode": "findings",
+             "grade_valid": True, "initially_correct": False, "gold_flawed": True,
+             "challenge_arm": "findings", "ruling_form": "derived_findings"}]
+    text = next(c for c in caveats(rows, ["debate"]) if "THIS ARM'S DECISION IS A LIST" in c)
+    assert "DERIVED by code" in text
+    assert "THIRD kind of validity" in text
+    assert "MECHANICAL" in text
+    assert "challenge_seeks_reversal" in text
+    # and the specious caveat still reads this as a THIRD-PARTY ruling rather than an
+    # in-conversation re-decision, which it would if `derived_findings` were unknown
+    specious = next(c for c in caveats(rows, ["debate"])
+                    if "no specious-objection control" in c)
+    assert "no condition adjudicates its own appeal" in specious
+
+
+def test_a_findings_spec_must_state_both_fields_and_its_estimate_says_what_it_buys(
+    tmp_path, monkeypatch, capsys
+):
+    """Both halves of the same trap. `challenger_variant` and `judge_form` BOTH default
+    to their historical values, so a spec called `fd1-weak` with either one commented out
+    would run the ordinary arm, write it into `outputs/experiments/fd1-weak/` and produce
+    a tree whose every number is a verdict-form number under a findings name — after
+    paying for 1,644 judgments. `DebateConfig` refuses one order; this guard catches the
+    other."""
+    from exp2.experiment_cli import main
+
+    outputs = tmp_path / "outputs" / "experiments"
+    (outputs / "jd3-main").mkdir(parents=True)
+    (outputs / "jd3-main" / "experiment.json").write_text(
+        json.dumps({"name": "jd3-main"}), encoding="utf-8")
+    cases_path = tmp_path / "cases.jsonl"
+    cases_path.write_text("\n".join(json.dumps(c.to_dict()) for c in cases(2)),
+                          encoding="utf-8")
+
+    def spec_for(name, body):
+        path = tmp_path / f"{name}.toml"
+        path.write_text(
+            f'name = "{name}"\n'
+            f'cases = "{cases_path}"\n'
+            'conditions = ["debate"]\n'
+            f'transcripts_from = "{outputs / "jd3-main"}"\n'
+            '[debate]\n' + body, encoding="utf-8")
+        return path
+
+    monkeypatch.chdir(tmp_path)
+    # neither field stated
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec_for("fd1-weak", "")), "--stage", "rejudge",
+              "--dry-run"])
+    assert "sets no `challenger_variant`" in str(excinfo.value)
+    # the variant stated as `findings` and the judge form not: `DebateConfig` refuses it
+    # before the spec guard is reached, because a findings challenger has no list to
+    # contest without a findings judgment
+    from exp2.config import ConfigError
+
+    with pytest.raises(ConfigError) as config_error:
+        main(["--spec", str(spec_for("fd1-weak2",
+                                     'challenger_variant = "findings"\n')),
+              "--stage", "rejudge", "--dry-run"])
+    assert "needs judge_form='findings'" in str(config_error.value)
+    # and the other order — a findings-named spec whose challenger is stated but whose
+    # JUDGE would quietly write a prose verdict — is what the spec guard is for
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--spec", str(spec_for("fd1-weak4",
+                                     'challenger_variant = "neutral"\n')),
+              "--stage", "rejudge", "--dry-run"])
+    assert "sets no `judge_form`" in str(excinfo.value)
+
+    both = spec_for("fd1-weak3", 'challenger_variant = "findings"\n'
+                                 'judge_form = "findings"\n')
+    assert main(["--spec", str(both), "--stage", "rejudge", "--dry-run"]) == 0
+    printed = capsys.readouterr().out
+    # the dry-run prints the field with its reason, which is what the run is approved
+    # from (HANDOFF §2.4)
+    assert "judge_form" in printed and "findings" in printed
+    assert "The verdict is DERIVED by code" in printed
+    # the grading term is the whole grid — every contested cell is graded — and the
+    # agreement term is ZERO, because that stage makes no call under this arm
+    assert "agreement <= 0" in printed
+    assert "grading <= 2" in printed
+    assert "the AGREEMENT term is 0 and that is not an omission" in printed
+    assert "the grading term is the whole grid" in printed
+
+
+async def test_the_findings_challenger_is_loud_when_there_is_no_list_to_contest(
+    tmp_path, no_network
+):
+    """`DebateFailure`, not an empty objection. `DebateConfig` already refuses the
+    combination that would produce this, so a cell reaching it is a wiring bug — and a
+    silent empty list would produce a whole tree of objections against nothing, every one
+    of them void, with no stage saying why."""
+    from exp2.engine import DebateFailure
+    from exp2.recourse import generate_challenge
+
+    grid = build_grid(cases(1), ["debate"])
+    source = tmp_path / "sweep"
+    await run_stage_decide(grid, root=source, config=make_config(),
+                           client_config=client_config(), api_key="k")
+    # an ORDINARY decision: prose verdict, no findings.json beside it
+    record = existing_decision(source, grid[0])
+    assert not (record.directory / "findings.json").is_file()
+    with pytest.raises(DebateFailure, match="needs `findings.json`"):
+        await generate_challenge(record, findings_config(), no_network)
+
+
+def test_judge_form_is_a_decision_key_and_a_contest_inherits_it():
+    """It changes what the judge was ASKED and therefore what the decision IS, so a
+    contest of that decision must carry it: the challenger has to be shown the list the
+    judge actually wrote. `RECOURSE_ONLY_KEYS` is the exemption list for settings a
+    decision had no opinion about, and this is not one of them."""
+    from exp2.config import RECOURSE_ONLY_KEYS, WHY
+
+    assert "judge_form" not in RECOURSE_ONLY_KEYS
+    assert "judge_form" in WHY
+    assert "verdict_order` is UNUSED" in WHY["judge_form"]

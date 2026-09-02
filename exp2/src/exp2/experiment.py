@@ -39,6 +39,7 @@ from .accounting import aggregate_calls, split_calls
 from .arms import CONDITIONS, DECIDERS
 from .client import OpenRouterClient
 from .config import (
+    FINDINGS_VARIANT,
     JUDGMENT_VARIANT,
     PLACEHOLDER_VARIANT,
     ClientConfig,
@@ -50,6 +51,7 @@ from .engine import DebateFailure
 from .grading import NotGradable, grade_objection
 from .persistence import (
     RunWriter,
+    load_findings,
     load_flaw,
     load_recourse_transcript,
     load_run_record,
@@ -63,6 +65,7 @@ from .recourse import (
     judge_admissibility,
     judge_prose_stance,
     judge_ruling_prose,
+    mechanical_agreement,
     run_recourse,
 )
 from .types import Case, Challenge, Item, Ruling, Transcript, make_sides
@@ -439,7 +442,13 @@ async def run_stage_rejudge(
         # `judge_model` on the manifest as well as in `config.json`, because the manifest
         # is what a resume and a spend report read and the whole point of the run is
         # which judge made the verdict beside it.
-        writer.manifest_update(cell_id=cell.cell_id, judge_model=config.judge_model)
+        # `judge_form` beside `judge_model`, for the manifest's reason: it is what a
+        # resume and a spend report read, and the whole point of a `fd1` run is that the
+        # verdict beside it was DERIVED from a findings list rather than stated. Written
+        # on every rejudge, "verdict" included, so a reader never has to infer it from
+        # the presence of a file.
+        writer.manifest_update(cell_id=cell.cell_id, judge_model=config.judge_model,
+                               judge_form=config.judge_form)
         transcript = source.transcript
         boundary = max(turn.round for turn in transcript.all_turns())
         if config.extend_rounds:
@@ -474,10 +483,19 @@ async def run_stage_rejudge(
             log.warning("%s rejudge failed: %s", cell.cell_id, error)
             return {"cell_id": cell.cell_id, "status": "failed",
                     "error": f"{type(error).__name__}: {error}"}
+        findings = load_findings(writer.dir) or {}
+        if findings:
+            # Counted onto the manifest as well as into `findings.json`, so the
+            # feasibility gate (the weak judge's parse rate) and the empty-list rate can
+            # be read off the run records without opening every list.
+            writer.manifest_update(findings_n=findings.get("n_findings"),
+                                   findings_flaw_n=findings.get("n_flaw"))
         writer.finish("completed", totals=aggregate_calls(writer.dir / "calls.jsonl"))
         return {"cell_id": cell.cell_id, "status": "completed",
                 "verdict": verdict.verdict, "correct": verdict.correct,
                 "rounds_n": max(turn.round for turn in transcript.all_turns()),
+                "findings_n": findings.get("n_findings"),
+                "findings_flaw_n": findings.get("n_flaw"),
                 "was": source.verdict.verdict}
 
     return await _bounded([lambda c=c: rejudge(c) for c in cells],
@@ -703,8 +721,14 @@ async def run_stage_rerule(
                     if config.recourse_rounds:
                         exchange = await hear_exchange(record, challenge, config,
                                                        client, writer=writer)
+                    # The writer goes through so a re-rule of a FINDINGS objection
+                    # writes its own `findings.after.json` beside the ruling it just
+                    # made. `_RERULE_EXCLUDED` drops the source's copy for exactly that
+                    # reason: a derivation is a property of the ruling next to it, and
+                    # the old judge's applied rulings under a new judge's verdict would
+                    # be a file that is wrong about itself.
                     ruling = await _rule_by_judge(record, challenge, config, client,
-                                                  exchange=exchange)
+                                                  exchange=exchange, writer=writer)
         except Exception as error:
             writer.finish("failed", error=f"{type(error).__name__}: {error}")
             log.warning("%s rerule failed: %s", cell.cell_id, error)
@@ -872,6 +896,26 @@ async def run_stage_agreement(
         if challenge.stance not in ("contests", "declined"):
             return {"cell_id": cell.cell_id, "status": "skipped",
                     "reason": f"stance is {challenge.stance}; no line to compare"}
+        if challenge.arm == FINDINGS_VARIANT:
+            # NO CALL, and no client. Under this arm the objection's argument is a
+            # numbered list the harness already parsed, so "did this reply actually
+            # contest anything" is `n_well_formed > 0` — a string comparison a reader can
+            # redo — rather than a grader's reading of prose. Written as a real
+            # `Agreement` with `parse_mode = "mechanical"`, so `agrees`,
+            # `phantom_contest` and every consumer work unchanged and nothing claims a
+            # model wrote it. It is NEVER pooled with jd3–jd6's Haiku column; the
+            # analysis caveat says so, and PREREG §7 names its two blind spots and the
+            # hand read that scores them.
+            #
+            # Placed after the stance check and before the decision is loaded, because
+            # it needs neither the decision nor the network.
+            agreement = mechanical_agreement(challenge)
+            (directory / "agreement.json").write_text(
+                json.dumps(agreement.to_dict(), indent=2), encoding="utf-8")
+            return {"cell_id": cell.cell_id, "status": "completed",
+                    "line": agreement.line_word, "prose": agreement.prose_stance,
+                    "agrees": agreement.agrees,
+                    "phantom": agreement.phantom_contest}
         record = existing_decision(decisions, cell)
         if record is None:
             return {"cell_id": cell.cell_id, "status": "skipped",
@@ -1013,6 +1057,45 @@ async def run_stage_grade(
         # objections this invocation's spec did not write — `decisions_from` trees are
         # re-graded, and a mixed tree would otherwise be graded by whatever spec ran
         # last, scoring a judgment audit against a flaw annotation or the reverse.
+        if challenge.arm == FINDINGS_VARIANT:
+            # NONE of the flaw grader's three gates applies, and the reason is stronger
+            # than the judgment arm's. Two of this arm's three contest kinds are graded
+            # against the record alone; the third is graded against the annotation, but
+            # on a SOUND item its answer follows from the label with no reading at all
+            # (`grading._grade_findings`), so a sound item is not ungradable here — it is
+            # the case where grading is FREE. And validity on a CORRECT decision is a
+            # real finding: a judge that ruled a genuine flaw NOT A FLAW and still
+            # reached FLAWED on another finding was right by accident, and the contest
+            # that says so is valid. Every cell whose stance is `contests` is graded.
+            #
+            # Placed before the gates and not inside them, because the `else` below
+            # would KeyError on this mode's grade file.
+            try:
+                async with OpenRouterClient(api_key, client_config,
+                                            sink=_sink_to(directory / "calls.jsonl"),
+                                            semaphore=semaphore) as client:
+                    grade_result = await grade_objection(
+                        cell.case, challenge.text, config=config, grading=grading,
+                        client=client, mode="findings",
+                        record=record.challenger_view().body,
+                        # The judge's own reply — the same findings text the challenger
+                        # and the recourse judge were shown.
+                        judgment=record.decision_grounds,
+                        decision_verdict=record.verdict.verdict,
+                        defects=challenge.defects,
+                    )
+            except NotGradable as error:
+                return {"cell_id": cell.cell_id, "status": "skipped",
+                        "reason": str(error)}
+            except Exception as error:
+                return {"cell_id": cell.cell_id, "status": "failed",
+                        "error": f"{type(error).__name__}: {error}"}
+            (directory / "grade.json").write_text(
+                json.dumps(grade_result.to_dict(), indent=2), encoding="utf-8")
+            return {"cell_id": cell.cell_id, "status": "completed",
+                    "mode": "findings", "valid": grade_result.valid,
+                    "contests": len(grade_result.contests),
+                    "line_mismatch": grade_result.line_mismatch}
         judgment_mode = challenge.arm == JUDGMENT_VARIANT
         if judgment_mode:
             # NONE of the three gates below applies. Validity here is a property of the
@@ -1169,6 +1252,25 @@ def build_index(cells: Sequence[Cell], *, root: Path,
         # comparison is a column join and needs no second tree open;
         # `decision_cost_usd` above is this run's one judge call and never the debate,
         # because the debate's wire log was renamed rather than copied.
+        # THE FINDINGS JUDGMENT, campaign `fd1`. Written only where the judge actually
+        # wrote a list, on the rule every conditional column here follows: absent where it
+        # does not apply, so "decided under the verdict form" and "decided under the
+        # findings form and found nothing" stay different facts — the second is
+        # `findings_n = 0` with a SOUND verdict.
+        #
+        # `findings_parse_mode` is the JUDGE's parse mode, copied here so the feasibility
+        # gate (the weak judge's parse rate) is a column rather than a walk of the tree,
+        # and `findings_ruling_normalised_n` counts the rulings written as FLAWED/SOUND
+        # and read as FLAW/NOT A FLAW — the one tolerance in this arm's parsers, counted
+        # so it is visible rather than invisible.
+        stored_findings = load_findings(record.directory)
+        if stored_findings is not None:
+            row["judge_form"] = "findings"
+            row["findings_n"] = stored_findings.get("n_findings")
+            row["findings_flaw_n"] = stored_findings.get("n_flaw")
+            row["findings_parse_mode"] = stored_findings.get("parse_mode")
+            row["findings_ruling_normalised_n"] = stored_findings.get(
+                "ruling_normalised_n")
         manifest = _decision_manifest(record.directory)
         if manifest.get("kind") == "rejudge":
             row["rejudged_from"] = manifest.get("rejudged_from")
@@ -1254,6 +1356,34 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     objection_defects_fabricated_n(challenge.defects))
                 row["challenge_fabrication_ok"] = (
                     objection_fabrication_ok(challenge.defects))
+            if challenge.arm == FINDINGS_VARIANT:
+                # WHAT WAS CONTESTED, by kind, and how much of it was void. Written only
+                # under the findings arm, on the rule the graded columns follow: a 0 on a
+                # neutral row would read as "it contested nothing" when the truth is that
+                # nobody asked it to contest anything.
+                #
+                # `challenge_contests_void_n` counts contests whose quotation was not in
+                # the document it named, whose finding does not exist, whose `Should be:`
+                # agrees with the ruling it contests, or which alleges a contradiction
+                # between a finding and itself — every one of them a string comparison a
+                # reader can redo. They are the second denominator PREREG §2 reports the
+                # break rate over: an objection made only of void contests cannot break
+                # anything by construction.
+                contests = challenge.defects or []
+                row["challenge_contests_n"] = len(contests)
+                for kind in ("finding", "omission", "contradiction"):
+                    row[f"challenge_contests_{kind}_n"] = sum(
+                        1 for c in contests if c.get("kind") == kind)
+                row["challenge_contests_void_n"] = sum(
+                    1 for c in contests if c.get("void"))
+                # A contest can be local and unable to move the verdict — one FLAW
+                # finding among five keeps a FLAWED verdict however it is ruled — so
+                # "objected" and "asked for a reversal" are two columns and not one.
+                # `claimed_verdict` here is DERIVED from the contests, not from the
+                # decision line.
+                row["challenge_seeks_reversal"] = (
+                    challenge.claimed_verdict is not None
+                    and challenge.claimed_verdict != record.verdict.verdict)
             row["challenge_stance"] = challenge.stance
             row["challenge_raised"] = challenge.stance == "contests"
             row["challenge_agreed"] = challenge.stance == "agrees"
@@ -1304,6 +1434,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 # well as on the dataclass, because the trees already on disk hold
                 # `ruling.json` files written before the field existed.
                 row["ruling_prompt_form"] = ruling.get("prompt_form", "object_level")
+                if ruling.get("form") == "derived_findings":
+                    # THE DERIVATION, as columns, so the re-derived verdict can be
+                    # checked against the lines it came from without opening a file.
+                    # `ruling_prose_empty` is the residual this arm has to bound: the
+                    # judge is asked for lines and may write nothing else, and a ruling
+                    # with no prose is one the `ruling_agreement` reader cannot read —
+                    # counted rather than silently unmeasured.
+                    after = _read_json_or_empty(contest / "findings.after.json")
+                    row["ruling_contest_lines"] = ruling.get("conclusion_line")
+                    row["findings_after_n"] = after.get("n_findings")
+                    row["findings_after_flaw_n"] = after.get("n_flaw")
+                    row["findings_added_n"] = after.get("n_added")
+                    row["ruling_prose_empty"] = not (ruling.get("reasoning") or "").strip()
                 row["changed_the_decision"] = ruling.get("changed_the_decision")
                 row["final_correct"] = ruling.get("correct")
                 reading_path = contest / "ruling_agreement.json"
@@ -1362,7 +1505,16 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                 # written before 2026-08-27 was one.
                 row["grade_mode"] = grade.get("mode", "flaw")
                 row["grade_valid"] = grade["valid"]
-                if row["grade_mode"] == "judgment":
+                if row["grade_mode"] == "findings":
+                    # The `elif` is not optional: the `else` below reads
+                    # `grade["identified_flaw"]`, which a findings grade does not carry,
+                    # and would KeyError the whole index on the first graded cell.
+                    row["grade_contests_n"] = grade.get("contests_n")
+                    row["grade_contests_valid_n"] = grade.get("contests_valid_n")
+                    row["grade_contests_mechanical_n"] = grade.get(
+                        "contests_mechanical_n")
+                    row["grade_line_mismatch"] = grade.get("line_mismatch")
+                elif row["grade_mode"] == "judgment":
                     row["grade_defects_n"] = grade.get("defects_n")
                     row["grade_defects_valid_n"] = grade.get("defects_valid_n")
                     # The grader's summary line against its own per-defect rulings —
@@ -1374,6 +1526,19 @@ def build_index(cells: Sequence[Cell], *, root: Path,
                     row["characterises_the_flaw"] = grade["characterises_the_flaw"]
         rows.append(row)
     return rows
+
+
+def _read_json_or_empty(path: Path) -> dict[str, Any]:
+    """One artifact, or an empty dict where it is not there.
+
+    `_decision_manifest`'s shape, generalised for the conditional artifacts the index
+    joins: absent and unreadable both give `{}`, so a `.get` on the result is "not
+    written" rather than a crash on a tree a stage has not reached yet.
+    """
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 def _decision_manifest(directory: Path) -> dict[str, Any]:

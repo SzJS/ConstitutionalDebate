@@ -145,6 +145,14 @@ CHALLENGER_VARIANTS: tuple[str, ...] = (
     "judgment_specious",
     "judgment_fabricated",
     "placeholder",
+    # The FINDINGS variant (campaign `fd1`, 2026-09-02). A mode rather than a
+    # standpoint, like `judgment`: the decision it contests is a NUMBERED LIST of
+    # findings rather than a paragraph of prose, so the challenger contests a finding,
+    # an omission or a contradiction — each local and checkable — instead of redoing
+    # the judge's whole job. It has its own system prompt, its own user turn, its own
+    # parser and its own grader, and it is the only variant that requires a matching
+    # `judge_form`.
+    "findings",
 )
 
 # The one variant that is a MODE rather than a clause. Named so that the three call
@@ -170,6 +178,31 @@ SPECIOUS_VARIANT = "judgment_specious"
 # harness runs.
 FABRICATED_VARIANT = "judgment_fabricated"
 PLACEHOLDER_VARIANT = "placeholder"
+
+# The findings variant, named for the same reason `JUDGMENT_VARIANT` is: the challenger
+# prompt, `generate_challenge`, `_rule_by_judge`, the grade stage and the tests that pin
+# the mapping all test against this constant rather than against a string literal each.
+#
+# It is deliberately NOT in `JUDGMENT_FAMILY`. Nothing about it is a judgment audit: it
+# alleges no contradiction/misstatement/omission IN A JUDGMENT, it writes no
+# `Judgment says:` quotation, its `Challenge.defects` hold findings contests rather than
+# judgment defects, and every consumer of `defects` is gated on `JUDGMENT_VARIANT` so
+# none of them reads this arm's list. `arm_for_variant` is the identity here: a findings
+# objection is ruled by the findings ruling prompt and read by the findings reader.
+FINDINGS_VARIANT = "findings"
+
+# How the judge is asked for its decision.
+#
+#   verdict   the judge explains and ends on `Verdict: FLAWED|SOUND`. What every paid
+#             run before 2026-09-02 did, so a spec written before this field existed
+#             still describes what it ran.
+#   findings  the judge writes one numbered FINDING per purported flaw the FLAWED-side
+#             debater raised — passage, claim, defence, reason, ruling FLAW / NOT A
+#             FLAW — and writes NO verdict line at all. The verdict is derived by code
+#             (`prompts.derive_verdict`): FLAWED iff any finding is ruled FLAW, and an
+#             empty list is SOUND. `Sides.verdict_order` is unused under this form,
+#             because there is no verdict template to order.
+JUDGE_FORMS: tuple[str, ...] = ("verdict", "findings")
 
 # The three variants that write a judgment-style defect list and are ruled on
 # materiality. Used by the prompt builder, `generate_challenge` (which arm to record and
@@ -300,6 +333,18 @@ class DebateConfig:
     # pin dies slowly rather than fast — the guard is the one real pinned call before the
     # run, `records/derivations/sweep-1-provider-check.py`, not the classifier.
     provider_allow_fallbacks: bool = False
+
+    # HOW THE JUDGE IS ASKED FOR ITS DECISION; see ``JUDGE_FORMS``. "verdict" is what
+    # every paid run before 2026-09-02 did, so a spec written before this field existed
+    # still describes what it ran. "findings" is the decomposed judgment of campaign
+    # `fd1`: a numbered list of findings and NO verdict line, with the verdict derived
+    # from the rulings by code.
+    #
+    # It is a DECISION key and deliberately not in ``RECOURSE_ONLY_KEYS``: it changes
+    # what the judge was asked and therefore what the decision is, so a contest of such
+    # a decision must inherit it — the challenger has to be shown the list the judge
+    # actually wrote.
+    judge_form: str = "verdict"
 
     # REJUDGE ONLY: continue the source tree's stored transcript up to ``n_rounds``
     # before judging it, instead of judging the transcript as it stands. False is what
@@ -471,6 +516,27 @@ class DebateConfig:
                 "silently fall through to whichever clause the prompt module happened "
                 "to hold."
             )
+        if self.judge_form not in JUDGE_FORMS:
+            raise ConfigError(
+                f"judge_form must be one of {JUDGE_FORMS}, got {self.judge_form!r}. "
+                "It decides what the judge is asked for and how its reply is parsed, "
+                "and an unknown name would silently fall through to the verdict form — "
+                "producing a tree whose decisions are prose verdicts under a spec that "
+                "promised findings."
+            )
+        if (self.challenger_variant == FINDINGS_VARIANT
+                and self.judge_form != "findings"):
+            # The findings challenger contests a NUMBERED FINDING by its index. Without a
+            # findings judgment there is no list to contest and no `findings.json` to
+            # read, so every contest would be void by construction and the arm would
+            # measure nothing. Refused here rather than at the contest stage, because a
+            # spec is approved from `--dry-run` and this is the table it prints.
+            raise ConfigError(
+                f"challenger_variant={FINDINGS_VARIANT!r} needs judge_form='findings', "
+                f"got {self.judge_form!r}. The findings challenger contests numbered "
+                "findings by index; a decision made under the verdict form has no "
+                "findings list to contest."
+            )
         if not 0.0 <= self.challenger_temperature <= 2.0:
             raise ConfigError(
                 f"challenger_temperature must be in [0, 2], got "
@@ -548,6 +614,7 @@ WHY: dict[str, str] = {
     "generation_max_tokens": "8192 — the cap for roles that produce record text (debaters, solo stages, critic). It covers every successful generation in the pilot (max 7,888 completion tokens; p99 5,794) and halves a runaway's cost against 16,384; anything lower truncated successful turns, four of them mid-argument.",
     "reasoning_effort": "off, so the private channel is the published Thinking block rather than a provider channel no reader can see.",
     "judge_cot": "on: a decision that states no grounds can be neither read nor contested, and both are the claim under test.",
+    "judge_form": "\"verdict\" — the judge explains and ends on `Verdict: FLAWED|SOUND`, which is what every paid run before 2026-09-02 did, so a spec written before this field existed still says what it ran. \"findings\" is campaign `fd1`'s decomposed judgment: the judge writes one numbered FINDING per purported flaw the FLAWED-side debater raised — the quoted passage, the claim in one sentence, the strongest defence given, a reason, and a ruling FLAW / NOT A FLAW — and writes NO verdict line at all. The verdict is DERIVED by code, FLAWED iff any finding is ruled FLAW and SOUND on an empty list, so the judge cannot state a verdict its own findings do not entail. The point is contestability: a challenger contests one finding, an omission or a contradiction — local claims a reader can check against the transcript — instead of redoing the judge's whole job, which is what every recourse arm so far has had to do. `Sides.verdict_order` is UNUSED under this form: there is no verdict template, so nothing needs ordering, and the position-bias control it exists to provide has nothing to control. A malformed list buys one format repair and then fails the cell, exactly as a malformed verdict does; `challenger_variant = \"findings\"` is refused with any other value here.",
     "seed": "seeds side assignment and template order per item, so the draws are stable across re-runs.",
     "frequency_penalty": "0 unless a model loops; a nonzero value changes the text and so belongs in the record.",
     "max_decision_attempts": "NOT WIRED. Read and validated, never consulted: the harness makes ONE attempt per cell per invocation, and re-running the stage attempts only cells with no run or one left running by a crash — a cell whose latest run FAILED is skipped as attempted unless --retry-failed is passed. The retries that exist are the client's transport attempts and the one format repair.",

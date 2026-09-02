@@ -26,7 +26,8 @@ from exp2.client import Completion, FatalError, RetryableError
 # Roles whose calls are keyed on the role alone — there is at most one per run.
 SINGLETON_ROLES = {"judge", "recourse_judge", "challenger", "comprehension",
                    "recourse_solo", "agreement", "ruling_reader",
-                   "ruling_reader_materiality", "judgment_grader", "gatekeeper"}
+                   "ruling_reader_materiality", "judgment_grader", "gatekeeper",
+                   "findings_grader"}
 # Roles where the same role is called several times for different purposes.
 STAGED_ROLES = {"grader", "solo", "critic"}
 
@@ -85,6 +86,44 @@ DEFAULT_REPLIES: dict[str, str] = {
     # parent, so the decision changed, and `ruling_line_mismatch` is False.
     "ruling_reader_materiality": ("The judge finds the defect real and material.\n"
                                   "Reading: CHANGED"),
+    # --- the findings family, campaign `fd1` (2026-09-02) --------------------------
+    #
+    # Three of these are answered under a wire role that ALREADY has a default —
+    # `judge`, `recourse_judge`, `ruling_reader` — because the wire role is what
+    # accounting reads and a findings judgment is the same decision-path call a verdict
+    # judgment is. A fixture keyed on the role alone would therefore answer the findings
+    # judge with "Verdict: FLAWED", its parser would refuse it, and the cell would die
+    # after its one repair. That is exactly what this file was doing to every materiality
+    # reading until 2026-08-28, in a stage that reports nothing. So the fake sniffs the
+    # prompt for a mark from the closing it was actually sent (`FINDINGS_MARKS` below)
+    # and answers the question it was asked.
+    #
+    # The judgment derives FLAWED — one FLAW finding — which is what the plain `judge`
+    # default gives, so a test that swaps the judge form keeps the outcome it was written
+    # against while exercising the new parser.
+    "judge_findings": ("The flawed side raised one purported flaw.\n"
+                       "Finding 1\n"
+                       'Passage: "step 2 divides by zero"\n'
+                       "Claim: step 2 can divide by zero\n"
+                       "Defence: none given\n"
+                       "Reason: the divisor is not bounded away from zero\n"
+                       "Ruling: FLAW"),
+    # One line per contest. `parse_findings_ruling_output` is bound to the objection's
+    # own contest count, so a default that names contest 1 is enough for a one-contest
+    # objection and is harmlessly dropped when there are none.
+    "recourse_judge_findings": ("The quotation is in the text and the claim holds.\n"
+                                "Contest 1 (Finding 1): NOT A FLAW"),
+    # CONSISTENT is the consistent answer: the ruling above reaches a definite ruling and
+    # gives its reason, so `ruling_line_mismatch` reads False.
+    "ruling_reader_findings": ("The reasoning settles the contest it discusses.\n"
+                               "Reading: CONSISTENT"),
+    # The findings grader: one line per contest, then the summary. VALID matches the
+    # summary line, so the default run measures a consistent grade and tests that want
+    # the disagreement ask for it.
+    "findings_grader": ("The contest quotes the text accurately and the finding is "
+                        "about the annotated flaw.\n"
+                        "Contest 1: VALID — it points at the recorded flaw.\n"
+                        "Valid objection: YES"),
 }
 
 
@@ -151,6 +190,31 @@ class FakeClient:
     # the question it was actually asked.
     MATERIALITY_READER_MARK = "`Reading: STANDS`, `Reading: CHANGED`, or `Reading: NEITHER`"
 
+    # The same trick for the findings family, and for the same reason one layer wider:
+    # three wire roles now serve two questions each. The mark is a distinctive phrase
+    # from the closing the findings form actually sends, so the fake answers what it was
+    # asked rather than what its role is usually asked. `{wire role: (reply key, mark)}`.
+    FINDINGS_MARKS = {
+        "judge": ("judge_findings",
+                  "raised no identifiable purported flaw at all"),
+        "recourse_judge": ("recourse_judge_findings",
+                           "Rule only on the contests, one at a time"),
+        "ruling_reader": ("ruling_reader_findings",
+                          "`Reading: CONSISTENT`, `Reading: INCONSISTENT`, or "
+                          "`Reading: NEITHER`"),
+    }
+
+    @staticmethod
+    def asked_for_findings(role, messages: list[dict[str, str]] | None) -> str | None:
+        """The findings reply key for these messages, or None if this is the other
+        question this wire role serves."""
+        entry = FakeClient.FINDINGS_MARKS.get(role)
+        if entry is None or not messages:
+            return None
+        key, mark = entry
+        blob = "".join(m.get("content", "") for m in messages)
+        return key if mark in blob else None
+
     @staticmethod
     def key(meta: dict[str, Any]) -> Any:
         role = meta.get("role")
@@ -180,6 +244,16 @@ class FakeClient:
                 return self.replies["ruling_reader_materiality"]
             if key not in self.replies:
                 return DEFAULT_REPLIES["ruling_reader_materiality"]
+        # Same rule for the findings family: an explicit `judge_findings` /
+        # `recourse_judge_findings` / `ruling_reader_findings` script wins over a generic
+        # one on the wire role, and a test that scripts only the wire role keeps meaning
+        # exactly what it meant.
+        findings_key = self.asked_for_findings(meta.get("role"), messages)
+        if findings_key is not None:
+            if findings_key in self.replies:
+                return self.replies[findings_key]
+            if key not in self.replies:
+                return DEFAULT_REPLIES[findings_key]
         if key in self.replies:
             return self.replies[key]
         role = meta.get("role")

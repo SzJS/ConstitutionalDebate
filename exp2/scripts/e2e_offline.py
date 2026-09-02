@@ -71,6 +71,7 @@ import asyncio
 import dataclasses
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -142,6 +143,11 @@ ROOT_REJUDGE = REPO / "outputs" / "e2e-offline-2-rejudge"
 # `admission.json` beside each. It is the only pass whose tree holds a ruling no call in
 # it made, and the only one where `final_correct` is computed rather than read.
 ROOT_GATE = REPO / "outputs" / "e2e-offline-2-gate"
+# And the tenth: the FINDINGS arm (campaign `fd1`), which re-judges ROOT's stored debates
+# into a decomposed judgment — a numbered list and NO verdict line — and then contests,
+# rules, reads and grades that list. It is the only pass whose decision's verdict was
+# written by no model at all.
+ROOT_FINDINGS = REPO / "outputs" / "e2e-offline-2-findings"
 CONDITIONS = ["single", "self_critique", "debate"]
 # `per_condition` only differs from `third_party` where the decider re-decides, which is
 # the two solo conditions; `debate` is ruled by the judge under either.
@@ -282,6 +288,58 @@ class scripted:
         return False
 
 
+# A scripted reply may need to quote the REAL text it is being asked about, and the fake
+# is keyed on the role rather than on the cell — so one `challenger` script is answered
+# to four different items with four different solutions. A contest that quoted a fixture
+# sentence would be VOID against every one of them by construction, and the findings pass
+# would then measure nothing but the void path.
+#
+# So a reply may carry `{SOLUTION_QUOTE}`, and the fake fills it from the `<solution>`
+# block of the very prompt it is answering. Nothing else changes: a reply without the
+# marker is returned byte for byte, so every other pass in this script is unaffected.
+SOLUTION_QUOTE = "{SOLUTION_QUOTE}"
+_SOLUTION_BLOCK = re.compile(r"<solution>\n(.*?)\n</solution>", re.S)
+
+
+def solution_sentence(messages) -> str:
+    """A real, quotable line of the `<solution>` in these messages.
+
+    The longest line of the block, capped at 120 characters — long enough to clear
+    `prompts.MIN_QUOTE_PIECE` and short enough that `quote_in_text`'s 80-character
+    comparison window lands inside it. Empty when there is no block, which is itself
+    worth seeing: the contest then quotes nothing and is void, loudly.
+    """
+    blob = "".join(m.get("content", "") for m in (messages or []))
+    match = _SOLUTION_BLOCK.search(blob)
+    if not match:
+        return ""
+    lines = [line.strip() for line in match.group(1).splitlines() if line.strip()]
+    if not lines:
+        return ""
+    longest = max(lines, key=len)
+    if len(longest) <= 120:
+        return longest
+    # Cut at a word boundary, so the quotation a document prints reads as a quotation
+    # rather than as a string that ran out of room mid-word.
+    return longest[:120].rsplit(" ", 1)[0]
+
+
+# Every fake built in this process, in the order they were built. A pass that has to
+# count wire calls — the findings pass, which asserts that its agreement stage makes NONE
+# — needs them all, and each stage builds a client per run.
+CLIENTS: list = []
+
+
+class QuotingFake(FakeClient):
+    """The fake, plus `{SOLUTION_QUOTE}` substitution. See above."""
+
+    def reply_for(self, meta, messages=None):
+        text = super().reply_for(meta, messages)
+        if SOLUTION_QUOTE in text:
+            text = text.replace(SOLUTION_QUOTE, solution_sentence(messages))
+        return text
+
+
 def install_fake_client() -> list[FakeClient]:
     """Replace ``experiment.OpenRouterClient`` with the fake, as the tests do.
 
@@ -293,12 +351,12 @@ def install_fake_client() -> list[FakeClient]:
     generations-only. One fake per context manager, exactly as the real client is built,
     keeps every run's wire log in its own directory.
     """
-    made: list[FakeClient] = []
+    made: list[FakeClient] = CLIENTS
 
     class Ctx:
         def __init__(self, *args, **kwargs):
-            self.client = FakeClient(replies=dict(ACTIVE_REPLIES),
-                                     sink=kwargs.get("sink"))
+            self.client = QuotingFake(replies=dict(ACTIVE_REPLIES),
+                                      sink=kwargs.get("sink"))
 
         async def __aenter__(self):
             made.append(self.client)
@@ -392,7 +450,7 @@ async def main() -> int:
     # records the current code did not write.
     for root in (ROOT, ROOT_PER_CONDITION, ROOT_RERULE, ROOT_PARTISAN, ROOT_JUDGMENT,
                  ROOT_SPECIOUS, ROOT_PLACEHOLDER, ROOT_PLACEHOLDER_SOURCE,
-                 ROOT_REJUDGE, ROOT_GATE):
+                 ROOT_REJUDGE, ROOT_GATE, ROOT_FINDINGS):
         if root.exists():
             shutil.rmtree(root)
     ROOT.mkdir(parents=True, exist_ok=True)
@@ -452,9 +510,11 @@ async def main() -> int:
     eighth = await rejudge_pass(config, client_config, grading, by_id)
     # After the judgment pass, and it must be: the gate reads that pass's tree.
     ninth = await gatekeeper_pass(config, client_config, grading, grid)
+    tenth = await findings_pass(config, client_config, grading, by_id)
     return await per_condition_pass(
         per_condition_config, client_config, grading, by_id
-    ) or first or third or fourth or fifth or sixth or seventh or eighth or ninth
+    ) or first or third or fourth or fifth or sixth or seventh or eighth or ninth \
+        or tenth
 
 
 async def rejudge_pass(config, client_config, grading, by_id) -> int:
@@ -1397,6 +1457,324 @@ async def per_condition_pass(config, client_config, grading, by_id) -> int:
         stray["rendering"] = {"the document does not say the decider reconsidered": 1}
 
     return report_documents(ROOT_PER_CONDITION) or (1 if stray else 0)
+
+
+# The findings arm's scripted replies, on the WIRE roles — `judge`, `challenger`,
+# `recourse_judge`, `ruling_reader`, `findings_grader` — because those are what the fake
+# is keyed on and what accounting reads. The three that serve two questions each answer
+# the findings one here; `FakeClient.FINDINGS_MARKS` is what stops the OTHER passes'
+# scripts being answered in this vocabulary.
+#
+# One objection covers all four contest kinds at once, because the fake answers one
+# script to every cell: a FLIP of finding 1, an OMISSION the judge upholds (which appends
+# a finding built from the challenger's own quotes), a CONTRADICTION the judge refuses
+# (which changes nothing), and a VOID contest against a finding that does not exist. The
+# `{SOLUTION_QUOTE}` marker is what makes the first two quote the item they are actually
+# about rather than a fixture sentence that would be void against every one of them.
+FINDINGS_REPLIES = {
+    "judge": (
+        "The flawed side raised two points about the same passage.\n"
+        "Finding 1\n"
+        'Passage: "' + SOLUTION_QUOTE + '"\n'
+        "Claim: the step does not follow from the one before it\n"
+        "Defence: none given\n"
+        "Reason: nothing in the record establishes the step\n"
+        "Ruling: FLAW\n"
+        "Finding 2\n"
+        'Passage: "' + SOLUTION_QUOTE + '"\n'
+        "Claim: the same passage is also imprecisely worded\n"
+        "Defence: the sound side called the wording conventional\n"
+        "Reason: imprecision is not falsity\n"
+        "Ruling: NOT A FLAW"
+    ),
+    "challenger": (
+        "Thinking: I read the list against the record.\n"
+        "\n"
+        "Argument:\n"
+        "1. Contests: Finding 1\n"
+        "   Should be: NOT A FLAW\n"
+        '   Text says: "' + SOLUTION_QUOTE + '"\n'
+        '   Record says: "Alice argues in round 1."\n'
+        "   Why: the record answers the claim in round 1 and the finding ignores it.\n"
+        "2. Contests: omission\n"
+        '   Record says: "Bob argues in round 2."\n'
+        '   Passage: "' + SOLUTION_QUOTE + '"\n'
+        "   Why: a second purported flaw was raised and no finding lists it.\n"
+        "3. Contests: contradiction\n"
+        "   Findings: 1 and 2\n"
+        "   Why: the two findings rule the same passage two ways.\n"
+        "4. Contests: Finding 9\n"
+        "   Should be: FLAW\n"
+        '   Text says: "this sentence appears nowhere in the text under review"\n'
+        '   Record says: "Alice argues in round 1."\n'
+        "   Why: there is no finding 9, so this contest is void by construction.\n"
+        "Decision: REVERSE"
+    ),
+    # One line per contest, in the objection's numbering, and never a verdict. Contest 2
+    # is UPHELD as an omission and the omitted claim is then ruled NOT A FLAW — which
+    # still appends a finding, so the append path runs and the verdict moves to SOUND.
+    "recourse_judge": (
+        "The quotations check out. Contest 1's claim is answered in the record, the "
+        "omitted point is real but is not a flaw, the two findings make different "
+        "claims, and contest 4 quotes nothing I can find.\n"
+        "Contest 1 (Finding 1): NOT A FLAW\n"
+        "Contest 2 (omission): NOT A FLAW\n"
+        "Contest 3 (contradiction): NOT A CONTRADICTION\n"
+        "Contest 4 (Finding 9): FLAW"
+    ),
+    # The findings reader's own vocabulary. CONSISTENT is the consistent answer to the
+    # ruling above, and it is translated against the RULING's derived verdict, so
+    # `ruling_line_mismatch` reads False.
+    "ruling_reader": ("Each contest is settled and the reasons given support the "
+                      "rulings.\nReading: CONSISTENT"),
+    # `Contest 1: ...` is written even though contest 1 is settled mechanically on the
+    # sound item — a tree where the grader's ruling had been merged instead of discarded
+    # would show its reason there.
+    "findings_grader": (
+        "I check each contest against the record and the annotation.\n"
+        "Contest 1: VALID — the finding is not about the recorded flaw.\n"
+        "Contest 2: INVALID — the record does not raise that as a purported flaw.\n"
+        "Contest 3: VALID — the two findings concern the same passage.\n"
+        "Valid objection: YES"
+    ),
+}
+
+
+async def findings_pass(config, client_config, grading, by_id) -> int:
+    """The findings arm, end to end: a list in, a derived verdict out, at BOTH ends.
+
+    What no other pass can show, and every one of them is checked below over real
+    records rather than a fixture:
+
+      the DECISION   `verdict.json` carries a verdict no model wrote. The judge was told
+                     not to give one, and the harness derived it from `findings.json` by
+                     counting — so the assertion is `verdict == derive_verdict(findings)`,
+                     and it is made again after recourse against `findings.after.json`.
+      the CONTEST    four kinds in one objection — a flip, an upheld omission that
+                     APPENDS a finding built from the challenger's own quotes, a refused
+                     contradiction that changes nothing, and a VOID contest that is kept
+                     with its number, ruled INVALID mechanically and ignored by the
+                     ruling.
+      the AGREEMENT  no call at all: the line-vs-prose reading is a string comparison
+                     here, and a wire call would mean the mechanical branch was skipped.
+      the GRADE      every contested cell, including `law-evi1_gpt4_A-s4` — a SOUND item,
+                     where a `Should be: NOT A FLAW` contest is VALID by rule with no
+                     grader reading — and including the cells whose decision was CORRECT.
+      the DOCUMENTS  both of them, for every run and every contest, with no fallback and
+                     no "Reconsidered by" stray: the outcome section has to say a judge
+                     ruled, and say what it ruled contest by contest.
+    """
+    from exp2.persistence import load_findings
+    from exp2.prompts import derive_verdict
+
+    grid = build_grid([by_id[i] for i in ITEMS], ["debate"])
+    findings_config = dataclasses.replace(
+        config, judge_form="findings", challenger_variant="findings")
+    ROOT_FINDINGS.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'=' * 78}\ntenth pass — the findings arm")
+    print(f"outputs: {ROOT_FINDINGS}")
+    print(f"transcripts read from: {ROOT}   (never written to)")
+    print(f"cells: {len(grid)}  judge_form: {findings_config.judge_form}  "
+          f"challenger_variant: {findings_config.challenger_variant} — the judge writes "
+          "a numbered list and NO verdict line; the verdict is derived by code\n")
+    before = tree_sha256(ROOT)
+    stray: dict[str, int] = {}
+
+    with scripted(**FINDINGS_REPLIES):
+        results = await run_stage_rejudge(
+            grid, root=ROOT_FINDINGS, config=findings_config,
+            client_config=client_config, api_key="fake", transcript_root=ROOT)
+        counts: dict[str, int] = {}
+        for result in results:
+            key = ("error" if isinstance(result, BaseException)
+                   else result.get("status", "unknown"))
+            counts[key] = counts.get(key, 0) + 1
+        print(f"{'rejudge':17s} {counts}")
+        for result in results:
+            if isinstance(result, BaseException):
+                print(f"  ! {type(result).__name__}: {result}")
+            elif result.get("status") == "failed":
+                print(f"  ! {result['cell_id']}: {result.get('error')}")
+        if counts.get("completed") != len(grid):
+            stray["a cell was not re-judged into a findings list"] = 1
+
+        agreement_calls_before = sum(
+            1 for client in CLIENTS for call in client.calls
+            if call["meta"].get("role") == "agreement")
+        for stage, runner in (
+            ("contest", lambda: run_stage_contest(
+                grid, root=ROOT_FINDINGS, config=findings_config,
+                client_config=client_config, api_key="fake")),
+            ("agreement", lambda: run_stage_agreement(
+                grid, root=ROOT_FINDINGS, config=findings_config, grading=grading,
+                client_config=client_config, api_key="fake")),
+            ("ruling_agreement", lambda: run_stage_ruling_agreement(
+                grid, root=ROOT_FINDINGS, config=findings_config, grading=grading,
+                client_config=client_config, api_key="fake")),
+            ("grade", lambda: run_stage_grade(
+                grid, root=ROOT_FINDINGS, config=findings_config, grading=grading,
+                client_config=client_config, api_key="fake")),
+        ):
+            stage_results = await runner()
+            counts = {}
+            for result in stage_results:
+                key = ("error" if isinstance(result, BaseException)
+                       else result.get("status", "unknown"))
+                counts[key] = counts.get(key, 0) + 1
+            print(f"{stage:17s} {counts}")
+            for result in stage_results:
+                if isinstance(result, BaseException):
+                    print(f"  ! {type(result).__name__}: {result}")
+                elif result.get("status") == "failed":
+                    print(f"  ! {result['cell_id']}: {result.get('error')}")
+            if counts.get("completed") != len(grid):
+                stray[f"a cell did not complete the {stage} stage"] = 1
+
+    # THE DECISION: a verdict no model wrote.
+    lists: dict[int, int] = {}
+    for directory in sorted(ROOT_FINDINGS.glob("cells/*/runs/*")):
+        stored = load_findings(directory)
+        if stored is None:
+            stray["a findings decision with no findings.json"] = 1
+            continue
+        lists[stored["n_findings"]] = lists.get(stored["n_findings"], 0) + 1
+        verdict = json.loads((directory / "verdict.json").read_text(encoding="utf-8"))
+        if verdict["verdict"] != derive_verdict(stored["findings"]):
+            stray["a verdict that does not follow from its own findings list"] = 1
+        if "Verdict:" in verdict["raw"]:
+            stray["a findings judge that wrote a verdict line anyway"] = 1
+        manifest = json.loads((directory / "run.json").read_text(encoding="utf-8"))
+        if manifest.get("judge_form") != "findings":
+            stray["a run whose manifest does not say which form judged it"] = 1
+    print(f"findings per judgment: {lists}   "
+          f"(the verdict is derived from these, not written)")
+
+    # THE CONTEST and THE RULING: four kinds, one of them void, one of them appending.
+    kinds: dict[str, int] = {}
+    void = added = overturned = 0
+    for directory in sorted(ROOT_FINDINGS.glob("cells/*/contests/*/runs/*")):
+        challenge = json.loads(
+            (directory / "challenge.json").read_text(encoding="utf-8"))
+        if challenge.get("arm") != "findings":
+            stray[f"a challenge recorded under arm {challenge.get('arm')!r}"] = 1
+        for contest in challenge.get("defects") or []:
+            kinds[contest["kind"]] = kinds.get(contest["kind"], 0) + 1
+            void += bool(contest.get("void"))
+        ruling = json.loads((directory / "ruling.json").read_text(encoding="utf-8"))
+        if ruling.get("form") != "derived_findings":
+            stray[f"a ruling recorded under form {ruling.get('form')!r}"] = 1
+        if ruling.get("prompt_form") != "findings":
+            stray["a findings ruling made under another prompt"] = 1
+        after = json.loads(
+            (directory / "findings.after.json").read_text(encoding="utf-8"))
+        if ruling["verdict"] != derive_verdict(after["findings"]):
+            stray["a ruling whose verdict does not follow from the list it wrote"] = 1
+        added += after.get("n_added") or 0
+        overturned += bool(ruling.get("changed_the_decision"))
+        agreement = json.loads(
+            (directory / "agreement.json").read_text(encoding="utf-8"))
+        if agreement.get("parse_mode") != "mechanical" or agreement.get("model"):
+            stray["an agreement that was bought rather than computed"] = 1
+    print(f"contests parsed, by kind: {kinds}   void: {void}")
+    print(f"findings appended at recourse: {added}   decisions overturned: "
+          f"{overturned}/{len(grid)}")
+    if kinds != {"finding": 2 * len(grid), "omission": len(grid),
+                 "contradiction": len(grid)}:
+        stray["the objection's four contests did not all parse"] = 1
+    if void != len(grid):
+        stray["the void contest was not recorded as void"] = 1
+    if added != len(grid):
+        stray["an upheld omission did not append a finding"] = 1
+    if overturned != len(grid):
+        stray["the re-derived verdict did not move where the rulings say it should"] = 1
+    agreement_calls_after = sum(
+        1 for client in CLIENTS for call in client.calls
+        if call["meta"].get("role") == "agreement")
+    print(f"agreement wire calls made: {agreement_calls_after - agreement_calls_before} "
+          "(the reading is mechanical under this arm)")
+    if agreement_calls_after != agreement_calls_before:
+        stray["the findings agreement stage spent a call"] = 1
+
+    # THE GRADE: every contested cell, sound items and correct decisions included.
+    graded = sorted(ROOT_FINDINGS.glob("cells/*/contests/*/runs/*/grade.json"))
+    modes: dict[str, int] = {}
+    mechanical_valid = 0
+    reasons: dict[str, int] = {}
+    for path in graded:
+        grade = json.loads(path.read_text(encoding="utf-8"))
+        modes[str(grade.get("mode"))] = modes.get(str(grade.get("mode")), 0) + 1
+        by_index = {c["index"]: c for c in grade["contests"]}
+        if len(by_index) != 4:
+            stray["a grade that did not rule on every contest the objection raised"] = 1
+        # the void contest keeps its number and its MECHANICAL ruling; the grader's
+        # opinion about a settled contest is discarded rather than merged
+        if not by_index.get(4, {}).get("mechanical"):
+            stray["the void contest was not settled mechanically"] = 1
+        reasons[by_index[4]["reason"]] = reasons.get(by_index[4]["reason"], 0) + 1
+        if by_index[1].get("mechanical") and by_index[1].get("valid"):
+            mechanical_valid += 1
+    print(f"contested cells graded: {len(graded)}   modes: {modes}")
+    print(f"sound-item contests ruled VALID with no grader reading: {mechanical_valid}")
+    print(f"who ruled on the void contest, by reason: {reasons}")
+    if len(graded) != len(grid):
+        stray["a contested cell was not graded"] = 1
+    if set(modes) != {"findings"}:
+        stray["a grade was written by the wrong instrument"] = 1
+    if mechanical_valid != 1:
+        stray["the sound item's finding contest was not settled by its label"] = 1
+
+    rows = build_index(grid, root=ROOT_FINDINGS,
+                       challenger_model=findings_config.challenger_model_for())
+    index = ROOT_FINDINGS / "index.jsonl"
+    index.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    metrics = analyse(index, ["debate"])
+    (ROOT_FINDINGS / "metrics.json").write_text(json.dumps(metrics, indent=2),
+                                                encoding="utf-8")
+    required = ("judge_form", "findings_n", "findings_flaw_n", "findings_parse_mode",
+                "findings_ruling_normalised_n", "challenge_contests_n",
+                "challenge_contests_finding_n", "challenge_contests_omission_n",
+                "challenge_contests_contradiction_n", "challenge_contests_void_n",
+                "challenge_seeks_reversal", "ruling_contest_lines", "findings_after_n",
+                "findings_added_n", "ruling_prose_empty", "grade_contests_n",
+                "grade_contests_valid_n", "grade_line_mismatch")
+    missing = sorted({column for row in rows for column in required
+                      if column not in row})
+    print(f"indexed {len(rows)} rows   index columns missing: {missing or 'none'}")
+    print("findings_lists: "
+          f"{metrics['overall']['findings_lists']}")
+    print("findings_contests: "
+          f"{metrics['overall']['findings_contests']}")
+    if missing:
+        stray["an index row is missing a findings column"] = 1
+    # the flaw-graded bars are held out: `grade_valid` here is a third kind of validity
+    if metrics["overall"]["rates"]["valid_objection"]["n"]:
+        stray["a findings grade was counted in the flaw grader's rate"] = 1
+    if metrics["overall"]["n_findings_graded"] != len(grid):
+        stray["the metrics do not count the findings grades the tree holds"] = 1
+    caveat = next((c for c in metrics["caveats"]
+                   if "THIS ARM'S DECISION IS A LIST" in c), "")
+    print(f"findings caveat: {caveat[:150]}...")
+    if not caveat or "THIRD kind of validity" not in caveat:
+        stray["the metrics do not say which validity this rate is"] = 1
+
+    outcomes = rendered_outcome_lines(ROOT_FINDINGS)
+    print(f"rendered outcome sentences: {sorted(outcomes)}")
+    if not outcomes or any("Reconsidered by" in line for line in outcomes):
+        stray["the document does not say a judge ruled"] = 1
+    documents = [path.read_text(encoding="utf-8") for path in
+                 sorted(ROOT_FINDINGS.glob("cells/*/contests/*/runs/*/transcript.md"))]
+    if not all("The judge ruled on each contest" in text for text in documents):
+        stray["a contest document does not print the rulings it was derived from"] = 1
+    if not all("were added at recourse" in text for text in documents):
+        stray["a contest document does not say a finding was appended"] = 1
+
+    after_hash = tree_sha256(ROOT)
+    print(f"source tree hash before {before[:16]}  after {after_hash[:16]}  "
+          f"{'UNCHANGED' if before == after_hash else 'CHANGED'}")
+    if before != after_hash:
+        stray["the findings pass wrote into the tree it read"] = 1
+    print(f"findings invariants violated: {stray}")
+    return report_documents(ROOT_FINDINGS) or (1 if stray else 0)
 
 
 def report_documents(root) -> int:

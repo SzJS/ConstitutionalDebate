@@ -677,7 +677,11 @@ def _contest_calls(directory: Path) -> list[_Accepted]:
         # blocks. The heading distinguishes them, because a reader comparing a sweep
         # record with a re-ruled one has to be able to see which line produced which.
         form = ruling.get("form")
-        by_judge = form in ("uphold_overturn", "stated_conclusion")
+        # `derived_findings` is the third-party judge's too — the same recourse judge,
+        # asked for a ruling per contest instead of a conclusion about the text — so it
+        # is handed the same two blocks and logged under the same wire role. The heading
+        # is what tells a reader comparing two records which question was put.
+        by_judge = form in ("uphold_overturn", "stated_conclusion", "derived_findings")
         derived: tuple[tuple[str, str, str], ...] = ()
         if by_judge:
             derived = shown
@@ -694,6 +698,8 @@ def _contest_calls(directory: Path) -> list[_Accepted]:
         heading = "ruling (in conversation)"
         if form == "stated_conclusion":
             heading = "ruling (recourse judge, stated conclusion)"
+        elif form == "derived_findings":
+            heading = "ruling (recourse judge, findings)"
         elif by_judge:
             heading = "ruling (recourse judge)"
         accepted.append(_Accepted(

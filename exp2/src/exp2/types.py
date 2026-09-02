@@ -1123,8 +1123,15 @@ class Challenge:
 # removed and the absolute statement put in its place. `uphold_overturn` is kept in the
 # vocabulary because 1,586 rulings on disk were made under it; nothing generates it any
 # more, and `ruling_form` in the index is how a reader tells the two apart.
+#   derived_findings  the findings arm's recourse judge, since 2026-09-02. It is not
+#                     asked for a verdict at all: it rules on each CONTEST — `Contest 1
+#                     (Finding 3): FLAW` — the contested findings take those rulings, an
+#                     upheld omission appends a finding, and the verdict is re-derived
+#                     from the whole list by `prompts.derive_verdict`. UPHOLD/OVERTURN is
+#                     then the comparison of that derived verdict with the parent's, so
+#                     the invariant below is the same one `stated_conclusion` satisfies.
 RULING_FORMS: tuple[str, ...] = (
-    "uphold_overturn", "restated_verdict", "stated_conclusion",
+    "uphold_overturn", "restated_verdict", "stated_conclusion", "derived_findings",
 )
 
 # WHICH PROMPT ruled, which is a different fact from which FORM the answer took. Both
@@ -1146,13 +1153,22 @@ RULING_FORMS: tuple[str, ...] = (
 #
 # Defaulted to `object_level` so the 1,586 + 1,589 ruling.json files already on disk
 # still load through `from_dict` and still say something true about themselves.
-RULING_PROMPT_FORMS: tuple[str, ...] = ("object_level", "materiality")
+#   findings      `RECOURSE_JUDGE_USER_FINDINGS`, the findings arm, since 2026-09-02.
+#                 The objection contests numbered findings, so the judge is shown the
+#                 findings list and rules per contest with an ABSOLUTE ruling (FLAW /
+#                 NOT A FLAW / NOT AN OMISSION / NOT A CONTRADICTION) and never a
+#                 relative word. Its reader is the findings reader, which asks whether
+#                 the prose supports the lines rather than what it concludes about the
+#                 text.
+RULING_PROMPT_FORMS: tuple[str, ...] = ("object_level", "materiality", "findings")
 
 # The forms whose ``ruling`` word is UPHOLD/OVERTURN and whose ``verdict`` follows from
 # it by ``resolve_ruling``. They differ in what the model was ASKED — the relative word
 # or the absolute statement — and not at all in the arithmetic afterwards, which is why
 # the invariant is checked over both rather than duplicated.
-_DERIVED_VERDICT_FORMS: tuple[str, ...] = ("uphold_overturn", "stated_conclusion")
+_DERIVED_VERDICT_FORMS: tuple[str, ...] = (
+    "uphold_overturn", "stated_conclusion", "derived_findings",
+)
 
 
 @dataclass

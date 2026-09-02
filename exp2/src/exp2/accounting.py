@@ -45,8 +45,12 @@ OFF_PATH_ROLES: frozenset[str] = frozenset(
     # for the same reason the graders are: it decides which of M1's EXISTING rulings are
     # counted, changes no ruling and no verdict, and a gate that could inflate the
     # condition it gates would be measuring itself.
-    {"grader", "judgment_grader", "comprehension", "agreement", "ruling_reader",
-     "gatekeeper"}
+    # `findings_grader` is the findings variant's grader (2026-09-02) — a wire role of
+    # its own rather than a purpose of `grader`, because it is repaired with a different
+    # format, is the one door to the annotation in that arm, and must never be able to
+    # inflate the condition it grades.
+    {"grader", "judgment_grader", "findings_grader", "comprehension", "agreement",
+     "ruling_reader", "gatekeeper"}
 )
 
 

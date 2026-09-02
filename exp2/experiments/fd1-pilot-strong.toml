@@ -1,0 +1,158 @@
+# fd1 PILOT, ARM F-STRONG — the strong findings judge on the 60 pilot-3 debate cells.
+# ~$2.5.
+#
+# READ FIRST: `experiments/fd1-strong.toml`, which this pilot instruments;
+# `experiments/fd1-pilot-weak.toml`, which it is read beside; and
+# `records/experiments/findings-1/PREREG.md` once it exists. NO NUMBER FROM THIS TREE IS
+# QUOTED AS A RESULT. Sixty cells measure no accuracy difference; this is an instrument.
+#
+# WHAT IS NEW, in three lines. Under `judge_form = "findings"` the judge writes one
+# numbered FINDING per purported flaw the FLAWED-side debater raised — passage, claim,
+# defence, reason, ruling FLAW / NOT A FLAW — and NO verdict line; the verdict is DERIVED
+# by code (FLAWED iff any finding is FLAW, SOUND on an empty list). Under
+# `challenger_variant = "findings"` the challenger contests a numbered finding, an
+# OMISSION or a CONTRADICTION, with every quote existence-checked at parse time, and the
+# recourse judge rules each contest ABSOLUTELY with the verdict re-derived from the
+# amended list. The contest is local and checkable instead of a re-run of the judge's
+# whole job.
+#
+# WHAT DIFFERS FROM `fd1-pilot-weak.toml` IS TWO LINES AND ONE PIN: `judge_model` and
+# `recourse_judge_model` are `openai/gpt-5.6-luna-20260709`, pinned to the BASE slug
+# `openai` — not `openai/fast`, not `openai/flex`, which are latency and price tiers
+# rather than the default route. The dated id is the served one (`LLM_NOTES.md` §1) and is
+# used because it cannot silently become a different model; the check of 2026-09-02 sent
+# the bare id, the dated id and the dated id pinned, and all three returned `SERVED BY:
+# OpenAI`, `finish_reason stop` and 0 reasoning tokens (`outputs/fd1-provider-check.log`).
+# Reasoning stays OFF at the default.
+#
+# WHAT THIS PILOT GATES, and it is the instrument and not the result:
+#
+#   1. THE PARSE RATE, REPORTED. The 51/60 FEASIBILITY GATE IS F-WEAK'S ALONE — it decides
+#      whether the weak arm is run at scale — but a strong judge that cannot hold the
+#      format is a finding of its own and is read here before any money goes on 1,644
+#      cells. A truncation and an unparseable list both count: each buys one format repair
+#      and then fails its cell.
+#   2. DOES THE RULING PARSE? At least 90% of rulings must carry a line for every contest
+#      in the objection's numbering.
+#   3. IS THERE ANYTHING TO MEASURE? Some contests raised, some graded VALID. A strong
+#      judge whose findings the challenger never contests is exactly the outcome this
+#      pilot exists to find for the price of 60 cells rather than 1,644.
+#   4. THE MECHANICAL PHANTOM RATE, reported; never pooled with the Haiku column of
+#      jd3-jd6.
+#   5. WHAT THE FULL RUN COSTS — per-stage spend on 60 cells scaled to 1,644, with luna's
+#      measured p95 latency. PREREG §8 registers that figure times 1.3.
+#
+# Fable reads 10 contest+ruling pairs from this arm by hand before the full run.
+#
+# THE POPULATION IS 60, NOT 69, AND THAT IS THE PRECEDENT `jd3-pilot.toml` SET.
+# `data/cases/pilot-3.jsonl` is a strict subset of `ftf-all.jsonl`, so all 69 of its
+# debate cells were attempted in the sweep and 60 were decided; the 9 the sweep lost to
+# truncation have no stored transcript, were never re-judged into `jd3-main`, and are
+# skipped here with `no source decision to re-judge`. `--dry-run` prints the COUNTED
+# figure rather than the grid.
+#
+# THE DEBATES ARE NOT RE-RUN. `transcripts_from` reads `jd3-main` and nothing under it is
+# written.
+#
+#     RUN_SWEEP_CMD="uv run exp2-experiment --retry-failed" \
+#     RUN_SWEEP_STAGES="rejudge contest agreement ruling_agreement grade analyse" nohup \
+#         scripts/run_sweep.sh experiments/fd1-pilot-strong.toml \
+#         > outputs/fd1-pilot-strong-driver.log 2>&1 &
+#
+# The full arms run under `outputs/fd1-run-all.sh`; the pilots do not, because a pilot is
+# read between its two arms rather than chained past them.
+#
+# WHAT THIS SPEC SPENDS, and it is not the `--dry-run` total — that is a per-stage bound
+# over every stage that could be run against this tree. The six stages above make about
+# 60 findings judgments, 60 objections, 60 comprehension probes, at most 60 rulings, at
+# most 60 ruling readings and at most 60 grades: roughly 360 short calls, **about $2.5**
+# on the smoke's measured per-cell figure — a little more than F-weak's, since luna costs
+# more per output token than Maverick. `analyse` makes none.
+#
+# `agreement` MAKES NO CALL UNDER THIS ARM. The line-vs-prose instrument is MECHANICAL
+# here: the objection's argument is a numbered list this harness has already parsed, so
+# `phantom_contest` is `(stance == contests) != (well-formed contests > 0)` — a string
+# comparison (`recourse.mechanical_agreement`), `parse_mode = "mechanical"`, no Haiku, no
+# spend. The stage still runs and writes a real `Agreement` for every contested and every
+# declined cell, so `agrees` and `phantom_contest` work unchanged downstream.
+#
+# RESUME AND RETRY, per stage:
+#
+#   * `rejudge` follows `decide`'s rule and READS `--retry-failed`, which the launch line
+#     above passes: a cell already re-judged here is skipped, and so is one whose latest
+#     run FAILED — unless the flag, in which case it is re-attempted once. A cell that
+#     fails twice is counted and left undecided, and counts against the parse rate.
+#   * `contest` resumes on the ARTIFACT: its only skip is "some run under this cell's
+#     contest directory holds a `challenge.json`". A failed challenger call wrote none and
+#     is re-attempted on every resume; a cell that wrote a challenge and lost its RULING is
+#     skipped as already contested and stays ruling-less.
+#   * `agreement`, `ruling_agreement` and `grade` each resume on their own artifact
+#     (`already measured` / `already graded`).
+#   * `analyse` spends nothing and is idempotent.
+
+name = "fd1-pilot-strong"
+
+# The 60 decided debate cells of `pilot-3` — the same file F-weak's pilot runs, so the two
+# pilots are comparable cell for cell.
+cases = "data/cases/pilot-3.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions — findings lists
+# over the same stored debates. Read-only.
+transcripts_from = "outputs/experiments/jd3-main"
+
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. Every term in the
+# estimate is a per-stage bound printed whether or not that stage is in the run.
+planned_stages = ["rejudge", "contest", "agreement", "ruling_agreement", "grade", "analyse"]
+
+[debate]
+# Byte-identical to `fd1-strong.toml`'s block. A pilot whose settings differed from the
+# arm it gates would gate a different run.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+
+# THE STRONG FINDINGS JUDGE — the DATED id, pinned to `openai` below.
+judge_model      = "openai/gpt-5.6-luna-20260709"
+
+# Unchanged from F-weak's pilot and from jd3-jd6, and UNPINNED: Google is its only
+# provider. Holding the challenger fixed is what makes the judge the only thing that moved
+# between the arms.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE FIRST OF THE TWO LINES THAT MAKE THIS THE FINDINGS CAMPAIGN. The judge writes one
+# numbered finding per purported flaw and NO verdict line; the verdict is derived by code.
+# `Sides.verdict_order` is unused under this form.
+judge_form = "findings"
+
+# THE SECOND. The challenger contests a finding, an omission or a contradiction, with
+# quotes existence-checked at parse time. `DebateConfig` refuses this value with any
+# `judge_form` but "findings", and `experiment_cli` refuses an `fd1`-named spec that
+# states neither.
+challenger_variant = "findings"
+
+recourse_form = "third_party"
+
+# ONE JUDGE THROUGHOUT, and the same dated id. Stated rather than left to inherit
+# `judge_model`, because the design is that these two are deliberately the same.
+recourse_judge_model = "openai/gpt-5.6-luna-20260709"
+
+max_tokens = 16384
+generation_max_tokens = 8192
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE AND THE RECOURSE JUDGE, PINNED — one slug, one entry, the BASE `openai` slug.
+# `provider_allow_fallbacks` stays False: a pin that silently falls back is not a pin.
+"openai/gpt-5.6-luna-20260709" = ["openai"]
+
+[client]
+max_concurrency = 16
+max_runs_in_flight = 8
+copy_parent = true
+
+[grading]
+# For `ruling_agreement` and the FINDINGS grader. NOT used by `agreement` on this arm.
+grader_model = "anthropic/claude-haiku-4.5"

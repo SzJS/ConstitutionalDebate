@@ -1,0 +1,221 @@
+# fd1, ARM F-WEAK of 2 — THE FINDINGS JUDGE AT THE CHALLENGER'S OWN LEVEL, on all 1,644
+# stored debate transcripts.
+#
+# READ FIRST: `records/experiments/findings-1/PREREG.md`, to be committed before this
+# arm's first paid call. The population, the endpoints (P1, P2, P3), the comparator, the
+# feasibility gate, the named outcomes, the validity clauses, the missing-cell rule and
+# the stop rules are all there and none of them is restated here. `outputs/fd1-run-all.sh`
+# refuses to start until that file is TRACKED BY GIT.
+#
+# WHAT IS NEW AND IT IS THE WHOLE POINT. Every recourse arm this project has run — the
+# sweep, jd3, jd5, jd6 — DISCRIMINATES and still nets negative: it fixes 40-54% of the
+# wrong decisions it is put to and breaks 20-36% of the right ones, and the fix/break
+# ratio never beats the prior odds that the decision was already right (`LLM_NOTES.md`
+# §3ac). The user's hypothesis is that the challenger has been asked to redo the judge's
+# whole job. So this campaign changes the OBJECT of the contest rather than the judge.
+#
+# THE JUDGE DECOMPOSES ITS JUDGMENT. Under `judge_form = "findings"` the judge writes one
+# numbered FINDING per purported flaw the FLAWED-side debater raised — the quoted passage,
+# the claim in one sentence, the strongest defence the SOUND side gave, a reason, and a
+# ruling FLAW / NOT A FLAW — and writes NO verdict line at all. The verdict is DERIVED BY
+# CODE: FLAWED iff any finding is ruled FLAW, SOUND on an empty list. A judge cannot state
+# a verdict its own findings do not entail, and a reader can check each finding against
+# the transcript on its own.
+#
+# THE CONTEST IS THEREFORE LOCAL. Under `challenger_variant = "findings"` the challenger
+# contests (1) a numbered finding, asking for the opposite ruling; (2) an OMISSION — a
+# purported flaw in the record that no finding covers; or (3) a CONTRADICTION — two
+# findings stating the same claim about the same passage with different rulings. Every
+# contest carries quotes, and every quote is existence-checked at parse time: a contest
+# whose quote is not in the text or the record is VOID, kept in the numbering and ruled
+# INVALID mechanically. The recourse judge rules each contest with an ABSOLUTE ruling
+# (FLAW / NOT A FLAW / NOT AN OMISSION / NOT A CONTRADICTION), never "upheld/overturned",
+# and the verdict after recourse is re-derived by the SAME pure function from the amended
+# list. `findings.json` holds the list before, `findings.after.json` the list after.
+#
+# WHY THIS ARM IS THE WEAK ONE. `meta-llama/llama-4-maverick` is the judge jd3 selected
+# under `records/experiments/judgment-debate-2/PREREG.md`'s rule — index 14, exactly the
+# challenger's own level, a fourth model family — and is the judge whose recourse numbers
+# every comparator in this campaign comes from. Putting the SAME model in the findings
+# seat is what makes "the format changed, not the judge" a fact rather than an intent. Its
+# feasibility is not assumed: PREREG's gate is a pilot parse rate of at least 51 of 60,
+# and below that this arm is reported and NOT run at scale.
+#
+# THE SAME-MODEL PROPERTY IS THE DESIGN, NOT A DEFECT, exactly as in jd3-jd6: the model
+# that writes the findings rules on the contest against its own findings. It is disclosed
+# here, in PREREG and beside every number.
+#
+# THE DEBATES ARE NOT RE-RUN. `transcripts_from` reads `jd3-main`'s stored decisions —
+# the sweep's debates, whose transcripts `jd3-main` copied — and the `rejudge` stage makes
+# ONE judge call over each. Nothing under `outputs/experiments/jd3-main` is written; it is
+# fingerprinted before, between and after the arms by `outputs/fd1-run-all.sh` and must be
+# byte-identical to `dfa9bdca3fe93630701b4659cdb4ac8605ce07d58b29c29ad868c1048c12209c`.
+#
+# THE POPULATION IS WHAT jd3-main DECIDED. The corpus has 2,110 debate cells; 1,644 carry
+# a decided run and the other 466 are skipped with `no source decision to re-judge`. A
+# findings list that truncates or will not parse buys ONE format repair and then FAILS its
+# cell, which is counted and left undecided exactly as a malformed verdict is — and both
+# count against this arm's parse rate.
+#
+# LAUNCH IT THROUGH THE DRIVER, not by hand. `outputs/fd1-run-all.sh` runs F-weak then
+# F-strong under one process, holds the PREREG gate, fingerprints `jd3-main` around each
+# arm and asserts after each that the tree holds what that arm was supposed to make:
+#
+#     cd exp2
+#     nohup outputs/fd1-run-all.sh > outputs/fd1-run-all.log 2>&1 &
+#     echo $! > outputs/fd1-run-all.pid
+#
+# WHAT THIS SPEC ACTUALLY SPENDS, and it is not the `--dry-run` total. That figure is a
+# per-stage BOUND for every stage that could ever be run against this tree; the driver
+# runs six and the calls they make are:
+#
+#     1,644  findings judgments   (1 per stored decision, Maverick, `rejudge`)
+#     1,644  challenger objections + 1,644 comprehension probes   (flash, `contest`)
+#    <=1,644 recourse-judge rulings   (1 per cell that contests, Maverick, `contest`)
+#         0  agreement calls      (MECHANICAL under this arm — see below)
+#    <=1,644 ruling_agreement reads    (1 per ruling, Haiku; off the decision path)
+#    <=1,644 findings grades      (1 per contested objection, Haiku; off the path)
+#     ----
+#     `analyse` makes none.
+#
+# MEASURED AT THE SMOKE: TBD. The per-cell figure from `outputs/fd1-smoke-cost.txt` and
+# the pilot's, times 1.3, is what PREREG §8 registers; this line is filled in before the
+# first full-run call and not before.
+#
+# `agreement` MAKES NO CALL UNDER THIS ARM. The line-vs-prose instrument is MECHANICAL
+# here: the objection's argument is a numbered list this harness has already parsed, so
+# `phantom_contest` is `(stance == contests) != (well-formed contests > 0)` — a string
+# comparison (`recourse.mechanical_agreement`), `parse_mode = "mechanical"`, no Haiku, no
+# spend. The stage still runs and still writes a real `Agreement` for every contested and
+# every declined cell, so `agrees` and `phantom_contest` work unchanged downstream; the
+# rate is NEVER pooled with the Haiku-read column of jd3-jd6. `--dry-run` prints that term
+# as 0 and says why.
+#
+# RESUME AND RETRY, per stage, because they differ:
+#
+#   * `rejudge` follows `decide`'s rule and READS `--retry-failed`, which the driver
+#     passes: a cell already re-judged here is skipped, and so is one whose latest run
+#     FAILED — unless the flag, in which case it is re-attempted once. A cell that fails
+#     twice is counted and left undecided, never silently skipped.
+#   * `contest` resumes on the ARTIFACT: its only skip is "some run under this cell's
+#     contest directory holds a `challenge.json`". A cell whose challenger call failed
+#     wrote none and is re-attempted on every resume, with or without the flag; a cell
+#     that wrote a challenge and then lost its RULING is skipped as already contested and
+#     stays ruling-less, which PREREG's missing-cell rule drops from P1 and P2.
+#   * `agreement`, `ruling_agreement` and `grade` each resume on their own artifact
+#     (`already measured` / `already graded`) and are re-attempted until they land.
+#   * `analyse` reads the tree and writes the index; it spends nothing and is idempotent.
+
+name = "fd1-weak"
+
+# THE WHOLE DEBATE GRID. 2,110 cells, of which `jd3-main` decided 1,644; the rejudge stage
+# skips the rest with `no source decision to re-judge`. The driver reports the decided
+# count against 1,644 and halts if the arm wrote no findings at all.
+cases = "data/cases/ftf-all.jsonl"
+
+# THE TRANSCRIPTS, NOT THE DECISIONS. This tree makes its own decisions — findings lists
+# over the same stored debates. Read-only; fingerprinted by the driver.
+transcripts_from = "outputs/experiments/jd3-main"
+
+# ONE CONDITION, and it is the whole point twice over. Only a debate publishes a judgment
+# that is a document other than the decision itself, so a decomposed judgment is defined
+# here and undefined in the other two; and only a debate leaves a record a second judge
+# can be handed without re-running the decision, which is what `rejudge` needs.
+conditions = ["debate"]
+repeats = 1
+
+# THE STAGES THIS SPEC'S DRIVER RUNS, stated so `--dry-run` can echo it. Every term in the
+# estimate is a per-stage bound printed whether or not that stage is in the run, so the
+# total is a bound over ALL stages and not this driver's bill.
+planned_stages = ["rejudge", "contest", "agreement", "ruling_agreement", "grade", "analyse"]
+
+[debate]
+# Byte-identical to `jd3-main.toml`'s decision-path block except for `judge_form`,
+# `challenger_variant` and the judge's pin. It has to be: `config.json` must be true about
+# the provenance of the debate it copied, and the whole campaign rests on the format being
+# the thing that moved.
+debater_model    = "deepseek/deepseek-v4-flash-0731"
+
+# THE WEAK FINDINGS JUDGE. The same model jd3 selected and every comparator in this
+# campaign was produced by, now writing a decomposed judgment instead of a prose verdict.
+# PINNED below, which jd3-main's judge was not: §3aa found 34% of M1's rulings served by
+# DeepInfra against 4.8% of jd5-B's, so an unpinned judge makes "only the format moved" an
+# intent rather than a fact. Verified by one real pinned call on 2026-09-02
+# (`records/derivations/fd1-provider-check.py`, `outputs/fd1-provider-check.log`).
+judge_model      = "meta-llama/llama-4-maverick"
+
+# Unchanged from jd3-jd6, and UNPINNED as it has been in every run: Google is its only
+# provider, so there is nothing to pin it against.
+challenger_model = "google/gemini-2.5-flash"
+
+# THE FIRST OF THE TWO LINES THAT MAKE THIS THE FINDINGS CAMPAIGN. The judge writes one
+# numbered finding per purported flaw and NO verdict line; the verdict is derived by code.
+# `Sides.verdict_order` is unused under this form — there is no verdict template to order
+# — and `--dry-run` says so in the WHY column.
+judge_form = "findings"
+
+# THE SECOND. The challenger contests a finding, an omission or a contradiction, with
+# quotes existence-checked at parse time, and its claimed verdict is DERIVED from the
+# contests rather than asserted. It selects the challenger's system prompt, its objection
+# format, the mechanical `agreement`, the findings grader, and (through the objection's
+# arm) the findings ruling prompt and its reader. `DebateConfig` refuses this value with
+# any `judge_form` but "findings", and `experiment_cli` refuses an `fd1`-named spec that
+# states neither.
+challenger_variant = "findings"
+
+# Every condition's objection is ruled by a third party rather than by the decider
+# re-deciding in its own conversation. Note what it does NOT mean here: the third party is
+# the same MODEL as the findings judge, by design (see the same-model note above).
+recourse_form = "third_party"
+
+# ONE JUDGE THROUGHOUT. Stated rather than left to inherit `judge_model`, even though the
+# value is identical, because the design is that these two are deliberately the same and a
+# reader of `config.json` must see it said.
+recourse_judge_model = "meta-llama/llama-4-maverick"
+
+# Unchanged from `sweep.toml` and jd3-main. The cap for the roles that emit a decision
+# line — the findings judge, the challenger, the recourse judge, the comprehension probe.
+# A findings list is longer than a prose verdict, so this cap is doing more work here than
+# it has in any earlier run; a truncation is fatal to the cell and is counted.
+max_tokens = 16384
+
+# Unchanged. The cap for the roles that produce record text. Nothing here generates record
+# text, but it is what the copied debate was argued under.
+generation_max_tokens = 8192
+
+# Unchanged. The challenger is the role under measurement: at 0 every stakeholder writes
+# the same objection, and variance across objections is part of the result.
+challenger_temperature = 0.7
+
+# --- provider routing ----------------------------------------------------------------
+[debate.provider_order]
+# The debaters', copied unedited. It binds the strong model, which this run does not call
+# at all — the debates are read from disk.
+"deepseek/deepseek-v4-flash-0731" = ["gmicloud/fp8", "coreweave/fp8"]
+# THE JUDGE AND THE RECOURSE JUDGE, PINNED — they are the same slug and therefore one
+# entry. `digitalocean` is the slug OpenRouter's endpoint list gives for the provider that
+# served most Maverick calls in every jd5 arm, and one real pinned call on 2026-09-02
+# returned `SERVED BY: DigitalOcean`, `finish_reason stop`, 0 reasoning tokens.
+"meta-llama/llama-4-maverick" = ["digitalocean"]
+# provider_allow_fallbacks stays at its default False. A pin that silently falls back is
+# not a pin.
+
+[client]
+# 16/8, as the sweep proved and every judgment-debate run re-confirmed. Every stage here
+# is one to three short calls per cell where `decide` was up to seven strong-model ones.
+max_concurrency = 16
+max_runs_in_flight = 8
+
+# Each contest directory carries a full copy of the decision it contests — here a findings
+# decision, which carries `findings.json`, the copied transcript and the debate's own wire
+# log. That is what makes a contest record self-contained, and it is why this tree costs
+# disk although it debates nothing.
+copy_parent = true
+
+[grading]
+# The same Haiku on the ordinary chat-completions endpoint, for `ruling_agreement` and for
+# the FINDINGS grader. It is NOT used by `agreement` on this arm — that instrument is
+# mechanical here. Held equal to every earlier run's so the ruling-line residual stays
+# measured by the same reader. No `anthropic/*` judge or challenger for the same reason: a
+# party graded by itself is a confound `DESIGN.md` names.
+grader_model = "anthropic/claude-haiku-4.5"

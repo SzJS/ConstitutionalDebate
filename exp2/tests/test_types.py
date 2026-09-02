@@ -578,3 +578,39 @@ def test_a_ruling_written_before_the_contest_round_existed_still_loads():
     back = Ruling.from_dict(data)
     assert (back.recourse_rounds, back.recourse_pro_speaker,
             back.recourse_exchange_sha256) == (1, "Bob", "abc")
+
+
+def test_the_derived_findings_ruling_satisfies_the_same_invariant_as_every_other_form():
+    """Campaign `fd1`'s form. The judge never states a verdict at all — it rules on each
+    contest, the findings take those rulings and the verdict is re-derived from the whole
+    list by counting — so UPHOLD/OVERTURN is computed from the comparison with the parent
+    rather than asked for. The invariant is therefore the SAME one `stated_conclusion`
+    satisfies, and `__post_init__` is what re-derives it and refuses a record where the
+    two disagree.
+    """
+    from exp2.types import _DERIVED_VERDICT_FORMS, RULING_FORMS, RULING_PROMPT_FORMS
+
+    assert "derived_findings" in RULING_FORMS
+    assert "derived_findings" in _DERIVED_VERDICT_FORMS
+    assert "findings" in RULING_PROMPT_FORMS
+
+    def ruling(**kw):
+        base = dict(form="derived_findings", protocol="judge_only",
+                    prompt_form="findings", parse_mode="strict", raw="r", call_id="c",
+                    finish_reason="stop", correct=True)
+        return Ruling(**{**base, **kw})
+
+    upheld = ruling(ruling="UPHOLD", parent_verdict=FLAWED, verdict=FLAWED)
+    assert upheld.upheld is True and upheld.changed_the_decision is False
+    overturned = ruling(ruling="OVERTURN", parent_verdict=FLAWED, verdict=SOUND)
+    assert overturned.changed_the_decision is True
+    assert overturned.to_dict()["form"] == "derived_findings"
+    # a ruling word this form must carry
+    with pytest.raises(ValueError, match="needs a ruling in"):
+        ruling(ruling=None, parent_verdict=FLAWED, verdict=FLAWED)
+    # and the arithmetic is CHECKED, not asserted: a derived verdict that does not follow
+    # from the word beside it is refused rather than recorded
+    with pytest.raises(ValueError, match="implies"):
+        ruling(ruling="UPHOLD", parent_verdict=FLAWED, verdict=SOUND)
+    # every ruling.json on disk predates this form and still loads
+    assert Ruling.from_dict(upheld.to_dict()).form == "derived_findings"

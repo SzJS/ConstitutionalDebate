@@ -14,7 +14,13 @@ from typing import Any
 from .client import ChatClient
 from .config import DebateConfig
 from .engine import DebateFailure, _complete_with_repair
-from .prompts import build_debater_messages, build_judge_messages, parse_debater_output, parse_verdict_output
+from .prompts import (
+    build_debater_messages,
+    build_judge_messages,
+    parse_debater_output,
+    parse_findings_output,
+    parse_verdict_output,
+)
 from .types import (
     ORDER,
     DebateResult,
@@ -197,17 +203,45 @@ async def _judge(
     writer: Any | None,
 ) -> Verdict:
     messages = build_judge_messages(item, sides, config, transcript)
-    (verdict_word, reasoning, parse_mode), completion, repairs, _, _ = await _complete_with_repair(
-        client,
-        model=config.judge_model,
-        messages=messages,
-        temperature=config.judge_temperature,
-        config=config,
-        meta={"role": "judge", "speaker": None, "round": None, "purpose": "judge"},
-        parse=parse_verdict_output,
-        role="judge",
-        word_limit=config.word_limit,
-    )
+    findings: list[dict[str, Any]] | None = None
+    if config.judge_form == "findings":
+        # THE SAME WIRE ROLE, a different repair role, and a four-element parse. The wire
+        # role is what `accounting` reads and what `artifacts_full` looks a call up by,
+        # and a findings judgment is the same decision-path judge call a verdict
+        # judgment is — so it stays `judge` and every cost table is untouched. Only the
+        # REPAIR differs, because `JUDGE_REPAIR` asks for "Verdict: FLAWED" and a
+        # findings judge sent that would be asked for a format its parser refuses,
+        # burning the one repair on a prompt that could not have succeeded.
+        #
+        # No `public_label`, exactly as the verdict form has none: truncation stays fatal
+        # here (the loss rule), because a half-written findings list is a judgment whose
+        # missing entries are indistinguishable from findings the judge did not make.
+        (verdict_word, findings, reasoning, parse_mode), completion, repairs, _, _ = (
+            await _complete_with_repair(
+                client,
+                model=config.judge_model,
+                messages=messages,
+                temperature=config.judge_temperature,
+                config=config,
+                meta={"role": "judge", "speaker": None, "round": None,
+                      "purpose": "judge"},
+                parse=parse_findings_output,
+                role="judge_findings",
+                word_limit=config.word_limit,
+            )
+        )
+    else:
+        (verdict_word, reasoning, parse_mode), completion, repairs, _, _ = await _complete_with_repair(
+            client,
+            model=config.judge_model,
+            messages=messages,
+            temperature=config.judge_temperature,
+            config=config,
+            meta={"role": "judge", "speaker": None, "round": None, "purpose": "judge"},
+            parse=parse_verdict_output,
+            role="judge",
+            word_limit=config.word_limit,
+        )
     verdict = Verdict(
         verdict=verdict_word,
         parse_mode=f"{parse_mode}_after_repair" if repairs else parse_mode,
@@ -219,5 +253,12 @@ async def _judge(
         reasoning_withheld=completion.reasoning_withheld,
     )
     if writer is not None:
+        # `findings.json` FIRST, then `verdict.json` — the verdict is derived from the
+        # list, so a crash between the two writes must leave a run with no verdict (which
+        # `load_run_record` refuses as incomplete) rather than a verdict whose derivation
+        # is missing.
+        if findings is not None:
+            writer.record_findings(findings, verdict=verdict_word,
+                                   parse_mode=verdict.parse_mode)
         writer.record_verdict(verdict, transcript)
     return verdict

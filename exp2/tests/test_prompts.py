@@ -24,6 +24,7 @@ from exp2.prompts import (
     build_challenger_messages,
     build_comprehension_messages,
     build_debater_messages,
+    build_findings_grader_messages,
     build_grader_messages,
     build_judge_messages,
     build_judgment_grader_messages,
@@ -77,6 +78,13 @@ def every_message_list(item, sides, config):
         ("debater-b-r3", build_debater_messages(item, sides, config, transcript,
                                                 speaker=Speaker.BOB, round_number=3)),
         ("judge", build_judge_messages(item, sides, config, transcript)),
+        # The findings judgment (campaign `fd1`) is a prompt in its own right — its own
+        # system message and its own closing instruction — so it gets the same
+        # guarantees as every other decision role: no ground-truth label, the flaw
+        # definition present, and no earlier turn's Thinking.
+        ("judge-findings", build_judge_messages(
+            item, sides, dataclasses.replace(config, judge_form="findings"),
+            transcript)),
         ("solo-answer", build_solo_opening(item, sides, config, stage="answer")),
         ("solo-draft", build_solo_opening(item, sides, config, stage="draft")),
         ("challenger-debate", build_challenger_messages(
@@ -109,11 +117,21 @@ def every_message_list(item, sides, config):
                                       challenger_variant="judgment_specious"),
             record, sides=sides, decision_verdict=FLAWED,
             decision_grounds="The judge's grounds.")),
+        # The findings challenger: a different OBJECT under contest, so a different
+        # system prompt and a different user turn, and the same guarantees.
+        ("challenger-findings", build_challenger_messages(
+            item, dataclasses.replace(config, challenger_variant="findings",
+                                      judge_form="findings"),
+            record, sides=sides, decision_verdict=FLAWED,
+            decision_grounds="Finding 1\nRuling: FLAW")),
         ("judgment-grader", build_judgment_grader_messages(
             item, record="Alice: the record.", judgment="The judge's grounds.",
             decision_verdict=FLAWED, objection="An objection.", n_defects=1)),
         ("recourse-judge", build_recourse_judge_messages(
             item, sides, record, decision_verdict=FLAWED, objection="An objection.")),
+        ("recourse-judge-findings", build_recourse_judge_messages(
+            item, sides, record, decision_verdict=FLAWED, objection="An objection.",
+            judgment="Finding 1\nRuling: FLAW", arm="findings")),
         # The contestability debate round of 2026-08-30. Both stances are here, because
         # they are two different prompts and each has to carry the same guarantees every
         # other role does — no ground-truth label, the flaw definition present, and no
@@ -164,11 +182,12 @@ def test_all_five_roles_are_told_what_a_flaw_is_and_told_the_same_thing():
         objection="obj")
 
     challengers = [name for name in built if name.startswith("challenger-")]
-    # the two records x neutral, the three partisan arms, the judgment variant and its
-    # specious copy. The placeholder arm is deliberately not here: it has no prompt at
-    # all, so there is no system message for the definition to be missing from.
-    assert len(challengers) == 7
-    for name in ("debater-a-r1", "judge", "solo-answer", "grader",
+    # the two records x neutral, the three partisan arms, the judgment variant, its
+    # specious copy and the findings variant. The placeholder arm is deliberately not
+    # here: it has no prompt at all, so there is no system message for the definition to
+    # be missing from.
+    assert len(challengers) == 8
+    for name in ("debater-a-r1", "judge", "judge-findings", "solo-answer", "grader",
                  "recourse-debater-pro", "recourse-debater-anti", *challengers):
         system = built[name][0]
         assert system["role"] == "system", name
@@ -207,6 +226,24 @@ def test_the_annotation_never_reaches_a_decision_or_contest_prompt():
     grader = build_grader_messages(item, flaw_location="2", annotation=needle,
                                    grades_characterisation=True, objection="obj")
     assert needle in "".join(m["content"] for m in grader)
+    # THE FINDINGS GRADER IS THE OTHER DOOR TO GOLD, so it is deliberately NOT in the
+    # registry above and is asserted POSITIVELY here instead: a contest of a finding is
+    # an object-level claim about the text, and there is nothing but the annotation to
+    # score it against. The assertion is that the annotation DOES reach it — a grader
+    # that silently lost it would grade every finding contest on its own reading.
+    findings_grader = build_findings_grader_messages(
+        item, record="Alice: the record.", findings="Finding 1\nRuling: FLAW",
+        decision_verdict=FLAWED, objection="1. Contests: Finding 1", n_contests=1,
+        gold_flawed=True, flaw_location="2", annotation=needle)
+    assert needle in "".join(m["content"] for m in findings_grader)
+    # And it is shown ONLY where a contest is graded against it: an objection of nothing
+    # but omissions and contradictions is graded against the record alone, so the door
+    # stays shut on those.
+    no_annotation = build_findings_grader_messages(
+        item, record="Alice: the record.", findings="Finding 1\nRuling: FLAW",
+        decision_verdict=FLAWED, objection="1. Contests: omission", n_contests=1,
+        gold_flawed=True, flaw_location="2", annotation=needle, show_annotation=False)
+    assert needle not in "".join(m["content"] for m in no_annotation)
 
 
 def test_private_thinking_never_reaches_the_judge_or_the_challenger():
@@ -214,6 +251,12 @@ def test_private_thinking_never_reaches_the_judge_or_the_challenger():
     transcript = full_transcript(sides)
     judge = build_judge_messages(make_item(), sides, config, transcript)
     assert SECRET_THINKING not in "".join(m["content"] for m in judge)
+    # The findings judge reads the same transcript through the same renderer, and the
+    # guarantee is the same one: it is shown the arguments and never the private working.
+    findings = build_judge_messages(
+        make_item(), sides, dataclasses.replace(config, judge_form="findings"),
+        transcript)
+    assert SECRET_THINKING not in "".join(m["content"] for m in findings)
     record = DecisionRecord.for_debate(transcript)
     assert SECRET_THINKING not in record.body
 
@@ -1367,7 +1410,7 @@ def test_the_ruling_records_which_prompt_ruled():
     assert Ruling.from_dict(old).prompt_form == "object_level"
     with pytest.raises(ValueError, match="prompt_form must be one of"):
         ruling(prompt_form="whatever")
-    assert RULING_PROMPT_FORMS == ("object_level", "materiality")
+    assert RULING_PROMPT_FORMS == ("object_level", "materiality", "findings")
 
 
 def test_the_solo_recourse_turn_asks_for_reconsideration_not_capitulation():
@@ -2857,3 +2900,520 @@ def test_the_contest_rounds_prompts_are_the_ones_the_smoke_ran():
             f"{name} has changed since the judgment-debate-6 smoke. If that is "
             "deliberate, re-smoke on six fresh cells and rewrite PREREG.md before any "
             "paid call.")
+
+
+# --- the findings family, campaign `fd1` (2026-09-02) --------------------------------
+#
+# Five parsers and two pure functions, and what is tested here is exactly the behaviour
+# a paid run depends on: what the judge's list has to look like to be read at all, the
+# one tolerance and its counter, which contests are void before any model sees them, and
+# what a ruling line does to the list it is applied to.
+
+FINDINGS_REPLY = """\
+The flawed side raised two points.
+
+Finding 1
+Passage: "the sum is 42"
+Claim: the arithmetic gives 40, not 42
+Defence: Bob said the rounding is intended
+Reason: checked against the text, the addition gives 40
+Ruling: FLAW
+Finding 2
+Passage: "we then apply Bayes"
+Claim: Bayes does not apply to this conditional
+Defence: none given
+Reason: Bayes applies to any conditional probability
+Ruling: NOT A FLAW"""
+
+
+def test_a_findings_judgment_parses_into_numbered_entries_and_derives_its_verdict():
+    from exp2.prompts import derive_verdict, parse_findings_output
+
+    verdict, findings, reasoning, mode = parse_findings_output(FINDINGS_REPLY)
+    assert mode == "strict"
+    assert [f["index"] for f in findings] == [1, 2]
+    assert [f["ruling"] for f in findings] == ["FLAW", "NOT A FLAW"]
+    assert findings[0]["passage"] == '"the sum is 42"'
+    assert findings[0]["defence"].startswith("Bob said")
+    assert findings[1]["defence"] == "none given"
+    # The verdict is DERIVED, never read off a line: the judge is told not to write one.
+    assert verdict == FLAWED == derive_verdict(findings)
+    # `reasoning` is the WHOLE reply, so `decision_grounds` hands the challenger the list
+    # exactly as the judge wrote it and the document quotes it once.
+    assert reasoning == FINDINGS_REPLY.strip()
+
+
+def test_an_empty_findings_list_is_an_answer_and_derives_sound():
+    """`Findings: none` is what the prompt asks for when the FLAWED side raised nothing
+    identifiable. It has to be sayable, or a judge with nothing to list invents a finding
+    to satisfy the format — and it is contestable by omission, which is the contest the
+    design expects on it."""
+    from exp2.prompts import derive_verdict, parse_findings_output
+
+    verdict, findings, _, mode = parse_findings_output(
+        "Neither purported flaw was identifiable.\n\nFindings: none")
+    assert (verdict, findings, mode) == (SOUND, [], "strict")
+    assert derive_verdict([]) == SOUND
+
+
+def test_the_findings_ruling_tolerance_is_narrow_and_counted():
+    """THE ONE TOLERANCE in this family, decided before the first paid call.
+
+    Every prompt carries `FLAW_DEFINITION`, which teaches FLAWED and SOUND for the whole
+    text, so a judge ruling one finding at a time will sometimes reach for them. Reading
+    them as FLAW / NOT A FLAW is not a guess — they are the same claim in the vocabulary
+    the same prompt taught — and it is COUNTED, so a run in which the judge never used
+    the asked-for words is visible rather than invisible.
+    """
+    from exp2.prompts import parse_findings_output
+
+    def one(word):
+        return parse_findings_output(
+            f'Finding 1\nPassage: "x"\nClaim: c\nDefence: none given\nReason: r\n'
+            f"Ruling: {word}")
+
+    for word, expected in (("FLAW", "FLAW"), ("NOT A FLAW", "NOT A FLAW"),
+                           ("FLAWED", "FLAW"), ("SOUND", "NOT A FLAW"),
+                           ("NOT FLAWED", "NOT A FLAW")):
+        verdict, findings, _, _ = one(word)
+        assert findings[0]["ruling"] == expected, word
+        assert verdict == (FLAWED if expected == "FLAW" else SOUND), word
+        # counted, per finding, so `findings_ruling_normalised_n` can be summed
+        assert findings[0]["ruling_normalised"] is (word not in ("FLAW", "NOT A FLAW"))
+    # and nothing wider: a word this module does not know is refused, not guessed at
+    with pytest.raises(MalformedOutputError) as excinfo:
+        one("PROBABLY A FLAW")
+    assert excinfo.value.kind == "other"
+
+
+def test_a_findings_judgment_that_cannot_be_read_is_refused_by_shape():
+    from exp2.prompts import parse_findings_output
+
+    def kind_of(text):
+        with pytest.raises(MalformedOutputError) as excinfo:
+            parse_findings_output(text)
+        return excinfo.value.kind
+
+    # no block and no `Findings: none` — there is no judgment here at all, and guessing
+    # that an unnumbered paragraph meant an empty list would record SOUND for a judge
+    # that simply did not answer.
+    assert kind_of("I think the text is fine.") == "missing_decision_line"
+    assert kind_of("Verdict: SOUND") == "missing_decision_line"
+    # numbering with a gap: every contest, ruling and grade joins on the number
+    assert kind_of(
+        'Finding 1\nPassage: "x"\nReason: r\nRuling: FLAW\n'
+        'Finding 3\nPassage: "y"\nReason: r\nRuling: FLAW') == "other"
+    # two rulings in one block is two answers
+    assert kind_of(
+        'Finding 1\nPassage: "x"\nReason: r\nRuling: FLAW\nRuling: NOT A FLAW'
+    ) == "other"
+    # and none is no answer
+    assert kind_of('Finding 1\nPassage: "x"\nClaim: c\nReason: r') == "other"
+
+
+def test_a_reason_that_mentions_a_finding_does_not_open_a_phantom_block():
+    """`Finding 3` has to be the WHOLE line to open a block. Without that rule a
+    `Reason:` sentence beginning "Finding 2 said the same thing" would shift every number
+    after it, and the contest, the ruling and the grade all join on that number."""
+    from exp2.prompts import parse_findings_output
+
+    _, findings, _, _ = parse_findings_output(
+        'Finding 1\nPassage: "x"\nClaim: c\nDefence: none given\n'
+        "Reason: Finding 2 would have said the same thing if it existed\n"
+        "Ruling: NOT A FLAW")
+    assert [f["index"] for f in findings] == [1]
+
+
+CONTEST_REPLY = """\
+1. Contests: Finding 2
+   Should be: FLAW
+   Text says: "we then apply Bayes"
+   Record says: "Alice said Bayes cannot apply to a joint"
+   Why: the defence was never actually given.
+2. Contests: omission
+   Record says: "Alice said step four divides by zero"
+   Passage: "the sum is 42"
+   Why: no finding lists it at all.
+3. Contests: contradiction
+   Findings: 1 and 2
+   Why: the same claim is ruled two ways.
+"""
+
+CONTEST_SOLUTION = "the sum is 42 and we then apply Bayes to the joint"
+CONTEST_RECORD = ("Alice said Bayes cannot apply to a joint. "
+                  "Alice said step four divides by zero, which nobody answered.")
+
+
+def _parsed_findings():
+    from exp2.prompts import parse_findings_output
+
+    return parse_findings_output(FINDINGS_REPLY)[1]
+
+
+def test_finding_contests_parse_with_their_mechanical_flags():
+    from exp2.prompts import parse_finding_contests
+
+    findings = _parsed_findings()
+    contests = parse_finding_contests(CONTEST_REPLY, findings, CONTEST_SOLUTION,
+                                      CONTEST_RECORD)
+    assert [c["kind"] for c in contests] == ["finding", "omission", "contradiction"]
+    # the index is the POSITION, so the ruling's and the grader's joins are total even
+    # when a model renumbers; what it wrote is kept beside it
+    assert [c["index"] for c in contests] == [1, 2, 3]
+    assert [c["numbered"] for c in contests] == [1, 2, 3]
+    first = contests[0]
+    assert (first["finding"], first["should_be"]) == (2, "FLAW")
+    assert first["finding_exists"] is True and first["direction_ok"] is True
+    assert first["quote_in_text"] is True and first["quote_in_record"] is True
+    assert first["void"] is False
+    # a flag that does not apply to a kind is None, not False: "the check does not apply"
+    # and "the check failed" are different facts and only the second voids a contest
+    assert first["pair_rulings_differ"] is None
+    assert contests[1]["finding_exists"] is None
+    assert contests[1]["quote_in_record"] is True and contests[1]["quote_in_text"] is True
+    assert contests[2]["pair_rulings_differ"] is True and contests[2]["void"] is False
+
+
+def test_a_contest_is_void_when_a_mechanical_check_fails():
+    from exp2.prompts import parse_finding_contests
+
+    findings = _parsed_findings()
+
+    def one(text):
+        return parse_finding_contests(text, findings, CONTEST_SOLUTION,
+                                      CONTEST_RECORD)[0]
+
+    # a finding that does not exist
+    assert one('1. Contests: Finding 9\n   Should be: FLAW\n'
+               '   Text says: "the sum is 42"\n'
+               '   Record says: "Alice said step four divides by zero"\n')["void"]
+    # a `Should be:` that AGREES with the ruling it contests — nothing is being contested
+    bad_direction = one('1. Contests: Finding 1\n   Should be: FLAW\n'
+                        '   Text says: "the sum is 42"\n'
+                        '   Record says: "Alice said step four divides by zero"\n')
+    assert bad_direction["direction_ok"] is False and bad_direction["void"]
+    # an invented quotation of the text under review
+    assert one('1. Contests: Finding 2\n   Should be: FLAW\n'
+               '   Text says: "the text never says anything like this at all"\n'
+               '   Record says: "Alice said step four divides by zero"\n')["void"]
+    # NO quotation at all: the prompt shows the field and says a claim with nothing
+    # behind it will not be counted, so this is a check that applied and failed
+    nothing = one("1. Contests: Finding 2\n   Should be: FLAW\n   Why: it just is.\n")
+    assert nothing["quote_in_text"] is False and nothing["void"]
+    # a "contradiction" between a finding and itself
+    assert one("1. Contests: contradiction\n   Findings: 1 and 1\n")["void"]
+    # and one between two findings that agree
+    two_flaws = [{"index": 1, "ruling": "FLAW"}, {"index": 2, "ruling": "FLAW"}]
+    agreeing = parse_finding_contests(
+        "1. Contests: contradiction\n   Findings: 1 and 2\n", two_flaws,
+        CONTEST_SOLUTION, CONTEST_RECORD)[0]
+    assert agreeing["pair_rulings_differ"] is False and agreeing["void"]
+
+
+def test_the_claimed_verdict_is_derived_from_the_contests_not_from_the_line():
+    """A contest can be entirely LOCAL and unable to move the verdict, and the index has
+    to be able to say so: `Decision: REVERSE` under this arm says only that something was
+    contested."""
+    from exp2.prompts import claimed_verdict_for_contests, parse_finding_contests
+
+    findings = _parsed_findings()          # FLAW, NOT A FLAW -> FLAWED
+    # granting the FLAW -> NOT A FLAW contest on finding 1 leaves finding 2 NOT A FLAW,
+    # so the verdict moves
+    moves = parse_finding_contests(
+        '1. Contests: Finding 1\n   Should be: NOT A FLAW\n'
+        '   Text says: "the sum is 42"\n'
+        '   Record says: "Alice said step four divides by zero"\n',
+        findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    assert claimed_verdict_for_contests(findings, moves) == SOUND
+    # granting the NOT A FLAW -> FLAW contest on finding 2 leaves finding 1 FLAW, so the
+    # verdict does NOT move even though the contest is perfectly well founded
+    local = parse_finding_contests(CONTEST_REPLY, findings, CONTEST_SOLUTION,
+                                   CONTEST_RECORD)
+    assert claimed_verdict_for_contests(findings, local) == FLAWED
+    # a void contest is not granted
+    void_only = parse_finding_contests(
+        "1. Contests: Finding 9\n   Should be: NOT A FLAW\n", findings,
+        CONTEST_SOLUTION, CONTEST_RECORD)
+    assert claimed_verdict_for_contests(findings, void_only) == FLAWED
+
+
+def test_the_findings_ruling_lines_parse_and_a_gap_is_fatal():
+    from exp2.prompts import parse_findings_ruling_output
+
+    text = ("I work through them.\n"
+            "Contest 1 (Finding 2): NOT A FLAW\n"
+            "Contest 2 (omission): NOT AN OMISSION\n"
+            "Contest 3 (contradiction): NOT A CONTRADICTION")
+    lines, reasoning, mode = parse_findings_ruling_output(text, 3)
+    assert lines == {1: "NOT A FLAW", 2: "NOT AN OMISSION", 3: "NOT A CONTRADICTION"}
+    assert reasoning == "I work through them." and mode == "strict"
+    # `NOT A FLAW` is never read as `FLAW`, and `NOT A CONTRADICTION` never as a
+    # contradiction: the one substitution in this family that would invert a verdict
+    assert parse_findings_ruling_output("Contest 1 (Finding 1): FLAW", 1)[0] == {1: "FLAW"}
+    # A MISSING LINE IS FATAL. The lines ARE the ruling here — there is no summary — and
+    # a gap would silently leave a contested finding standing on a ruling nobody wrote.
+    with pytest.raises(MalformedOutputError) as excinfo:
+        parse_findings_ruling_output("Contest 1 (Finding 2): FLAW", 3)
+    assert excinfo.value.kind == "missing_decision_line"
+    # a line for a contest nobody raised is DROPPED, not refused: it is evidence about
+    # the judge and changes nothing about the objection
+    assert parse_findings_ruling_output(
+        "Contest 1 (Finding 1): FLAW\nContest 7 (omission): FLAW", 1)[0] == {1: "FLAW"}
+    # the last statement wins, as every decision line in this module does
+    assert parse_findings_ruling_output(
+        "Contest 1 (Finding 1): FLAW\nContest 1 (Finding 1): NOT A FLAW", 1
+    )[0] == {1: "NOT A FLAW"}
+
+
+def test_applying_contest_lines_flips_appends_resolves_and_leaves_the_rest_alone():
+    from exp2.prompts import apply_contest_lines, derive_verdict, parse_finding_contests
+
+    findings = _parsed_findings()
+    contests = parse_finding_contests(CONTEST_REPLY, findings, CONTEST_SOLUTION,
+                                      CONTEST_RECORD)
+
+    # 1. a FLIP: finding 2 becomes FLAW; finding 1 is untouched
+    flipped = apply_contest_lines(findings, contests, {1: "FLAW"})
+    assert [f["ruling"] for f in flipped] == ["FLAW", "FLAW"]
+    assert derive_verdict(flipped) == FLAWED
+    # the input list is not mutated — the derivation has to be re-checkable
+    assert [f["ruling"] for f in findings] == ["FLAW", "NOT A FLAW"]
+
+    # 2. an APPEND: an upheld omission adds a finding built from the CONTEST's own
+    # quotations, so the new entry is checkable against the record like every other one
+    appended = apply_contest_lines(findings, contests, {2: "FLAW"})
+    assert len(appended) == 3 and appended[2]["added_at_recourse"] is True
+    assert appended[2]["ruling"] == "FLAW"
+    assert appended[2]["passage"] == '"the sum is 42"'
+    assert "step four divides by zero" in appended[2]["claim"]
+
+    # 3. a RESOLUTION: an upheld contradiction gives both named findings one ruling
+    resolved = apply_contest_lines(findings, contests, {3: "NOT A FLAW"})
+    assert [f["ruling"] for f in resolved] == ["NOT A FLAW", "NOT A FLAW"]
+    assert derive_verdict(resolved) == SOUND
+
+    # 4. a NO-OP: the refusing words change nothing, and a finding contest the judge
+    # rules the way the finding already read leaves the list where it was
+    for lines in ({1: "NOT A FLAW"}, {2: "NOT AN OMISSION"},
+                  {3: "NOT A CONTRADICTION"}):
+        after = apply_contest_lines(findings, contests, lines)
+        assert [f["ruling"] for f in after] == ["FLAW", "NOT A FLAW"], lines
+        assert len(after) == 2, lines
+
+    # 5. a VOID contest is IGNORED however the judge ruled it
+    void = parse_finding_contests("1. Contests: Finding 9\n   Should be: NOT A FLAW\n",
+                                  findings, CONTEST_SOLUTION, CONTEST_RECORD)
+    assert [f["ruling"] for f in apply_contest_lines(findings, void, {1: "NOT A FLAW"})
+            ] == ["FLAW", "NOT A FLAW"]
+
+    # 6. an UNKNOWN index is refused rather than ignored: applying a ruling to a contest
+    # that does not exist would move a verdict on nothing
+    with pytest.raises(ValueError, match="which the objection does not contain"):
+        apply_contest_lines(findings, contests, {9: "FLAW"})
+
+
+def test_the_findings_reader_and_grader_lines_parse_in_their_own_vocabularies():
+    from exp2.prompts import (
+        parse_findings_grade_output,
+        parse_findings_reading_output,
+        prose_conclusion_for_findings_reading,
+    )
+
+    assert parse_findings_reading_output(
+        "It settles each one.\nReading: CONSISTENT")[:1] == ("CONSISTENT",)
+    for word in ("INCONSISTENT", "NEITHER"):
+        assert parse_findings_reading_output(f"Reading: {word}")[0] == word
+    # the OTHER readers' vocabularies are refused rather than read as something they are
+    # not — that is why this is a separate pattern and not one alternation of seven words
+    for word in ("FLAWED", "SOUND", "STANDS", "CHANGED"):
+        with pytest.raises(MalformedOutputError):
+            parse_findings_reading_output(f"Reading: {word}")
+    # the translation is done in CODE, against the RULING's own derived verdict, so
+    # `prose_conclusion` keeps its three values and `mismatch` keeps its meaning
+    assert prose_conclusion_for_findings_reading("CONSISTENT", FLAWED) == FLAWED
+    assert prose_conclusion_for_findings_reading("INCONSISTENT", FLAWED) == SOUND
+    assert prose_conclusion_for_findings_reading("NEITHER", FLAWED) == "NEITHER"
+
+    grades, line_valid, reasoning, mode = parse_findings_grade_output(
+        "I check each.\n"
+        "Contest 1: VALID — it points at the recorded flaw.\n"
+        "Contest 2: INVALID — the record does not say it.\n"
+        "Valid objection: YES")
+    assert [(g["index"], g["valid"]) for g in grades] == [(1, True), (2, False)]
+    assert grades[0]["reason"].startswith("it points at")
+    assert line_valid is True and mode == "strict" and reasoning == "I check each."
+    # only the summary line is required, exactly as it is for the judgment grader
+    assert parse_findings_grade_output("Valid objection: NO")[3] == "summary_line_only"
+    with pytest.raises(MalformedOutputError) as excinfo:
+        parse_findings_grade_output("Contest 1: VALID")
+    assert excinfo.value.kind == "missing_decision_line"
+
+
+def test_the_contest_lines_never_reach_the_ruling_reader():
+    """The reader is shown the reasoning ONLY. A reading that could be steered by the
+    lines it is checked against is not independent of them — the same rule the other two
+    readers follow, which is why `strip_decision_lines` learned a third pattern."""
+    from exp2.prompts import strip_decision_lines
+
+    stripped = strip_decision_lines(
+        "The claim holds against the passage.\n"
+        "Contest 1 (Finding 3): FLAW\n"
+        "Contest 2 (omission): NOT AN OMISSION")
+    assert "Contest" not in stripped and "FLAW" not in stripped
+    assert stripped.startswith("The claim holds")
+
+
+def test_every_new_findings_repair_asks_for_a_format_its_own_parser_accepts():
+    """exp1 learned this the hard way and this table is where it is remembered: a role
+    repaired with another role's instruction is asked for a format its parser then
+    refuses, burning the one repair on a prompt that could not have succeeded."""
+    from exp2.prompts import (
+        _REPAIR_TURN_MARKERS,
+        PUBLIC_LABELS,
+        parse_findings_grade_output,
+        parse_findings_output,
+        parse_findings_reading_output,
+        parse_findings_ruling_output,
+    )
+
+    roles = ("judge_findings", "recourse_judge_findings", "ruling_reader_findings",
+             "findings_grader")
+    for role in roles:
+        assert role in REPAIR_INSTRUCTIONS, role
+        text = repair_instruction_for(role, 0)
+        # detected by `conversation_spent_a_repair`, so a replayed conversation carrying
+        # one is recognised like any other repair
+        assert any(marker in text for marker in _REPAIR_TURN_MARKERS), role
+        # none of them has a public section, so no aimed shape-repair can apply
+        assert role not in PUBLIC_LABELS, role
+    # and each names the format its OWN parser reads
+    assert "Ruling:" in repair_instruction_for("judge_findings", 0)
+    assert "Contest 1 (Finding 3): FLAW" in repair_instruction_for(
+        "recourse_judge_findings", 0)
+    assert "Reading: CONSISTENT" in repair_instruction_for("ruling_reader_findings", 0)
+    assert "Valid objection:" in repair_instruction_for("findings_grader", 0)
+    # the four parsers are what those four instructions are aimed at
+    assert parse_findings_output("Findings: none")[0] == SOUND
+    assert parse_findings_ruling_output("Contest 1 (Finding 1): FLAW", 1)[0]
+    assert parse_findings_reading_output("Reading: NEITHER")[0] == "NEITHER"
+    assert parse_findings_grade_output("Valid objection: NO")[1] is False
+
+
+def test_the_findings_prompts_say_the_things_the_design_turns_on():
+    """Each assertion here is a sentence the design would silently lose if it were
+    deleted, and each has a measurement or a PREREG clause behind it."""
+    from exp2.prompts import (
+        CHALLENGE_DECISION_INSTRUCTION_FINDINGS,
+        CHALLENGE_DECISION_INSTRUCTION_JUDGMENT,
+        GRADER_SYSTEM_FINDINGS,
+        JUDGE_CLOSING_FINDINGS,
+        JUDGE_SYSTEM_FINDINGS,
+        RECOURSE_JUDGE_USER_FINDINGS,
+        RULING_AGREEMENT_USER_FINDINGS,
+    )
+
+    # THE JUDGE: no verdict, nothing invented, the two numbering edge cases, the empty
+    # list, and `Reason:` before `Ruling:`
+    assert "Do not give an overall verdict" in JUDGE_SYSTEM_FINDINGS
+    assert "Add nothing the debaters did not raise" in JUDGE_SYSTEM_FINDINGS
+    assert "Write no verdict" in JUDGE_CLOSING_FINDINGS
+    assert "the same claim is never listed twice" in JUDGE_CLOSING_FINDINGS
+    assert "two findings if they are different claims" in JUDGE_CLOSING_FINDINGS
+    assert "Findings: none" in JUDGE_CLOSING_FINDINGS
+    assert (JUDGE_CLOSING_FINDINGS.index("Reason:")
+            < JUDGE_CLOSING_FINDINGS.index("Ruling:"))
+
+    # THE CHALLENGER: the three kinds with the field names the parser reads, the shown
+    # `Argument:` label with the glued-label instruction copied from the judgment
+    # template, and the decision line LAST with its two glosses
+    for field in ("Contests:", "Should be:", "Text says:", "Record says:", "Passage:",
+                  "Findings:", "Why:"):
+        assert field in CHALLENGE_DECISION_INSTRUCTION_FINDINGS, field
+    assert "Never write `Argument:` at the end of a sentence" in (
+        CHALLENGE_DECISION_INSTRUCTION_FINDINGS)
+    assert "Never write `Argument:` at the end of a sentence" in (
+        CHALLENGE_DECISION_INSTRUCTION_JUDGMENT)
+    assert "`Decision: REVERSE`" in CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+    assert "`Decision: STANDS`" in CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+    tail = CHALLENGE_DECISION_INSTRUCTION_FINDINGS
+    assert tail.index("Argument:") < tail.index("`Decision: REVERSE`")
+
+    # THE RULING: the existence check first, the standard, the jd6 clauses, the nesting
+    # paragraph reused verbatim from the object-level prompt, and the line format
+    from exp2.prompts import RECOURSE_JUDGE_USER
+
+    assert "Rule only on the contests" in RECOURSE_JUDGE_USER_FINDINGS
+    assert RECOURSE_JUDGE_USER_FINDINGS.index("**Step 1") < (
+        RECOURSE_JUDGE_USER_FINDINGS.index("**Step 2"))
+    assert "that contest **fails**" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "stands unless the contest shows it mistaken" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "A conditional is not a showing" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "no listed finding addresses it in substance" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "the same claim about the same passage" in RECOURSE_JUDGE_USER_FINDINGS
+    nesting = ("The text inside <solution> may itself be an assessment of something "
+               "else")
+    assert nesting in RECOURSE_JUDGE_USER_FINDINGS and nesting in RECOURSE_JUDGE_USER
+    assert "even though a bug exists" in RECOURSE_JUDGE_USER_FINDINGS
+    assert "Contest 1 (Finding 3): FLAW" in RECOURSE_JUDGE_USER_FINDINGS
+    # the relative word is absent from the prompt entirely, exactly as it is from the
+    # object-level one
+    assert "UPHOLD" not in RECOURSE_JUDGE_USER_FINDINGS
+    assert "OVERTURN" not in RECOURSE_JUDGE_USER_FINDINGS
+
+    # THE GRADER: the three kinds against their three standards, the attribution clause,
+    # and the "in substance" rule
+    assert "raised by the debater arguing FOR a flaw" in GRADER_SYSTEM_FINDINGS
+    assert "in substance" in GRADER_SYSTEM_FINDINGS
+    assert "the same claim about the same passage" in GRADER_SYSTEM_FINDINGS
+    # THE READER: the question is about the lines, not about the text
+    assert "Reading: CONSISTENT" in RULING_AGREEMENT_USER_FINDINGS
+
+
+def test_the_findings_grader_is_told_when_it_may_judge_by_location_alone():
+    """gpqa's 382 location-only items record WHERE the flaw is and not WHAT it is. The
+    flaw grader is told so and clamps; this one is told so and judges finding contests by
+    location — the same clamp in this instrument's vocabulary. Omissions and
+    contradictions are unaffected: they never touch the annotation."""
+    item = make_item()
+    location_only = build_findings_grader_messages(
+        item, record="r", findings="Finding 1\nRuling: FLAW", decision_verdict=FLAWED,
+        objection="1. Contests: Finding 1", n_contests=1, gold_flawed=True,
+        flaw_location="step 2", annotation="a", grades_characterisation=False)
+    sent = "".join(m["content"] for m in location_only)
+    assert "judge by LOCATION ALONE" in sent
+    assert "Omission and contradiction contests are unaffected" in sent
+    full = build_findings_grader_messages(
+        item, record="r", findings="Finding 1\nRuling: FLAW", decision_verdict=FLAWED,
+        objection="1. Contests: Finding 1", n_contests=1, gold_flawed=True,
+        flaw_location="step 2", annotation="a", grades_characterisation=True)
+    assert "judge by LOCATION ALONE" not in "".join(m["content"] for m in full)
+    # on a SOUND item there is no annotation to show and the prompt says why, rather
+    # than showing nothing and letting the grader assume it went missing
+    sound = build_findings_grader_messages(
+        item, record="r", findings="Finding 1\nRuling: FLAW", decision_verdict=SOUND,
+        objection="1. Contests: omission", n_contests=1, gold_flawed=False)
+    assert "the dataset records it as sound" in "".join(m["content"] for m in sound)
+
+
+def test_the_default_judge_path_does_not_move_when_the_findings_form_is_added():
+    """The two forms are a comparison of what the judge was ASKED, not of what it was
+    shown. Everything but the system prompt and the closing instruction is the same
+    bytes, and the verdict form is byte-identical to what every run before 2026-09-02
+    sent."""
+    config, sides, item = make_config(), make_sides(), make_item()
+    transcript = full_transcript(sides)
+    verdict_form = build_judge_messages(item, sides, config, transcript)
+    findings_form = build_judge_messages(
+        item, sides, dataclasses.replace(config, judge_form="findings"), transcript)
+    assert verdict_form != findings_form
+    # the record block — problem, solution, both speakers, the whole transcript — is
+    # identical, so nothing but the question moved
+    for shared in (item.problem, item.solution, "Alice argued that", "Bob argued that"):
+        assert shared in verdict_form[1]["content"], shared
+        assert shared in findings_form[1]["content"], shared
+    # and `Sides.verdict_order` is unused under the findings form: there is no verdict
+    # template to order, so a different draw changes nothing
+    other = make_sides(verdict_order=(SOUND, FLAWED))
+    swapped = build_judge_messages(
+        item, other, dataclasses.replace(config, judge_form="findings"), transcript)
+    assert swapped == findings_form
